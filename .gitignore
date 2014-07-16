@@ -19,3 +19,8 @@
 *.exe
 *.out
 *.app
+
+#emacs temp/backup files
+*~
+\#*\#
+.\#*
