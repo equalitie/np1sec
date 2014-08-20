@@ -41,13 +41,28 @@ class MessageDigest {
   unsigned long compute_message_id(std::string cur_message);
 };
 
+struct MpotrMessage
+{
+  enum MpotrMessageType
+    {
+      USER_MESSAGE,
+      PURE_META_MESSAG
+    };
+
+  MpotrMessageType metamessage;
+  std::string user_message;
+
+};
+
 /**
    This class is encapsulating all information and action, a user needs and performs in a session. 
  */
 class MpotrSession {
 protected:
-  HashBlock _id;
-  vector<SessionParticipant> peers; //keeps the list of the live participants in the room
+  HashBlock hashed_id;
+  std::string _my_id;
+  std::string _room_name;
+  vector<SessionParticipant> peers; //keeps the list of the live participants in the room and their current/new keys/shares, last heartbeet etc
 
   vector<SessionParticipant> peers_in_limbo; //keeps the list of the updated participants in the room once the join/accept or farewell finishes
 
@@ -55,30 +70,31 @@ protected:
   
 public:
   /* constructor, initiate by joining, equivalent to join
-   or initiate in the spec*/
-  MpotrSession();
+   or initiate in the spec
+  */
+  MpotrSession(std::string new_room_name, std::string user_id, bool emptyroom = false);
 
   /**
      is called by the constructor if the room is already
      inhibited
    */
-  join();
+  bool join();
 
   /* should be called when someone new join the chatroom.
    this will modifies the session id*/
-  accept();
+  bool accept(std::string new_participant_id);
 
   /**
      this will be called when a user leave a chatroom 
-     to update the key
+     to update the key (better called kick out
    */
-  farewell();
+  bool farewell(std::string leaver_id);
 
   /** 
       When a user wants to send a message to a session
       it needs to call its send function
    */
-  send();
+  bool send(MpotrMessage message);
 
   /**
      When a message is received from a session 
@@ -89,7 +105,7 @@ public:
      @return the decrypted message to be shown, it might
      be null if the message was a meta message
    */
-  receive();
+  MpotrMessage receive(std::string raw_message);
 
   /* destructor, session should be destroyed at leave */
   ~MpotrSession();
