@@ -1,59 +1,56 @@
-/*
- *  Multiparty Off-the-Record Messaging library
- *  Copyright (C) 2014  eQualit.ie  
+/**
+ * Multiparty Off-the-Record Messaging library
+ * Copyright (C) 2014, eQualit.ie
  *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of version 3 of the GNU Lesser General
- *  Public License as published by the Free Software Foundation.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of version 3 of the GNU Lesser General
+ * Public License as published by the Free Software Foundation.
  *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  Lesser General Public License for more details.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef __USERSTATE_H__
-#define __USERSTATE_H__
-
+#include <string>
 #include <map>
 
-class RoomAction
-{
+
+#ifndef SRC_USERSTATE_H_
+#define SRC_USERSTATE_H_
+
+class RoomAction {
  public:
-  enum ActionType
-  {
+  enum ActionType {
     NO_ACTION,
     JOIN,
     LEAVE,
     NEW_MESSAGE
   }
 
-  std::string acting_user; //The user which joined, left or sent a message
+  std::string acting_user;  // The user which joined, left or sent a message.
   std::string new_message;
-
 };
+
 /**
-   Manages a user with long term identity for participating in a multiparty
-   chat sessions. It keeps track of sessions that user is participating in.     
+ * Manages a user with long term identity for participating in a multiparty
+ * chat sessions. It keeps track of sessions that user is participating in.
  */
 class MpotrlUserState {
-protected:
+ protected:
   PrivateKey *long_term_private_key;
   std::map<Session> user_session mpotr_sessions;
 
-public:
-  /**
-     Constructor
-   */
+ public:
+  // Constructor
   MpotrlUserState();
 
   /**
-     the client need to call this function when the user is
-     joining a room
+     The client need to call this function when the user is joining a room.
 
      @param room_name the chat room name
      @param user_in_room_id the id that user is using to join this room, this is similar to alias. 
@@ -63,7 +60,7 @@ public:
      failure 
    */
   bool join_room(std::string room_name, std:string new_user_id);
-  
+
   /**
      the client need to call this function when a user join the
      chatroom. 
@@ -104,17 +101,12 @@ public:
    */
   RoomAction receive(std::string room_name, std::string mpotr_message);
 
-  /**
-     The client inform the user state about leaving the 
-     room by calling this function
-   */
+  // The client informs the user state about leaving the room by calling this
+  // function.
   void leave_room();
 
-  /**
-     Destructor
-  */
+  // Destructor
   ~MpotrlUserState();
-  
 };
 
-#endif
+#endif  // SRC_USERSTATE_H_
