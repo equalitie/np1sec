@@ -1,29 +1,15 @@
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
-
-#emacs temp/backup files
+# Ignore emacs tmp files
 *~
 \#*\#
 .\#*
 
-# Autres
+# Ignore automake generated files
+/aclocal.m4
+/autom4te.cache/
+/configure
+/missing
+/install-sh
+Makefile.in
+
+# Other
 .DS_Store
