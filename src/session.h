@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 
+#include "src/participant.h"
 #include "src/crypt.h"
 
 
@@ -28,16 +29,17 @@
 class MessageDigest {
  public:
   HashBlock digest;
-  uint32 message_id;
+  uint32_t message_id;
 
-  void update(std::string new_message) {
-    message_id = compute_message_id(new_message);
-    digest = mpotr_hash(digest + new_message);
-  };
+  void update(std::string new_message);
+  // {
+  //   message_id = compute_message_id(new_message);
+  //   digest = mpotr_hash(digest + new_message);
+  // };
 
   // Compute a unique globally ordered id from the time stamped message,
   // ultimately this function should be overridable by the client.
-  uint32 compute_message_id(std::string cur_message);
+  uint32_t compute_message_id(std::string cur_message);
 };
 
 struct MpotrMessage {
@@ -48,6 +50,9 @@ struct MpotrMessage {
   MpotrMessageType metamessage;
   std::string user_message;
 };
+
+
+class SessionParticipant {};
 
 /**
  * This class is encapsulating all information and action, a user needs and
@@ -62,13 +67,13 @@ class MpotrSession {
 
   // Keeps the list of the live participants in the room and their current/new
   // keys/shares, last heartbeet, etc.
-  vector<SessionParticipant> peers;
+  std::vector<Participant> peers;
 
   // Keeps the list of the updated participants in the room once the
   // join/accept or farewell finishes.
-  vector<SessionParticipant> peers_in_limbo;
+  std::vector<Participant> peers_in_limbo;
 
-  time key_freshness_time_stamp;
+  time_t key_freshness_time_stamp;
 
  public:
   // Constructor, initiate by joining. Equivalent to join or initiate in the
@@ -77,7 +82,8 @@ class MpotrSession {
                bool emptyroom = false);
 
   // Is called by the constructor if the room is already inhibited.
-  bool join();
+  bool join(std::string new_room_name, std::string user_id,
+            std::string new_participant_id);
 
   // Should be called when someone new join the chatroom. This will modify the
   // session id.

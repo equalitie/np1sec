@@ -1,15 +1,61 @@
-# Ignore emacs tmp files
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Emacs temp/backup files
 *~
 \#*\#
 .\#*
 
-# Ignore automake generated files
+# Automake generated files
+/m4/libtool.m4
+/m4/ltoptions.m4
+/m4/ltsugar.m4
+/m4/ltversion.m4
+/m4/lt~obsolete.m4
 /aclocal.m4
+/ar-lib
 /autom4te.cache/
 /configure
 /missing
 /install-sh
+/test-driver
+/compile
+/config.log
+/config.status
+/config.guess
+/config.h
+/config.h.in
+/config.sub
+/depcomp
+/libtool
+/ltmain.sh
+/stamp-h1
+/test-suite.log
+.deps
+.dirstamp
+Makefile
 Makefile.in
 
 # Other
 .DS_Store
+libmpotr_test*
+

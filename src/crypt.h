@@ -24,12 +24,12 @@
  * Encryption primitives and related definitions.
  */
 
-const int c_mpotr_hash = gcry_md_algos::GCRY_MD_SHA256;
+// const int c_mpotr_hash = gcry_md_algos::GCRY_MD_SHA256;
 
 // The length of the output of the hash function in bytes.
 // TODO(XXX): This should be borrowed from the encryption library.
-const size_t c_hash_length = gcry_md_get_algo_dlen(c_mpotr_hash);
+// const size_t c_hash_length = gcry_md_get_algo_dlen(c_mpotr_hash);
 
-typedef uint8_t HashBlock[c_hash_length];
+typedef uint8_t HashBlock[0];  // c_hash_length
 
 #endif  // SRC_CRYPT_H_

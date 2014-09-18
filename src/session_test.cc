@@ -16,33 +16,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <string>
+#include <gtest/gtest.h>
+#include "src/session.h"
 
 
-#ifndef SRC_PARTICIPANT_H_
-#define SRC_PARTICIPANT_H_
+// class SessionTest : public ::testing::Test { };
+//
+// TEST_F(SessionTest, test_one) {
+//   ASSERT_EQ("test", "test");
+// }
 
-/** 
- * This class keeps the state of each participant in the  room, including the
- * user themselves.
-*/
-class Participant {
- public:
-  std::string id;
-  // MpotrPublicKey long_term_pub_key;
-  // MpotrPublicKey ephemeral_key;
-  // MessageDigest message_digest;
-
-  // MpotrKeyShare cur_keyshare;
-  // MpotrKeySHare future_key_share;
-
-  enum ForwardSecracyContribution {
-    NONE,
-    EPHEMERAL,
-    KEY_SHARE
-  };
-
-  // ForwardSecracyContribution ForwardSecracyStatus;
-};
-
-#endif  // SRC_PARTICIPANT_H_
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
