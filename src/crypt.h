@@ -16,6 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <cstdint>
+
 
 #ifndef SRC_CRYPT_H_
 #define SRC_CRYPT_H_

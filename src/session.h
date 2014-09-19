@@ -18,6 +18,7 @@
 
 #include <string>
 #include <vector>
+#include <cstdint>
 
 #include "src/participant.h"
 #include "src/crypt.h"
