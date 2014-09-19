@@ -23,10 +23,11 @@
 #include "src/participant.h"
 #include "src/crypt.h"
 
-using namespace std;
 
 #ifndef SRC_SESSION_H_
 #define SRC_SESSION_H_
+
+namespace std {
 
 class MessageDigest {
  public:
@@ -106,5 +107,7 @@ class MpotrSession {
   // Destructor, session should be destroyed at leave.
   ~MpotrSession();
 };
+
+}  // namespace std
 
 #endif  // SRC_SESSION_H_

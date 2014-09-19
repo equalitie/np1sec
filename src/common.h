@@ -17,3 +17,9 @@
  */
 
 #include <cstdint>
+
+
+#ifndef SRC_COMMON_H_
+#define SRC_COMMON_H_
+
+#endif  // SRC_COMMON_H_
