@@ -18,9 +18,8 @@
 
 #include <string>
 #include <vector>
-#include <cstdint>
 
-#include "common.h"
+#include "src/common.h"
 #include "src/participant.h"
 #include "src/crypt.h"
 
