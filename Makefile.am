@@ -18,4 +18,4 @@ libmpotr_test_CPPFLAGS = \
 	-I$(top_srcdir)/${GTEST_BASE} \
 	-I$(top_srcdir)/${GTEST_INCLUDE}
 libmpotr_test_LDFLAGS = \
-	$(top_srcdir)/${GTEST_BASE}/lib/libgtest.la
+	$(top_srcdir)/${GTEST_BASE}/lib/libgtest.la -lpthread

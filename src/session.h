@@ -20,9 +20,11 @@
 #include <vector>
 #include <cstdint>
 
+#include "common.h"
 #include "src/participant.h"
 #include "src/crypt.h"
 
+using namespace std;
 
 #ifndef SRC_SESSION_H_
 #define SRC_SESSION_H_
