@@ -18,7 +18,6 @@
 
 #include <string>
 #include <vector>
-#include <cstdint>
 
 #include "common.h"
 #include "src/participant.h"
