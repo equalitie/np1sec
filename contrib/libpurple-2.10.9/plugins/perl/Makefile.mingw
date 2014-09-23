@@ -1,0 +1,84 @@
+#
+# Makefile.mingw
+#
+# Description: Makefile for perl plugin loader plugin.
+#
+
+PIDGIN_TREE_TOP := ../../..
+include $(PIDGIN_TREE_TOP)/libpurple/win32/global.mak
+
+DEFINES := $(subst -DWIN32_LEAN_AND_MEAN,,$(DEFINES))
+
+TARGET = perl
+
+# Perl headers with /* /* */ type comments.. Turn off warnings.
+GCCWARNINGS += -Wno-comment
+
+##
+## INCLUDE PATHS
+##
+INCLUDE_PATHS +=	-I. \
+			-I$(PIDGIN_TREE_TOP) \
+			-I$(PURPLE_TOP) \
+			-I$(PURPLE_TOP)/win32 \
+			-I$(GTK_TOP)/include \
+			-I$(GTK_TOP)/include/glib-2.0 \
+			-I$(GTK_TOP)/lib/glib-2.0/include \
+			-I$(PERL_LIB_TOP)/CORE
+
+LIB_PATHS +=		-L$(GTK_TOP)/lib \
+			-L$(PURPLE_TOP) \
+			-L$(PERL_LIB_TOP)
+
+##
+##  SOURCES, OBJECTS
+##
+C_SRC =			perl.c \
+			perl-common.c \
+			perl-handlers.c
+
+OBJECTS = $(C_SRC:%.c=%.o)
+
+##
+## LIBRARIES
+##
+LIBS =	\
+			-lglib-2.0 \
+			-lgmodule-2.0 \
+			-lgobject-2.0 \
+			-lws2_32 \
+			-lintl \
+			-lpurple \
+			-lperl510
+
+include $(PIDGIN_COMMON_RULES)
+
+##
+## TARGET DEFINITIONS
+##
+.PHONY: all install clean
+
+all: $(TARGET).dll
+	$(MAKE) -C ./common -f $(MINGW_MAKEFILE)
+
+install: all $(PURPLE_INSTALL_PLUGINS_DIR)
+	cp $(TARGET).dll $(PURPLE_INSTALL_PLUGINS_DIR)
+	$(MAKE) -C ./common -f $(MINGW_MAKEFILE) install
+
+$(OBJECTS): $(PURPLE_CONFIG_H)
+
+##
+## BUILD DLL
+##
+$(TARGET).dll $(TARGET).dll.a: $(PURPLE_DLL).a $(OBJECTS)
+	$(CC) -shared $(OBJECTS) $(LIB_PATHS) $(LIBS) $(DLL_LD_FLAGS)  -Wl,--export-all-symbols -Wl,--out-implib,$(TARGET).dll.a -o $(TARGET).dll
+
+##
+## CLEAN RULES
+##
+clean:
+	rm -rf $(OBJECTS)
+	rm -rf $(TARGET).dll $(TARGET).dll.a
+	$(MAKE) -C ./common -f $(MINGW_MAKEFILE) clean
+
+include $(PIDGIN_COMMON_TARGETS)

@@ -1,0 +1,96 @@
+#
+# Makefile.mingw
+#
+# Description: Makefile for ssl plugin.
+#
+
+PIDGIN_TREE_TOP := ../../..
+include $(PIDGIN_TREE_TOP)/libpurple/win32/global.mak
+
+##
+## VARIABLE DEFINITIONS
+##
+TARGET = ssl
+TARGET_NSS = ssl-nss
+
+NEEDED_DLLS = \
+			$(NSS_TOP)/lib/freebl3.dll \
+			$(NSS_TOP)/lib/libnspr4.dll \
+			$(NSS_TOP)/lib/libplc4.dll \
+			$(NSS_TOP)/lib/libplds4.dll \
+			$(NSS_TOP)/lib/nss3.dll \
+			$(NSS_TOP)/lib/nssutil3.dll \
+			$(NSS_TOP)/lib/smime3.dll \
+			$(NSS_TOP)/lib/softokn3.dll \
+                        $(NSS_TOP)/lib/sqlite3.dll \
+			$(NSS_TOP)/lib/ssl3.dll 
+
+##
+## INCLUDE PATHS
+##
+INCLUDE_PATHS +=	-I. \
+			-I$(GTK_TOP)/include \
+			-I$(GTK_TOP)/include/glib-2.0 \
+			-I$(GTK_TOP)/lib/glib-2.0/include \
+			-I$(PURPLE_TOP) \
+			-I$(PURPLE_TOP)/win32 \
+			-I$(PIDGIN_TREE_TOP) \
+			-I$(NSS_TOP)/include
+
+LIB_PATHS +=		-L$(GTK_TOP)/lib \
+			-L$(PURPLE_TOP) \
+			-L$(NSS_TOP)/lib
+
+##
+##  SOURCES, OBJECTS
+##
+C_SRC =			ssl.c
+C_SRC_NSS =		ssl-nss.c
+OBJECTS = $(C_SRC:%.c=%.o)
+OBJECTS_NSS = $(C_SRC_NSS:%.c=%.o)
+
+##
+## LIBRARIES
+##
+LIBS =	\
+			-lglib-2.0 \
+			-lws2_32 \
+			-lintl \
+			-lpurple \
+			-lnss3 \
+			-lnspr4 \
+			-lssl3 \
+			-lsmime3
+
+include $(PIDGIN_COMMON_RULES)
+
+##
+## TARGET DEFINITIONS
+##
+.PHONY: all install clean
+
+all: $(TARGET).dll $(TARGET_NSS).dll
+
+install: all $(PURPLE_INSTALL_PLUGINS_DIR) $(PURPLE_INSTALL_DIR)
+	cp $(TARGET).dll $(PURPLE_INSTALL_PLUGINS_DIR)
+	cp $(TARGET_NSS).dll $(PURPLE_INSTALL_PLUGINS_DIR)
+	cp $(NEEDED_DLLS) $(PURPLE_INSTALL_DIR)
+
+$(OBJECTS) $(OBJECTS_NSS): $(PURPLE_CONFIG_H)
+
+##
+## BUILD DLL
+##
+$(TARGET).dll: $(PURPLE_DLL).a $(OBJECTS)
+	$(CC) -shared $(OBJECTS) $(LIB_PATHS) $(LIBS) $(DLL_LD_FLAGS) -o $(TARGET).dll
+
+$(TARGET_NSS).dll: $(PURPLE_DLL) $(OBJECTS_NSS)
+	$(CC) -shared $(OBJECTS_NSS) $(LIB_PATHS) $(LIBS) $(DLL_LD_FLAGS) -o $(TARGET_NSS).dll
+
+##
+## CLEAN RULES
+##
+clean:
+	rm -f $(OBJECTS) $(OBJECTS_NSS) $(TARGET).dll $(TARGET_NSS).dll
+
+include $(PIDGIN_COMMON_TARGETS)

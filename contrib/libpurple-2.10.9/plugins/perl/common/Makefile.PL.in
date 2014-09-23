@@ -1,0 +1,29 @@
+use 5.006;
+use ExtUtils::MakeMaker;
+# See lib/ExtUtils/MakeMaker.pm for details of how to influence the contents
+# of the Makefile that is written.
+WriteMakefile(
+    'NAME'              => 'Purple',
+    'VERSION_FROM'      => '@srcdir@/Purple.pm', # finds $VERSION
+    'PREREQ_PM'         => {}, # e.g., Module::Name => 1.1
+    ($] >= 5.005 ? ## Add these new keywords supported since 5.005
+      (ABSTRACT_FROM    => '@srcdir@/Purple.pm', # finds $ABSTRACT
+       AUTHOR           => 'Purple <http://pidgin.im/>') : ()),
+    'DEFINE'            => '@DEBUG_CFLAGS@',
+    'dynamic_lib'       => { 'OTHERLDFLAGS' => '@LDFLAGS@' },
+    'INC'               => '-I. -I@srcdir@ -I@top_srcdir@ -I@top_srcdir@/libpurple @GLIB_CFLAGS@',
+    'OBJECT'            => '$(O_FILES)', # link all the C files too
+#    'OPTIMIZE'          => '-g', # For debugging
+    'INSTALLDIRS'          => 'vendor',
+    'INSTALL_BASE'         => '$(prefix)',
+    'INSTALLVENDORARCH'    => '$(libdir)/purple-$(PURPLE_MAJOR_VERSION)/perl',
+    'INSTALLVENDORMAN3DIR' => '$(mandir)/man3',
+    'macro'                => {
+        'prefix'               => '@prefix@',
+        'exec_prefix'          => '@exec_prefix@',
+        'libdir'               => '@libdir@',
+        'mandir'               => '@mandir@',
+        'datarootdir'          => '@datarootdir@',
+        'PURPLE_MAJOR_VERSION' => '@PURPLE_MAJOR_VERSION@',
+    },
+);

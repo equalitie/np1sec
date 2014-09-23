@@ -1,0 +1,170 @@
+#
+# Makefile.mingw
+#
+# Description: Makefile for win32 (mingw) version of libpurple
+#
+
+PIDGIN_TREE_TOP := ..
+include $(PIDGIN_TREE_TOP)/libpurple/win32/global.mak
+
+TARGET = libpurple
+NEEDED_DLLS = $(LIBXML2_TOP)/bin/libxml2-2.dll
+
+ifeq ($(CYRUS_SASL), 1)
+NEEDED_DLLS += $(CYRUS_SASL_TOP)/bin/libsasl.dll
+
+CYRUS_SASL_PLUGINS = \
+                        $(CYRUS_SASL_TOP)/bin/sasl2/saslANONYMOUS.dll \
+                        $(CYRUS_SASL_TOP)/bin/sasl2/saslCRAMMD5.dll \
+                        $(CYRUS_SASL_TOP)/bin/sasl2/saslDIGESTMD5.dll \
+                        $(CYRUS_SASL_TOP)/bin/sasl2/saslGSSAPI.dll \
+                        $(CYRUS_SASL_TOP)/bin/sasl2/saslLOGIN.dll \
+                        $(CYRUS_SASL_TOP)/bin/sasl2/saslPLAIN.dll
+
+endif
+
+##
+## INCLUDE PATHS
+##
+INCLUDE_PATHS +=	\
+			-I$(PURPLE_TOP) \
+			-I$(PURPLE_TOP)/win32 \
+			-I$(PIDGIN_TREE_TOP) \
+			-I$(GTK_TOP)/include \
+			-I$(GTK_TOP)/include/glib-2.0 \
+			-I$(GTK_TOP)/lib/glib-2.0/include \
+			-I$(LIBXML2_TOP)/include/libxml2
+
+LIB_PATHS +=		-L$(GTK_TOP)/lib \
+			-L$(LIBXML2_TOP)/lib
+
+##
+##  SOURCES, OBJECTS
+##
+C_SRC =	\
+			account.c \
+			accountopt.c \
+			blist.c \
+			buddyicon.c \
+			certificate.c \
+			cipher.c \
+			ciphers/des.c \
+			ciphers/gchecksum.c \
+			ciphers/hmac.c \
+			ciphers/md4.c \
+			ciphers/md5.c \
+			ciphers/rc4.c \
+			ciphers/sha1.c \
+			ciphers/sha256.c \
+			circbuffer.c \
+			cmds.c \
+			connection.c \
+			conversation.c \
+			core.c \
+			debug.c \
+			dnsquery.c \
+			dnssrv.c \
+			eventloop.c \
+			ft.c \
+			idle.c \
+			imgstore.c \
+			log.c \
+			mediamanager.c \
+			media.c \
+			mime.c \
+			nat-pmp.c \
+			network.c \
+			notify.c \
+			ntlm.c \
+			plugin.c \
+			pluginpref.c \
+			pounce.c \
+			prefs.c \
+			privacy.c \
+			proxy.c \
+			prpl.c \
+			request.c \
+			roomlist.c \
+			savedstatuses.c \
+			server.c \
+			signals.c \
+			smiley.c \
+			sound-theme-loader.c \
+			sound-theme.c \
+			sound.c \
+			sslconn.c \
+			status.c \
+			stringref.c \
+			stun.c \
+			theme-loader.c \
+			theme-manager.c \
+			theme.c \
+			upnp.c \
+			util.c \
+			value.c \
+			version.c \
+			whiteboard.c \
+			xmlnode.c \
+			win32/giowin32.c \
+			win32/libc_interface.c \
+			win32/win32dep.c
+
+RC_SRC = win32/libpurplerc.rc
+
+OBJECTS = $(C_SRC:%.c=%.o) $(RC_SRC:%.rc=%.o)
+
+##
+## LIBRARIES
+##
+LIBS =	\
+		-ldnsapi \
+		-lglib-2.0 \
+		-lgthread-2.0 \
+		-lgobject-2.0 \
+		-lgmodule-2.0 \
+		-lintl \
+		-lws2_32 \
+		-lxml2
+
+include $(PIDGIN_COMMON_RULES)
+
+##
+## TARGET DEFINITIONS
+##
+.PHONY: all install install_shallow clean
+
+all: $(TARGET).dll
+	$(MAKE) -C $(PURPLE_PROTOS_TOP) -f $(MINGW_MAKEFILE)
+	$(MAKE) -C $(PURPLE_PLUGINS_TOP) -f $(MINGW_MAKEFILE)
+
+install_shallow: $(PURPLE_INSTALL_DIR) $(TARGET).dll
+	cp $(TARGET).dll $(PURPLE_INSTALL_DIR)
+	cp $(NEEDED_DLLS) $(PURPLE_INSTALL_DIR)
+ifeq ($(CYRUS_SASL), 1)
+	mkdir -p $(PURPLE_INSTALL_DIR)/sasl2
+	cp $(CYRUS_SASL_PLUGINS) $(PURPLE_INSTALL_DIR)/sasl2
+endif
+
+install: install_shallow all
+	$(MAKE) -C $(PURPLE_PROTOS_TOP) -f $(MINGW_MAKEFILE) install
+	$(MAKE) -C $(PURPLE_PLUGINS_TOP) -f $(MINGW_MAKEFILE) install
+
+./win32/libpurplerc.rc: ./win32/libpurplerc.rc.in $(PIDGIN_TREE_TOP)/VERSION
+	sed -e 's/@PURPLE_VERSION@/$(PURPLE_VERSION)/g' \
+	    $@.in > $@
+
+$(OBJECTS): $(PURPLE_CONFIG_H) $(PURPLE_VERSION_H) $(PURPLE_PURPLE_H)
+
+$(TARGET).dll $(TARGET).dll.a: $(OBJECTS)
+	$(CC) -shared $(OBJECTS) $(LIB_PATHS) $(LIBS) $(DLL_LD_FLAGS) -Wl,--output-def,$(TARGET).def,--out-implib,$(TARGET).dll.a -o $(TARGET).dll
+
+##
+## CLEAN RULES
+##
+clean:
+	rm -f $(OBJECTS) $(RC_SRC) $(PURPLE_VERSION_H) $(PURPLE_PURPLE_H)
+	rm -f $(TARGET).dll $(TARGET).dll.a $(TARGET).def
+	$(MAKE) -C $(PURPLE_PROTOS_TOP) -f $(MINGW_MAKEFILE) clean
+	$(MAKE) -C $(PURPLE_PLUGINS_TOP) -f $(MINGW_MAKEFILE) clean
+
+include $(PIDGIN_COMMON_TARGETS)
