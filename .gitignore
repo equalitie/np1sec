@@ -57,5 +57,6 @@ Makefile.in
 
 # Other
 .DS_Store
-libmpotr_test*
+/libmpotr_test*
+/xmpp_test*
 
