@@ -1,0 +1,31 @@
+SILC Purple Plugin
+==================
+
+This is the Purple protocol plugin of the protocol called Secure Internet
+Live Conferencing (SILC).  The implementation will use the SILC Toolkit,
+freely available from the http://silcnet.org/ site, for the actual SILC
+protocol implementation.
+
+To include SILC into Purple, one needs to first compile and install
+the SILC Toolkit.  It is done as follows:
+
+	./configure
+	make
+	make install
+
+This will compile shared libraries of the SILC Toolkit.  If the --prefix
+is not given to ./configure, the binaries are installed into the
+/usr/local/silc directory.
+
+Once the Toolkit is installed one needs to tell Purple's ./configure
+script where the SILC Toolkit is located.  It is done as simply as:
+
+	./configure
+
+if pkg-config is installed in your system.  If it is isn't it's done as:
+
+	./configure --with-silc-libs=/path/to/silc/lib
+		    --with-silc-includes=/path/to/silc/include
+
+If the SILC Toolkit cannot be found then the SILC protocol plugin will
+not be compiled.

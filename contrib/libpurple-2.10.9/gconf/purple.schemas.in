@@ -1,0 +1,276 @@
+<?xml version="1.0"?>
+<gconfschemafile>
+  <schemalist>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/aim/enabled</key>
+      <applyto>/desktop/gnome/url-handlers/aim/enabled</applyto>
+      <owner>purple</owner>
+      <type>bool</type>
+      <default>true</default>
+      <locale name="C">
+        <short>Whether the specified command should handle "aim" URLs</short>
+        <long>True if the command specified in the "command" key should handle "aim" URLs.</long>
+      </locale>
+    </schema>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/aim/command</key>
+      <applyto>/desktop/gnome/url-handlers/aim/command</applyto>
+      <owner>purple</owner>
+      <type>string</type>
+      <default>purple-url-handler "%s"</default>
+      <locale name="C">
+        <short>The handler for "aim" URLs</short>
+        <long>The command used to handle "aim" URLs, if enabled.</long>
+      </locale>
+    </schema>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/aim/needs_terminal</key>
+      <applyto>/desktop/gnome/url-handlers/aim/needs_terminal</applyto>
+      <owner>purple</owner>
+      <type>bool</type>
+      <default>false</default>
+      <locale name="C">
+        <short>Run the command in a terminal</short>
+        <long>True if the command used to handle this type of URL should be run in a terminal.</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/gg/enabled</key>
+      <applyto>/desktop/gnome/url-handlers/gg/enabled</applyto>
+      <owner>purple</owner>
+      <type>bool</type>
+      <default>true</default>
+      <locale name="C">
+        <short>Whether the specified command should handle "gg" URLs</short>
+        <long>True if the command specified in the "command" key should handle "gg" URLs.</long>
+      </locale>
+    </schema>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/gg/command</key>
+      <applyto>/desktop/gnome/url-handlers/gg/command</applyto>
+      <owner>purple</owner>
+      <type>string</type>
+      <default>purple-url-handler "%s"</default>
+      <locale name="C">
+        <short>The handler for "gg" URLs</short>
+        <long>The command used to handle "gg" URLs, if enabled.</long>
+      </locale>
+    </schema>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/gg/needs_terminal</key>
+      <applyto>/desktop/gnome/url-handlers/gg/needs_terminal</applyto>
+      <owner>purple</owner>
+      <type>bool</type>
+      <default>false</default>
+      <locale name="C">
+        <short>Run the command in a terminal</short>
+        <long>True if the command used to handle this type of URL should be run in a terminal.</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/icq/enabled</key>
+      <applyto>/desktop/gnome/url-handlers/icq/enabled</applyto>
+      <owner>purple</owner>
+      <type>bool</type>
+      <default>true</default>
+      <locale name="C">
+        <short>Whether the specified command should handle "icq" URLs</short>
+        <long>True if the command specified in the "command" key should handle "icq" URLs.</long>
+      </locale>
+    </schema>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/icq/command</key>
+      <applyto>/desktop/gnome/url-handlers/icq/command</applyto>
+      <owner>purple</owner>
+      <type>string</type>
+      <default>purple-url-handler "%s"</default>
+      <locale name="C">
+        <short>The handler for "icq" URLs</short>
+        <long>The command used to handle "icq" URLs, if enabled.</long>
+      </locale>
+    </schema>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/icq/needs_terminal</key>
+      <applyto>/desktop/gnome/url-handlers/icq/needs_terminal</applyto>
+      <owner>purple</owner>
+      <type>bool</type>
+      <default>false</default>
+      <locale name="C">
+        <short>Run the command in a terminal</short>
+        <long>True if the command used to handle this type of URL should be run in a terminal.</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/irc/enabled</key>
+      <applyto>/desktop/gnome/url-handlers/irc/enabled</applyto>
+      <owner>purple</owner>
+      <type>bool</type>
+      <default>true</default>
+      <locale name="C">
+        <short>Whether the specified command should handle "irc" URLs</short>
+        <long>True if the command specified in the "command" key should handle "irc" URLs.</long>
+      </locale>
+    </schema>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/irc/command</key>
+      <applyto>/desktop/gnome/url-handlers/irc/command</applyto>
+      <owner>purple</owner>
+      <type>string</type>
+      <default>purple-url-handler "%s"</default>
+      <locale name="C">
+        <short>The handler for "irc" URLs</short>
+        <long>The command used to handle "irc" URLs, if enabled.</long>
+      </locale>
+    </schema>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/irc/needs_terminal</key>
+      <applyto>/desktop/gnome/url-handlers/irc/needs_terminal</applyto>
+      <owner>purple</owner>
+      <type>bool</type>
+      <default>false</default>
+      <locale name="C">
+        <short>Run the command in a terminal</short>
+        <long>True if the command used to handle this type of URL should be run in a terminal.</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/msnim/enabled</key>
+      <applyto>/desktop/gnome/url-handlers/msnim/enabled</applyto>
+      <owner>purple</owner>
+      <type>bool</type>
+      <default>true</default>
+      <locale name="C">
+        <short>Whether the specified command should handle "msnim" URLs</short>
+        <long>True if the command specified in the "command" key should handle "msnim" URLs.</long>
+      </locale>
+    </schema>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/msnim/command</key>
+      <applyto>/desktop/gnome/url-handlers/msnim/command</applyto>
+      <owner>purple</owner>
+      <type>string</type>
+      <default>purple-url-handler "%s"</default>
+      <locale name="C">
+        <short>The handler for "msnim" URLs</short>
+        <long>The command used to handle "msnim" URLs, if enabled.</long>
+      </locale>
+    </schema>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/msnim/needs_terminal</key>
+      <applyto>/desktop/gnome/url-handlers/msnim/needs_terminal</applyto>
+      <owner>purple</owner>
+      <type>bool</type>
+      <default>false</default>
+      <locale name="C">
+        <short>Run the command in a terminal</short>
+        <long>True if the command used to handle this type of URL should be run in a terminal.</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/sip/enabled</key>
+      <applyto>/desktop/gnome/url-handlers/sip/enabled</applyto>
+      <owner>purple</owner>
+      <type>bool</type>
+      <default>true</default>
+      <locale name="C">
+        <short>Whether the specified command should handle "sip" URLs</short>
+        <long>True if the command specified in the "command" key should handle "sip" URLs.</long>
+      </locale>
+    </schema>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/sip/command</key>
+      <applyto>/desktop/gnome/url-handlers/sip/command</applyto>
+      <owner>purple</owner>
+      <type>string</type>
+      <default>purple-url-handler "%s"</default>
+      <locale name="C">
+        <short>The handler for "sip" URLs</short>
+        <long>The command used to handle "sip" URLs, if enabled.</long>
+      </locale>
+    </schema>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/sip/needs_terminal</key>
+      <applyto>/desktop/gnome/url-handlers/sip/needs_terminal</applyto>
+      <owner>purple</owner>
+      <type>bool</type>
+      <default>false</default>
+      <locale name="C">
+        <short>Run the command in a terminal</short>
+        <long>True if the command used to handle this type of URL should be run in a terminal.</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/xmpp/enabled</key>
+      <applyto>/desktop/gnome/url-handlers/xmpp/enabled</applyto>
+      <owner>purple</owner>
+      <type>bool</type>
+      <default>true</default>
+      <locale name="C">
+        <short>Whether the specified command should handle "xmpp" URLs</short>
+        <long>True if the command specified in the "command" key should handle "xmpp" URLs.</long>
+      </locale>
+    </schema>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/xmpp/command</key>
+      <applyto>/desktop/gnome/url-handlers/xmpp/command</applyto>
+      <owner>purple</owner>
+      <type>string</type>
+      <default>purple-url-handler "%s"</default>
+      <locale name="C">
+        <short>The handler for "xmpp" URLs</short>
+        <long>The command used to handle "xmpp" URLs, if enabled.</long>
+      </locale>
+    </schema>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/xmpp/needs_terminal</key>
+      <applyto>/desktop/gnome/url-handlers/xmpp/needs_terminal</applyto>
+      <owner>purple</owner>
+      <type>bool</type>
+      <default>false</default>
+      <locale name="C">
+        <short>Run the command in a terminal</short>
+        <long>True if the command used to handle this type of URL should be run in a terminal.</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/ymsgr/enabled</key>
+      <applyto>/desktop/gnome/url-handlers/ymsgr/enabled</applyto>
+      <owner>purple</owner>
+      <type>bool</type>
+      <default>true</default>
+      <locale name="C">
+        <short>Whether the specified command should handle "ymsgr" URLs</short>
+        <long>True if the command specified in the "command" key should handle "ymsgr" URLs.</long>
+      </locale>
+    </schema>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/ymsgr/command</key>
+      <applyto>/desktop/gnome/url-handlers/ymsgr/command</applyto>
+      <owner>purple</owner>
+      <type>string</type>
+      <default>purple-url-handler "%s"</default>
+      <locale name="C">
+        <short>The handler for "ymsgr" URLs</short>
+        <long>The command used to handle "ymsgr" URLs, if enabled.</long>
+      </locale>
+    </schema>
+    <schema>
+      <key>/schemas/desktop/gnome/url-handlers/ymsgr/needs_terminal</key>
+      <applyto>/desktop/gnome/url-handlers/ymsgr/needs_terminal</applyto>
+      <owner>purple</owner>
+      <type>bool</type>
+      <default>false</default>
+      <locale name="C">
+        <short>Run the command in a terminal</short>
+        <long>True if the command used to handle this type of URL should be run in a terminal.</long>
+      </locale>
+    </schema>
+  </schemalist>
+</gconfschemafile>

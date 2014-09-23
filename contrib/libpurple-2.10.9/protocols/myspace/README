@@ -1,0 +1,27 @@
+MySpaceIM Protocol Plugin for libpurple by Jeff Connelly 2007-08-07
+
+Greetings. This package contains a plugin for libpurple (as used in
+Pidgin, formerly Gaim) to connect to the new MySpaceIM instant messaging
+network and send/receive messages. Functionality is only basic as of yet,
+and this code should be considered alpha quality.
+
+This code was initially developed under Google Summer of Code 2007.
+
+For features and TODO, see http://developer.pidgin.im/wiki/MySpaceIM
+
+Usage:
+
+Login using your _email address_ you use to login to myspace.com. You can't
+login using your numeric ID or alias.
+
+To test it out, send a message to yourself (by your username or numeric
+uid (email not yet supported)) or tom (6221). In either case you should
+get a reply. You should also be able to talk to other MySpaceIM users if
+you desire. Replies will always be shown as coming from a user's username,
+even if you IM by email or userid.
+
+Feedback welcome. You can IM my test account at "msimprpl" if you feel like it.
+
+Enjoy,
+-Jeff Connelly
+msimprpl@xyzzy.cjb.net

@@ -1,0 +1,110 @@
+#
+# Makefile.mingw
+#
+# Description: Makefile for win32 (mingw) version of libmsn
+#
+
+PIDGIN_TREE_TOP := ../../..
+include $(PIDGIN_TREE_TOP)/libpurple/win32/global.mak
+
+TARGET = libmsn
+TYPE = PLUGIN
+
+# Static or Plugin...
+ifeq ($(TYPE),STATIC)
+  DEFINES += -DSTATIC
+  DLL_INSTALL_DIR =	$(PURPLE_INSTALL_DIR)
+else
+ifeq ($(TYPE),PLUGIN)
+  DLL_INSTALL_DIR =	$(PURPLE_INSTALL_PLUGINS_DIR)
+endif
+endif
+
+##
+## INCLUDE PATHS
+##
+INCLUDE_PATHS +=	-I. \
+			-I$(GTK_TOP)/include \
+			-I$(GTK_TOP)/include/glib-2.0 \
+			-I$(GTK_TOP)/lib/glib-2.0/include \
+			-I$(PURPLE_TOP) \
+			-I$(PURPLE_TOP)/win32 \
+			-I$(PIDGIN_TREE_TOP)
+
+LIB_PATHS +=		-L$(GTK_TOP)/lib \
+			-L$(PURPLE_TOP)
+
+##
+##  SOURCES, OBJECTS
+##
+C_SRC =			cmdproc.c \
+			command.c \
+			contact.c\
+			directconn.c \
+			error.c \
+			group.c \
+			history.c \
+			httpconn.c \
+			msg.c \
+			msn.c \
+			nexus.c \
+			notification.c \
+			object.c \
+			oim.c\
+			p2p.c \
+			page.c \
+			servconn.c \
+			session.c \
+			slp.c \
+			slpcall.c \
+			slplink.c \
+			slpmsg.c \
+			slpmsg_part.c \
+			soap.c\
+			state.c \
+			sbconn.c \
+			switchboard.c \
+			table.c \
+			tlv.c \
+			transaction.c \
+			user.c \
+			userlist.c \
+			xfer.c \
+			msnutils.c
+
+OBJECTS = $(C_SRC:%.c=%.o)
+
+##
+## LIBRARIES
+##
+LIBS =	\
+			-lglib-2.0 \
+			-lintl \
+			-lws2_32 \
+			-lpurple
+
+include $(PIDGIN_COMMON_RULES)
+
+##
+## TARGET DEFINITIONS
+##
+.PHONY: all install clean
+
+all: $(TARGET).dll
+
+install: all $(DLL_INSTALL_DIR)
+	cp $(TARGET).dll $(DLL_INSTALL_DIR)
+
+$(OBJECTS): $(PURPLE_CONFIG_H)
+
+$(TARGET).dll: $(PURPLE_DLL).a $(OBJECTS)
+	$(CC) -shared $(OBJECTS) $(LIB_PATHS) $(LIBS) $(DLL_LD_FLAGS) -o $(TARGET).dll
+
+##
+## CLEAN RULES
+##
+clean:
+	rm -f $(OBJECTS)
+	rm -f $(TARGET).dll
+
+include $(PIDGIN_COMMON_TARGETS)

@@ -1,0 +1,244 @@
+#!/usr/bin/env python
+
+import codecs
+import dbus
+import re
+import urllib
+import sys
+
+import xml.dom.minidom 
+
+sys.stdin = codecs.getwriter('utf-8')(sys.stdin);
+sys.stdout = codecs.getwriter('utf-8')(sys.stdout);
+
+xml.dom.minidom.Element.all   = xml.dom.minidom.Element.getElementsByTagName
+
+obj = None
+try:
+    obj = dbus.SessionBus().get_object("im.pidgin.purple.PurpleService", "/im/pidgin/purple/PurpleObject")
+except:
+    pass
+
+purple = dbus.Interface(obj, "im.pidgin.purple.PurpleInterface")
+
+class CheckedObject:
+    def __init__(self, obj):
+        self.obj = obj
+
+    def __getattr__(self, attr):
+        return CheckedAttribute(self, attr)
+
+class CheckedAttribute:
+    def __init__(self, cobj, attr):
+        self.cobj = cobj
+        self.attr = attr
+        
+    def __call__(self, *args):
+        result = self.cobj.obj.__getattr__(self.attr)(*args)
+        if result == 0:
+            raise Exception("Error: %s %s returned %s" %
+                            (self.attr, args, result))
+        return result
+            
+def show_help(requested=False):
+    print """This program uses D-Bus to communicate with purple.
+
+Usage:
+
+    %s "command1" "command2" ...
+
+Each command is of one of the three types:
+
+    [protocol:]commandname?param1=value1&param2=value2&...
+    FunctionName?param1=value1&param2=value2&...
+    FunctionName(value1,value2,...)
+
+The second and third form are provided for completeness but their use
+is not recommended; use purple-send or purple-send-async instead.  The
+second form uses introspection to find out the parameter names and
+their types, therefore it is rather slow.
+
+Examples of commands:
+
+    jabber:goim?screenname=testone@localhost&message=hi
+    jabber:gochat?room=TestRoom&server=conference.localhost
+    jabber:getinfo?screenname=testone@localhost
+    jabber:addbuddy?screenname=my friend
+
+    setstatus?status=away&message=don't disturb
+    getstatus
+    getstatusmessage
+    quit
+
+    PurpleAccountsFindConnected?name=&protocol=prpl-jabber
+    PurpleAccountsFindConnected(,prpl-jabber)
+""" % sys.argv[0]
+    if (requested):
+        sys.exit(0)
+    else:
+        sys.exit(1)
+
+cpurple = CheckedObject(purple)
+
+urlregexp = r"^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?"
+
+def extendlist(list, length, fill):
+    if len(list) < length:
+        return list + [fill] * (length - len(list))
+    else:
+        return list
+
+def convert(value):
+    try:
+        return int(value)
+    except:
+        return value
+
+def findaccount(accountname, protocolname):
+    try:
+        # prefer connected accounts
+        account = cpurple.PurpleAccountsFindConnected(accountname, protocolname)
+        return account
+    except:
+        # try to get any account and connect it
+        account = cpurple.PurpleAccountsFindAny(accountname, protocolname)
+        purple.PurpleAccountSetStatusVargs(account, "online", 1)
+        purple.PurpleAccountConnect(account)
+        return account
+    
+
+def execute(uri):
+    match = re.match(urlregexp, uri)
+    protocol = match.group(2)
+    if protocol == "xmpp":
+        protocol = "jabber"
+    if protocol is not None:
+        protocol = "prpl-" + protocol
+    command = match.group(5)
+    paramstring = match.group(7)
+    params = {}
+    if paramstring is not None:
+        for param in paramstring.split("&"):
+            key, value = extendlist(param.split("=",1), 2, "")
+            params[key] = urllib.unquote(value)
+
+    accountname = params.get("account", "")
+
+    if command == "goim":
+        account = findaccount(accountname, protocol)
+        conversation = cpurple.PurpleConversationNew(1, account, params["screenname"])
+        if "message" in params:
+            im = cpurple.PurpleConversationGetImData(conversation)
+            purple.PurpleConvImSend(im, params["message"])
+        return None
+
+    elif command == "gochat":
+        account = findaccount(accountname, protocol)
+        connection = cpurple.PurpleAccountGetConnection(account)
+        return purple.ServJoinChat(connection, params)
+
+    elif command == "addbuddy":
+        account = findaccount(accountname, protocol)
+        return cpurple.PurpleBlistRequestAddBuddy(account, params["screenname"],
+                                              params.get("group", ""), "")
+
+    elif command == "setstatus":
+        current = purple.PurpleSavedstatusGetCurrent()
+
+        if "status" in params:
+            status_id = params["status"]
+            status_type = purple.PurplePrimitiveGetTypeFromId(status_id)
+        else:
+            status_type = purple.PurpleSavedstatusGetType(current)
+            status_id = purple.PurplePrimitiveGetIdFromType(status_type)
+
+        if "message" in params:
+            message = params["message"];
+        else:
+            message = purple.PurpleSavedstatusGetMessage(current)
+
+        if "account" in params:
+            accounts = [cpurple.PurpleAccountsFindAny(accountname, protocol)]
+
+            for account in accounts:
+                status = purple.PurpleAccountGetStatus(account, status_id)
+                type = purple.PurpleStatusGetType(status)
+                purple.PurpleSavedstatusSetSubstatus(current, account, type, message)
+                purple.PurpleSavedstatusActivateForAccount(current, account)
+        else:
+            saved = purple.PurpleSavedstatusNew("", status_type)
+            purple.PurpleSavedstatusSetMessage(saved, message)
+            purple.PurpleSavedstatusActivate(saved)
+
+        return None
+
+    elif command == "getstatus":
+        current = purple.PurpleSavedstatusGetCurrent()
+        status_type = purple.PurpleSavedstatusGetType(current)
+        status_id = purple.PurplePrimitiveGetIdFromType(status_type)
+        return status_id
+
+    elif command == "getstatusmessage":
+        current = purple.PurpleSavedstatusGetCurrent()
+        return purple.PurpleSavedstatusGetMessage(current)
+
+    elif command == "getinfo":
+        account = findaccount(accountname, protocol)
+        connection = cpurple.PurpleAccountGetConnection(account)
+        return purple.ServGetInfo(connection, params["screenname"])
+
+    elif command == "quit":
+        return purple.PurpleCoreQuit()
+
+    elif command == "uri":
+        return None
+
+    else:
+        match = re.match(r"(\w+)\s*\(([^)]*)\)", command)
+        if match is not None:
+            name = match.group(1)
+            argstr = match.group(2)
+            if argstr == "":
+                args = []
+            else:
+                args = argstr.split(",")
+            fargs = []
+            for arg in args:
+                fargs.append(convert(arg.strip()))
+            return purple.__getattr__(name)(*fargs)
+        else:
+            # introspect the object to get parameter names and types
+            # this is slow because the entire introspection info must be downloaded
+            data = dbus.Interface(obj, "org.freedesktop.DBus.Introspectable").\
+                   Introspect()
+            introspect = xml.dom.minidom.parseString(data).documentElement
+            for method in introspect.all("method"):
+                if command == method.getAttribute("name"):
+                    methodparams = []
+                    for arg in method.all("arg"):
+                        if arg.getAttribute("direction") == "in":
+                            value = params[arg.getAttribute("name")]
+                            type = arg.getAttribute("type")
+                            if type == "s":
+                                methodparams.append(value)
+                            elif type == "i":
+                                methodparams.append(int(value))
+                            else:
+                                raise Exception("Don't know how to handle type \"%s\"" % type)
+                    return purple.__getattr__(command)(*methodparams)
+            show_help()
+
+if len(sys.argv) == 1:
+    show_help()
+elif (sys.argv[1] == "--help" or sys.argv[1] == "-h"):
+    show_help(True)
+elif (obj == None):
+    print "No existing libpurple instance detected."
+    sys.exit(1);
+    
+for arg in sys.argv[1:]:
+    output = execute(arg)
+
+    if (output != None):
+        print output
+

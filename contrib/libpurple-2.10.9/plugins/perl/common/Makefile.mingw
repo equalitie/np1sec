@@ -1,0 +1,124 @@
+#
+# Makefile.mingw
+#
+# Description: Makefile for Purple perl module.
+#
+
+PIDGIN_TREE_TOP := ../../../..
+include $(PIDGIN_TREE_TOP)/libpurple/win32/global.mak
+
+GCCWARNINGS += -Wno-comment -Wno-unused -Wno-nested-externs
+
+DEFINES := $(subst -DWIN32_LEAN_AND_MEAN,,$(DEFINES))
+
+TARGET = Purple
+AUTOSPLIT = lib/auto/Purple/autosplit.ix
+PERL_PLUGIN_TOP := ..
+
+##
+## INCLUDE PATHS
+##
+INCLUDE_PATHS +=		-I. \
+			-I$(PIDGIN_TREE_TOP) \
+			-I$(PURPLE_TOP) \
+			-I$(PURPLE_TOP)/win32 \
+			-I$(GTK_TOP)/include \
+			-I$(GTK_TOP)/include/glib-2.0 \
+			-I$(GTK_TOP)/lib/glib-2.0/include \
+			-I$(PERL_LIB_TOP)/CORE
+
+LIB_PATHS += 		-L$(PERL_LIB_TOP) \
+			-L$(PERL_PLUGIN_TOP) \
+			-L$(PURPLE_TOP) \
+			-L$(GTK_TOP)/lib
+
+##
+##  SOURCES, OBJECTS
+##
+XS_FILES =		Account.xs \
+				AccountOpts.xs \
+				BuddyIcon.xs \
+				BuddyList.xs \
+				Cipher.xs \
+				Cmds.xs \
+				Certificate.xs \
+				Connection.xs \
+				Conversation.xs \
+				Core.xs \
+				Debug.xs \
+				FT.xs \
+				Idle.xs \
+				Purple.xs \
+				ImgStore.xs \
+				Log.xs \
+				Network.xs \
+				Notify.xs \
+				Plugin.xs \
+				PluginPref.xs \
+				Pounce.xs \
+				Prefs.xs \
+				Privacy.xs \
+				Proxy.xs \
+				Prpl.xs \
+				Request.xs \
+				Roomlist.xs \
+				SSLConn.xs \
+				SavedStatuses.xs \
+				Server.xs \
+				Signal.xs \
+				Smiley.xs \
+				Sound.xs \
+				Status.xs \
+				Stringref.xs \
+				Util.xs \
+				Whiteboard.xs \
+				XMLNode.xs
+
+#FALLBACKS =	const-c.inc const-xs.inc
+C_FILES = $(XS_FILES:%.xs=%.c)
+OBJECTS = $(C_FILES:%.c=%.o)
+
+##
+## LIBRARIES
+##
+LIBS =			-lperl510 \
+			-lperl \
+			-lpurple \
+			-lglib-2.0
+
+include $(PIDGIN_COMMON_RULES)
+
+%.inc:
+	cp fallback/$@ ./
+
+##
+## TARGETS
+##
+.PHONY: all install clean
+
+all: $(TARGET).dll $(AUTOSPLIT)
+
+install: all
+	rm -rf $(PURPLE_INSTALL_PERL_DIR)
+	mkdir -p $(PURPLE_INSTALL_PERL_DIR)
+	cp -R lib/* $(PURPLE_INSTALL_PERL_DIR)
+	cp $(TARGET).dll $(PURPLE_INSTALL_PERL_DIR)/auto/Purple
+
+$(C_FILES): $(PURPLE_CONFIG_H)
+
+$(AUTOSPLIT):
+	mkdir -p ./lib/auto
+	cp Purple.pm ./lib
+	$(PERL) -MAutoSplit -e 'autosplit("lib/Purple.pm")'
+
+$(TARGET).dll: $(PURPLE_DLL).a $(PURPLE_PERL_DLL).a $(FALLBACKS) $(OBJECTS)
+	$(CC) -shared $(OBJECTS) $(LIB_PATHS) $(LIBS) $(DLL_LD_FLAGS) -o $(TARGET).dll
+
+##
+## CLEAN
+##
+clean:
+	rm -rf $(TARGET).dll $(FALLBACKS) lib
+	rm -f *.o $(C_FILES)
+
+include $(PIDGIN_COMMON_TARGETS)

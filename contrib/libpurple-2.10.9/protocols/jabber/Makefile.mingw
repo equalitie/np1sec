@@ -1,0 +1,141 @@
+#
+# Makefile.mingw
+#
+# Description: Makefile for win32 (mingw) version of libjabber
+#
+
+PIDGIN_TREE_TOP := ../../..
+include $(PIDGIN_TREE_TOP)/libpurple/win32/global.mak
+
+TARGET = libjabber
+XMPP_TARGET = libxmpp
+TYPE = PLUGIN
+
+# Static or Plugin...
+ifeq ($(TYPE),STATIC)
+  DEFINES += -DSTATIC
+  DLL_INSTALL_DIR =	$(PURPLE_INSTALL_DIR)
+else
+ifeq ($(TYPE),PLUGIN)
+  DLL_INSTALL_DIR =	$(PURPLE_INSTALL_PLUGINS_DIR)
+endif
+endif
+
+##
+## INCLUDE PATHS
+##
+INCLUDE_PATHS +=	-I. \
+			-I./win32 \
+			-I$(GTK_TOP)/include \
+			-I$(GTK_TOP)/include/glib-2.0 \
+			-I$(GTK_TOP)/lib/glib-2.0/include \
+			-I$(LIBXML2_TOP)/include/libxml2 \
+			-I$(PURPLE_TOP) \
+			-I$(PURPLE_TOP)/win32 \
+			-I$(PIDGIN_TREE_TOP)
+
+LIB_PATHS +=		-L$(GTK_TOP)/lib \
+			-L$(LIBXML2_TOP)/lib \
+			-L$(PURPLE_TOP) \
+			-L.
+
+##
+##  SOURCES, OBJECTS
+##
+C_SRC =	\
+			adhoccommands.c \
+			auth.c \
+			auth_cyrus.c \
+			auth_digest_md5.c \
+			auth_plain.c \
+			auth_scram.c \
+			buddy.c \
+			bosh.c \
+			caps.c \
+			chat.c \
+			data.c \
+			disco.c \
+			google/gmail.c \
+			google/google.c \
+			google/google_presence.c \
+			google/google_roster.c \
+			google/google_session.c \
+			google/jingleinfo.c \
+			google/relay.c \
+			ibb.c \
+			iq.c \
+			jabber.c \
+			jingle/jingle.c \
+			jingle/content.c \
+			jingle/iceudp.c \
+			jingle/rawudp.c \
+			jingle/rtp.c \
+			jingle/session.c \
+			jingle/transport.c \
+			jutil.c \
+			message.c \
+			oob.c \
+			parser.c \
+			pep.c \
+			ping.c \
+			presence.c \
+			roster.c \
+			si.c \
+			useravatar.c \
+			usermood.c \
+			usernick.c \
+			usertune.c \
+			xdata.c \
+			win32/posix.uname.c
+
+OBJECTS = $(C_SRC:%.c=%.o)
+
+XMPP_C_SRC = libxmpp.c
+XMPP_OBJECTS = $(XMPP_C_SRC:%.c=%.o)
+
+##
+## LIBRARIES
+##
+LIBS = \
+			-lglib-2.0 \
+			-lgobject-2.0 \
+			-lxml2 \
+			-lws2_32 \
+			-lintl \
+			-lpurple
+
+ifeq ($(CYRUS_SASL), 1)
+INCLUDE_PATHS += -I$(CYRUS_SASL_TOP)/include
+LIB_PATHS += -L$(CYRUS_SASL_TOP)/bin
+LIBS += -llibsasl
+endif
+
+include $(PIDGIN_COMMON_RULES)
+
+##
+## TARGET DEFINITIONS
+##
+.PHONY: all install clean
+
+all: $(TARGET).dll $(XMPP_TARGET).dll
+
+install: all $(DLL_INSTALL_DIR)
+	cp $(XMPP_TARGET).dll $(DLL_INSTALL_DIR)
+	cp $(TARGET).dll $(PURPLE_INSTALL_DIR)
+
+$(OBJECTS): $(PURPLE_CONFIG_H)
+
+$(TARGET).dll $(TARGET).dll.a: $(PURPLE_DLL).a $(OBJECTS)
+	$(CC) -shared $(OBJECTS) $(LIB_PATHS) $(LIBS) $(DLL_LD_FLAGS) -Wl,--out-implib,$(TARGET).dll.a -o $(TARGET).dll
+
+$(XMPP_TARGET).dll: $(TARGET).dll.a $(XMPP_OBJECTS)
+	$(CC) -shared $(XMPP_OBJECTS) $(LIB_PATHS) $(LIBS) -ljabber $(DLL_LD_FLAGS) -o $(XMPP_TARGET).dll
+
+##
+## CLEAN RULES
+##
+clean:
+	rm -f $(OBJECTS) $(TARGET).dll $(TARGET).dll.a
+	rm -f $(XMPP_OBJECTS) $(XMPP_TARGET).dll
+
+include $(PIDGIN_COMMON_TARGETS)

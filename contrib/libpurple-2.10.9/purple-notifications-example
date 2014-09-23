@@ -1,0 +1,86 @@
+#!/usr/bin/env python
+
+# This is a simple purple notification server.
+# It shows notifications when your buddy signs on or you get an IM message.
+#
+# This script requires Python 2.4 and PyGTK bindings
+#
+# Note that all function names are resolved dynamically, no
+# purple-specific library is needed.
+
+import dbus
+import dbus.glib
+import dbus.decorators
+import gobject
+import os
+
+def ensureimconversation(conversation, account, name):
+    if conversation != 0:
+        return conversation
+    else:
+        # 1 = PURPLE_CONV_IM 
+        return purple.PurpleConversationNew(1, account, name)
+
+def receivedimmsg(account, name, message, conversation, flags):
+    buddy = purple.PurpleFindBuddy(account, name)
+    if buddy != 0:
+        alias = purple.PurpleBuddyGetAlias(buddy)
+    else:
+        alias = name
+
+    text = "%s says %s" % (alias, message)
+    code = os.spawnlp(os.P_WAIT, "xmessage", "xmessage", "-buttons",
+                      "'So what?','Show me',Close,Abuse", text)
+
+    if code == 101:                     # so what?
+        pass
+    else:
+        conversation = ensureimconversation(conversation, account, name)
+
+    if code == 102:                     # show me
+        window = purple.PurpleConversationGetWindow(conversation)
+        purple.PurpleConvWindowRaise(window)
+
+    if code == 103:                     # close 
+        purple.PurpleConversationDestroy(conversation)
+
+    if code == 104:                     # abuse
+        im = purple.PurpleConversationGetImData(conversation)
+        purple.PurpleConvImSend(im, "Go away you f...")
+                                 
+        
+def buddysignedon(buddyid):
+    alias = purple.PurpleBuddyGetAlias(buddyid)
+    text = "%s is online" % alias
+
+    code = os.spawnlp(os.P_WAIT, "xmessage", "xmessage", "-buttons",
+                      "'So what?','Let's talk'", text)
+
+    if code == 101:                     # so what?
+        pass
+
+    if code == 102:                     # talk
+        name = purple.PurpleBuddyGetName(buddyid)
+        account = purple.PurpleBuddyGetAccount(buddyid)
+        purple.PurpleConversationNew(1, account, name)
+    
+
+bus = dbus.SessionBus()
+obj = bus.get_object("im.pidgin.purple.PurpleService", "/im/pidgin/purple/PurpleObject")
+purple = dbus.Interface(obj, "im.pidgin.purple.PurpleInterface")
+
+bus.add_signal_receiver(receivedimmsg,
+                        dbus_interface = "im.pidgin.purple.PurpleInterface",
+                        signal_name = "ReceivedImMsg")
+
+bus.add_signal_receiver(buddysignedon,
+                        dbus_interface = "im.pidgin.purple.PurpleInterface",
+                        signal_name = "BuddySignedOn")
+
+print "This is a simple purple notification server."
+print "It shows notifications when your buddy signs on or you get an IM message."
+
+loop = gobject.MainLoop()
+loop.run()
+
+

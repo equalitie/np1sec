@@ -1,0 +1,82 @@
+#
+# Makefile.mingw
+#
+# Description: Makefile for win32 (mingw) version of libpurple Plugins
+#
+
+PIDGIN_TREE_TOP := ../..
+include $(PIDGIN_TREE_TOP)/libpurple/win32/global.mak
+
+PERL_PLUGIN := ./perl
+TCL_PLUGIN := ./tcl
+SSL_PLUGIN := ./ssl
+
+.SUFFIXES:
+.SUFFIXES: .c .dll
+
+##
+## INCLUDE PATHS
+##
+INCLUDE_PATHS +=	\
+			-I$(GTK_TOP)/include \
+			-I$(GTK_TOP)/include/glib-2.0 \
+			-I$(GTK_TOP)/lib/glib-2.0/include \
+			-I$(PIDGIN_TREE_TOP) \
+			-I$(PURPLE_TOP) \
+			-I$(PURPLE_TOP)/win32
+
+LIB_PATHS +=		-L$(GTK_TOP)/lib \
+			-L$(PURPLE_TOP)
+
+##
+## LIBRARIES
+##
+LIBS =	\
+			-lglib-2.0 \
+			-lgobject-2.0 \
+			-lgmodule-2.0 \
+			-lintl \
+			-lws2_32 \
+			-lpurple
+
+##
+## TARGET DEFINITIONS
+##
+.PHONY: all clean plugins install
+
+all: $(PURPLE_DLL).a plugins
+	$(MAKE) -C $(PERL_PLUGIN) -f $(MINGW_MAKEFILE)
+	$(MAKE) -C $(TCL_PLUGIN) -f $(MINGW_MAKEFILE)
+	$(MAKE) -C $(SSL_PLUGIN) -f $(MINGW_MAKEFILE)
+
+install: all $(PURPLE_INSTALL_PLUGINS_DIR)
+	$(MAKE) -C $(PERL_PLUGIN) -f $(MINGW_MAKEFILE) install
+	$(MAKE) -C $(TCL_PLUGIN) -f $(MINGW_MAKEFILE) install
+	$(MAKE) -C $(SSL_PLUGIN) -f $(MINGW_MAKEFILE) install
+	cp *.dll $(PURPLE_INSTALL_PLUGINS_DIR)
+
+%.dll: %.c $(PURPLE_CONFIG_H) $(PURPLE_VERSION_H)
+	$(CC) $(CFLAGS) $(DEFINES) $(INCLUDE_PATHS) -o $@.o -c $<
+	$(CC) -shared $@.o $(LIB_PATHS) $(LIBS) $(DLL_LD_FLAGS) -o $@
+
+plugins: \
+		autoaccept.dll \
+		buddynote.dll \
+		idle.dll \
+		joinpart.dll \
+		log_reader.dll \
+		newline.dll \
+		offlinemsg.dll \
+		psychic.dll \
+		statenotify.dll
+
+##
+## CLEAN RULES
+##
+clean:
+	rm -f *.o *.dll
+	$(MAKE) -C $(PERL_PLUGIN) -f $(MINGW_MAKEFILE) clean
+	$(MAKE) -C $(TCL_PLUGIN) -f $(MINGW_MAKEFILE) clean
+	$(MAKE) -C $(SSL_PLUGIN) -f $(MINGW_MAKEFILE) clean
+
+include $(PIDGIN_COMMON_TARGETS)
