@@ -30,3 +30,4 @@ libmpotr_test_LDFLAGS = \
 	$(top_srcdir)/${GTEST_BASE}/lib/libgtest.la -lpthread
 
 include test/Makefile.inc
+include Makefile.am.lint

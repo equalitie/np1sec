@@ -1,0 +1,6 @@
+.PHONY: lint
+
+lint:
+	@find $(top_srcdir)/src $(top_srcdir)/test \
+	-name "*.cc" -o -name "*.cpp" -o -name "*.h" \
+	| xargs python $(top_srcdir)/scripts/cpplint/cpplint.py
