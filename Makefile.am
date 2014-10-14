@@ -24,7 +24,11 @@ libmpotr_test_SOURCES = src/session_test.cc
 
 libmpotr_test_CPPFLAGS = \
 	-I$(top_srcdir)/${GTEST_BASE} \
-	-I$(top_srcdir)/${GTEST_INCLUDE}
+	-I$(top_srcdir)/${GTEST_INCLUDE} \
+	$(LIBGCRYPT_CFLAGS)
+
+libmpotr_test_LDADD = \
+	$(LIBGCRYPT_LIBS)
 
 libmpotr_test_LDFLAGS = \
 	$(top_srcdir)/${GTEST_BASE}/lib/libgtest.la -lpthread

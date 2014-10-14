@@ -18,6 +18,10 @@
 
 #include "src/common.h"
 
+extern "C" {
+  #include "gcrypt.h"
+}
+
 
 #ifndef SRC_CRYPT_H_
 #define SRC_CRYPT_H_
