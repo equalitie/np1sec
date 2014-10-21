@@ -16,28 +16,28 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "src/common.h"
+#include <gtest/gtest.h>
+#include "src/crypt.h"
 
-extern "C" {
-  #include "gcrypt.h"
+
+class CryptTest : public ::testing::Test { };
+
+TEST_F(CryptTest, test_hash) {
+  std::string str = "abc";
+  std::string exp =
+    "ba7816bf8f01cfea414140de5dae2223"
+    "b00361a396177a9cb410ff61f20015ad";
+  uint8_t *res = new HashBlock;
+  gcry_error_t err = Hash(reinterpret_cast<const void *>(str.c_str()),
+                          3, res, false);
+  EXPECT_FALSE(err);
+  char *buf = new char[c_hash_length*2+1];
+  char *ind = buf;
+  for (uint i = 0; i < c_hash_length; i++) {
+    snprintf(ind, sizeof(ind), "%02x", res[i]);
+    ind += 2;
+  }
+  ASSERT_EQ(exp, buf);
+  free(buf);
+  delete[] res;
 }
-
-
-#ifndef SRC_CRYPT_H_
-#define SRC_CRYPT_H_
-
-/**
- * Encryption primitives and related definitions.
- */
-
-const int c_mpotr_hash = gcry_md_algos::GCRY_MD_SHA256;
-
-// The length of the output of the hash function in bytes.
-const size_t c_hash_length = 32;
-
-typedef uint8_t HashBlock[c_hash_length];
-
-gcry_error_t Hash(const void *buffer, size_t buffer_len, HashBlock hb,
-                  bool secure);
-
-#endif  // SRC_CRYPT_H_

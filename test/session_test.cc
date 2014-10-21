@@ -18,15 +18,3 @@
 
 #include <gtest/gtest.h>
 #include "src/session.h"
-
-
-// class SessionTest : public ::testing::Test { };
-//
-// TEST_F(SessionTest, test_one) {
-//   ASSERT_EQ("test", "test");
-// }
-
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

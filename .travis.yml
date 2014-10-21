@@ -9,4 +9,4 @@ before_install:
 
 script:
   - ./autogen.sh
-  - ./configure && make && make lint
+  - ./configure && make && make lint && make check

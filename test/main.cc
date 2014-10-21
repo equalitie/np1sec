@@ -16,28 +16,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "src/common.h"
+#include <gtest/gtest.h>
 
-extern "C" {
-  #include "gcrypt.h"
+
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }
-
-
-#ifndef SRC_CRYPT_H_
-#define SRC_CRYPT_H_
-
-/**
- * Encryption primitives and related definitions.
- */
-
-const int c_mpotr_hash = gcry_md_algos::GCRY_MD_SHA256;
-
-// The length of the output of the hash function in bytes.
-const size_t c_hash_length = 32;
-
-typedef uint8_t HashBlock[c_hash_length];
-
-gcry_error_t Hash(const void *buffer, size_t buffer_len, HashBlock hb,
-                  bool secure);
-
-#endif  // SRC_CRYPT_H_

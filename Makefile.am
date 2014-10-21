@@ -20,7 +20,11 @@ noinst_PROGRAMS += libmpotr_test
 
 TESTS += libmpotr_test
 
-libmpotr_test_SOURCES = src/session_test.cc
+libmpotr_test_SOURCES = \
+	test/session_test.cc \
+	test/crypt_test.cc \
+	test/main.cc \
+	src/crypt.cc
 
 libmpotr_test_CPPFLAGS = \
 	-I$(top_srcdir)/${GTEST_BASE} \

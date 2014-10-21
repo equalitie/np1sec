@@ -27,8 +27,6 @@
 #ifndef SRC_SESSION_H_
 #define SRC_SESSION_H_
 
-namespace std {
-
 class MessageDigest {
  public:
   HashBlock digest;
@@ -107,7 +105,5 @@ class MpotrSession {
   // Destructor, session should be destroyed at leave.
   ~MpotrSession();
 };
-
-}  // namespace std
 
 #endif  // SRC_SESSION_H_

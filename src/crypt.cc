@@ -16,28 +16,34 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "src/common.h"
+#include "src/crypt.h"
 
-extern "C" {
-  #include "gcrypt.h"
-}
-
-
-#ifndef SRC_CRYPT_H_
-#define SRC_CRYPT_H_
-
-/**
- * Encryption primitives and related definitions.
- */
-
-const int c_mpotr_hash = gcry_md_algos::GCRY_MD_SHA256;
-
-// The length of the output of the hash function in bytes.
-const size_t c_hash_length = 32;
-
-typedef uint8_t HashBlock[c_hash_length];
+#ifndef SRC_CRYPT_CC_
+#define SRC_CRYPT_CC_
 
 gcry_error_t Hash(const void *buffer, size_t buffer_len, HashBlock hb,
-                  bool secure);
+                  bool secure) {
+  gcry_error_t err = 0;
+  gcry_md_hd_t digest = nullptr;
+  unsigned int flags = 0;
+  unsigned char *hash_str = nullptr;
 
-#endif  // SRC_CRYPT_H_
+  if (secure)
+    flags |= GCRY_MD_FLAG_SECURE;
+
+  assert(!gcry_md_test_algo(c_mpotr_hash));
+  err = gcry_md_open(&digest, c_mpotr_hash, flags);
+  if (err)
+    goto done;
+
+  gcry_md_write(digest, buffer, buffer_len);
+  hash_str = gcry_md_read(digest, c_mpotr_hash);
+  assert(hash_str);
+  memcpy(hb, hash_str, sizeof(HashBlock));
+
+done:
+  gcry_md_close(digest);
+  return err;
+}
+
+#endif  // SRC_CRYPT_CC_
