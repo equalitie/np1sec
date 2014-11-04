@@ -20,9 +20,15 @@ extern "C" {
   #include <glib.h>
   #include <signal.h>
   #include <unistd.h>
+}
+
+#include <string>
+
+extern "C" {
   #include "purple.h"
 }
 
+#define UNUSED(expr) (void)(expr)
 #define CUSTOM_USER_DIRECTORY "/tmp/test_user"
 #define CUSTOM_PLUGIN_PATH ""
 #define PLUGIN_SAVE_PREF "/tmp/test_client/plugins/saved"
@@ -30,17 +36,15 @@ extern "C" {
 
 void write_conv(PurpleConversation *conv, const char *who, const char *alias,
                 const char *message, PurpleMessageFlags flags, time_t mtime) {
-  const char *name;
+  UNUSED(conv);
+  UNUSED(flags);
+  UNUSED(mtime);
+  const char *name = NULL;
   if (alias && *alias)
     name = alias;
   else if (who && *who)
     name = who;
-  else
-    name = NULL;
-
-  printf("(%s) %s %s: %s\n", purple_conversation_get_name(conv),
-         purple_utf8_strftime("(%H:%M:%S)", localtime(&mtime)),
-         name, message);
+  printf("%s> %s\n", name, message);
 }
 
 PurpleConversationUiOps conv_uiops = {
@@ -81,14 +85,46 @@ static PurpleCoreUiOps uiops = {
 };
 
 static void signed_on(PurpleConnection *gc, gpointer null) {
+  UNUSED(null);
   PurpleAccount *account = purple_connection_get_account(gc);
   printf("Account connected: %s %s\n", account->username, account->protocol_id);
 }
 
-static void connect_to_signals_for_demonstration_purposes_only(void) {
+static void process_sending_im(PurpleAccount *account, char *who,
+                               char **message, void *m) {
+  UNUSED(account);
+  UNUSED(who);
+  UNUSED(m);
+  std::string prefix = std::string("mpSeQ:");
+  prefix.append(*message);
+  free(*message);
+  *message = strdup(prefix.c_str());
+}
+
+static gboolean process_receiving_im(PurpleAccount *account, char **who,
+                                     char **message, int *flags, void *m) {
+  UNUSED(account);
+  UNUSED(who);
+  UNUSED(flags);
+  UNUSED(m);
+  std::string prefix = std::string("mpSeQ:");
+  prefix.append(*message);
+  free(*message);
+  *message = strdup(prefix.c_str());
+  return FALSE;
+}
+
+static void connect_to_signals(void) {
   static int handle;
-  purple_signal_connect(purple_connections_get_handle(), "signed-on", &handle,
+  void *conn_handle = purple_connections_get_handle();
+  void *conv_handle = purple_conversations_get_handle();
+
+  purple_signal_connect(conn_handle, "signed-on", &handle,
                         PURPLE_CALLBACK(signed_on), NULL);
+  purple_signal_connect(conv_handle, "sending-im-msg", &handle,
+                        PURPLE_CALLBACK(process_sending_im), NULL);
+  purple_signal_connect(conv_handle, "receiving-im-msg", &handle,
+                        PURPLE_CALLBACK(process_receiving_im), NULL);
 }
 
 #define PURPLE_GLIB_READ_COND  (G_IO_IN | G_IO_HUP | G_IO_ERR)
@@ -165,10 +201,8 @@ PurpleEventLoopUiOps glib_eventloops = {
 };
 
 void purple_init(void) {
-  printf("loading libpurple ...\n");
-
   purple_util_set_user_dir(CUSTOM_USER_DIRECTORY);
-  purple_debug_set_enabled(TRUE);
+  purple_debug_set_enabled(FALSE);
   purple_core_set_ui_ops(&uiops);
   purple_eventloop_set_ui_ops(&glib_eventloops);
   purple_plugins_add_search_path(CUSTOM_PLUGIN_PATH);
@@ -183,72 +217,92 @@ void purple_init(void) {
   purple_prefs_load();
   purple_plugins_load_saved(PLUGIN_SAVE_PREF);
   purple_pounces_load();
-
-  printf("initializing libpurple succeeded\n");
 }
 
-int main(int argc, char **argv) {
-  GList *iter;
-  int i, num;
-  GList *names = NULL;
-  const char *prpl = NULL;
-  char name[128];
-  char *password;
+static gboolean io_callback(GIOChannel *io, GIOCondition condition,
+                            gpointer p) {
+  UNUSED(condition);
+  PurpleConversation *conv = reinterpret_cast<PurpleConversation *>(p);
+  gchar in;
+  GError *error = NULL;
+  static char buf[128];
+  static int ind = 0;
+
+  switch (g_io_channel_read_chars(io, &in, 1, NULL, &error)) {
+  case G_IO_STATUS_NORMAL:
+    buf[ind++] = in;
+    if (ind == 128 || in == '\n') {
+      buf[ind-1] = '\0';
+      purple_conv_im_send(PURPLE_CONV_IM(conv), strdup(buf));
+      ind = 0;
+    }
+    return TRUE;
+  case G_IO_STATUS_ERROR:
+    g_printerr("IO error: %s\n", error->message);
+    g_error_free(error);
+    return FALSE;
+  case G_IO_STATUS_EOF:
+  case G_IO_STATUS_AGAIN:
+    return TRUE;
+    break;
+  }
+
+  return FALSE;
+}
+
+int main(void) {
   GMainLoop *loop = g_main_loop_new(NULL, FALSE);
-  PurpleAccount *account;
-  PurpleSavedStatus *status;
-  char *res;
-
-
   purple_init();
 
-  iter = purple_plugins_get_protocols();
-  for (i = 0; iter; iter = iter->next) {
+  std::string xmpp = "XMPP";
+  GList *iter = purple_plugins_get_protocols();
+  const char *prpl = NULL;
+  for (; iter; iter = iter->next) {
     PurplePlugin *plugin = static_cast<PurplePlugin *>(iter->data);
     PurplePluginInfo *info = plugin->info;
-    if (info && info->name) {
-      printf("\t%d: %s\n", i++, info->name);
-      names = g_list_append(names, info->id);
+    if (info && info->name && !strcmp(xmpp.c_str(), info->name)) {
+      prpl = info->id;
+      break;
     }
   }
-
-  printf("Select the protocol [0-%d]: ", i-1);
-  res = fgets(name, sizeof(name), stdin);
-  if (!res) {
-    fprintf(stderr, "Failed to gets protocol selection.");
-    abort();
-  }
-  if (sscanf(name, "%d", &num) == 1)
-    prpl = (const char *)g_list_nth_data(names, num);
   if (!prpl) {
     fprintf(stderr, "Failed to gets protocol.");
     abort();
   }
 
-  printf("Username: ");
-  res = fgets(name, sizeof(name), stdin);
+  printf("XMPP account: ");
+  char name[128];
+  char *res = fgets(name, sizeof(name), stdin);
   if (!res) {
     fprintf(stderr, "Failed to read user name.");
     abort();
   }
-  name[strlen(name) - 1] = 0;  /* strip the \n at the end */
+  name[strlen(name) - 1] = 0;  // strip the \n
 
-  /* Create the account */
-  account = purple_account_new(name, prpl);
-
-  /* Get the password for the account */
-  password = getpass("Password: ");
+  PurpleAccount *account = purple_account_new(name, prpl);
+  char *password = getpass("Password: ");
   purple_account_set_password(account, password);
-
-  /* It's necessary to enable the account first. */
   purple_account_set_enabled(account, UI_ID, TRUE);
 
-  /* Now, to connect the account(s), create a status and activate it. */
-  status = purple_savedstatus_new(NULL, PURPLE_STATUS_AVAILABLE);
+  PurpleSavedStatus *status = purple_savedstatus_new(NULL,
+                                                     PURPLE_STATUS_AVAILABLE);
   purple_savedstatus_activate(status);
+  connect_to_signals();
 
-  connect_to_signals_for_demonstration_purposes_only();
+  printf("Buddy's XMPP account: ");
+  char buddy[128];
+  res = fgets(buddy, sizeof(buddy), stdin);
+  if (!res) {
+    fprintf(stderr, "Failed to read buddy's name.");
+    abort();
+  }
+  buddy[strlen(buddy) - 1] = 0;  // strip the \n
 
+  PurpleConversation *conv = purple_conversation_new(PURPLE_CONV_TYPE_IM,
+                                                     account, buddy);
+
+  GIOChannel *io = g_io_channel_unix_new(STDIN_FILENO);
+  g_io_add_watch(io, G_IO_IN, io_callback, conv);
   g_main_loop_run(loop);
 
   return 0;
