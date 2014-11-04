@@ -40,14 +40,14 @@ class RoomAction {
  * Manages a user with long term identity for participating in a multiparty
  * chat sessions. It keeps track of sessions that user is participating in.
  */
-class MpotrlUserState {
+class mpSeQlUserState {
  protected:
   PrivateKey *long_term_private_key;
   std::map<Session> user_session mpotr_sessions;
 
  public:
   // Constructor
-  MpotrlUserState();
+  mpSeQlUserState();
 
   /**
      The client need to call this function when the user is joining a room.
@@ -99,14 +99,14 @@ class MpotrlUserState {
      to update the interface (add, remove user or display a
      message
    */
-  RoomAction receive(std::string room_name, std::string mpotr_message);
+  RoomAction receive_handler(std::string room_name, std::string mpotr_message);
 
   // The client informs the user state about leaving the room by calling this
   // function.
   void leave_room();
 
   // Destructor
-  ~MpotrlUserState();
+  ~mpSeQlUserState();
 };
 
 #endif  // SRC_USERSTATE_H_
