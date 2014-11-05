@@ -1,3 +1,4 @@
+
 /**
  * Multiparty Off-the-Record Messaging library
  * Copyright (C) 2014, eQualit.ie
@@ -27,6 +28,8 @@ extern "C" {
 extern "C" {
   #include "purple.h"
 }
+
+#include "userstate.h"
 
 #define UNUSED(expr) (void)(expr)
 #define CUSTOM_USER_DIRECTORY "/tmp/test_user"
@@ -253,7 +256,6 @@ static gboolean io_callback(GIOChannel *io, GIOCondition condition,
 int main(void) {
   GMainLoop *loop = g_main_loop_new(NULL, FALSE);
   purple_init();
-
   std::string xmpp = "XMPP";
   GList *iter = purple_plugins_get_protocols();
   const char *prpl = NULL;
@@ -288,7 +290,7 @@ int main(void) {
                                                      PURPLE_STATUS_AVAILABLE);
   purple_savedstatus_activate(status);
   connect_to_signals();
-
+      
   printf("Buddy's XMPP account: ");
   char buddy[128];
   res = fgets(buddy, sizeof(buddy), stdin);

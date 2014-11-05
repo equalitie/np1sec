@@ -19,6 +19,8 @@
 #include <string>
 #include <map>
 
+#include "crypt.h"
+#include "session.h"
 
 #ifndef SRC_USERSTATE_H_
 #define SRC_USERSTATE_H_
@@ -30,7 +32,7 @@ class RoomAction {
     JOIN,
     LEAVE,
     NEW_MESSAGE
-  }
+  };
 
   std::string acting_user;  // The user which joined, left or sent a message.
   std::string new_message;
@@ -40,14 +42,24 @@ class RoomAction {
  * Manages a user with long term identity for participating in a multiparty
  * chat sessions. It keeps track of sessions that user is participating in.
  */
-class mpSeQlUserState {
+class mpSeQUserState {
  protected:
-  PrivateKey *long_term_private_key;
-  std::map<Session> user_session mpotr_sessions;
+  LongTermIDKey long_term_private_key;
+  std::map<SessionID, mpSeQSession>  mpseq_sessions;
+  std::map<std::string, SessionID> sessions_in_a_room;
+  std::string name;
 
  public:
-  // Constructor
-  mpSeQlUserState();
+  /** 
+      Constructor
+      
+      @param name: the user name which is going to be used as default nickname for
+             the rooms
+
+      @param private_key the binary blob which contains the long term private key
+                         for ED25519 
+   */
+  mpSeQUserState(std::string username, uint8_t* private_key);
 
   /**
      The client need to call this function when the user is joining a room.
@@ -59,7 +71,7 @@ class mpSeQlUserState {
      client need to inform server of leaving the room in case of
      failure 
    */
-  bool join_room(std::string room_name, std:string new_user_id);
+  bool join_room(std::string room_name, std::string new_user_id);
 
   /**
      the client need to call this function when a user join the
@@ -106,7 +118,8 @@ class mpSeQlUserState {
   void leave_room();
 
   // Destructor
-  ~mpSeQlUserState();
+  ~mpSeQUserState();
+  
 };
 
 #endif  // SRC_USERSTATE_H_

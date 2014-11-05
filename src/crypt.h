@@ -29,8 +29,24 @@ extern "C" {
 /**
  * Encryption primitives and related definitions.
  */
+class Ed25519Key {
+ public:
+  static const uint32_t ED25519_KEY_SIZE = 255;
+  uint8_t private_random_key[ED25519_KEY_SIZE];
+  uint8_t public_key[ED25519_KEY_SIZE];
 
-const int c_mpotr_hash = gcry_md_algos::GCRY_MD_SHA256;
+  /**
+    Constructor setup the private key
+  */
+  Ed25519Key(uint8_t* private_key){
+    memcpy(this->private_random_key, private_key, ED25519_KEY_SIZE);
+  }
+  
+};
+
+typedef Ed25519Key LongTermIDKey;
+
+const int c_mpseq_hash = gcry_md_algos::GCRY_MD_SHA256;
 
 // The length of the output of the hash function in bytes.
 const size_t c_hash_length = 32;

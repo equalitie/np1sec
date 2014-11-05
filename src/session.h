@@ -43,14 +43,18 @@ class MessageDigest {
   uint32_t compute_message_id(std::string cur_message);
 };
 
-struct MpotrMessage {
-  enum MpotrMessageType {
+struct mpSeQMessage {
+  enum mpSeQMessageType {
     USER_MESSAGE,
     PURE_META_MESSAG
   };
-  MpotrMessageType metamessage;
+  mpSeQMessageType metamessage;
   std::string user_message;
 };
+
+//Defining essetial types
+typedef HashBlock SessionID;
+typedef uint8_t  mpSeQBareMessage[];
 
 
 class SessionParticipant {};
@@ -59,7 +63,7 @@ class SessionParticipant {};
  * This class is encapsulating all information and action, a user needs and
  * performs in a session.
  */
-class MpotrSession {
+class mpSeQSession {
  protected:
   HashBlock hashed_id;
 
@@ -76,10 +80,18 @@ class MpotrSession {
 
   time_t key_freshness_time_stamp;
 
+  /**
+     It is called by mpSeQ when ever the protocol needs to 
+     send meta data messages (key exchange, etc) which is 
+     not initiated by a messsage from user
+   */
+  bool send_bare(mpSeQBareMessage message);
+
+
  public:
   // Constructor, initiate by joining. Equivalent to join or initiate in the
   // spec.
-  MpotrSession(std::string new_room_name, std::string user_id,
+  mpSeQSession(std::string new_room_name, std::string user_id,
                bool emptyroom = false);
 
   // Is called by the constructor if the room is already inhibited.
@@ -95,15 +107,15 @@ class MpotrSession {
 
   // When a user wants to send a message to a session it needs to call its send
   // function.
-  bool send(MpotrMessage message);
+  bool send(mpSeQMessage message);
 
   // When a message is received from a session the receive function needs to be
   // called to decrypt. It updates the session status and returns the decrypted
   // message to be shown, it might be null if the message was a meta message.
-  MpotrMessage receive(std::string raw_message);
+  mpSeQMessage receive(std::string raw_message);
 
   // Destructor, session should be destroyed at leave.
-  ~MpotrSession();
+  ~mpSeQSession();
 };
 
 #endif  // SRC_SESSION_H_

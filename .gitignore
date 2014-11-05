@@ -25,6 +25,9 @@
 \#*\#
 .\#*
 
+# Lazy templates
+*.lazy_template
+
 # Automake generated files
 /m4/libtool.m4
 /m4/ltoptions.m4
@@ -59,4 +62,5 @@ Makefile.in
 .DS_Store
 /libmpotr_test*
 /xmpp_test*
+.libs/*
 

@@ -16,34 +16,24 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "src/crypt.h"
+#include "userstate.h"
 
-#ifndef SRC_CRYPT_CC_
-#define SRC_CRYPT_CC_
+/** 
+    Constructor
+      
+    @param username: the user name which is going to be used as default nickname for
+    the rooms
 
-gcry_error_t Hash(const void *buffer, size_t buffer_len, HashBlock hb,
-                  bool secure) {
-  gcry_error_t err = 0;
-  gcry_md_hd_t digest = nullptr;
-  unsigned int flags = 0;
-  unsigned char *hash_str = nullptr;
+    @param private_key the binary blob which contains the long term private key
+                         for ED25519 
+*/
+mpSeQUserState::mpSeQUserState(std::string username, uint8_t* private_key)
+: long_term_private_key(private_key), name(username)
+{
+    
+};
 
-  if (secure)
-    flags |= GCRY_MD_FLAG_SECURE;
-
-  assert(!gcry_md_test_algo(c_mpseq_hash));
-  err = gcry_md_open(&digest, c_mpseq_hash, flags);
-  if (err)
-    goto done;
-
-  gcry_md_write(digest, buffer, buffer_len);
-  hash_str = gcry_md_read(digest, c_mpseq_hash);
-  assert(hash_str);
-  memcpy(hb, hash_str, sizeof(HashBlock));
-
-done:
-  gcry_md_close(digest);
-  return err;
-}
-
-#endif  // SRC_CRYPT_CC_
+RoomAction mpSeQUserState::receive_handler(std::string room_name, std::string mpotr_message)
+{
+  
+};

@@ -11,7 +11,7 @@ LT_INIT
 AC_PROG_CXX
 AC_LANG([C++])
 
-CXXFLAGS="-std=c++11 -Wall -Wextra -Wno-error"
+CXXFLAGS+=" -std=c++11 -Wall -Wextra -Wno-error"
 
 GTEST_BASE=contrib/gtest
 GTEST_INCLUDE=${GTEST_BASE}/include
