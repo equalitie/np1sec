@@ -29,12 +29,12 @@
 class Participant {
  public:
   std::string id;
-  // MpotrPublicKey long_term_pub_key;
-  // MpotrPublicKey ephemeral_key;
+  // MpseqPublicKey long_term_pub_key;
+  // MpseqPublicKey ephemeral_key;
   // MessageDigest message_digest;
 
-  // MpotrKeyShare cur_keyshare;
-  // MpotrKeySHare future_key_share;
+  // MpseqKeyShare cur_keyshare;
+  // MpseqKeySHare future_key_share;
 
   enum ForwardSecracyContribution {
     NONE,

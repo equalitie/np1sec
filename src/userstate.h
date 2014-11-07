@@ -105,13 +105,13 @@ class mpSeQUserState {
      and the status of the room to interpret the message
      
      @param room_name the chat room name
-     @param mpotr_message the message needed to be sent
+     @param mpseq_message the message needed to be sent
 
      @return a RoomAction object informing the client how
      to update the interface (add, remove user or display a
      message
    */
-  RoomAction receive_handler(std::string room_name, std::string mpotr_message);
+  RoomAction receive_handler(std::string room_name, std::string mpseq_message);
 
   // The client informs the user state about leaving the room by calling this
   // function.

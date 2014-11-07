@@ -35,7 +35,7 @@ class MessageDigest {
   void update(std::string new_message);
   // {
   //   message_id = compute_message_id(new_message);
-  //   digest = mpotr_hash(digest + new_message);
+  //   digest = mpseq_hash(digest + new_message);
   // };
 
   // Compute a unique globally ordered id from the time stamped message,

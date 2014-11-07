@@ -33,7 +33,7 @@ mpSeQUserState::mpSeQUserState(std::string username, uint8_t* key_pair)
 }
 
 RoomAction mpSeQUserState::receive_handler(std::string room_name,
-                                           std::string mpotr_message) {
+                                           std::string mpseq_message) {
 }
 
 /**

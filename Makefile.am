@@ -27,25 +27,25 @@ contrib_gtest_lib_libgtest_la_CPPFLAGS = \
 	-I$(top_srcdir)/${GTEST_BASE} \
 	-I$(top_srcdir)/${GTEST_INCLUDE}
 
-noinst_PROGRAMS += libmpotr_test
+noinst_PROGRAMS += libmpseq_test
 
-TESTS += libmpotr_test
+TESTS += libmpseq_test
 
-libmpotr_test_SOURCES = \
+libmpseq_test_SOURCES = \
 	test/session_test.cc \
 	test/crypt_test.cc \
 	test/main.cc \
 	src/crypt.cc
 
-libmpotr_test_CPPFLAGS = \
+libmpseq_test_CPPFLAGS = \
 	-I$(top_srcdir)/${GTEST_BASE} \
 	-I$(top_srcdir)/${GTEST_INCLUDE} \
 	$(LIBGCRYPT_CFLAGS)
 
-libmpotr_test_LDADD = \
+libmpseq_test_LDADD = \
 	$(LIBGCRYPT_LIBS)
 
-libmpotr_test_LDFLAGS = \
+libmpseq_test_LDFLAGS = \
 	$(top_srcdir)/${GTEST_BASE}/lib/libgtest.la -lpthread
 
 include test/Makefile.inc
