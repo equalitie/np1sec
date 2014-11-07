@@ -24,11 +24,12 @@
     @param username: the user name which is going to be used as default nickname for
     the rooms
 
-    @param private_key the binary blob which contains the long term private key
-                         for ED25519 
+    @param key_pair the binary blob which contains the long term identiy key pair
+                         for ED25519, defult null trigger new pair generation.
+                         TODO: ignored for now
 */
-mpSeQUserState::mpSeQUserState(std::string username, uint8_t* private_key)
-: long_term_private_key(private_key), name(username)
+mpSeQUserState::mpSeQUserState(std::string username, uint8_t* key_pair)
+  : name(username), long_term_private_key()
 {
     
 };
@@ -37,3 +38,20 @@ RoomAction mpSeQUserState::receive_handler(std::string room_name, std::string mp
 {
   
 };
+
+
+/**
+   When the user uses the client interface to send a message
+   the client need to call this function to send the message
+
+   @param room_name the chat room name
+   @param plain_message unencrypted message needed to be send
+          securely
+
+   @return message to send, null in case of failure
+*/
+char* mpSeQUserState::send_handler(std::string room_name, std::string plain_message)
+{
+  
+};
+

@@ -16,7 +16,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <iostream>
+
 #include "src/crypt.h"
+
+using namespace std;
 
 #ifndef SRC_CRYPT_CC_
 #define SRC_CRYPT_CC_
@@ -45,5 +49,24 @@ done:
   gcry_md_close(digest);
   return err;
 }
+
+
+Ed25519Key::Ed25519Key()
+{
+  /* Generate a new Ed25519 key pair. */                                       
+  gcry_error_t err = 0;                                                    
+  gcry_sexp_t ed25519_parms;                                                   
+
+  err = gcry_sexp_build(&ed25519_parms, NULL, "(genkey (ecc (curve ed25519) (flag eddsa)))");
+
+  if (err) {                                                               
+    cout << "gcrypt: failed to create ed25519 params" << endl;                             
+  }                                                                        
+  err = gcry_pk_genkey(&ed25519_keypair, ed25519_parms);                           
+  if (err) {                                                               
+    cout << "gcrypt: failed to create ed25519 key pair" << endl;                           
+  }
+  
+ }                                                                        
 
 #endif  // SRC_CRYPT_CC_

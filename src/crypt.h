@@ -31,17 +31,13 @@ extern "C" {
  */
 class Ed25519Key {
  public:
-  static const uint32_t ED25519_KEY_SIZE = 255;
-  uint8_t private_random_key[ED25519_KEY_SIZE];
-  uint8_t public_key[ED25519_KEY_SIZE];
+  gcry_sexp_t ed25519_keypair;                                                 
+  //static const uint32_t ED25519_KEY_SIZE = 255;
 
   /**
-    Constructor setup the private key
+    Constructor setup the key
   */
-  Ed25519Key(uint8_t* private_key){
-    memcpy(this->private_random_key, private_key, ED25519_KEY_SIZE);
-  }
-  
+  Ed25519Key();
 };
 
 typedef Ed25519Key LongTermIDKey;

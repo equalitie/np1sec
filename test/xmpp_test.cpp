@@ -98,10 +98,11 @@ static void process_sending_im(PurpleAccount *account, char *who,
   UNUSED(account);
   UNUSED(who);
   UNUSED(m);
+  mpSeQUserState* user_state = reinterpret_cast<mpSeQUserState*>(m);
   std::string prefix = std::string("mpSeQ:");
   prefix.append(*message);
   free(*message);
-  *message = strdup(prefix.c_str());
+  *message = user_state->send_handler(who, strdup(prefix.c_str()));
 }
 
 static gboolean process_receiving_im(PurpleAccount *account, char **who,
@@ -109,25 +110,26 @@ static gboolean process_receiving_im(PurpleAccount *account, char **who,
   UNUSED(account);
   UNUSED(who);
   UNUSED(flags);
-  UNUSED(m);
+  mpSeQUserState* user_state = reinterpret_cast<mpSeQUserState*>(m);
   std::string prefix = std::string("mpSeQ:");
   prefix.append(*message);
   free(*message);
   *message = strdup(prefix.c_str());
+  user_state->receive_handler(*who, *message);
   return FALSE;
 }
 
-static void connect_to_signals(void) {
+static void connect_to_signals(mpSeQUserState* user_state) {
   static int handle;
   void *conn_handle = purple_connections_get_handle();
   void *conv_handle = purple_conversations_get_handle();
 
   purple_signal_connect(conn_handle, "signed-on", &handle,
-                        PURPLE_CALLBACK(signed_on), NULL);
+                        PURPLE_CALLBACK(signed_on), user_state);
   purple_signal_connect(conv_handle, "sending-im-msg", &handle,
-                        PURPLE_CALLBACK(process_sending_im), NULL);
+                        PURPLE_CALLBACK(process_sending_im), user_state);
   purple_signal_connect(conv_handle, "receiving-im-msg", &handle,
-                        PURPLE_CALLBACK(process_receiving_im), NULL);
+                        PURPLE_CALLBACK(process_receiving_im), user_state);
 }
 
 #define PURPLE_GLIB_READ_COND  (G_IO_IN | G_IO_HUP | G_IO_ERR)
@@ -281,6 +283,10 @@ int main(void) {
   }
   name[strlen(name) - 1] = 0;  // strip the \n
 
+  //here is the place to construct the user state
+  //all we need is username and the private key
+  mpSeQUserState* user_state = new mpSeQUserState(name);
+  
   PurpleAccount *account = purple_account_new(name, prpl);
   char *password = getpass("Password: ");
   purple_account_set_password(account, password);
@@ -289,7 +295,8 @@ int main(void) {
   PurpleSavedStatus *status = purple_savedstatus_new(NULL,
                                                      PURPLE_STATUS_AVAILABLE);
   purple_savedstatus_activate(status);
-  connect_to_signals();
+  //user_state need to be sent in order to be available to call backs
+  connect_to_signals(user_state);
       
   printf("Buddy's XMPP account: ");
   char buddy[128];
