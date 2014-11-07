@@ -52,7 +52,7 @@ struct mpSeQMessage {
   std::string user_message;
 };
 
-//Defining essetial types
+// Defining essential types
 typedef HashBlock SessionID;
 typedef uint8_t  mpSeQBareMessage[];
 
@@ -71,7 +71,7 @@ class mpSeQSession {
   std::string _room_name;
 
   // Keeps the list of the live participants in the room and their current/new
-  // keys/shares, last heartbeet, etc.
+  // keys/shares, last heartbeat, etc.
   std::vector<Participant> peers;
 
   // Keeps the list of the updated participants in the room once the
@@ -80,13 +80,9 @@ class mpSeQSession {
 
   time_t key_freshness_time_stamp;
 
-  /**
-     It is called by mpSeQ when ever the protocol needs to 
-     send meta data messages (key exchange, etc) which is 
-     not initiated by a messsage from user
-   */
+  // It is called by mpSeQ when ever the protocol needs to send meta data
+  // messages (key exchange, etc) which is not initiated by a message from user.
   bool send_bare(mpSeQBareMessage message);
-
 
  public:
   // Constructor, initiate by joining. Equivalent to join or initiate in the

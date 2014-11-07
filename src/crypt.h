@@ -31,8 +31,8 @@ extern "C" {
  */
 class Ed25519Key {
  public:
-  gcry_sexp_t ed25519_keypair;                                                 
-  //static const uint32_t ED25519_KEY_SIZE = 255;
+  gcry_sexp_t ed25519_keypair;
+  // static const uint32_t ED25519_KEY_SIZE = 255;
 
   /**
     Constructor setup the key

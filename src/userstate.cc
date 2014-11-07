@@ -16,7 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "userstate.h"
+#include "src/userstate.h"
 
 /** 
     Constructor
@@ -29,16 +29,12 @@
                          TODO: ignored for now
 */
 mpSeQUserState::mpSeQUserState(std::string username, uint8_t* key_pair)
-  : name(username), long_term_private_key()
-{
-    
-};
+  : name(username), long_term_private_key() {
+}
 
-RoomAction mpSeQUserState::receive_handler(std::string room_name, std::string mpotr_message)
-{
-  
-};
-
+RoomAction mpSeQUserState::receive_handler(std::string room_name,
+                                           std::string mpotr_message) {
+}
 
 /**
    When the user uses the client interface to send a message
@@ -50,8 +46,6 @@ RoomAction mpSeQUserState::receive_handler(std::string room_name, std::string mp
 
    @return message to send, null in case of failure
 */
-char* mpSeQUserState::send_handler(std::string room_name, std::string plain_message)
-{
-  
-};
-
+char* mpSeQUserState::send_handler(std::string room_name,
+                                   std::string plain_message) {
+}

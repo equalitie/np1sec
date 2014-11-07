@@ -29,7 +29,7 @@ extern "C" {
   #include "purple.h"
 }
 
-#include "userstate.h"
+#include "src/userstate.h"
 
 #define UNUSED(expr) (void)(expr)
 #define CUSTOM_USER_DIRECTORY "/tmp/test_user"
@@ -283,10 +283,10 @@ int main(void) {
   }
   name[strlen(name) - 1] = 0;  // strip the \n
 
-  //here is the place to construct the user state
-  //all we need is username and the private key
+  // here is the place to construct the user state
+  // all we need is username and the private key
   mpSeQUserState* user_state = new mpSeQUserState(name);
-  
+
   PurpleAccount *account = purple_account_new(name, prpl);
   char *password = getpass("Password: ");
   purple_account_set_password(account, password);
@@ -295,9 +295,10 @@ int main(void) {
   PurpleSavedStatus *status = purple_savedstatus_new(NULL,
                                                      PURPLE_STATUS_AVAILABLE);
   purple_savedstatus_activate(status);
-  //user_state need to be sent in order to be available to call backs
+
+  // user_state need to be sent in order to be available to call backs
   connect_to_signals(user_state);
-      
+
   printf("Buddy's XMPP account: ");
   char buddy[128];
   res = fgets(buddy, sizeof(buddy), stdin);

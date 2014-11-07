@@ -18,57 +18,47 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "session.h"
+#include "src/session.h"
 
-void MessageDigest::update (std::string new_message)
-{
+void MessageDigest::update(std::string new_message) {
   return;
-
 }
 
-uint32_t MessageDigest::compute_message_id (std::string cur_message)
-{
+uint32_t MessageDigest::compute_message_id(std::string cur_message) {
   return 0;
 }
 
-bool mpSeQSession::send_bare (mpSeQBareMessage message)
-{
+bool mpSeQSession::send_bare(mpSeQBareMessage message) {
   return true;
 }
 
-mpSeQSession::mpSeQSession (std::string new_room_name, std::string user_id, bool emptyroom)
-{
+mpSeQSession::mpSeQSession(std::string new_room_name, std::string user_id,
+                           bool emptyroom) {
   return;
 }
 
-bool mpSeQSession::join (std::string new_room_name, std::string user_id, std::string new_participant_id)
-{
+bool mpSeQSession::join(std::string new_room_name, std::string user_id,
+                        std::string new_participant_id) {
   return true;
 }
 
-bool mpSeQSession::accept (std::string new_participant_id)
-{
+bool mpSeQSession::accept(std::string new_participant_id) {
   return true;
 }
 
-bool mpSeQSession::farewell (std::string leaver_id)
-{
+bool mpSeQSession::farewell(std::string leaver_id) {
   return true;
 }
 
-bool mpSeQSession::send (mpSeQMessage message)
-{
+bool mpSeQSession::send(mpSeQMessage message) {
   return true;
 }
 
-mpSeQMessage mpSeQSession::receive (std::string raw_message)
-{
+mpSeQMessage mpSeQSession::receive(std::string raw_message) {
   mpSeQMessage ReceivedMessage;
   return ReceivedMessage;
 }
 
-mpSeQSession::~ mpSeQSession ()
-{
+mpSeQSession::~mpSeQSession() {
   return;
 }
-

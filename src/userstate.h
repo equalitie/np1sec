@@ -19,8 +19,8 @@
 #include <string>
 #include <map>
 
-#include "crypt.h"
-#include "session.h"
+#include "src/crypt.h"
+#include "src/session.h"
 
 #ifndef SRC_USERSTATE_H_
 #define SRC_USERSTATE_H_
@@ -59,7 +59,7 @@ class mpSeQUserState {
       @param key_pair the binary blob which contains the long term identiy key pair
                          for ED25519, defult null trigger new pair generation.
    */
-  mpSeQUserState(std::string username, uint8_t* key_pair = NULL);
+  explicit mpSeQUserState(std::string username, uint8_t* key_pair = NULL);
 
   /**
      The client need to call this function when the user is joining a room.
@@ -119,7 +119,6 @@ class mpSeQUserState {
 
   // Destructor
   ~mpSeQUserState();
-  
 };
 
 #endif  // SRC_USERSTATE_H_
