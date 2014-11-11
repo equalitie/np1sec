@@ -37,6 +37,9 @@ extern "C" {
 #define PLUGIN_SAVE_PREF "/tmp/test_client/plugins/saved"
 #define UI_ID "test_client"
 
+char server[128];
+char room[128];
+
 void write_conv(PurpleConversation *conv, const char *who, const char *alias,
                 const char *message, PurpleMessageFlags flags, time_t mtime) {
   UNUSED(conv);
@@ -91,32 +94,50 @@ static void signed_on(PurpleConnection *gc, gpointer null) {
   UNUSED(null);
   PurpleAccount *account = purple_connection_get_account(gc);
   printf("Account connected: %s %s\n", account->username, account->protocol_id);
+
+  GHashTable *components = g_hash_table_new(g_str_hash, g_str_equal);
+  g_hash_table_insert(components, strdup("room"), strdup(room));
+  g_hash_table_insert(components, strdup("server"), strdup(server));
+  serv_join_chat(gc, components);
 }
 
-static void process_sending_im(PurpleAccount *account, char *who,
-                               char **message, void *m) {
+static void process_sending_chat(PurpleAccount *account, char **message, int id,
+                                 void *m) {
   UNUSED(account);
-  UNUSED(who);
-  UNUSED(m);
   mpSeQUserState* user_state = reinterpret_cast<mpSeQUserState*>(m);
   std::string prefix = std::string("mpSeQ:");
   prefix.append(*message);
   free(*message);
-  *message = user_state->send_handler(who, strdup(prefix.c_str()));
+  *message = strdup(prefix.c_str());
+  PurpleConnection *gc = purple_account_get_connection(account);
+  PurpleConversation *conv = purple_find_chat(gc, id);
+  user_state->send_handler(conv->name, *message);
 }
 
-static gboolean process_receiving_im(PurpleAccount *account, char **who,
-                                     char **message, int *flags, void *m) {
+static gboolean process_receiving_chat(PurpleAccount *account, char **sender,
+                                       char **message, PurpleConversation *conv,
+                                       int *flags, void *m) {
   UNUSED(account);
-  UNUSED(who);
+  UNUSED(sender);
   UNUSED(flags);
   mpSeQUserState* user_state = reinterpret_cast<mpSeQUserState*>(m);
   std::string prefix = std::string("mpSeQ:");
   prefix.append(*message);
   free(*message);
   *message = strdup(prefix.c_str());
-  user_state->receive_handler(*who, *message);
+  user_state->receive_handler(conv->name, *message);
   return FALSE;
+}
+
+static void process_chat_join_failed(PurpleConnection *gc,
+                                     GHashTable *components) {
+  UNUSED(gc);
+  UNUSED(components);
+  printf("Join failed :(\n");
+}
+
+static void process_chat_joined(PurpleConversation *conv) {
+  printf("Joined %s\n", conv->name);
 }
 
 static void connect_to_signals(mpSeQUserState* user_state) {
@@ -126,10 +147,14 @@ static void connect_to_signals(mpSeQUserState* user_state) {
 
   purple_signal_connect(conn_handle, "signed-on", &handle,
                         PURPLE_CALLBACK(signed_on), user_state);
-  purple_signal_connect(conv_handle, "sending-im-msg", &handle,
-                        PURPLE_CALLBACK(process_sending_im), user_state);
-  purple_signal_connect(conv_handle, "receiving-im-msg", &handle,
-                        PURPLE_CALLBACK(process_receiving_im), user_state);
+  purple_signal_connect(conv_handle, "sending-chat-msg", &handle,
+                        PURPLE_CALLBACK(process_sending_chat), user_state);
+  purple_signal_connect(conv_handle, "receiving-chat-msg", &handle,
+                        PURPLE_CALLBACK(process_receiving_chat), user_state);
+  purple_signal_connect(conv_handle, "chat-join-failed", &handle,
+                        PURPLE_CALLBACK(process_chat_join_failed), user_state);
+  purple_signal_connect(conv_handle, "chat-joined", &handle,
+                        PURPLE_CALLBACK(process_chat_joined), user_state);
 }
 
 #define PURPLE_GLIB_READ_COND  (G_IO_IN | G_IO_HUP | G_IO_ERR)
@@ -227,18 +252,23 @@ void purple_init(void) {
 static gboolean io_callback(GIOChannel *io, GIOCondition condition,
                             gpointer p) {
   UNUSED(condition);
-  PurpleConversation *conv = reinterpret_cast<PurpleConversation *>(p);
+  PurpleAccount *account = reinterpret_cast<PurpleAccount *>(p);
   gchar in;
   GError *error = NULL;
   static char buf[128];
   static int ind = 0;
+
+  char *name = g_strdup_printf("%s@%s", room, server);
+  PurpleConversation *conv = purple_find_conversation_with_account(
+    PURPLE_CONV_TYPE_CHAT, name, account);
+  g_free(name);
 
   switch (g_io_channel_read_chars(io, &in, 1, NULL, &error)) {
   case G_IO_STATUS_NORMAL:
     buf[ind++] = in;
     if (ind == 128 || in == '\n') {
       buf[ind-1] = '\0';
-      purple_conv_im_send(PURPLE_CONV_IM(conv), strdup(buf));
+      purple_conv_chat_send(PURPLE_CONV_CHAT(conv), strdup(buf));
       ind = 0;
     }
     return TRUE;
@@ -299,20 +329,24 @@ int main(void) {
   // user_state need to be sent in order to be available to call backs
   connect_to_signals(user_state);
 
-  printf("Buddy's XMPP account: ");
-  char buddy[128];
-  res = fgets(buddy, sizeof(buddy), stdin);
+  printf("Conference server: ");
+  res = fgets(server, sizeof(server), stdin);
   if (!res) {
-    fprintf(stderr, "Failed to read buddy's name.");
+    fprintf(stderr, "Failed to read conference server.");
     abort();
   }
-  buddy[strlen(buddy) - 1] = 0;  // strip the \n
+  server[strlen(server) - 1] = 0;  // strip the \n
 
-  PurpleConversation *conv = purple_conversation_new(PURPLE_CONV_TYPE_IM,
-                                                     account, buddy);
+  printf("Room name: ");
+  res = fgets(room, sizeof(room), stdin);
+  if (!res) {
+    fprintf(stderr, "Failed to read room's name.");
+    abort();
+  }
+  room[strlen(room) - 1] = 0;  // strip the \n
 
   GIOChannel *io = g_io_channel_unix_new(STDIN_FILENO);
-  g_io_add_watch(io, G_IO_IN, io_callback, conv);
+  g_io_add_watch(io, G_IO_IN, io_callback, account);
   g_main_loop_run(loop);
 
   return 0;
