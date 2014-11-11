@@ -125,7 +125,7 @@ static gboolean process_receiving_chat(PurpleAccount *account, char **sender,
   prefix.append(*message);
   free(*message);
   *message = strdup(prefix.c_str());
-  user_state->receive_handler(conv->name, *message);
+  user_state->receive_handler(conv->name, prefix);
   return FALSE;
 }
 
