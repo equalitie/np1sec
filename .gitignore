@@ -107,3 +107,8 @@ sympy-plots-for-*.tex/
 
 # xindy
 *.xdy
+
+# Emacs temp/backup files
+*~
+\#*\#
+.\#*
