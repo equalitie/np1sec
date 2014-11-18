@@ -31,9 +31,35 @@
 mpSeQUserState::mpSeQUserState(std::string username, uint8_t* key_pair)
   : name(username), long_term_private_key() {
 }
+/**
+     The client need to call this function when the user is joining a room.
+
+     @param room_name the chat room name
+     @param user_in_room_id the id that user is using to join this room, this is similar to alias. 
+
+     @return true in case of success (does not mean successful join) and false in case of failure. 
+     client need to inform server of leaving the room in case of
+     failure 
+*/
+bool join_room(std::string room_name, std::string new_user_id){
+  mpSeQSession new_session = new mpSeqSession(room_name, new_user_id);
+  mpseq_sessions.insert(new_session.session_id, new_session);
+  sessions_in_a_room.insert(room_name, new_session.session_id);
+
+  if(!new_session.join(room_name, new_user_id, )){
+    return false;
+  }
+  
+  return true;
+}
 
 RoomAction mpSeQUserState::receive_handler(std::string room_name,
                                            std::string mpseq_message) {
+  mpSeQSession cur_session = retrieve_session(room_name);
+  cur_session.recieve(mpseq_message);
+  RoomAction room_action = { NULL, mpseq_message.user_message }
+  return room_action;
+
 }
 
 /**
@@ -48,4 +74,37 @@ RoomAction mpSeQUserState::receive_handler(std::string room_name,
 */
 char* mpSeQUserState::send_handler(std::string room_name,
                                    std::string plain_message) {
+  mpSeQSession cur_session = retrieve_session(room_name);
+  mpSeQMessage message = { USER_MESSAGE, plain_message };
+
+  cur_session.send(message);
+
+  return true;
 }
+  /**
+   * Retrieve the session object associated with the given room name. To
+   * allow sending and receiving of messages relative to that session
+   *
+   * @param room_name the chat room_name
+   *
+   * @return the current session if it exists for the given room or create
+   * a new session and return that.
+   *
+   */
+mpSeQSession mpSeQUserState::retrieve_session(std::string room_name){
+  SessionID sid = NULL;
+  mpSeQSession cur_session = NULL;
+
+  if(sessions_in_a_room.find(room_name)){
+    sid = sessions_in_a_room[room_name];
+  }
+  if(sid != null or mpseq_sessions.find(sid)){
+   cur_session = mpseq_sessions[sid];
+  }
+  if(cur_session == NULL){
+    if(join_room(room_name, name)){
+      cur_session = retrieve_session(room_name);
+    }
+  }
+
+  return cur_session;

@@ -51,11 +51,16 @@ bool mpSeQSession::farewell(std::string leaver_id) {
 }
 
 bool mpSeQSession::send(mpSeQMessage message) {
-  return true;
+  HashBlock hb;
+
+  Hash(message.user_message, sizeof(message.user_message), hb, true);
+
+  return hb;
 }
 
 mpSeQMessage mpSeQSession::receive(std::string raw_message) {
-  mpSeQMessage ReceivedMessage;
+  std::string decrypted_message = DecryptMessage(raw_message);
+  mpSeQMessage ReceivedMessage = DecryptMessage(raw_message);
   return ReceivedMessage;
 }
 

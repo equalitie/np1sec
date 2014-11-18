@@ -117,6 +117,17 @@ class mpSeQUserState {
   // function.
   void leave_room();
 
+  /**
+   * Retrieve the session object associated with the given room name. To
+   * allow sending and receiving of messages relative to that session
+   *
+   * @param room_name the chat room_name
+   *
+   * @return the current session if it exists for the given room or create
+   * a new session and return that.
+   *
+   */
+  mpSeQSession retrieve_session(std::string room_name);
   // Destructor
   ~mpSeQUserState();
 };
