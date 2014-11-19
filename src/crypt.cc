@@ -62,6 +62,41 @@ Ed25519Key::Ed25519Key() {
   err = gcry_pk_genkey(&ed25519_keypair, ed25519_parms);
   if (err)
     std::printf("gcrypt: failed to create ed25519 key pair\n");
+
+  pub_key = gcry_sexp_find_token( key, "public-key", 0 );
+  if ( !pub_key ) {
+    std:printf("ed25519Key: failed to retrieve public key");
+  }
+  
+  prv_key = gcry_sexp_find_token( key, "private-key", 0 );
+  if ( !pub_key ) {
+    std:printf("ed25519Key: failed to retrieve private key");
+  }
+
+
+}
+
+std::string Ed25519Key::Encrypt(std::string plain_text){
+  gcry_sexp_t plain_sexp, crypt_sexp;
+
+  charTosexp( plain_text, &plain_sexp );
+  err = gcry_pk_encrypt( &crypt_sexp, plain_sexp, pub_key )
+  if( err ){
+    std:printf("ed25519Key: Encryption of message failed");
+  }
+  
+  return
+}
+
+std:string Ed25519Key::Decrypt(std::string encrypted_text){
+  gcry_sexp_t crypt_sexp;
+  gcry_sexp_t data_decrypted = NULL;
+
+  charTosexp( encrypted_text, &crypt_sexp );
+
+  gcry_pk_decrypt( &data_decrypted, crypt_sexp, prv_key )
+
+  return 
 }
 
 #endif  // SRC_CRYPT_CC_

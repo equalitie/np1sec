@@ -31,13 +31,30 @@ extern "C" {
  */
 class Ed25519Key {
  public:
-  gcry_sexp_t ed25519_keypair;
+  gcry_sexp_t ed25519_keypair, pub_key, prv_key;
   // static const uint32_t ED25519_KEY_SIZE = 255;
 
   /**
     Constructor setup the key
   */
   Ed25519Key();
+  /*
+   * Encrypt a give plain text using the previously created ed25519 keys
+   *
+   * @param plain_text a plain text message string to be encrypted
+   *
+   * @return a string containing the encrypted text
+   */
+  std::string Ed25519Key::Encrypt(std::string plain_text);
+  /*
+   * Decrypt a give encrypted text using the previously created ed25519 keys
+   *
+   * @param encrypted_text an encrypted text message string to be decrypted
+   *
+   * @return a string containing the decrypted text
+   */
+
+  std:string Ed25519Key::Decrypt(std::string encrypted_text);
 };
 
 typedef Ed25519Key LongTermIDKey;
