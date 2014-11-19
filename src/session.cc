@@ -17,6 +17,8 @@
  */
 
 #include "src/session.h"
+#include <time.h>
+#include <stdlib.h>
 
 void MessageDigest::update(std::string new_message) {
   return;
@@ -50,10 +52,13 @@ bool mpSeQSession::farewell(std::string leaver_id) {
 }
 
 bool mpSeQSession::send(mpSeQMessage message) {
+  srand(time(NULL));
+  int r = rand();
+
   HashBlock hb;
-
+  message.user_message.append((char*) r);
   Hash(message.user_message, sizeof(message.user_message), hb, true);
-
+  
   return hb;
 }
 

@@ -71,4 +71,27 @@ err:
   return false;
 }
 
+std::string Ed25519Key::Encrypt(std::string plain_text){
+  gcry_sexp_t plain_sexp, crypt_sexp;
+
+  charTosexp( plain_text, &plain_sexp );
+  err = gcry_pk_encrypt( &crypt_sexp, plain_sexp, pub_key )
+  if( err ){
+    std:printf("ed25519Key: Encryption of message failed");
+  }
+  
+  return;
+}
+
+std:string Ed25519Key::Decrypt(std::string encrypted_text){
+  gcry_sexp_t crypt_sexp;
+  gcry_sexp_t data_decrypted = NULL;
+
+  charTosexp( encrypted_text, &crypt_sexp );
+
+  gcry_pk_decrypt( &data_decrypted, crypt_sexp, prv_key )
+
+  return;
+}
+
 #endif  // SRC_CRYPT_CC_
