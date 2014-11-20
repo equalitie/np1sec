@@ -57,8 +57,8 @@ bool mpSeQSession::send(mpSeQMessage message) {
 
   HashBlock hb;
   message.user_message.append((char*) r);
-  Hash(message.user_message, sizeof(message.user_message), hb, true);
-  
+  //Hash(message.user_message, sizeof(message.user_message), hb, true);
+  message.user_message = Encrypt(message.user_message);
   return hb;
 }
 

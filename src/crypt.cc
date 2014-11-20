@@ -74,6 +74,10 @@ err:
 std::string Ed25519Key::retrieveResult( gcry_sexp_t text_sexp ){
   size_t buffer_size = gcry_sexp_sprint (text_sexp, GCRYSEXP_FMT_ADVANCED,
                                             NULL, 0);
+  if(!buffer_size){
+    std:printf("ed25519Key: failed to convert s-expression to string");
+    return NULL;
+  }
   char* buffer = (char *) malloc(buffer_size);
   size_t buffer_size = gcry_sexp_sprint (test_sexp, GCRYSEXP_FMT_ADVANCED,
                                             buffer, buffer_size);
