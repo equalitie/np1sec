@@ -57,7 +57,16 @@ class Ed25519Key {
    * @return a string containing the decrypted text
    */
 
-  std:string Ed25519Key::Decrypt(std::string encrypted_text);
+  std::string Ed25519Key::Decrypt(std::string encrypted_text);
+  /*
+   * Convert a given gcrypt s-expression into a std::string
+   *
+   * @param gcry_sexp_t gcrypt s-expression to be converted
+   *
+   * @return std::string representing the converted data.
+   *
+   */
+  std::string Ed25519Key::retrieveResult( gcry_sexp_t text_sexp );
 };
 
 typedef Ed25519Key LongTermIDKey;
