@@ -76,27 +76,50 @@ Ed25519Key::Ed25519Key() {
 
 }
 
-std::string Ed25519Key::Encrypt(std::string plain_text){
-  gcry_sexp_t plain_sexp, crypt_sexp;
+std::string Ed25519Key::retrieveResult( gcry_sexp_t text_sexp ){
+  size_t buffer_size = gcry_sexp_sprint (text_sexp, GCRYSEXP_FMT_ADVANCED,
+                                            NULL, 0);
+  char* buffer = (char *) malloc(buffer_size);
+  size_t buffer_size = gcry_sexp_sprint (test_sexp, GCRYSEXP_FMT_ADVANCED,
+                                            buffer, buffer_size);
 
-  charTosexp( plain_text, &plain_sexp );
-  err = gcry_pk_encrypt( &crypt_sexp, plain_sexp, pub_key )
-  if( err ){
-    std:printf("ed25519Key: Encryption of message failed");
-  }
-  
-  return
+  std::string result = buffer;
+  free(buffer);
+  return result;
 }
 
-std:string Ed25519Key::Decrypt(std::string encrypted_text){
+std::string Ed25519Key::Encrypt(std::string plain_text){
+  gcry_sexp_t plain_sexp, crypt_sexp;
+  gcry_error_t err = 0;
+  err = gcry_sexp_new( &plain_sexp, plain_text.c_str(), 
+                                      plain_text.size(), 1);
+  if( err ){
+    std::printf("ed25519Key: failed to convert plain_text to gcry_sexp_t");
+  }
+  err = gcry_pk_encrypt( &crypt_sexp, plain_sexp, pub_key )
+  if( err ){
+    std::printf("ed25519Key: Encryption of message failed");
+  }
+
+  return retrieveResult(crypt_sexp);
+}
+
+std::string Ed25519Key::Decrypt(std::string encrypted_text){
   gcry_sexp_t crypt_sexp;
   gcry_sexp_t data_decrypted = NULL;
+  gcry_error_t err = 0;
 
-  charTosexp( encrypted_text, &crypt_sexp );
+  err = gcry_sexp_new( &crypt_sexp, encrypted_text.c_str(), 
+                                      encrypted_text.size(), 1);
+  if( err ){
+    std::printf("ed25519Key: failed to convert encrypted_text to gcry_sexp_t");
+  }
+  err = gcry_pk_decrypt( &data_decrypted, crypt_sexp, prv_key )
+  if ( err ) {
+    std::printf("ed25519Key: failed to decrypt message");
+  }
 
-  gcry_pk_decrypt( &data_decrypted, crypt_sexp, prv_key )
-
-  return 
+  return retrieveResult(data_decrypted);
 }
 
 #endif  // SRC_CRYPT_CC_
