@@ -56,8 +56,8 @@ bool join_room(std::string room_name, std::string new_user_id){
 RoomAction mpSeQUserState::receive_handler(std::string room_name,
                                            std::string mpseq_message) {
   mpSeQSession cur_session = retrieve_session(room_name);
-  cur_session.recieve(mpseq_message);
-  RoomAction room_action = { NULL, mpseq_message.user_message }
+  mpSeQMessage received_message = cur_session.recieve(mpseq_message);
+  RoomAction room_action = { NULL, received_message }
   return room_action;
 
 }

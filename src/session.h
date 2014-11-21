@@ -22,6 +22,7 @@
 #include "src/common.h"
 #include "src/participant.h"
 #include "src/crypt.h"
+#include "src/base64.h"
 
 
 #ifndef SRC_SESSION_H_
@@ -103,7 +104,7 @@ class mpSeQSession {
 
   // When a user wants to send a message to a session it needs to call its send
   // function.
-  bool send(mpSeQMessage message);
+  std::string send(mpSeQMessage message);
 
   // When a message is received from a session the receive function needs to be
   // called to decrypt. It updates the session status and returns the decrypted
