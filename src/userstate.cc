@@ -72,14 +72,14 @@ RoomAction mpSeQUserState::receive_handler(std::string room_name,
 
    @return message to send, null in case of failure
 */
-char* mpSeQUserState::send_handler(std::string room_name,
+std::string mpSeQUserState::send_handler(std::string room_name,
                                    std::string plain_message) {
   mpSeQSession cur_session = retrieve_session(room_name);
   mpSeQMessage message = { USER_MESSAGE, plain_message };
+  std::string b64_content = NULL;
+  b64_content = cur_session.send(message);
 
-  cur_session.send(message);
-
-  return true;
+  return b64_content;
 }
   /**
    * Retrieve the session object associated with the given room name. To
