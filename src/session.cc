@@ -70,7 +70,7 @@ std::string mpSeQSession::send(mpSeQMessage message) {
   encrypted_content = Encrypt( message.user_message );
 
   combined_content = encrypted_content;
-  combined_content.append(":");
+  combined_content.append(" ");
   combined_content.append(signature);
 
   //Hash(message.user_message, sizeof(message.user_message), hb, true);
@@ -83,9 +83,22 @@ mpSeQMessage mpSeQSession::receive(std::string raw_message) {
   std::string signature, message_content, decrypted_message;
   mpSeQMessage received_message = NULL;
 
-  decode_content = base64_decode(raw_message);
+  decoded_content = base64_decode(raw_message);
+
 
   //split decoded content into encrypted message and signature
+  std::stringstream ss(decoded_content);
+  std::istream_iterator<std::string> begin(ss);
+  std::istream_iterator<std::string> end;
+  std::vector<std::string> vstrings(begin, end);
+  if( vstrings.size() != 2){
+    std::printf("mpSeSession: failed to retrieve valid content and signature");
+    return NULL;
+  }
+
+  message_content = std::string(vstring[0]) 
+  signature = std::string(vstring[1]) 
+
   if( Verify(message_content, signature) ){
     decrypted_message = Decrypt(message_content);
   }
