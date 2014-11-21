@@ -51,27 +51,47 @@ bool mpSeQSession::farewell(std::string leaver_id) {
   return true;
 }
 
-char* mpSeQSession::send(mpSeQMessage message) {
-  //srand(time(NULL));
-  //int r = rand();
+std::string mpSeQSession::send(mpSeQMessage message) {
   unsigned char *buffer = NULL;
-  
+  std::string signature = NULL;
+  std::string encrypted_content = NULL;
+  std::string combined_content = NULL;
   gcry_randomize( buffer, 32, GCRY_STRONG_RANDOM );
 
   HashBlock hb;
+  // Add random noise to message to ensure hashing/signing is unique
+  // for similar messages
+  message.user_message.append(':');
   message.user_message.append(buffer);
-
   gcry_free(buffer);
-  //Hash(message.user_message, sizeof(message.user_message), hb, true);
-  message.user_message = Encrypt(message.user_message);
+  
+  signature = Sign( message.user_message );
+  encrypted_content = Encrypt( message.user_message );
 
-  return hb;
+  combined_content = encrypted_content;
+  combined_content.append(":");
+  combined_content.append(signature);
+
+  //Hash(message.user_message, sizeof(message.user_message), hb, true);
+
+  return base64_encode(commbined_content);
 }
 
 mpSeQMessage mpSeQSession::receive(std::string raw_message) {
-  std::string decrypted_message = DecryptMessage(raw_message);
-  mpSeQMessage ReceivedMessage = DecryptMessage(raw_message);
-  return ReceivedMessage;
+  std::string decoded_content;
+  std::string signature, message_content, decrypted_message;
+  mpSeQMessage received_message = NULL;
+
+  decode_content = base64_decode(raw_message);
+
+  //split decoded content into encrypted message and signature
+  if( Verify(message_content, signature) ){
+    decrypted_message = Decrypt(message_content);
+  }
+
+  received_message = {USER_MESSAGE, decrypted_message};
+
+  return received_message;
 }
 
 mpSeQSession::~mpSeQSession() {
