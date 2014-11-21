@@ -51,14 +51,20 @@ bool mpSeQSession::farewell(std::string leaver_id) {
   return true;
 }
 
-bool mpSeQSession::send(mpSeQMessage message) {
-  srand(time(NULL));
-  int r = rand();
+char* mpSeQSession::send(mpSeQMessage message) {
+  //srand(time(NULL));
+  //int r = rand();
+  unsigned char *buffer = NULL;
+  
+  gcry_randomize( buffer, 32, GCRY_STRONG_RANDOM );
 
   HashBlock hb;
-  message.user_message.append((char*) r);
+  message.user_message.append(buffer);
+
+  gcry_free(buffer);
   //Hash(message.user_message, sizeof(message.user_message), hb, true);
   message.user_message = Encrypt(message.user_message);
+
   return hb;
 }
 
