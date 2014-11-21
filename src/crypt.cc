@@ -92,20 +92,63 @@ std::string Ed25519Key::retrieveResult( gcry_sexp_t text_sexp ){
   return result;
 }
 
+gcry_sexp_t Ed25519Key::ConvertToSexp(std::string text){
+  gcry_error_t err = 0;
+  gcry_sexp_t new_sexp;
+
+  err = gcry_pk_new( &new_sexp, text.c_str(), 
+                                      text.size(), 1);
+  if( err ){
+    std:printf("ed25519Key: failed to convert plain_text to gcry_sexp_t");
+  }
+
+  return new_sexp;
+}
+
+std::string Ed25519Key::Sign( std::string plain_text ){
+  gcry_error_t err = 0;
+  gcry_sexp_t plain_sexp, r_sig;
+
+  plain_sexp = ConvertToSexp( plain_text );
+
+  err = gcry_pk_sign( &r_sig, plain_sexp, prv_key ); 
+
+  if( err ){
+    std:printf("ed25519Key: failed to sign plain_text");
+  }
+
+  return retrieveResult( r_sig );
+}
+
+bool Ed25519Key::Verify( std::string signed_text, std::string sig ){
+  gcry_error_t err = 0;
+  gcry_sexp_t signed_sexp, sig;
+
+  signed_sexp = ConvertToSexp(signed_text);
+  sig = ConvertToSexp(sig);
+
+  err = gcry_verify_sign( sig, signed_sexp, pub_key ); 
+
+  if( err ){
+    std:printf("ed25519Key: failed to verify signed_text");
+    return false;
+  }
+
+  return true;
+}
+
 std::string Ed25519Key::Encrypt(std::string plain_text){
   gcry_sexp_t plain_sexp, crypt_sexp;
   gcry_error_t err = 0;
-  err = gcry_sexp_new( &plain_sexp, plain_text.c_str(), 
-                                      plain_text.size(), 1);
-  if( err ){
-    std::printf("ed25519Key: failed to convert plain_text to gcry_sexp_t");
-  }
+  
+  plain_sexp = ConvertToSexp( plain_text );
+
   err = gcry_pk_encrypt( &crypt_sexp, plain_sexp, pub_key )
   if( err ){
     std::printf("ed25519Key: Encryption of message failed");
   }
 
-  return retrieveResult(crypt_sexp);
+  return retrieveResult( crypt_sexp );
 }
 
 std::string Ed25519Key::Decrypt(std::string encrypted_text){
@@ -113,17 +156,14 @@ std::string Ed25519Key::Decrypt(std::string encrypted_text){
   gcry_sexp_t data_decrypted = NULL;
   gcry_error_t err = 0;
 
-  err = gcry_sexp_new( &crypt_sexp, encrypted_text.c_str(), 
-                                      encrypted_text.size(), 1);
-  if( err ){
-    std::printf("ed25519Key: failed to convert encrypted_text to gcry_sexp_t");
-  }
+  crypt_sexp = ConvertToSexp( encrypted_text );
+
   err = gcry_pk_decrypt( &data_decrypted, crypt_sexp, prv_key )
   if ( err ) {
     std::printf("ed25519Key: failed to decrypt message");
   }
 
-  return retrieveResult(data_decrypted);
+  return retrieveResult( data_decrypted );
 }
 
 #endif  // SRC_CRYPT_CC_

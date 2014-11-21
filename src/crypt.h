@@ -46,6 +46,7 @@ class Ed25519Key {
    * @return a string containing the encrypted text
    */
   std::string Ed25519Key::Encrypt(std::string plain_text);
+
   /*
    * Decrypt a give encrypted text using the previously created ed25519 keys
    *
@@ -53,8 +54,8 @@ class Ed25519Key {
    *
    * @return a string containing the decrypted text
    */
-
   std::string Ed25519Key::Decrypt(std::string encrypted_text);
+
   /*
    * Convert a given gcrypt s-expression into a std::string
    *
@@ -64,6 +65,39 @@ class Ed25519Key {
    *
    */
   std::string Ed25519Key::retrieveResult( gcry_sexp_t text_sexp );
+
+  /*
+   * Convert a given std:string to a valid gcrypt s-expression
+   *
+   * @param std::string valid string to be converted
+   *
+   * @return gcry_sexp_t gcrypt s-expression respresentation
+   *
+   */
+  gcry_sexp_t Ed25519Key::ConvertToSexp(std::string text);
+
+  /*
+   * Given a valid std:string sign the string using the sessions
+   * private key and return the signature.
+   *
+   * @param std::string representing message data to be signed
+   *
+   * @return std::string valid signature of the give data
+   *
+   */
+  std::string Ed25519Key::Sign( std::string plain_text );
+
+  /*
+   * Given a signed piece of data and a valid signature verify if
+   * the signature is correct using the sessions public key.
+   *
+   * @param std::string representing signed data
+   * @param std::string representing data signature
+   *
+   * @return bool value dependent on failure or verification of given signature
+   *
+   */
+  bool Ed25519Key::Verify( std::string signed_text, std::string sig );
 };
 
 typedef Ed25519Key LongTermIDKey;
