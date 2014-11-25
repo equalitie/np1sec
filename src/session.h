@@ -90,6 +90,8 @@ class mpSeQSession {
  public:
   // Constructor, initiate by joining. Equivalent to join or initiate in the
   // spec.
+  SessionID session_id;
+
   mpSeQSession(std::string new_room_name, std::string user_id,
                bool emptyroom = false);
 
