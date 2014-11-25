@@ -1,4 +1,11 @@
-#include <string>
+using namespace std;
 
-std::string base64_encode(unsigned char const* , unsigned int len);
-std::string base64_decode(std::string const& s);
+class Base64
+{
+  static const char b64_table[65];
+  static const char reverse_table[128];
+ public:
+  static string Encode(const string &bindata);
+  static string Decode(const char* data, const char* data_end);
+
+};

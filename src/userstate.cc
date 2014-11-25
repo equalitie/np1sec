@@ -50,7 +50,7 @@ bool mpSeQUserState::join_room(std::string room_name,
      failure 
 */
 bool join_room(std::string room_name, std::string new_user_id){
-  mpSeQSession new_session = new mpSeqSession(room_name, new_user_id);
+  mpSeQSession new_session = new mpSeQSession(room_name, new_user_id);
   mpseq_sessions.insert(new_session.session_id, new_session);
   sessions_in_a_room.insert(room_name, new_session.session_id);
 
@@ -64,7 +64,7 @@ bool join_room(std::string room_name, std::string new_user_id){
 RoomAction mpSeQUserState::receive_handler(std::string room_name,
                                            std::string mpseq_message) {
   mpSeQSession cur_session = retrieve_session(room_name);
-  mpSeQMessage received_message = cur_session.recieve(mpseq_message);
+  mpSeQMessage received_message = cur_session.receive(mpseq_message);
   RoomAction room_action = { NULL, received_message }
   return room_action;
 
