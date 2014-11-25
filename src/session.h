@@ -44,11 +44,12 @@ class MessageDigest {
   uint32_t compute_message_id(std::string cur_message);
 };
 
+enum mpSeQMessageType {
+  USER_MESSAGE,
+  PURE_META_MESSAG
+};
+
 struct mpSeQMessage {
-  enum mpSeQMessageType {
-    USER_MESSAGE,
-    PURE_META_MESSAG
-  };
   mpSeQMessageType metamessage;
   std::string user_message;
 };
@@ -71,6 +72,7 @@ class mpSeQSession {
   std::string _my_id;
   std::string _room_name;
 
+  Ed25519Key ed25519Key;
   // Keeps the list of the live participants in the room and their current/new
   // keys/shares, last heartbeat, etc.
   std::vector<Participant> peers;

@@ -35,7 +35,7 @@ bool mpSeQSession::send_bare(mpSeQBareMessage message) {
 }
 
 mpSeQSession::mpSeQSession(std::string new_room_name, std::string user_id,
-                           bool emptyroom) {
+                           bool emptyroom) : ed25519Key() {
   return;
 }
 
@@ -62,12 +62,12 @@ std::string mpSeQSession::send(mpSeQMessage message) {
   HashBlock hb;
   // Add random noise to message to ensure hashing/signing is unique
   // for similar messages
-  message.user_message.append(':');
-  message.user_message.append(buffer);
+  message.user_message.append(":");
+  message.user_message.append(reinterpret_cast<const char*>(buffer));
   gcry_free(buffer);
   
-  signature = Sign( message.user_message );
-  encrypted_content = Encrypt( message.user_message );
+  signature = ed25519Key.Sign( message.user_message );
+  encrypted_content = ed25519Key.Encrypt( message.user_message );
 
   combined_content = encrypted_content;
   combined_content.append(" ");
@@ -75,15 +75,15 @@ std::string mpSeQSession::send(mpSeQMessage message) {
 
   //Hash(message.user_message, sizeof(message.user_message), hb, true);
 
-  return base64_encode(commbined_content);
+  return Base64::Encode(combined_content.c_str());
 }
 
 mpSeQMessage mpSeQSession::receive(std::string raw_message) {
   std::string decoded_content;
   std::string signature, message_content, decrypted_message;
-  mpSeQMessage received_message = NULL;
+  mpSeQMessage received_message;
 
-  decoded_content = base64_decode(raw_message);
+  decoded_content = Base64::Decode(raw_message.c_str(), raw_message.c_str()+raw_message.size());
 
 
   //split decoded content into encrypted message and signature
@@ -93,14 +93,14 @@ mpSeQMessage mpSeQSession::receive(std::string raw_message) {
   std::vector<std::string> vstrings(begin, end);
   if( vstrings.size() != 2){
     std::printf("mpSeSession: failed to retrieve valid content and signature");
-    return NULL;
+    return received_message;
   }
 
-  message_content = std::string(vstring[0]) 
-  signature = std::string(vstring[1]) 
+  message_content = std::string(vstrings[0]);
+  signature = std::string(vstrings[1]); 
 
-  if( Verify(message_content, signature) ){
-    decrypted_message = Decrypt(message_content);
+  if( ed25519Key.Verify(message_content, signature) ){
+    decrypted_message = ed25519Key.Decrypt(message_content);
   }
 
   received_message = {USER_MESSAGE, decrypted_message};

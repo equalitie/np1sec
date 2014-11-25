@@ -45,7 +45,7 @@ class Ed25519Key {
    *
    * @return a string containing the encrypted text
    */
-  std::string Ed25519Key::Encrypt(std::string plain_text);
+  std::string Encrypt(std::string plain_text);
 
   /*
    * Decrypt a give encrypted text using the previously created ed25519 keys
@@ -54,7 +54,7 @@ class Ed25519Key {
    *
    * @return a string containing the decrypted text
    */
-  std::string Ed25519Key::Decrypt(std::string encrypted_text);
+  std::string Decrypt(std::string encrypted_text);
 
   /*
    * Convert a given gcrypt s-expression into a std::string
@@ -64,7 +64,7 @@ class Ed25519Key {
    * @return std::string representing the converted data.
    *
    */
-  std::string Ed25519Key::retrieveResult( gcry_sexp_t text_sexp );
+  std::string retrieveResult( gcry_sexp_t text_sexp );
 
   /*
    * Convert a given std:string to a valid gcrypt s-expression
@@ -74,7 +74,7 @@ class Ed25519Key {
    * @return gcry_sexp_t gcrypt s-expression respresentation
    *
    */
-  gcry_sexp_t Ed25519Key::ConvertToSexp(std::string text);
+  gcry_sexp_t ConvertToSexp(std::string text);
 
   /*
    * Given a valid std:string sign the string using the sessions
@@ -85,7 +85,7 @@ class Ed25519Key {
    * @return std::string valid signature of the give data
    *
    */
-  std::string Ed25519Key::Sign( std::string plain_text );
+  std::string Sign( std::string plain_text );
 
   /*
    * Given a signed piece of data and a valid signature verify if
@@ -97,7 +97,7 @@ class Ed25519Key {
    * @return bool value dependent on failure or verification of given signature
    *
    */
-  bool Ed25519Key::Verify( std::string signed_text, std::string sig );
+  bool Verify( std::string signed_text, std::string sig );
 
   /*
    * Create instance of cipher session based on configured algorithm, mode,
@@ -106,7 +106,7 @@ class Ed25519Key {
    * @return gcry_cipher_hd_t representing a cipher session handle
    *
    */
-  gcry_cupher_hd_t Ed25519Key::OpenCipher();
+  gcry_cipher_hd_t OpenCipher();
 };
 
 typedef Ed25519Key LongTermIDKey;
