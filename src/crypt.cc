@@ -132,33 +132,47 @@ bool Ed25519Key::Verify( std::string signed_text, std::string sig ){
   return true;
 }
 
-std::string Ed25519Key::Encrypt(std::string plain_text){
-  gcry_sexp_t plain_sexp, crypt_sexp;
-  gcry_error_t err = 0;
+gcry_cipher_hd Ed25519Key::OpenCipher(){
+  gcry_cipher_hd_t hd;
+  int bufSize = 16, bytes, algo = GCRY_CIPHER_AES256, mode = GCRY_CIPHER_MODE_CTR, keyLength = 16, blkLength = 16;
   
-  plain_sexp = ConvertToSexp( plain_text );
+  err = gcry_cipher_open( &hd, algo, mode, 0 );
+  if( err ){
+    std::printf("ed25519Key: Cipher creation failed");
+  }
+  err = gcry_cipher_setkey( hd, SESSION_KEY, 32)
+  err = gcry_cipher_setiv( hd, SESSION_IV, 16 );
 
-  err = gcry_pk_encrypt( &crypt_sexp, plain_sexp, pub_key )
+  return hd;
+}
+std::string Ed25519Key::Encrypt(std::string plain_text){
+  std::string crypt_text = plain_text;
+  gcry_error_t err = 0;
+  gcry_cipher_hd_t hd = OpenCipher();
+
+  err = gcry_cipher_encrypt( hd, crypt_text.c_str, crypt_text.size(), NULL, 0 );
   if( err ){
     std::printf("ed25519Key: Encryption of message failed");
   }
+  
+  gcry_cipher_close( hd );
 
-  return retrieveResult( crypt_sexp );
+  return retrieveResult( crypt_text );
 }
 
 std::string Ed25519Key::Decrypt(std::string encrypted_text){
-  gcry_sexp_t crypt_sexp;
-  gcry_sexp_t data_decrypted = NULL;
+  std::string decrypted_text = encrypted_text;
   gcry_error_t err = 0;
+  gcry_cipher_hd_t hd = OpenCipher();
 
-  crypt_sexp = ConvertToSexp( encrypted_text );
-
-  err = gcry_pk_decrypt( &data_decrypted, crypt_sexp, prv_key )
+  err = gcry_cipher_decrypt( hd, decrypted_text.c_str, decrypted_text.size(), NULL, 0 );
   if ( err ) {
     std::printf("ed25519Key: failed to decrypt message");
   }
 
-  return retrieveResult( data_decrypted );
+  gcry_cipher_close( hd );
+
+  return retrieveResult( decrypted_text );
 }
 
 #endif  // SRC_CRYPT_CC_
