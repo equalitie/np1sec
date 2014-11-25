@@ -99,7 +99,7 @@ class mpSeQUserState {
 
      @return true in case of success, false in case of failure
   */
-  char* send_handler(std::string room_name, std::string plain_message);
+  std::string send_handler(std::string room_name, std::string plain_message);
 
   /**
      The client need to call this function whenever a message

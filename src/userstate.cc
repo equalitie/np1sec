@@ -49,7 +49,7 @@ bool mpSeQUserState::join_room(std::string room_name,
      client need to inform server of leaving the room in case of
      failure 
 */
-bool join_room(std::string room_name, std::string new_user_id){
+bool mpSeQUserState::join_room(std::string room_name, std::string new_user_id){
   mpSeQSession new_session = new mpSeQSession(room_name, new_user_id);
   mpseq_sessions.insert(new_session.session_id, new_session);
   sessions_in_a_room.insert(room_name, new_session.session_id);
@@ -65,7 +65,7 @@ RoomAction mpSeQUserState::receive_handler(std::string room_name,
                                            std::string mpseq_message) {
   mpSeQSession cur_session = retrieve_session(room_name);
   mpSeQMessage received_message = cur_session.receive(mpseq_message);
-  RoomAction room_action = { NULL, received_message }
+  RoomAction room_action = { NULL, received_message.user_message };
   return room_action;
 
 }
@@ -100,16 +100,14 @@ std::string mpSeQUserState::send_handler(std::string room_name,
    *
    */
 mpSeQSession mpSeQUserState::retrieve_session(std::string room_name){
-  SessionID sid = NULL;
-  mpSeQSession cur_session = NULL;
+  SessionID sid;
+  mpSeQSession cur_session;
 
   if(sessions_in_a_room.find(room_name)){
     sid = sessions_in_a_room[room_name];
   }
-  if(sid != null or mpseq_sessions.find(sid)){
+  if(sid != NULL or mpseq_sessions.find(sid)){
    cur_session = mpseq_sessions[sid];
-  }
-  if(cur_session == NULL){
     if(join_room(room_name, name)){
       cur_session = retrieve_session(room_name);
     }

@@ -41,3 +41,19 @@ TEST_F(CryptTest, test_hash) {
   free(buf);
   delete[] res;
 }
+
+TEST(CryptTest, test_encrypt){
+  std::string test_text = "This is a string to be encrypted";
+  std::string encrypted_text = Encrypt(test_text);
+  std::printf(encrypted_text);
+}
+
+TEST(CryptTest, test_decrypt){
+}
+
+TEST(CryptTest, test_sign){
+
+}
+
+TEST(CryptTest, test_verify){
+}

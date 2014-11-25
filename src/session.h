@@ -86,6 +86,8 @@ class mpSeQSession {
   bool send_bare(mpSeQBareMessage message);
 
  public:
+  SessionID session_id;
+
   // Constructor, initiate by joining.
   mpSeQSession(std::string new_room_name, std::string user_id);
 
