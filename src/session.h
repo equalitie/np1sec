@@ -55,7 +55,9 @@ struct mpSeQMessage {
 };
 
 // Defining essential types
-typedef HashBlock SessionID;
+struct SessionID {
+  uint8_t id[c_hash_length];
+};
 typedef uint8_t  mpSeQBareMessage[];
 
 
@@ -91,6 +93,8 @@ class mpSeQSession {
   // Constructor, initiate by joining. Equivalent to join or initiate in the
   // spec.
   SessionID session_id;
+
+  mpSeQSession();
 
   mpSeQSession(std::string new_room_name, std::string user_id,
                bool emptyroom = false);
