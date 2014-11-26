@@ -50,11 +50,13 @@ bool mpSeQUserState::join_room(std::string room_name,
      failure 
 */
 bool mpSeQUserState::join_room(std::string room_name, std::string new_user_id){
-  mpSeQSession new_session = new mpSeQSession(room_name, new_user_id);
-  mpseq_sessions.insert(new_session.session_id, new_session);
-  sessions_in_a_room.insert(room_name, new_session.session_id);
 
-  if(!new_session.join(room_name, new_user_id, )){
+  mpSeQSession new_session(room_name, new_user_id, true);
+  
+  mpseq_sessions.emplace( new_session.session_id, new_session );
+  sessions_in_a_room.emplace(room_name, new_session.session_id);
+
+  if(!new_session.join(room_name, new_user_id)){
     return false;
   }
   
@@ -100,17 +102,20 @@ std::string mpSeQUserState::send_handler(std::string room_name,
    *
    */
 mpSeQSession mpSeQUserState::retrieve_session(std::string room_name){
-  SessionID sid;
-  mpSeQSession cur_session;
 
-  if(sessions_in_a_room.find(room_name)){
-    sid = sessions_in_a_room[room_name];
-  }
-  if(sid != NULL or mpseq_sessions.find(sid)){
-   cur_session = mpseq_sessions[sid];
+  if(sessions_in_a_room.find(room_name) != sessions_in_a_room.end() and 
+          mpseq_sessions.find( sessions_in_a_room.find(room_name)->second ) != mpseq_sessions.end() 
+          ){
+
+    return mpseq_sessions[ sessions_in_a_room.find(room_name)->second];
+
+  }else{  
+
     if(join_room(room_name, name)){
-      cur_session = retrieve_session(room_name);
+
+      return retrieve_session(room_name);
+
     }
   }
 
-  return cur_session;
+}
