@@ -39,8 +39,7 @@ mpSeQSession::mpSeQSession(std::string new_room_name, std::string user_id,
   return;
 }
 
-bool mpSeQSession::join(std::string new_room_name, std::string user_id,
-                        std::string new_participant_id) {
+bool mpSeQSession::join(std::string new_room_name, std::string user_id) {
   return true;
 }
 

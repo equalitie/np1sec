@@ -96,8 +96,7 @@ class mpSeQSession {
                bool emptyroom = false);
 
   // Is called by the constructor if the room is already inhibited.
-  bool join(std::string new_room_name, std::string user_id,
-            std::string new_participant_id);
+  bool join(std::string new_room_name, std::string user_id);
 
   // Should be called when someone new join the chatroom. This will modify the
   // session id.
