@@ -45,8 +45,8 @@ bool mpSeQUserState::join_room(std::string room_name, std::string new_user_id){
 
   mpSeQSession new_session(room_name, new_user_id, true);
   
-  mpseq_sessions.emplace( new_session.session_id, new_session );
-  sessions_in_a_room.emplace(room_name, new_session.session_id);
+  mpseq_sessions.insert( new_session.session_id, new_session );
+  sessions_in_a_room.insert(room_name, new_session.session_id);
 
   if(!new_session.join(room_name, new_user_id)){
     return false;
