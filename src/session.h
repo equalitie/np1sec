@@ -55,7 +55,9 @@ struct mpSeQMessage {
 };
 
 // Defining essential types
-typedef HashBlock SessionID;
+struct SessionID {
+  uint8_t id[c_hash_length];
+};
 typedef uint8_t  mpSeQBareMessage[];
 
 
