@@ -60,7 +60,7 @@ VERSION HISTORY:
 #include <string.h>
 
 /* libotr headers */
-#include "b64.h"
+#include "base64.h"
 
 /*
 ** Translation Table as described in RFC1113
@@ -200,7 +200,7 @@ char *otrl_base64_otr_encode(const unsigned char *buf, size_t buflen)
 
     /* Make the base64-encoding. */
     base64len = ((buflen + 2) / 3) * 4;
-    base64buf = malloc(5 + base64len + 1 + 1);
+    base64buf = (char*)malloc(5 + base64len + 1 + 1);
     if (base64buf == NULL) {
 	return NULL;
     }
@@ -225,7 +225,7 @@ int otrl_base64_otr_decode(const char *msg, unsigned char **bufp,
     size_t msglen, rawlen;
     unsigned char *rawmsg;
 
-    otrtag = strstr(msg, "?OTR:");
+    otrtag = (char *)strstr(msg, "?np1sec:");
     if (!otrtag) {
 	return -2;
     }
@@ -243,7 +243,7 @@ int otrl_base64_otr_decode(const char *msg, unsigned char **bufp,
 
     /* Base64-decode the message */
     rawlen = OTRL_B64_MAX_DECODED_SIZE(msglen);   /* maximum possible */
-    rawmsg = malloc(rawlen);
+    rawmsg = (unsigned char*)malloc(rawlen);
     if (!rawmsg && rawlen > 0) {
 	return -1;
     }

@@ -13,6 +13,7 @@ lib_LTLIBRARIES = libmpseq.la
 
 libmpseq_la_SOURCES = src/crypt.cc \
 	src/session.cc \
+	src/base64.cc \
 	src/userstate.cc
 
 libmpseq_la_LIBADD = \
@@ -35,6 +36,8 @@ libmpseq_test_SOURCES = \
 	test/session_test.cc \
 	test/crypt_test.cc \
 	test/main.cc \
+	src/session.cc \
+	src/base64.cc \
 	src/crypt.cc
 
 libmpseq_test_CPPFLAGS = \
