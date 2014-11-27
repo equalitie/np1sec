@@ -30,14 +30,19 @@ extern "C" {
  * Encryption primitives and related definitions.
  */
 class Ed25519Key {
- public:
+  public:
+    Ed25519Key();
+};
+
+class Cryptic{
+public:
   gcry_sexp_t ed25519_keypair, pub_key, prv_key;
   // static const uint32_t ED25519_KEY_SIZE = 255;
 
   /**
     Constructor setup the key
   */
-  Ed25519Key();
+  Cryptic();
 
   bool init();
 
@@ -110,8 +115,8 @@ class Ed25519Key {
    *
    */
   gcry_cipher_hd_t OpenCipher();
-};
 
+};
 typedef Ed25519Key LongTermIDKey;
 
 const unsigned char SESSION_KEY[] = {0x60,0x3d,0xeb,0x10,0x15,0xca,0x71,0xbe,0x2b,0x73,0xae,0xf0,0x85,0x7d,0x77,0x81,0x1f,0x35,0x2c,0x07,0x3b,0x61,0x08,0xd7,0x2d,0x98,0x10,0xa3,0x09,0x14,0xdf,0xf4};

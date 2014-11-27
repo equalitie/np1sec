@@ -37,7 +37,7 @@ mpSeQSession::mpSeQSession(){
 }
 
 mpSeQSession::mpSeQSession(std::string new_room_name, std::string user_id) :
-  _room_name(new_room_name), _my_id(user_id), ed25519Key() {}
+  _room_name(new_room_name), _my_id(user_id), cryptic() {}
 
 bool mpSeQSession::join(std::vector<std::string> room_members) {
   for (std::vector<std::string>::iterator it = room_members.begin();
@@ -69,8 +69,8 @@ std::string mpSeQSession::send(mpSeQMessage message) {
   message.user_message.append(reinterpret_cast<const char*>(buffer));
   gcry_free(buffer);
   
-  signature = ed25519Key.Sign( message.user_message );
-  encrypted_content = ed25519Key.Encrypt( message.user_message );
+  signature = cryptic.Sign( message.user_message );
+  encrypted_content = cryptic.Encrypt( message.user_message );
 
   combined_content = encrypted_content;
   combined_content.append(" ");
@@ -102,8 +102,8 @@ mpSeQMessage mpSeQSession::receive(std::string raw_message) {
   message_content = std::string(vstrings[0]);
   signature = std::string(vstrings[1]); 
 
-  if( ed25519Key.Verify(message_content, signature) ){
-    decrypted_message = ed25519Key.Decrypt(message_content);
+  if( cryptic.Verify(message_content, signature) ){
+    decrypted_message = cryptic.Decrypt(message_content);
   }
 
   received_message = {USER_MESSAGE, decrypted_message};

@@ -48,11 +48,15 @@ done:
   return err;
 }
 
-Ed25519Key::Ed25519Key() {}
+Ed25519Key::Ed25519Key(){
+  return;
+}
 
-/* Generate a new Ed25519 key pair. */
-bool Ed25519Key::init() {
-  gcry_error_t err;
+Cryptic::Cryptic() {}
+
+bool Cryptic::init() {
+  /* Generate a new Ed25519 key pair. */
+  gcry_error_t err = 0;
   gcry_sexp_t ed25519_parms;
 
   err = gcry_sexp_build(&ed25519_parms, NULL,
@@ -71,7 +75,7 @@ err:
   return false;
 }
 
-std::string Ed25519Key::retrieveResult( gcry_sexp_t text_sexp ){
+std::string Cryptic::retrieveResult( gcry_sexp_t text_sexp ){
   size_t buffer_size = gcry_sexp_sprint (text_sexp, GCRYSEXP_FMT_ADVANCED,
                                             NULL, 0);
   if(!buffer_size){
@@ -85,7 +89,7 @@ std::string Ed25519Key::retrieveResult( gcry_sexp_t text_sexp ){
   return result;
 }
 
-gcry_sexp_t Ed25519Key::ConvertToSexp(std::string text){
+gcry_sexp_t Cryptic::ConvertToSexp(std::string text){
   gcry_error_t err = 0;
   gcry_sexp_t new_sexp;
 
@@ -97,7 +101,7 @@ gcry_sexp_t Ed25519Key::ConvertToSexp(std::string text){
   return new_sexp;
 }
 
-std::string Ed25519Key::Sign( std::string plain_text ){
+std::string Cryptic::Sign( std::string plain_text ){
   gcry_error_t err = 0;
   gcry_sexp_t plain_sexp, r_sig;
 
@@ -112,7 +116,7 @@ std::string Ed25519Key::Sign( std::string plain_text ){
   return retrieveResult( r_sig );
 }
 
-bool Ed25519Key::Verify( std::string signed_text, std::string sig ){
+bool Cryptic::Verify( std::string signed_text, std::string sig ){
   gcry_error_t err = 0;
   gcry_sexp_t signed_sexp, sig_sexp;
 
@@ -129,10 +133,10 @@ bool Ed25519Key::Verify( std::string signed_text, std::string sig ){
   return true;
 }
 
-gcry_cipher_hd_t Ed25519Key::OpenCipher(){
+gcry_cipher_hd_t Cryptic::OpenCipher(){
   gcry_error_t err = 0;
   gcry_cipher_hd_t hd;
-  int algo = GCRY_CIPHER_AES256, mode = GCRY_CIPHER_MODE_CTR;
+  int algo = GCRY_CIPHER_AES256, mode = GCRY_CIPHER_MODE_GCM;
   
   err = gcry_cipher_open( &hd, algo, mode, 0 );
   if( err ){
@@ -144,7 +148,7 @@ gcry_cipher_hd_t Ed25519Key::OpenCipher(){
   return hd;
 }
 
-std::string Ed25519Key::Encrypt(std::string plain_text){
+std::string Cryptic::Encrypt(std::string plain_text){
   std::string crypt_text = plain_text;
   gcry_error_t err = 0;
   gcry_cipher_hd_t hd = OpenCipher();
@@ -159,7 +163,7 @@ std::string Ed25519Key::Encrypt(std::string plain_text){
   return crypt_text;
 }
 
-std::string Ed25519Key::Decrypt(std::string encrypted_text){
+std::string Cryptic::Decrypt(std::string encrypted_text){
   std::string decrypted_text = encrypted_text;
   gcry_error_t err = 0;
   gcry_cipher_hd_t hd = OpenCipher();

@@ -69,7 +69,7 @@ class mpSeQSession {
   std::string _room_name;
   std::string _my_id;
 
-  Ed25519Key ed25519Key;
+  Cryptic cryptic;
   // Keeps the list of the live participants in the room and their current/new
   // keys/shares, last heartbeat, etc.
   std::vector<Participant> peers;
