@@ -43,17 +43,18 @@ class MessageDigest {
   uint32_t compute_message_id(std::string cur_message);
 };
 
+enum mpSeQMessageType {
+  USER_MESSAGE,
+  PURE_META_MESSAG
+};
+
 struct mpSeQMessage {
-  enum mpSeQMessageType {
-    USER_MESSAGE,
-    PURE_META_MESSAG
-  };
   mpSeQMessageType metamessage;
   std::string user_message;
 };
 
 // Defining essential types
-typedef HashBlock SessionID;
+typedef std::vector<uint8_t> SessionID;
 typedef uint8_t  mpSeQBareMessage[];
 
 
@@ -70,6 +71,7 @@ class mpSeQSession {
   std::string _my_id;
   std::string _room_name;
 
+  Ed25519Key ed25519Key;
   // Keeps the list of the live participants in the room and their current/new
   // keys/shares, last heartbeat, etc.
   std::vector<Participant> peers;
@@ -87,12 +89,15 @@ class mpSeQSession {
  public:
   // Constructor, initiate by joining. Equivalent to join or initiate in the
   // spec.
+  SessionID session_id;
+
+  mpSeQSession();
+
   mpSeQSession(std::string new_room_name, std::string user_id,
                bool emptyroom = false);
 
   // Is called by the constructor if the room is already inhibited.
-  bool join(std::string new_room_name, std::string user_id,
-            std::string new_participant_id);
+  bool join(std::string new_room_name, std::string user_id);
 
   // Should be called when someone new join the chatroom. This will modify the
   // session id.
@@ -103,7 +108,7 @@ class mpSeQSession {
 
   // When a user wants to send a message to a session it needs to call its send
   // function.
-  bool send(mpSeQMessage message);
+  std::string send(mpSeQMessage message);
 
   // When a message is received from a session the receive function needs to be
   // called to decrypt. It updates the session status and returns the decrypted
