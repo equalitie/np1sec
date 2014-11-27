@@ -74,7 +74,7 @@ std::string mpSeQSession::send(mpSeQMessage message) {
 
   //Hash(message.user_message, sizeof(message.user_message), hb, true);
 
-  return Base64::Encode(combined_content.c_str());
+  return otrl_base64_otr_encode((unsigned char*)combined_content.c_str(), combined_content.size());
 }
 
 mpSeQMessage mpSeQSession::receive(std::string raw_message) {
@@ -82,7 +82,7 @@ mpSeQMessage mpSeQSession::receive(std::string raw_message) {
   std::string signature, message_content, decrypted_message;
   mpSeQMessage received_message;
 
-  decoded_content = Base64::Decode(raw_message.c_str(), raw_message.c_str()+raw_message.size());
+  otrl_base64_otr_decode(raw_message.c_str(), (unsigned char**)decoded_content.c_str(), (size_t*)raw_message.size());
 
 
   //split decoded content into encrypted message and signature

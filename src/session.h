@@ -22,7 +22,6 @@
 #include "src/common.h"
 #include "src/participant.h"
 #include "src/crypt.h"
-#include "src/base64.h"
 
 
 #ifndef SRC_SESSION_H_
@@ -55,9 +54,7 @@ struct mpSeQMessage {
 };
 
 // Defining essential types
-struct SessionID {
-  uint8_t id[c_hash_length];
-};
+typedef std::vector<uint8_t> SessionID;
 typedef uint8_t  mpSeQBareMessage[];
 
 
