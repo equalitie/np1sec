@@ -28,28 +28,6 @@ contrib_gtest_lib_libgtest_la_CPPFLAGS = \
 	-I$(top_srcdir)/${GTEST_BASE} \
 	-I$(top_srcdir)/${GTEST_INCLUDE}
 
-noinst_PROGRAMS += libmpseq_test
-
-TESTS += libmpseq_test
-
-libmpseq_test_SOURCES = \
-	test/session_test.cc \
-	test/crypt_test.cc \
-	test/main.cc \
-	src/session.cc \
-	src/base64.cc \
-	src/crypt.cc
-
-libmpseq_test_CPPFLAGS = \
-	-I$(top_srcdir)/${GTEST_BASE} \
-	-I$(top_srcdir)/${GTEST_INCLUDE} \
-	$(LIBGCRYPT_CFLAGS)
-
-libmpseq_test_LDADD = \
-	$(LIBGCRYPT_LIBS)
-
-libmpseq_test_LDFLAGS = \
-	$(top_srcdir)/${GTEST_BASE}/lib/libgtest.la -lpthread
 
 include test/Makefile.inc
 include Makefile.am.lint

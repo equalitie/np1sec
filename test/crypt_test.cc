@@ -18,7 +18,6 @@
 
 #include <gtest/gtest.h>
 #include "src/crypt.h"
-#include "src/session.h"
 
 class CryptTest : public ::testing::Test { };
 
@@ -42,19 +41,34 @@ TEST_F(CryptTest, test_hash) {
   delete[] res;
 }
 
-TEST(CryptTest, test_encrypt){
-  
+TEST_F(CryptTest, test_encrypt){
+  Cryptic cryptic;
   std::string test_text = "This is a string to be encrypted";
-  //std::string encrypted_text = Encrypt(test_text);
-  //std::printf(encrypted_text);
+  std::string result_text = cryptic.Encrypt(test_text.c_str());
+  std::printf(result_text.c_str());
 }
 
-TEST(CryptTest, test_decrypt){
+TEST_F(CryptTest, test_decrypt){
+  Cryptic cryptic;
+  std::string test_text = "This is a string to be encrypted";
+  std::string result_text = cryptic.Decrypt(test_text);
+  std::printf(result_text.c_str());
+
 }
 
-TEST(CryptTest, test_sign){
+TEST_F(CryptTest, test_sign){
+  Cryptic cryptic;
+  std::string test_text = "This is a string to be encrypted";
+  std::string result_text = cryptic.Sign(test_text);
+  std::printf(result_text.c_str());
 
 }
 
-TEST(CryptTest, test_verify){
+TEST_F(CryptTest, test_verify){
+  Cryptic cryptic;
+  std::string test_sig = "This is a string to be encrypted";
+  std::string result_text = cryptic.Encrypt(test_sig);
+  std::printf(result_text.c_str());
+
 }
+
