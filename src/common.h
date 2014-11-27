@@ -25,6 +25,7 @@ extern "C" {
 #include <sstream>
 #include<iterator>
 #include<iostream>
+#include "src/base64.h"
 
 #ifndef SRC_COMMON_H_
 #define SRC_COMMON_H_

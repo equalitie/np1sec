@@ -108,7 +108,7 @@ mpSeQSession mpSeQUserState::retrieve_session(std::string room_name){
           mpseq_sessions.find( sessions_in_a_room.find(room_name)->second ) != mpseq_sessions.end() 
           ){
 
-    cur_session = mpseq_sessions[ sessions_in_a_room.find(room_name)->second];
+    cur_session = mpseq_sessions[sessions_in_a_room.find(room_name)->second];
 
   }else{  
 
