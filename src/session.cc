@@ -34,6 +34,10 @@ bool mpSeQSession::send_bare(mpSeQBareMessage message) {
   return true;
 }
 
+mpSeQSession::mpSeQSession(){
+  throw std::invalid_argument( "Default constructor should not be used." );
+}
+
 mpSeQSession::mpSeQSession(std::string new_room_name, std::string user_id,
                            bool emptyroom) : ed25519Key() {
   return;
