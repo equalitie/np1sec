@@ -55,7 +55,7 @@ Ed25519Key::Ed25519Key() {
   gcry_sexp_t ed25519_parms;
 
   err = gcry_sexp_build(&ed25519_parms, NULL,
-                        "(genkey (ecc (curve ed25519) (flag eddsa)))");
+                        "(genkey (ecc (curve Ed25519) (flag eddsa)))");
   if (err)
     std::printf("gcrypt: failed to create ed25519 params\n");
 
