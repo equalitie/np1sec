@@ -23,13 +23,15 @@
       
     @param username: the user name which is going to be used as default nickname for
     the rooms
-
-    @param key_pair the binary blob which contains the long term identiy key pair
-                         for ED25519, defult null trigger new pair generation.
-                         TODO: ignored for now
 */
-mpSeQUserState::mpSeQUserState(std::string username, uint8_t* key_pair)
-  : name(username), long_term_private_key() {
+mpSeQUserState::mpSeQUserState(std::string username) :
+  name(username), long_term_private_key() {}
+
+// @param key_pair the binary blob which contains the long term identity key
+//                 pair for ED25519, default null trigger new pair generation.
+bool mpSeQUserState::init(uint8_t* key_pair) {
+  // FIXME: key_pair !== nullptr
+  return long_term_private_key.init();
 }
 
 RoomAction mpSeQUserState::receive_handler(std::string room_name,

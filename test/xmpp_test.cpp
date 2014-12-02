@@ -316,6 +316,10 @@ int main(void) {
   // here is the place to construct the user state
   // all we need is username and the private key
   mpSeQUserState* user_state = new mpSeQUserState(name);
+  if (!user_state->init()) {
+    fprintf(stderr, "Failed to initiate the userstate.\n");
+    abort();
+  }
 
   PurpleAccount *account = purple_account_new(name, prpl);
   char *password = getpass("Password: ");

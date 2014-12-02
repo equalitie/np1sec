@@ -38,6 +38,8 @@ class Ed25519Key {
     Constructor setup the key
   */
   Ed25519Key();
+
+  bool init();
 };
 
 typedef Ed25519Key LongTermIDKey;

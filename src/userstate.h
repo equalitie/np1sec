@@ -55,11 +55,12 @@ class mpSeQUserState {
       
       @param name: the user name which is going to be used as default nickname for
              the rooms
-
-      @param key_pair the binary blob which contains the long term identiy key pair
-                         for ED25519, defult null trigger new pair generation.
    */
-  explicit mpSeQUserState(std::string username, uint8_t* key_pair = NULL);
+  explicit mpSeQUserState(std::string username);
+
+  // @param key_pair the binary blob which contains the long term identity key
+  //                 pair for ED25519, default null trigger new pair generation.
+  bool init(uint8_t* key_pair = nullptr);
 
   /**
      The client need to call this function when the user is joining a room.

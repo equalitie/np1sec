@@ -6,6 +6,7 @@ TESTS += libmpseq_test
 
 libmpseq_test_SOURCES = \
 	test/session_test.cc \
+	test/userstate_test.cc \
 	test/crypt_test.cc \
 	test/main.cc
 

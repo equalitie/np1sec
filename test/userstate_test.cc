@@ -17,8 +17,20 @@
  */
 
 #include <gtest/gtest.h>
-#include "src/session.h"
+#include "src/userstate.h"
 
-class SessionTest : public ::testing::Test { };
+class UserStateTest : public ::testing::Test { };
 
-TEST_F(SessionTest, test_init) {}
+TEST_F(UserStateTest, test_init) {
+  std::string name = "tester";
+  mpSeQUserState* user_state = new mpSeQUserState(name);
+  EXPECT_TRUE(user_state->init());
+}
+
+TEST_F(UserStateTest, test_join) {
+  std::string name = "tester";
+  mpSeQUserState* user_state = new mpSeQUserState(name);
+  ASSERT_TRUE(user_state->init());
+  
+}
+
