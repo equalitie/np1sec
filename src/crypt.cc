@@ -57,7 +57,7 @@ Cryptic::Cryptic() {}
 bool Cryptic::init() {
   /* Generate a new Ed25519 key pair. */
   gcry_error_t err = 0;
-  gcry_sexp_t ed25519_parms;
+  gcry_sexp_t ed25519_parms, ed25519_keypair;
 
   err = gcry_sexp_build(&ed25519_parms, NULL,
                         "(genkey (ecc (curve Ed25519) (flag eddsa)))");
@@ -67,6 +67,18 @@ bool Cryptic::init() {
   err = gcry_pk_genkey(&ed25519_keypair, ed25519_parms);
   if (err)
     goto err;
+
+  pub_key = gcry_sexp_find_token( ed25519_keypair, "public-key", 0 );
+  if ( !pub_key ) {
+    std::printf("ed25519Key: failed to retrieve public key");
+    return false;
+  }
+  
+  prv_key = gcry_sexp_find_token( ed25519_keypair, "private-key", 0 );
+  if ( !pub_key ) {
+    std::printf("ed25519Key: failed to retrieve private key");
+    return false;
+  }
 
   return true;
 
