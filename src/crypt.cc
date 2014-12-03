@@ -55,10 +55,10 @@ Ed25519Key::Ed25519Key(){
 Cryptic::Cryptic() {
   /* Generate a new Ed25519 key pair. */
   gcry_error_t err = 0;
-  gcry_sexp_t ed25519_parms;
+  gcry_sexp_t ed25519_parms, ed25519_keypair;
 
   err = gcry_sexp_build(&ed25519_parms, NULL,
-                        "(genkey (ecc (curve ed25519) (flag eddsa)))");
+                        "(genkey (ecc (curve Ed25519) (flag eddsa)))");
   if (err)
     std::printf ("Failure: %s/%s\n",
                         gcry_strsource (err),
@@ -66,7 +66,9 @@ Cryptic::Cryptic() {
 
   err = gcry_pk_genkey(&ed25519_keypair, ed25519_parms);
   if (err)
-    std::printf("gcrypt: failed to create ed25519 key pair\n");
+    std::printf ("Failure to create ed25519 key pair: %s/%s\n",
+                        gcry_strsource (err),
+                        gcry_strerror (err));
 
   pub_key = gcry_sexp_find_token( ed25519_keypair, "public-key", 0 );
   if ( !pub_key ) {
