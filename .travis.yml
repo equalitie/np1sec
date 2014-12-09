@@ -5,7 +5,10 @@ compiler:
 
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install libglib2.0-dev libpurple-dev libgcrypt20-dev
+  - sudo apt-get -y install libglib2.0-dev libpurple-dev
+  - sudo add-apt-repository ppa:mati75/mint-lxde -y
+  - sudo apt-get update -q
+  - sudo apt-get -y install libgcrypt20-dev
 
 script:
   - ./autogen.sh
