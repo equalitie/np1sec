@@ -172,7 +172,7 @@ static void process_chat_buddy_left(PurpleConversation *conv, const char *name,
   UNUSED(reason);
   UNUSED(m);
   printf("%s left the chat\n", name);
-};
+}
 
 static void connect_to_signals(mpSeQUserState* user_state) {
   static int handle;
