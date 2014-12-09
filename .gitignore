@@ -60,7 +60,7 @@ Makefile.in
 
 # Other
 .DS_Store
-/libmpseq_test*
+/libnp1sec_test*
 /xmpp_test*
 .libs/*
 

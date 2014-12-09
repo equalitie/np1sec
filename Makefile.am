@@ -8,14 +8,14 @@ noinst_PROGRAMS =
 
 TESTS =
 
-lib_LTLIBRARIES = libmpseq.la
+lib_LTLIBRARIES = libnp1sec.la
 
-libmpseq_la_SOURCES = \
+libnp1sec_la_SOURCES = \
 	src/crypt.cc \
 	src/session.cc \
 	src/userstate.cc
 
-libmpseq_la_LIBADD = \
+libnp1sec_la_LIBADD = \
 	$(LIBGCRYPT_LIBS)
 
 include test/Makefile.inc
