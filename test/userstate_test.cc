@@ -31,6 +31,5 @@ TEST_F(UserStateTest, test_join) {
   std::string name = "tester";
   mpSeQUserState* user_state = new mpSeQUserState(name);
   ASSERT_TRUE(user_state->init());
-  
 }
 

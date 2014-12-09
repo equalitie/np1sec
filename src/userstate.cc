@@ -34,6 +34,12 @@ bool mpSeQUserState::init(uint8_t* key_pair) {
   return long_term_private_key.init();
 }
 
+bool mpSeQUserState::join_room(std::string room_name,
+                               std::vector<std::string> room_members) {
+  mpSeQSession new_session(room_name, this->name);
+  return new_session.join(room_members);
+}
+
 RoomAction mpSeQUserState::receive_handler(std::string room_name,
                                            std::string mpseq_message) {
 }

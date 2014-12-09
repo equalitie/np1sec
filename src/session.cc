@@ -1,5 +1,3 @@
-// session.cc
-//
 /**
  * Multiparty Off-the-Record Messaging library
  * Copyright (C) 2014, eQualit.ie
@@ -32,13 +30,14 @@ bool mpSeQSession::send_bare(mpSeQBareMessage message) {
   return true;
 }
 
-mpSeQSession::mpSeQSession(std::string new_room_name, std::string user_id,
-                           bool emptyroom) {
-  return;
-}
+mpSeQSession::mpSeQSession(std::string new_room_name, std::string user_id) :
+  _room_name(new_room_name), _my_id(user_id) {}
 
-bool mpSeQSession::join(std::string new_room_name, std::string user_id,
-                        std::string new_participant_id) {
+bool mpSeQSession::join(std::vector<std::string> room_members) {
+  for (std::vector<std::string>::iterator it = room_members.begin();
+       it != room_members.end(); ++it) {
+    printf("member: %s\n", it->c_str());
+  }
   return true;
 }
 

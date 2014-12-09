@@ -17,6 +17,7 @@
  */
 
 #include <string>
+#include <vector>
 #include <map>
 
 #include "src/crypt.h"
@@ -45,7 +46,7 @@ class RoomAction {
 class mpSeQUserState {
  protected:
   LongTermIDKey long_term_private_key;
-  std::map<SessionID, mpSeQSession>  mpseq_sessions;
+  std::map<SessionID, mpSeQSession> mpseq_sessions;
   std::map<std::string, SessionID> sessions_in_a_room;
   std::string name;
 
@@ -72,7 +73,7 @@ class mpSeQUserState {
      client need to inform server of leaving the room in case of
      failure 
    */
-  bool join_room(std::string room_name, std::string new_user_id);
+  bool join_room(std::string room_name, std::vector<std::string> room_members);
 
   /**
      the client need to call this function when a user join the

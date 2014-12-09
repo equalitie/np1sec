@@ -1,4 +1,3 @@
-
 /**
  * Multiparty Off-the-Record Messaging library
  * Copyright (C) 2014, eQualit.ie
@@ -24,6 +23,7 @@ extern "C" {
 }
 
 #include <string>
+#include <vector>
 
 extern "C" {
   #include "purple.h"
@@ -130,15 +130,49 @@ static gboolean process_receiving_chat(PurpleAccount *account, char **sender,
 }
 
 static void process_chat_join_failed(PurpleConnection *gc,
-                                     GHashTable *components) {
+                                     GHashTable *components, void *m) {
   UNUSED(gc);
   UNUSED(components);
+  UNUSED(m);
   printf("Join failed :(\n");
 }
 
-static void process_chat_joined(PurpleConversation *conv) {
-  printf("Joined %s\n", conv->name);
+static void process_chat_joined(PurpleConversation *conv, void *m) {
+  mpSeQUserState* user_state = reinterpret_cast<mpSeQUserState*>(m);
+  std::vector<std::string> room_members;
+
+  GList *l = purple_conv_chat_get_users(PURPLE_CONV_CHAT(conv));
+  // g_list_length(l) is zero ... thanks libpurple
+  char *str;
+  for (; l != nullptr; l = l->next) {
+    str = const_cast<char *>(purple_conv_chat_cb_get_name(
+      reinterpret_cast<PurpleConvChatBuddy *>(l->data)));
+    room_members.push_back(std::string(str));
+  }
+
+  bool joined = user_state->join_room(conv->name, room_members);
+  printf("Joining %s: %s\n", conv->name, joined ? "succeeded" : "failed");
 }
+
+
+static void process_buddy_chat_joined(PurpleConversation *conv,
+                                      const char *name,
+                                      PurpleConvChatBuddyFlags flags,
+                                      gboolean new_arrival, void *m) {
+  UNUSED(conv);
+  UNUSED(flags);
+  UNUSED(new_arrival);
+  UNUSED(m);
+  printf("%s joined the chat\n", name);
+}
+
+static void process_chat_buddy_left(PurpleConversation *conv, const char *name,
+                                    const char *reason, void *m) {
+  UNUSED(conv);
+  UNUSED(reason);
+  UNUSED(m);
+  printf("%s left the chat\n", name);
+};
 
 static void connect_to_signals(mpSeQUserState* user_state) {
   static int handle;
@@ -155,6 +189,10 @@ static void connect_to_signals(mpSeQUserState* user_state) {
                         PURPLE_CALLBACK(process_chat_join_failed), user_state);
   purple_signal_connect(conv_handle, "chat-joined", &handle,
                         PURPLE_CALLBACK(process_chat_joined), user_state);
+  purple_signal_connect(conv_handle, "chat-buddy-joined", &handle,
+                        PURPLE_CALLBACK(process_buddy_chat_joined), user_state);
+  purple_signal_connect(conv_handle, "chat-buddy-left", &handle,
+                        PURPLE_CALLBACK(process_chat_buddy_left), user_state);
 }
 
 #define PURPLE_GLIB_READ_COND  (G_IO_IN | G_IO_HUP | G_IO_ERR)

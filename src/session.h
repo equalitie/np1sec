@@ -57,8 +57,6 @@ typedef HashBlock SessionID;
 typedef uint8_t  mpSeQBareMessage[];
 
 
-class SessionParticipant {};
-
 /**
  * This class is encapsulating all information and action, a user needs and
  * performs in a session.
@@ -67,8 +65,8 @@ class mpSeQSession {
  protected:
   HashBlock hashed_id;
 
-  std::string _my_id;
   std::string _room_name;
+  std::string _my_id;
 
   // Keeps the list of the live participants in the room and their current/new
   // keys/shares, last heartbeat, etc.
@@ -85,14 +83,11 @@ class mpSeQSession {
   bool send_bare(mpSeQBareMessage message);
 
  public:
-  // Constructor, initiate by joining. Equivalent to join or initiate in the
-  // spec.
-  mpSeQSession(std::string new_room_name, std::string user_id,
-               bool emptyroom = false);
+  // Constructor, initiate by joining.
+  mpSeQSession(std::string new_room_name, std::string user_id);
 
-  // Is called by the constructor if the room is already inhibited.
-  bool join(std::string new_room_name, std::string user_id,
-            std::string new_participant_id);
+  // Initiate with room members.
+  bool join(std::vector<std::string> room_members);
 
   // Should be called when someone new join the chatroom. This will modify the
   // session id.
