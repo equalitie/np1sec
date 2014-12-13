@@ -23,15 +23,15 @@ extern "C" {
 }
 
 #include <string>
-#include <vector>
 
 extern "C" {
   #include "purple.h"
 }
 
 #include "src/userstate.h"
+#include "src/common.h"
 
-#define UNUSED(expr) (void)(expr)
+
 #define CUSTOM_USER_DIRECTORY "/tmp/test_user"
 #define CUSTOM_PLUGIN_PATH ""
 #define PLUGIN_SAVE_PREF "/tmp/test_client/plugins/saved"
@@ -109,9 +109,9 @@ static void process_sending_chat(PurpleAccount *account, char **message, int id,
   prefix.append(*message);
   free(*message);
   *message = strdup(prefix.c_str());
-  PurpleConnection *gc = purple_account_get_connection(account);
-  PurpleConversation *conv = purple_find_chat(gc, id);
-  user_state->send_handler(conv->name, *message);
+  // PurpleConnection *gc = purple_account_get_connection(account);
+  // PurpleConversation *conv = purple_find_chat(gc, id);
+  // user_state->send_handler(conv->name, *message);
 }
 
 static gboolean process_receiving_chat(PurpleAccount *account, char **sender,
@@ -125,7 +125,7 @@ static gboolean process_receiving_chat(PurpleAccount *account, char **sender,
   prefix.append(*message);
   free(*message);
   *message = strdup(prefix.c_str());
-  user_state->receive_handler(conv->name, prefix);
+  // user_state->receive_handler(conv->name, prefix);
   return FALSE;
 }
 
@@ -139,21 +139,9 @@ static void process_chat_join_failed(PurpleConnection *gc,
 
 static void process_chat_joined(PurpleConversation *conv, void *m) {
   np1secUserState* user_state = reinterpret_cast<np1secUserState*>(m);
-  std::vector<std::string> room_members;
-
-  GList *l = purple_conv_chat_get_users(PURPLE_CONV_CHAT(conv));
-  // g_list_length(l) is zero ... thanks libpurple
-  char *str;
-  for (; l != nullptr; l = l->next) {
-    str = const_cast<char *>(purple_conv_chat_cb_get_name(
-      reinterpret_cast<PurpleConvChatBuddy *>(l->data)));
-    room_members.push_back(std::string(str));
-  }
-
-  bool joined = user_state->join_room(conv->name, room_members);
+  bool joined = user_state->join_room(conv->name);
   printf("Joining %s: %s\n", conv->name, joined ? "succeeded" : "failed");
 }
-
 
 static void process_buddy_chat_joined(PurpleConversation *conv,
                                       const char *name,
@@ -323,6 +311,11 @@ static gboolean io_callback(GIOChannel *io, GIOCondition condition,
   return FALSE;
 }
 
+void log(std::string room_name, std::string message) {
+  fprintf(stderr, "room: %s / message: %s\n", room_name.c_str(),
+          message.c_str());
+}
+
 int main(void) {
   GMainLoop *loop = g_main_loop_new(NULL, FALSE);
   purple_init();
@@ -352,8 +345,11 @@ int main(void) {
   name[strlen(name) - 1] = 0;  // strip the \n
 
   // here is the place to construct the user state
-  // all we need is username and the private key
-  np1secUserState* user_state = new np1secUserState(name);
+  static np1secAppOps ops = {
+    log
+  };
+
+  np1secUserState* user_state = new np1secUserState(name, &ops);
   if (!user_state->init()) {
     fprintf(stderr, "Failed to initiate the userstate.\n");
     abort();

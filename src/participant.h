@@ -16,16 +16,16 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <string>
-
-
 #ifndef SRC_PARTICIPANT_H_
 #define SRC_PARTICIPANT_H_
 
+#include <string>
+
+
 /** 
- * This class keeps the state of each participant in the  room, including the
+ * This class keeps the state of each participant in the room, including the
  * user themselves.
-*/
+ */
 class Participant {
  public:
   std::string id;

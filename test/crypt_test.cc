@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 #include "src/crypt.h"
 
+
 class CryptTest : public ::testing::Test { };
 
 TEST_F(CryptTest, test_hash) {
@@ -50,11 +51,11 @@ TEST_F(CryptTest, test_encrypt) {
   ASSERT_STREQ(test_text.c_str(), dec_text.c_str());
 }
 
-TEST_F(CryptTest, test_sign) {
-  Cryptic cryptic;
-  ASSERT_TRUE(cryptic.init());
-  std::string test_text = "This is a string to be encrypted";
-  std::string sig = cryptic.Sign(test_text);
-  bool verified = cryptic.Verify(test_text, sig);
-  EXPECT_TRUE(verified);
-}
+// TEST_F(CryptTest, test_sign) {
+//   Cryptic cryptic;
+//   ASSERT_TRUE(cryptic.init());
+//   std::string test_text = "This is a string to be encrypted";
+//   std::string sig = cryptic.Sign(test_text);
+//   bool verified = cryptic.Verify(test_text, sig);
+//   EXPECT_TRUE(verified);
+// }

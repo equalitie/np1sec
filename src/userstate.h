@@ -16,15 +16,19 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <string>
-#include <vector>
-#include <map>
-
-#include "src/crypt.h"
-#include "src/session.h"
-
 #ifndef SRC_USERSTATE_H_
 #define SRC_USERSTATE_H_
+
+#include <string>
+#include <map>
+
+#include "src/common.h"
+#include "src/crypt.h"
+
+class np1secUserState;
+
+#include "src/session.h"
+
 
 class RoomAction {
  public:
@@ -40,83 +44,96 @@ class RoomAction {
 };
 
 /**
+ * Calls from np1sec to the application.
+ */
+struct np1secAppOps {
+  /**
+   * It is called by np1sec whenever the protocol needs to send meta data
+   * messages (key exchange, etc) which are not initiated by a message from
+   * the user.
+   */
+  void (*send_bare)(std::string room_name, std::string message);
+};
+
+/**
  * Manages a user with long term identity for participating in a multiparty
  * chat sessions. It keeps track of sessions that user is participating in.
  */
 class np1secUserState {
  protected:
-  LongTermIDKey long_term_private_key;
+  std::string name;
+  LongTermIDKey *long_term_private_key;
   std::map<SessionID, np1secSession> np1sec_sessions;
   std::map<std::string, SessionID> sessions_in_a_room;
-  std::string name;
 
  public:
-  /** 
-      Constructor
-      
-      @param name: the user name which is going to be used as default nickname for
-             the rooms
-   */
-  explicit np1secUserState(std::string username);
-
-  // @param key_pair the binary blob which contains the long term identity key
-  //                 pair for ED25519, default null trigger new pair generation.
-  bool init(uint8_t* key_pair = nullptr);
+  np1secAppOps *ops;
 
   /**
-     The client need to call this function when the user is joining a room.
-
-     @param room_name the chat room name
-     @param user_in_room_id the id that user is using to join this room, this is similar to alias. 
-
-     @return true in case of success (does not mean successful join) and false in case of failure. 
-     client need to inform server of leaving the room in case of
-     failure 
+   * Constructor
+   *
+   * @param name: the user name which is going to be used as default nickname
+   *              for the rooms
+   * @param key_pair the binary blob which contains the long term identity key
+   *                 pair for ED25519.
    */
-  bool join_room(std::string room_name, std::vector<std::string> room_members);
+  np1secUserState(std::string name, np1secAppOps *ops,
+                  uint8_t* key_pair = nullptr);
+
+  bool init();
 
   /**
-     the client need to call this function when a user join the
-     chatroom. 
+   * The client need to call this function when the user is joining a room.
+   *
+   * @param room_name the chat room name
+   * @param user_in_room_id the id that user is using to join this room, this
+   *                        is similar to alias.
+   *
+   * @return true in case of success (does not mean successful join) and false
+   *         in case of failure. client need to inform server of leaving the
+   *         room in case of failure
+   */
+  bool join_room(std::string room_name);
 
-     @param room_name the chat room name
-     @param new_user_id is the id that the new user is using
-            in the room.
-     
-     @return true in case initiating the join was successful
-             . This does not mean that the successful join
-             false if process fails
+  /**
+   * the client need to call this function when a user join the chatroom.
+   *
+   * @param room_name the chat room name
+   * @param new_user_id is the id that the new user is using in the room.
+   *
+   * @return true in case initiating the join was successful. This does not
+   *         mean that the successful join false if process fails
    */
   bool accept_new_user(std::string room_name, std::string new_user_id);
 
   /**
-     When the user uses the client interface to send a message
-     the client need to call this function to send the message
-
-     @param room_name the chat room name
-     @param plain_message unencrypted message needed to be send
-     securely
-
-     @return true in case of success, false in case of failure
-  */
+   * When the user uses the client interface to send a message the client need
+   * to call this function to send the message
+   *
+   * @param room_name the chat room name
+   * @param plain_message unencrypted message needed to be send securely
+   *
+   * @return true in case of success, false in case of failure
+   */
   std::string send_handler(std::string room_name, std::string plain_message);
 
   /**
-     The client need to call this function whenever a message
-     is received. This function uses the content of the message
-     and the status of the room to interpret the message
-     
-     @param room_name the chat room name
-     @param np1sec_message the message needed to be sent
-
-     @return a RoomAction object informing the client how
-     to update the interface (add, remove user or display a
-     message
+   * The client need to call this function whenever a message is received. This
+   * function uses the content of the message and the status of the room to
+   * interpret the message
+   *
+   * @param room_name the chat room name
+   * @param np1sec_message the message needed to be sent
+   *
+   * @return a RoomAction object informing the client how to update the
+   *         interface (add, remove user or display a message
    */
   RoomAction receive_handler(std::string room_name, std::string np1sec_message);
 
-  // The client informs the user state about leaving the room by calling this
-  // function.
+  /**
+   * The client informs the user state about leaving the room by calling this
+   * function.
+   */
   void leave_room();
 
   /**
@@ -126,11 +143,10 @@ class np1secUserState {
    * @param room_name the chat room_name
    *
    * @return the current session if it exists for the given room or create
-   * a new session and return that.
-   *
+   *         a new session and return that.
    */
   np1secSession retrieve_session(std::string room_name);
-  // Destructor
+
   ~np1secUserState();
 };
 

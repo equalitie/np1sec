@@ -16,6 +16,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#ifndef SRC_CRYPT_H_
+#define SRC_CRYPT_H_
+
 #include <string>
 
 #include "src/common.h"
@@ -24,9 +27,6 @@ extern "C" {
   #include "gcrypt.h"
 }
 
-
-#ifndef SRC_CRYPT_H_
-#define SRC_CRYPT_H_
 
 /**
  * Encryption primitives and related definitions.
@@ -37,13 +37,13 @@ class Cryptic {
   // static const uint32_t ED25519_KEY_SIZE = 255;
 
   /**
-    Constructor setup the key
-  */
+   * Constructor setup the key
+   */
   Cryptic();
 
   bool init();
 
-  /*
+  /**
    * Encrypt a give plain text using the previously created ed25519 keys
    *
    * @param plain_text a plain text message string to be encrypted
@@ -52,7 +52,7 @@ class Cryptic {
    */
   std::string Encrypt(std::string plain_text);
 
-  /*
+  /**
    * Decrypt a give encrypted text using the previously created ed25519 keys
    *
    * @param encrypted_text an encrypted text message string to be decrypted
@@ -61,38 +61,35 @@ class Cryptic {
    */
   std::string Decrypt(std::string encrypted_text);
 
-  /*
+  /**
    * Convert a given gcrypt s-expression into a std::string
    *
    * @param gcry_sexp_t gcrypt s-expression to be converted
    *
    * @return std::string representing the converted data.
-   *
    */
   std::string retrieveResult(gcry_sexp_t text_sexp);
 
-  /*
+  /**
    * Convert a given std:string to a valid gcrypt s-expression
    *
    * @param std::string valid string to be converted
    *
    * @return gcry_sexp_t gcrypt s-expression respresentation
-   *
    */
   gcry_sexp_t ConvertToSexp(std::string text);
 
-  /*
+  /**
    * Given a valid std:string sign the string using the sessions
    * private key and return the signature.
    *
    * @param std::string representing message data to be signed
    *
    * @return std::string valid signature of the give data
-   *
    */
   std::string Sign(std::string plain_text);
 
-  /*
+  /**
    * Given a signed piece of data and a valid signature verify if
    * the signature is correct using the sessions public key.
    *
@@ -100,16 +97,14 @@ class Cryptic {
    * @param std::string representing data signature
    *
    * @return bool value dependent on failure or verification of given signature
-   *
    */
   bool Verify(std::string signed_text, std::string sig);
 
-  /*
+  /**
    * Create instance of cipher session based on configured algorithm, mode,
    * key and iv.
    *
    * @return gcry_cipher_hd_t representing a cipher session handle
-   *
    */
   gcry_cipher_hd_t OpenCipher();
 };

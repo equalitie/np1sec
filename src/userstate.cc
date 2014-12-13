@@ -16,44 +16,40 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#ifndef SRC_USERSTATE_CC_
+#define SRC_USERSTATE_CC_
+
 #include "src/userstate.h"
 
-/** 
-    Constructor
-      
-    @param username: the user name which is going to be used as default nickname for
-    the rooms
-*/
-np1secUserState::np1secUserState(std::string username) :
-  name(username), long_term_private_key() {}
 
-// @param key_pair the binary blob which contains the long term identity key
-//                 pair for ED25519, default null trigger new pair generation.
-bool np1secUserState::init(uint8_t* key_pair) {
-  // FIXME: key_pair !== nullptr
-  return long_term_private_key.init();
+np1secUserState::np1secUserState(std::string name, np1secAppOps *ops,
+                                 uint8_t* key_pair) : name(name), ops(ops) {
+  if (key_pair) {
+    // FIXME: populate long_term_private_key from key_pair
+  }
 }
 
-/**
-     The client need to call this function when the user is joining a room.
+np1secUserState::~np1secUserState() {
+  delete long_term_private_key;
+}
 
-     @param room_name the chat room name
-     @param user_in_room_id the id that user is using to join this room, this is similar to alias. 
+bool np1secUserState::init() {
+  if (long_term_private_key) {
+    return true;
+  }
+  long_term_private_key = new LongTermIDKey();
+  return long_term_private_key->init();
+}
 
-     @return true in case of success (does not mean successful join) and false in case of failure. 
-     client need to inform server of leaving the room in case of
-     failure 
-*/
-bool np1secUserState::join_room(std::string room_name,
-                               std::vector<std::string> room_members) {
-  np1secSession new_session(room_name, this->name);
+bool np1secUserState::join_room(std::string room_name) {
+  np1secSession new_session(this, room_name, name);
 
-  if ( !new_session.join(room_members) ) {
+  if (!new_session.join()) {
     return false;
   }
 
-  np1sec_sessions.insert({ new_session.session_id, new_session });
-  sessions_in_a_room.insert({ room_name, new_session.session_id });
+  // np1sec_sessions.insert({ new_session.session_id, new_session });
+  // sessions_in_a_room.insert({ room_name, new_session.session_id });
   return true;
 }
 
@@ -65,18 +61,8 @@ RoomAction np1secUserState::receive_handler(std::string room_name,
   return room_action;
 }
 
-/**
-   When the user uses the client interface to send a message
-   the client need to call this function to send the message
-
-   @param room_name the chat room name
-   @param plain_message unencrypted message needed to be send
-          securely
-
-   @return message to send, null in case of failure
-*/
 std::string np1secUserState::send_handler(std::string room_name,
-                                   std::string plain_message) {
+                                          std::string plain_message) {
   np1secSession cur_session = retrieve_session(room_name);
   np1secMessage message = { USER_MESSAGE, plain_message };
   std::string b64_content = NULL;
@@ -84,30 +70,22 @@ std::string np1secUserState::send_handler(std::string room_name,
 
   return b64_content;
 }
-  /**
-   * Retrieve the session object associated with the given room name. To
-   * allow sending and receiving of messages relative to that session
-   *
-   * @param room_name the chat room_name
-   *
-   * @return the current session if it exists for the given room or create
-   * a new session and return that.
-   *
-   */
+
 np1secSession np1secUserState::retrieve_session(std::string room_name) {
   np1secSession cur_session;
 
-  if ( sessions_in_a_room.find(room_name) != sessions_in_a_room.end() &&
-       np1sec_sessions.find(sessions_in_a_room.find(room_name)->second)
-         != np1sec_sessions.end()
+  if (sessions_in_a_room.find(room_name) != sessions_in_a_room.end() &&
+      np1sec_sessions.find(sessions_in_a_room.find(room_name)->second)
+        != np1sec_sessions.end()
   ) {
     cur_session = np1sec_sessions[sessions_in_a_room.find(room_name)->second];
   } else {
-    // if(join_room(room_name, name)){
-    //
-    //   cur_session = retrieve_session(room_name);
-    //
-    // }
+    if (join_room(room_name)) {
+      cur_session = retrieve_session(room_name);
+    }
   }
+
   return cur_session;
 }
+
+#endif  // SRC_USERSTATE_CC_

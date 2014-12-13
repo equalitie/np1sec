@@ -16,42 +16,48 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#ifndef SRC_SESSION_CC_
+#define SRC_SESSION_CC_
+
 #include "src/session.h"
+
 #include <time.h>
 #include <stdlib.h>
 
+
 void MessageDigest::update(std::string new_message) {
+  UNUSED(new_message);
   return;
 }
 
 uint32_t MessageDigest::compute_message_id(std::string cur_message) {
+  UNUSED(cur_message);
   return 0;
-}
-
-bool np1secSession::send_bare(np1secBareMessage message) {
-  return true;
 }
 
 np1secSession::np1secSession() {
   throw std::invalid_argument("Default constructor should not be used.");
 }
 
-np1secSession::np1secSession(std::string new_room_name, std::string user_id) :
-  _room_name(new_room_name), _my_id(user_id) {}
+np1secSession::np1secSession(np1secUserState *us, std::string room_name,
+                             std::string name) : us(us), room_name(room_name),
+                                                 name(name) {}
 
-bool np1secSession::join(std::vector<std::string> room_members) {
-  for (std::vector<std::string>::iterator it = room_members.begin();
-       it != room_members.end(); ++it) {
-    printf("member: %s\n", it->c_str());
+bool np1secSession::join() {
+  if (!cryptic.init()) {
+    return false;
   }
+  us->ops->send_bare(room_name, "testing 123");
   return true;
 }
 
 bool np1secSession::accept(std::string new_participant_id) {
+  UNUSED(new_participant_id);
   return true;
 }
 
 bool np1secSession::farewell(std::string leaver_id) {
+  UNUSED(leaver_id);
   return true;
 }
 
@@ -62,7 +68,6 @@ std::string np1secSession::send(np1secMessage message) {
   std::string combined_content = NULL;
   gcry_randomize(buffer, 32, GCRY_STRONG_RANDOM);
 
-  HashBlock hb;
   // Add random noise to message to ensure hashing/signing is unique
   // for similar messages
   message.user_message.append(":");
@@ -76,6 +81,7 @@ std::string np1secSession::send(np1secMessage message) {
   combined_content.append(" ");
   combined_content.append(signature);
 
+  // HashBlock hb;
   // Hash(message.user_message, sizeof(message.user_message), hb, true);
 
   return otrl_base64_otr_encode((unsigned char*)combined_content.c_str(),
@@ -116,3 +122,5 @@ np1secMessage np1secSession::receive(std::string raw_message) {
 np1secSession::~np1secSession() {
   return;
 }
+
+#endif  // SRC_SESSION_CC_

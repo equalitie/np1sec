@@ -19,6 +19,12 @@
 #include <gtest/gtest.h>
 #include "src/session.h"
 
+
 class SessionTest : public ::testing::Test { };
 
-TEST_F(SessionTest, test_init) {}
+// TEST_F(SessionTest, test_init) {
+//   std::string name = "tester";
+//   std::string room_name = "room";
+//   np1secSession new_session(room_name, name);
+//   ASSERT_TRUE(new_session.join());
+// }

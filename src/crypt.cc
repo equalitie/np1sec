@@ -16,12 +16,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <cstdio>
-#include "src/crypt.h"
-
-
 #ifndef SRC_CRYPT_CC_
 #define SRC_CRYPT_CC_
+
+#include <cstdio>
+
+#include "src/crypt.h"
+
 
 gcry_error_t Hash(const void *buffer, size_t buffer_len, HashBlock hb,
                   bool secure) {

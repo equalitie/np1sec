@@ -19,17 +19,29 @@
 #include <gtest/gtest.h>
 #include "src/userstate.h"
 
+
+void log(std::string room_name, std::string message) {
+  fprintf(stderr, "room: %s / message: %s\n", room_name.c_str(),
+          message.c_str());
+}
+
+np1secAppOps ops = {
+  log
+};
+
 class UserStateTest : public ::testing::Test { };
 
 TEST_F(UserStateTest, test_init) {
   std::string name = "tester";
-  np1secUserState* user_state = new np1secUserState(name);
+  np1secUserState* user_state = new np1secUserState(name, &ops);
   EXPECT_TRUE(user_state->init());
 }
 
 TEST_F(UserStateTest, test_join) {
   std::string name = "tester";
-  np1secUserState* user_state = new np1secUserState(name);
+  std::string room_name = "room";
+  np1secUserState* user_state = new np1secUserState(name, &ops);
   ASSERT_TRUE(user_state->init());
+  ASSERT_TRUE(user_state->join_room(room_name));
 }
 

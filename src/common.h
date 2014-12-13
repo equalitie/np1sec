@@ -16,18 +16,21 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#ifndef SRC_COMMON_H_
+#define SRC_COMMON_H_
+
 extern "C" {
   #include <assert.h>
 }
 
 #include <cstdint>
-#include <string>
 #include <sstream>
 #include <iterator>
 #include <stdexcept>
+
 #include "src/base64.h"
 
-#ifndef SRC_COMMON_H_
-#define SRC_COMMON_H_
+
+#define UNUSED(expr) (void)(expr)
 
 #endif  // SRC_COMMON_H_
