@@ -35,7 +35,7 @@ class MessageDigest {
   void update(std::string new_message);
   // {
   //   message_id = compute_message_id(new_message);
-  //   digest = mpseq_hash(digest + new_message);
+  //   digest = np1sec_hash(digest + new_message);
   // };
 
   // Compute a unique globally ordered id from the time stamped message,
@@ -43,26 +43,26 @@ class MessageDigest {
   uint32_t compute_message_id(std::string cur_message);
 };
 
-enum mpSeQMessageType {
+enum np1secMessageType {
   USER_MESSAGE,
   PURE_META_MESSAG
 };
 
-struct mpSeQMessage {
-  mpSeQMessageType metamessage;
+struct np1secMessage {
+  np1secMessageType metamessage;
   std::string user_message;
 };
 
 // Defining essential types
 typedef std::vector<uint8_t> SessionID;
-typedef uint8_t  mpSeQBareMessage[];
+typedef uint8_t  np1secBareMessage[];
 
 
 /**
  * This class is encapsulating all information and action, a user needs and
  * performs in a session.
  */
-class mpSeQSession {
+class np1secSession {
  protected:
   HashBlock hashed_id;
 
@@ -80,15 +80,17 @@ class mpSeQSession {
 
   time_t key_freshness_time_stamp;
 
-  // It is called by mpSeQ when ever the protocol needs to send meta data
+  // It is called by np1sec when ever the protocol needs to send meta data
   // messages (key exchange, etc) which is not initiated by a message from user.
-  bool send_bare(mpSeQBareMessage message);
+  bool send_bare(np1secBareMessage message);
 
  public:
   SessionID session_id;
 
+  np1secSession();
+
   // Constructor, initiate by joining.
-  mpSeQSession(std::string new_room_name, std::string user_id);
+  np1secSession(std::string new_room_name, std::string user_id);
 
   // Initiate with room members.
   bool join(std::vector<std::string> room_members);
@@ -102,15 +104,15 @@ class mpSeQSession {
 
   // When a user wants to send a message to a session it needs to call its send
   // function.
-  std::string send(mpSeQMessage message);
+  std::string send(np1secMessage message);
 
   // When a message is received from a session the receive function needs to be
   // called to decrypt. It updates the session status and returns the decrypted
   // message to be shown, it might be null if the message was a meta message.
-  mpSeQMessage receive(std::string raw_message);
+  np1secMessage receive(std::string raw_message);
 
   // Destructor, session should be destroyed at leave.
-  ~mpSeQSession();
+  ~np1secSession();
 };
 
 #endif  // SRC_SESSION_H_

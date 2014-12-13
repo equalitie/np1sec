@@ -23,8 +23,7 @@ extern "C" {
 #include <cstdint>
 #include <string>
 #include <sstream>
-#include<iterator>
-#include<iostream>
+#include <iterator>
 #include <stdexcept>
 #include "src/base64.h"
 

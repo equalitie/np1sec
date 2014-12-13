@@ -24,21 +24,16 @@
     @param username: the user name which is going to be used as default nickname for
     the rooms
 */
-mpSeQUserState::mpSeQUserState(std::string username) :
+np1secUserState::np1secUserState(std::string username) :
   name(username), long_term_private_key() {}
 
 // @param key_pair the binary blob which contains the long term identity key
 //                 pair for ED25519, default null trigger new pair generation.
-bool mpSeQUserState::init(uint8_t* key_pair) {
+bool np1secUserState::init(uint8_t* key_pair) {
   // FIXME: key_pair !== nullptr
   return long_term_private_key.init();
 }
 
-bool mpSeQUserState::join_room(std::string room_name,
-                               std::vector<std::string> room_members) {
-  mpSeQSession new_session(room_name, this->name);
-  return new_session.join(room_members);
-}
 /**
      The client need to call this function when the user is joining a room.
 
@@ -49,27 +44,25 @@ bool mpSeQUserState::join_room(std::string room_name,
      client need to inform server of leaving the room in case of
      failure 
 */
-bool mpSeQUserState::join_room(std::string room_name, std::string new_user_id){
+bool np1secUserState::join_room(std::string room_name,
+                               std::vector<std::string> room_members) {
+  np1secSession new_session(room_name, this->name);
 
-  mpSeQSession new_session(room_name, new_user_id, true);
-  
-  mpseq_sessions.insert({new_session.session_id,  new_session});
-  sessions_in_a_room.insert({room_name, new_session.session_id});
-
-  if(!new_session.join(room_name, new_user_id)){
+  if ( !new_session.join(room_members) ) {
     return false;
   }
-  
+
+  np1sec_sessions.insert({ new_session.session_id, new_session });
+  sessions_in_a_room.insert({ room_name, new_session.session_id });
   return true;
 }
 
-RoomAction mpSeQUserState::receive_handler(std::string room_name,
-                                           std::string mpseq_message) {
-  mpSeQSession cur_session = retrieve_session(room_name);
-  mpSeQMessage received_message = cur_session.receive(mpseq_message);
+RoomAction np1secUserState::receive_handler(std::string room_name,
+                                            std::string np1sec_message) {
+  np1secSession cur_session = retrieve_session(room_name);
+  np1secMessage received_message = cur_session.receive(np1sec_message);
   RoomAction room_action = { NULL, received_message.user_message };
   return room_action;
-
 }
 
 /**
@@ -82,10 +75,10 @@ RoomAction mpSeQUserState::receive_handler(std::string room_name,
 
    @return message to send, null in case of failure
 */
-std::string mpSeQUserState::send_handler(std::string room_name,
+std::string np1secUserState::send_handler(std::string room_name,
                                    std::string plain_message) {
-  mpSeQSession cur_session = retrieve_session(room_name);
-  mpSeQMessage message = { USER_MESSAGE, plain_message };
+  np1secSession cur_session = retrieve_session(room_name);
+  np1secMessage message = { USER_MESSAGE, plain_message };
   std::string b64_content = NULL;
   b64_content = cur_session.send(message);
 
@@ -101,22 +94,20 @@ std::string mpSeQUserState::send_handler(std::string room_name,
    * a new session and return that.
    *
    */
-mpSeQSession mpSeQUserState::retrieve_session(std::string room_name){
-  mpSeQSession cur_session;
+np1secSession np1secUserState::retrieve_session(std::string room_name) {
+  np1secSession cur_session;
 
-  if(sessions_in_a_room.find(room_name) != sessions_in_a_room.end() and 
-          mpseq_sessions.find( sessions_in_a_room.find(room_name)->second ) != mpseq_sessions.end() 
-          ){
-
-    cur_session = mpseq_sessions[sessions_in_a_room.find(room_name)->second];
-
-  }else{  
-
-    if(join_room(room_name, name)){
-
-      cur_session = retrieve_session(room_name);
-
-    }
+  if ( sessions_in_a_room.find(room_name) != sessions_in_a_room.end() &&
+       np1sec_sessions.find(sessions_in_a_room.find(room_name)->second)
+         != np1sec_sessions.end()
+  ) {
+    cur_session = np1sec_sessions[sessions_in_a_room.find(room_name)->second];
+  } else {
+    // if(join_room(room_name, name)){
+    //
+    //   cur_session = retrieve_session(room_name);
+    //
+    // }
   }
   return cur_session;
 }

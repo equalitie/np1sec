@@ -23,13 +23,13 @@ class UserStateTest : public ::testing::Test { };
 
 TEST_F(UserStateTest, test_init) {
   std::string name = "tester";
-  mpSeQUserState* user_state = new mpSeQUserState(name);
+  np1secUserState* user_state = new np1secUserState(name);
   EXPECT_TRUE(user_state->init());
 }
 
 TEST_F(UserStateTest, test_join) {
   std::string name = "tester";
-  mpSeQUserState* user_state = new mpSeQUserState(name);
+  np1secUserState* user_state = new np1secUserState(name);
   ASSERT_TRUE(user_state->init());
 }
 

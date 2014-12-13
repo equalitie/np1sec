@@ -43,10 +43,10 @@ class RoomAction {
  * Manages a user with long term identity for participating in a multiparty
  * chat sessions. It keeps track of sessions that user is participating in.
  */
-class mpSeQUserState {
+class np1secUserState {
  protected:
   LongTermIDKey long_term_private_key;
-  std::map<SessionID, mpSeQSession> mpseq_sessions;
+  std::map<SessionID, np1secSession> np1sec_sessions;
   std::map<std::string, SessionID> sessions_in_a_room;
   std::string name;
 
@@ -57,7 +57,7 @@ class mpSeQUserState {
       @param name: the user name which is going to be used as default nickname for
              the rooms
    */
-  explicit mpSeQUserState(std::string username);
+  explicit np1secUserState(std::string username);
 
   // @param key_pair the binary blob which contains the long term identity key
   //                 pair for ED25519, default null trigger new pair generation.
@@ -107,13 +107,13 @@ class mpSeQUserState {
      and the status of the room to interpret the message
      
      @param room_name the chat room name
-     @param mpseq_message the message needed to be sent
+     @param np1sec_message the message needed to be sent
 
      @return a RoomAction object informing the client how
      to update the interface (add, remove user or display a
      message
    */
-  RoomAction receive_handler(std::string room_name, std::string mpseq_message);
+  RoomAction receive_handler(std::string room_name, std::string np1sec_message);
 
   // The client informs the user state about leaving the room by calling this
   // function.
@@ -129,9 +129,9 @@ class mpSeQUserState {
    * a new session and return that.
    *
    */
-  mpSeQSession retrieve_session(std::string room_name);
+  np1secSession retrieve_session(std::string room_name);
   // Destructor
-  ~mpSeQUserState();
+  ~np1secUserState();
 };
 
 #endif  // SRC_USERSTATE_H_

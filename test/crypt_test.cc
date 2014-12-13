@@ -41,27 +41,20 @@ TEST_F(CryptTest, test_hash) {
   delete[] res;
 }
 
-TEST_F(CryptTest, test_encrypt){
+TEST_F(CryptTest, test_encrypt) {
   Cryptic cryptic;
+  ASSERT_TRUE(cryptic.init());
   std::string test_text = "This is a string to be encrypted";
-  std::printf(test_text.c_str());
-  std::printf("\n");
   std::string enc_text = cryptic.Encrypt(test_text.c_str());
-
-
   std::string dec_text = cryptic.Decrypt(enc_text);
-
   ASSERT_STREQ(test_text.c_str(), dec_text.c_str());
 }
 
-
-TEST_F(CryptTest, test_sign){
+TEST_F(CryptTest, test_sign) {
   Cryptic cryptic;
+  ASSERT_TRUE(cryptic.init());
   std::string test_text = "This is a string to be encrypted";
   std::string sig = cryptic.Sign(test_text);
-
   bool verified = cryptic.Verify(test_text, sig);
-
-  ASSERT_TRUE(verified);
+  EXPECT_TRUE(verified);
 }
-

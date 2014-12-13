@@ -2,5 +2,6 @@
 
 lint:
 	@find $(top_srcdir)/src $(top_srcdir)/test \
-	-name "*.cc" -o -name "*.cpp" -o -name "*.h" \
+	\( -name "*.cc" -o -name "*.cpp" -o -name "*.h" \) \
+	-and -not -name "base64.*" \
 	| xargs python $(top_srcdir)/scripts/cpplint/cpplint.py

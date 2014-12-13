@@ -104,8 +104,8 @@ static void signed_on(PurpleConnection *gc, gpointer null) {
 static void process_sending_chat(PurpleAccount *account, char **message, int id,
                                  void *m) {
   UNUSED(account);
-  mpSeQUserState* user_state = reinterpret_cast<mpSeQUserState*>(m);
-  std::string prefix = std::string("mpSeQ:");
+  np1secUserState* user_state = reinterpret_cast<np1secUserState*>(m);
+  std::string prefix = std::string("np1sec:");
   prefix.append(*message);
   free(*message);
   *message = strdup(prefix.c_str());
@@ -120,8 +120,8 @@ static gboolean process_receiving_chat(PurpleAccount *account, char **sender,
   UNUSED(account);
   UNUSED(sender);
   UNUSED(flags);
-  mpSeQUserState* user_state = reinterpret_cast<mpSeQUserState*>(m);
-  std::string prefix = std::string("mpSeQ:");
+  np1secUserState* user_state = reinterpret_cast<np1secUserState*>(m);
+  std::string prefix = std::string("np1sec:");
   prefix.append(*message);
   free(*message);
   *message = strdup(prefix.c_str());
@@ -138,7 +138,7 @@ static void process_chat_join_failed(PurpleConnection *gc,
 }
 
 static void process_chat_joined(PurpleConversation *conv, void *m) {
-  mpSeQUserState* user_state = reinterpret_cast<mpSeQUserState*>(m);
+  np1secUserState* user_state = reinterpret_cast<np1secUserState*>(m);
   std::vector<std::string> room_members;
 
   GList *l = purple_conv_chat_get_users(PURPLE_CONV_CHAT(conv));
@@ -174,7 +174,7 @@ static void process_chat_buddy_left(PurpleConversation *conv, const char *name,
   printf("%s left the chat\n", name);
 }
 
-static void connect_to_signals(mpSeQUserState* user_state) {
+static void connect_to_signals(np1secUserState* user_state) {
   static int handle;
   void *conn_handle = purple_connections_get_handle();
   void *conv_handle = purple_conversations_get_handle();
@@ -353,7 +353,7 @@ int main(void) {
 
   // here is the place to construct the user state
   // all we need is username and the private key
-  mpSeQUserState* user_state = new mpSeQUserState(name);
+  np1secUserState* user_state = new np1secUserState(name);
   if (!user_state->init()) {
     fprintf(stderr, "Failed to initiate the userstate.\n");
     abort();
