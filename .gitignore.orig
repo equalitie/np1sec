@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof
@@ -107,12 +108,7 @@ sympy-plots-for-*.tex/
 
 # xindy
 *.xdy
-
-# Emacs temp/backup files
-*~
-\#*\#
-.\#*
-
+=======
 # Compiled Object files
 *.slo
 *.lo
@@ -134,11 +130,14 @@ sympy-plots-for-*.tex/
 *.exe
 *.out
 *.app
+>>>>>>> ebd1202b1292e30aa6f743ccef752d7a64352568
 
 # Emacs temp/backup files
 *~
 \#*\#
 .\#*
+<<<<<<< HEAD
+=======
 
 # Lazy templates
 *.lazy_template
@@ -179,3 +178,4 @@ Makefile.in
 /xmpp_test*
 .libs/*
 
+>>>>>>> ebd1202b1292e30aa6f743ccef752d7a64352568
