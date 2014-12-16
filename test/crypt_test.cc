@@ -44,8 +44,7 @@ TEST_F(CryptTest, test_hash) {
 TEST_F(CryptTest, test_encrypt){
   Cryptic cryptic;
   std::string test_text = "This is a string to be encrypted";
-  std::printf(test_text.c_str());
-  std::printf("\n");
+
   std::string enc_text = cryptic.Encrypt(test_text.c_str());
 
 
@@ -56,11 +55,15 @@ TEST_F(CryptTest, test_encrypt){
 
 
 TEST_F(CryptTest, test_sign){
+  gcry_error_t err;
   Cryptic cryptic;
   std::string test_text = "This is a string to be encrypted";
-  std::string sig = cryptic.Sign(test_text);
+  unsigned char *sigbuf = NULL;
+  size_t siglen;
 
-  bool verified = cryptic.Verify(test_text, sig);
+  err = cryptic.Sign( &sigbuf, &siglen, test_text);
+
+  bool verified = cryptic.Verify(test_text, sigbuf);
 
   ASSERT_TRUE(verified);
 }

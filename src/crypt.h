@@ -91,8 +91,7 @@ class Cryptic{
      * @return std::string valid signature of the give data
      *
      */
-    std::string Sign( std::string plain_text );
-
+    gcry_error_t Sign( unsigned char **sigp, size_t *siglenp, std::string plain_text );
     /*
      * Given a signed piece of data and a valid signature verify if
      * the signature is correct using the sessions public key.
@@ -103,7 +102,7 @@ class Cryptic{
      * @return bool value dependent on failure or verification of given signature
      *
      */
-    bool Verify( std::string signed_text, std::string sig );
+    gcry_error_t Verify( std::string signed_text, const unsigned char *sigbuf );
 
     /*
      * Create instance of cipher session based on configured algorithm, mode,

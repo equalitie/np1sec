@@ -56,11 +56,14 @@ bool mpSeQSession::farewell(std::string leaver_id) {
 }
 
 std::string mpSeQSession::send(mpSeQMessage message) {
+  gcry_error_t err;
   unsigned char *buffer = NULL;
   std::string signature = NULL;
   std::string encrypted_content = NULL;
   std::string combined_content = NULL;
   gcry_randomize( buffer, 32, GCRY_STRONG_RANDOM );
+  unsigned char *sigbuf = NULL;
+  size_t siglen;
 
   HashBlock hb;
   // Add random noise to message to ensure hashing/signing is unique
@@ -69,7 +72,7 @@ std::string mpSeQSession::send(mpSeQMessage message) {
   message.user_message.append(reinterpret_cast<const char*>(buffer));
   gcry_free(buffer);
   
-  signature = cryptic.Sign( message.user_message );
+  err = cryptic.Sign( &sigbuf, &siglen, message.user_message );
   encrypted_content = cryptic.Encrypt( message.user_message );
 
   combined_content = encrypted_content;
@@ -101,11 +104,11 @@ mpSeQMessage mpSeQSession::receive(std::string raw_message) {
 
   message_content = std::string(vstrings[0]);
   signature = std::string(vstrings[1]); 
-
+/*
   if( cryptic.Verify(message_content, signature) ){
     decrypted_message = cryptic.Decrypt(message_content);
   }
-
+*/
   received_message = {USER_MESSAGE, decrypted_message};
 
   return received_message;
