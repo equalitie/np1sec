@@ -121,7 +121,7 @@ gcry_error_t Cryptic::Sign( unsigned char **sigp, size_t *siglenp,
   size_t sig_r_len, sig_s_len;
   size_t nr, ns;
   const enum gcry_mpi_format format = GCRYMPI_FMT_USG;
-  const int magic_number=40;
+  const uint32_t magic_number=64, half_magic_number=32;
 
   *sigp = (unsigned char*) malloc(magic_number);
 
@@ -130,6 +130,8 @@ gcry_error_t Cryptic::Sign( unsigned char **sigp, size_t *siglenp,
                           " (flags eddsa)"
                           " (hash-algo sha512)"
                           " (value %b))",  plain_text.size(), plain_text.c_str());
+  gcry_sexp_dump(plain_sexp);
+  
   if( err ){
     std::printf("ed25519Key: failed to convert plain_text to gcry_sexp_t\n");
     std::printf ("Failure: %s/%s\n",
@@ -137,7 +139,8 @@ gcry_error_t Cryptic::Sign( unsigned char **sigp, size_t *siglenp,
                         gcry_strerror (err));
   }
 
-  err = gcry_pk_sign( &sigs, plain_sexp, prv_key ); 
+  err = gcry_pk_sign( &sigs, plain_sexp, prv_key );
+  
 
   if( err ){
     std::printf("ed25519Key: failed to sign plain_text");
@@ -149,28 +152,35 @@ gcry_error_t Cryptic::Sign( unsigned char **sigp, size_t *siglenp,
 
   gcry_sexp_release( plain_sexp );
   eddsa = gcry_sexp_find_token(sigs, "eddsa", 0);
+
+  gcry_sexp_dump(eddsa);
   gcry_sexp_release(sigs);
 
+  
   rs = gcry_sexp_find_token(eddsa, "r", 0);
   ss = gcry_sexp_find_token(eddsa, "s", 0);
 
   r = gcry_sexp_nth_mpi(rs, 1, GCRYMPI_FMT_USG);
+  gcry_mpi_dump(r);
+
   gcry_sexp_release(rs);
 
   s = gcry_sexp_nth_mpi(ss, 1, GCRYMPI_FMT_USG);
   gcry_sexp_release(ss);
+  gcry_mpi_dump(s);
 
   gcry_mpi_print(format, NULL, 0, &nr, r);
   gcry_mpi_print(format, NULL, 0, &ns, s);
-  memset(*sigp, 0, 40);
+  printf("nr and ns %d, %d \n", nr, ns);
+  memset(*sigp, 0, magic_number);
 
-  gcry_mpi_print(format, (*sigp)+(20-nr), nr, NULL, r);
-  gcry_mpi_print(format, (*sigp)+20+(20-ns), ns, NULL, s);
+  gcry_mpi_print(format, (*sigp)+(half_magic_number - nr), nr, NULL, r); //if r has 0 on the left decimal positions, gcry_mpi_print cut them out and hence nr < half_magic_number
+  gcry_mpi_print(format, (*sigp)+ half_magic_number + (half_magic_number-ns), ns, NULL, s); 
   
   gcry_mpi_release(r);
   gcry_mpi_release(s);
   
-  printf((const char*)sigp);
+  //printf((const char*)sigp);
   return gcry_error(GPG_ERR_NO_ERROR);
 }
 
@@ -178,22 +188,34 @@ gcry_error_t Cryptic::Verify( std::string plain_text, const unsigned char *sigbu
   gcry_error_t err = 0;
   gcry_mpi_t datampi,r,s;
   gcry_sexp_t datas, sigs;
+  const static uint32_t nr = 32, ns = 32;
 
-  if (plain_text.c_str()) {
-    gcry_mpi_scan(&datampi, GCRYMPI_FMT_USG, plain_text.c_str(), plain_text.size(), NULL);
-  } else {
-    datampi = gcry_mpi_set_ui(NULL, 0);
-  }
-  gcry_sexp_build(&datas, NULL, "(%m)", datampi);
-  gcry_mpi_release(datampi);
+  // if (plain_text.c_str()) {
+  //   gcry_mpi_scan(&datampi, GCRYMPI_FMT_USG, plain_text.c_str(), plain_text.size(), NULL);
+  // } else {
+  //   datampi = gcry_mpi_set_ui(NULL, 0);
+  // }
+  // gcry_sexp_build(&datas, NULL, "(%m)", datampi);
+  //gcry_mpi_release(datampi);
 
-  gcry_mpi_scan(&r, GCRYMPI_FMT_USG, sigbuf, 20, NULL);
-  gcry_mpi_scan(&s, GCRYMPI_FMT_USG, sigbuf+20, 20, NULL);
-  gcry_sexp_build(&sigs, NULL, "(sig-val (eddsa (r %m)(s %m)))", r, s);
+  gcry_mpi_scan(&r, GCRYMPI_FMT_USG, sigbuf, nr, NULL);
+  gcry_mpi_dump(r);
+
+  gcry_mpi_scan(&s, GCRYMPI_FMT_USG, sigbuf+nr, ns, NULL);
+  gcry_mpi_dump(s);
+  
+  gcry_sexp_build(&sigs, NULL, "(sig-val (eddsa (r %M)(s %M)))", r, s);
+
+  gcry_sexp_dump(sigs);
   
   gcry_mpi_release(r);
   gcry_mpi_release(s);
 
+  err = gcry_sexp_build (&datas, NULL,
+                          "(data"
+                          " (flags eddsa)"
+                          " (hash-algo sha512)"
+                          " (value %b))",  plain_text.size(), plain_text.c_str());
   if( err ){
     std::printf("ed25519Key: failed to convert plain_text to gcry_sexp_t\n");
     std::printf ("Failure: %s/%s\n",
@@ -201,15 +223,22 @@ gcry_error_t Cryptic::Verify( std::string plain_text, const unsigned char *sigbu
                         gcry_strerror (err));
   }
 
+  gcry_sexp_dump(datas);
+  gcry_sexp_dump(pub_key);
+  gcry_sexp_dump(prv_key);
+
   err = gcry_pk_verify( sigs, datas, pub_key ); 
 
   if( err ){
     std::printf("ed25519Key: failed to verify signed_text");
+    std::printf ("Failure: %s/%s\n",
+                        gcry_strsource (err),
+                        gcry_strerror (err));
     return false;
   }
   gcry_sexp_release(sigs);
 
-  return err;
+  return true;
 }
 
 gcry_cipher_hd_t Cryptic::OpenCipher(){
