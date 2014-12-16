@@ -166,11 +166,7 @@ gcry_error_t Cryptic::Sign( unsigned char **sigp, size_t *siglenp,
 
   gcry_mpi_print(format, (*sigp)+(20-nr), nr, NULL, r);
   gcry_mpi_print(format, (*sigp)+20+(20-ns), ns, NULL, s);
-  printf("sizes are r: %d s: %d\n", nr, ns);
-  printf("\nsplatt 1 \n");
-  gcry_mpi_dump(r);
-  printf("\nsplatt 2 \n");
-  gcry_mpi_dump(s);
+  
   gcry_mpi_release(r);
   gcry_mpi_release(s);
   
@@ -194,11 +190,7 @@ gcry_error_t Cryptic::Verify( std::string plain_text, const unsigned char *sigbu
   gcry_mpi_scan(&r, GCRYMPI_FMT_USG, sigbuf, 20, NULL);
   gcry_mpi_scan(&s, GCRYMPI_FMT_USG, sigbuf+20, 20, NULL);
   gcry_sexp_build(&sigs, NULL, "(sig-val (eddsa (r %m)(s %m)))", r, s);
-  printf("\nsplatt 3 \n");
-  gcry_mpi_dump(r);
-  printf("\nsplatt 4 \n");
-  gcry_mpi_dump(s);
-  printf("\n");
+  
   gcry_mpi_release(r);
   gcry_mpi_release(s);
 
