@@ -83,22 +83,26 @@ class Cryptic {
    * Given a valid std:string sign the string using the sessions
    * private key and return the signature.
    *
-   * @param std::string representing message data to be signed
+   * @param unsigned char ** representing a buffer to store the create signature
+   * @param size_t representing the length of the return sig buffer
+   * @parama std::string representing the message to be signed 
    *
-   * @return std::string valid signature of the give data
+   * @return gcry_error_t indicating whether the operation succeeded or not
    */
-  std::string Sign(std::string plain_text);
+  gcry_error_t Sign( unsigned char **sigp, 
+			size_t *siglenp, 
+			std::string plain_text );
 
   /**
    * Given a signed piece of data and a valid signature verify if
    * the signature is correct using the sessions public key.
    *
    * @param std::string representing signed data
-   * @param std::string representing data signature
+   * @param const unsigned char*  representing data signature buffer
    *
-   * @return bool value dependent on failure or verification of given signature
+   * @return gcry_error_t failure or verification of given signature
    */
-  bool Verify(std::string signed_text, std::string sig);
+  gcry_error_t Verify( std::string signed_text, const unsigned char *sigbuf );
 
   /**
    * Create instance of cipher session based on configured algorithm, mode,
@@ -121,6 +125,7 @@ const unsigned char SESSION_IV[] = {
   0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
   0x0c, 0x0d, 0x0e, 0x0f
 };
+
 
 const int c_mpseq_hash = gcry_md_algos::GCRY_MD_SHA256;
 

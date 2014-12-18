@@ -20,6 +20,8 @@
 #define SRC_SESSION_CC_
 
 #include "src/session.h"
+#include <time.h>
+#include <stdlib.h>
 
 #include <time.h>
 #include <stdlib.h>
@@ -62,27 +64,29 @@ bool np1secSession::farewell(std::string leaver_id) {
 }
 
 std::string np1secSession::send(np1secMessage message) {
+  gcry_error_t err;
   unsigned char *buffer = NULL;
   std::string signature = NULL;
   std::string encrypted_content = NULL;
   std::string combined_content = NULL;
-  gcry_randomize(buffer, 32, GCRY_STRONG_RANDOM);
+  gcry_randomize( buffer, 32, GCRY_STRONG_RANDOM );
+  unsigned char *sigbuf = NULL;
+  size_t siglen;
 
   // Add random noise to message to ensure hashing/signing is unique
   // for similar messages
   message.user_message.append(":");
   message.user_message.append(reinterpret_cast<const char*>(buffer));
   gcry_free(buffer);
-
-  signature = cryptic.Sign(message.user_message);
-  encrypted_content = cryptic.Encrypt(message.user_message);
+  
+  if( cryptic.Sign( &sigbuf, &siglen, message.user_message ) == gcry_error(GPG_ERR_NO_ERROR)){
+    encrypted_content = cryptic.Encrypt( message.user_message );
+  }
 
   combined_content = encrypted_content;
   combined_content.append(" ");
   combined_content.append(signature);
 
-  // HashBlock hb;
-  // Hash(message.user_message, sizeof(message.user_message), hb, true);
 
   return otrl_base64_otr_encode((unsigned char*)combined_content.c_str(),
                                 combined_content.size());
@@ -109,9 +113,11 @@ np1secMessage np1secSession::receive(std::string raw_message) {
   }
 
   message_content = std::string(vstrings[0]);
-  signature = std::string(vstrings[1]);
+  signature = std::string(vstrings[1]); 
 
-  if (cryptic.Verify(message_content, signature)) {
+  if( cryptic.Verify(message_content, 
+	(unsigned char*)signature.c_str()) == gcry_error(GPG_ERR_NO_ERROR))
+  {
     decrypted_message = cryptic.Decrypt(message_content);
   }
 

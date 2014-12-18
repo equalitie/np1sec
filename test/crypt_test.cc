@@ -17,8 +17,8 @@
  */
 
 #include <gtest/gtest.h>
+#include <gcrypt.h>
 #include "src/crypt.h"
-
 
 class CryptTest : public ::testing::Test { };
 
@@ -42,20 +42,24 @@ TEST_F(CryptTest, test_hash) {
   delete[] res;
 }
 
-TEST_F(CryptTest, test_encrypt) {
+TEST_F(CryptTest, test_encrypt_decrypt){
   Cryptic cryptic;
-  ASSERT_TRUE(cryptic.init());
   std::string test_text = "This is a string to be encrypted";
   std::string enc_text = cryptic.Encrypt(test_text.c_str());
   std::string dec_text = cryptic.Decrypt(enc_text);
   ASSERT_STREQ(test_text.c_str(), dec_text.c_str());
 }
 
-// TEST_F(CryptTest, test_sign) {
-//   Cryptic cryptic;
-//   ASSERT_TRUE(cryptic.init());
-//   std::string test_text = "This is a string to be encrypted";
-//   std::string sig = cryptic.Sign(test_text);
-//   bool verified = cryptic.Verify(test_text, sig);
-//   EXPECT_TRUE(verified);
-// }
+
+TEST_F(CryptTest, test_sign_verify){
+  gcry_error_t err;
+  Cryptic cryptic;
+  std::string test_text = "This is a string to be encrypted";
+  unsigned char *sigbuf = NULL;
+  size_t siglen;
+  cryptic.init();
+  err = cryptic.Sign( &sigbuf, &siglen, test_text);
+  ASSERT_TRUE(cryptic.Sign( &sigbuf, &siglen, test_text) == gcry_error(GPG_ERR_NO_ERROR));
+  ASSERT_TRUE(cryptic.Verify(test_text, sigbuf) == gcry_error(GPG_ERR_NO_ERROR));
+}
+
