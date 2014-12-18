@@ -218,7 +218,7 @@ gcry_error_t Cryptic::Verify( std::string plain_text, const unsigned char *sigbu
   }
   gcry_sexp_release(sigs);
 
-  return true;
+  return gcry_error(GPG_ERR_NO_ERROR);
 }
 
 gcry_cipher_hd_t Cryptic::OpenCipher(){

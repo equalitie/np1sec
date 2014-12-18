@@ -18,3 +18,15 @@
 
 #include <gtest/gtest.h>
 #include "src/session.h"
+
+class SessionTest : public ::testing::Test{};
+
+TEST_F(SessionTest, test_send) {
+
+}
+
+TEST_F(SessionTest, test_receive){
+
+
+
+}

@@ -17,6 +17,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <gcrypt.h>
 #include "src/crypt.h"
 
 class CryptTest : public ::testing::Test { };
@@ -63,8 +64,6 @@ TEST_F(CryptTest, test_sign){
 
   err = cryptic.Sign( &sigbuf, &siglen, test_text);
 
-  bool verified = cryptic.Verify(test_text, sigbuf);
-
-  ASSERT_TRUE(verified);
+  ASSERT_TRUE(cryptic.Verify(test_text, sigbuf) == gcry_error(GPG_ERR_NO_ERROR));
 }
 
