@@ -1,10 +1,9 @@
 np1sec
 ======
-Multiparty communication security
 
 [![Build Status](https://travis-ci.org/equalitie/np1sec.svg?branch=master)](https://travis-ci.org/equalitie/np1sec)
 
-A library for off-the-record (deniable authenticated forward secure confidential) multiparty messaging
+Multiparty communication security
 
 ![(n+1)sec](https://learn.equalit.ie/mw/images/7/7f/Np1sec-web.jpg)
 
