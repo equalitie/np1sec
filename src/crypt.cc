@@ -130,7 +130,6 @@ gcry_error_t Cryptic::Sign( unsigned char **sigp, size_t *siglenp,
                           " (flags eddsa)"
                           " (hash-algo sha512)"
                           " (value %b))",  plain_text.size(), plain_text.c_str());
-  gcry_sexp_dump(plain_sexp);
   
   if( err ){
     std::printf("ed25519Key: failed to convert plain_text to gcry_sexp_t\n");
@@ -153,7 +152,6 @@ gcry_error_t Cryptic::Sign( unsigned char **sigp, size_t *siglenp,
   gcry_sexp_release( plain_sexp );
   eddsa = gcry_sexp_find_token(sigs, "eddsa", 0);
 
-  gcry_sexp_dump(eddsa);
   gcry_sexp_release(sigs);
 
   
@@ -161,17 +159,14 @@ gcry_error_t Cryptic::Sign( unsigned char **sigp, size_t *siglenp,
   ss = gcry_sexp_find_token(eddsa, "s", 0);
 
   r = gcry_sexp_nth_mpi(rs, 1, GCRYMPI_FMT_USG);
-  gcry_mpi_dump(r);
 
   gcry_sexp_release(rs);
 
   s = gcry_sexp_nth_mpi(ss, 1, GCRYMPI_FMT_USG);
   gcry_sexp_release(ss);
-  gcry_mpi_dump(s);
 
   gcry_mpi_print(format, NULL, 0, &nr, r);
   gcry_mpi_print(format, NULL, 0, &ns, s);
-  printf("nr and ns %d, %d \n", nr, ns);
   memset(*sigp, 0, magic_number);
 
   gcry_mpi_print(format, (*sigp)+(half_magic_number - nr), nr, NULL, r); //if r has 0 on the left decimal positions, gcry_mpi_print cut them out and hence nr < half_magic_number
@@ -180,7 +175,6 @@ gcry_error_t Cryptic::Sign( unsigned char **sigp, size_t *siglenp,
   gcry_mpi_release(r);
   gcry_mpi_release(s);
   
-  //printf((const char*)sigp);
   return gcry_error(GPG_ERR_NO_ERROR);
 }
 
@@ -190,23 +184,12 @@ gcry_error_t Cryptic::Verify( std::string plain_text, const unsigned char *sigbu
   gcry_sexp_t datas, sigs;
   const static uint32_t nr = 32, ns = 32;
 
-  // if (plain_text.c_str()) {
-  //   gcry_mpi_scan(&datampi, GCRYMPI_FMT_USG, plain_text.c_str(), plain_text.size(), NULL);
-  // } else {
-  //   datampi = gcry_mpi_set_ui(NULL, 0);
-  // }
-  // gcry_sexp_build(&datas, NULL, "(%m)", datampi);
-  //gcry_mpi_release(datampi);
-
   gcry_mpi_scan(&r, GCRYMPI_FMT_USG, sigbuf, nr, NULL);
-  gcry_mpi_dump(r);
 
   gcry_mpi_scan(&s, GCRYMPI_FMT_USG, sigbuf+nr, ns, NULL);
-  gcry_mpi_dump(s);
   
   gcry_sexp_build(&sigs, NULL, "(sig-val (eddsa (r %M)(s %M)))", r, s);
 
-  gcry_sexp_dump(sigs);
   
   gcry_mpi_release(r);
   gcry_mpi_release(s);
@@ -223,9 +206,6 @@ gcry_error_t Cryptic::Verify( std::string plain_text, const unsigned char *sigbu
                         gcry_strerror (err));
   }
 
-  gcry_sexp_dump(datas);
-  gcry_sexp_dump(pub_key);
-  gcry_sexp_dump(prv_key);
 
   err = gcry_pk_verify( sigs, datas, pub_key ); 
 

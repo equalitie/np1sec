@@ -72,8 +72,9 @@ std::string mpSeQSession::send(mpSeQMessage message) {
   message.user_message.append(reinterpret_cast<const char*>(buffer));
   gcry_free(buffer);
   
-  err = cryptic.Sign( &sigbuf, &siglen, message.user_message );
-  encrypted_content = cryptic.Encrypt( message.user_message );
+  if( cryptic.Sign( &sigbuf, &siglen, message.user_message ) == gcry_error(GPG_ERR_NO_ERROR)){
+    encrypted_content = cryptic.Encrypt( message.user_message );
+  }
 
   combined_content = encrypted_content;
   combined_content.append(" ");
@@ -104,11 +105,11 @@ mpSeQMessage mpSeQSession::receive(std::string raw_message) {
 
   message_content = std::string(vstrings[0]);
   signature = std::string(vstrings[1]); 
-/*
-  if( cryptic.Verify(message_content, signature) ){
+
+  if( cryptic.Verify(message_content, (unsigned char*)signature.c_str()) == gcry_error(GPG_ERR_NO_ERROR)){
     decrypted_message = cryptic.Decrypt(message_content);
   }
-*/
+
   received_message = {USER_MESSAGE, decrypted_message};
 
   return received_message;
