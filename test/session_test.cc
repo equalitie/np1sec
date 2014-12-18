@@ -22,13 +22,10 @@
 class SessionTest : public ::testing::Test{};
 
 TEST_F(SessionTest, test_send) {
-
 }
 
-TEST_F(SessionTest, test_receive){
-
+TEST_F(SessionTest, test_receive) {
 }
-
 
 // TEST_F(SessionTest, test_init) {
 //   std::string name = "tester";

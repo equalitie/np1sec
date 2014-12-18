@@ -89,9 +89,8 @@ class Cryptic {
    *
    * @return gcry_error_t indicating whether the operation succeeded or not
    */
-  gcry_error_t Sign( unsigned char **sigp, 
-			size_t *siglenp, 
-			std::string plain_text );
+  gcry_error_t Sign(unsigned char **sigp,
+                    size_t *siglenp, std::string plain_text);
 
   /**
    * Given a signed piece of data and a valid signature verify if
@@ -102,7 +101,7 @@ class Cryptic {
    *
    * @return gcry_error_t failure or verification of given signature
    */
-  gcry_error_t Verify( std::string signed_text, const unsigned char *sigbuf );
+  gcry_error_t Verify(std::string signed_text, const unsigned char *sigbuf);
 
   /**
    * Create instance of cipher session based on configured algorithm, mode,

@@ -42,7 +42,7 @@ TEST_F(CryptTest, test_hash) {
   delete[] res;
 }
 
-TEST_F(CryptTest, test_encrypt_decrypt){
+TEST_F(CryptTest, test_encrypt_decrypt) {
   Cryptic cryptic;
   std::string test_text = "This is a string to be encrypted";
   std::string enc_text = cryptic.Encrypt(test_text.c_str());
@@ -51,15 +51,17 @@ TEST_F(CryptTest, test_encrypt_decrypt){
 }
 
 
-TEST_F(CryptTest, test_sign_verify){
+TEST_F(CryptTest, test_sign_verify) {
   gcry_error_t err;
   Cryptic cryptic;
   std::string test_text = "This is a string to be encrypted";
   unsigned char *sigbuf = NULL;
   size_t siglen;
   cryptic.init();
-  err = cryptic.Sign( &sigbuf, &siglen, test_text);
-  ASSERT_TRUE(cryptic.Sign( &sigbuf, &siglen, test_text) == gcry_error(GPG_ERR_NO_ERROR));
-  ASSERT_TRUE(cryptic.Verify(test_text, sigbuf) == gcry_error(GPG_ERR_NO_ERROR));
+  err = cryptic.Sign(&sigbuf, &siglen, test_text);
+  ASSERT_TRUE(cryptic.Sign(&sigbuf, &siglen, test_text)
+              == gcry_error(GPG_ERR_NO_ERROR));
+  ASSERT_TRUE(cryptic.Verify(test_text, sigbuf)
+              == gcry_error(GPG_ERR_NO_ERROR));
 }
 
