@@ -5,7 +5,18 @@ compiler:
 
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install libglib2.0-dev libpurple-dev libgcrypt-dev
+  - sudo apt-get -y install libpurple-dev haveged
+  - sudo apt-get remove libgcrypt11-dev
+
+install:
+  - wget ftp://ftp.gnupg.org/gcrypt/libgpg-error/libgpg-error-1.17.tar.bz2
+  - tar -jxf libgpg-error-1.17.tar.bz2
+  - cd libgpg-error-1.17 && ./configure --prefix=/usr && make && sudo make install
+  - cd ..
+  - wget ftp://ftp.gnupg.org/gcrypt/libgcrypt/libgcrypt-1.6.2.tar.bz2
+  - tar -jxf libgcrypt-1.6.2.tar.bz2
+  - cd libgcrypt-1.6.2 && ./configure --prefix=/usr && make && sudo make install
+  - cd ..
 
 script:
   - ./autogen.sh

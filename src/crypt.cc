@@ -16,12 +16,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <cstdio>
-#include "src/crypt.h"
-
-
 #ifndef SRC_CRYPT_CC_
 #define SRC_CRYPT_CC_
+
+#include <cstdio>
+
+#include "src/crypt.h"
+
 
 gcry_error_t Hash(const void *buffer, size_t buffer_len, HashBlock hb,
                   bool secure) {
@@ -48,11 +49,9 @@ done:
   return err;
 }
 
-Ed25519Key::Ed25519Key(){
-  return;
-}
+Cryptic::Cryptic() {}
 
-Cryptic::Cryptic() {
+bool Cryptic::init() {
   /* Generate a new Ed25519 key pair. */
   gcry_error_t err = 0;
   gcry_sexp_t ed25519_parms, ed25519_keypair;
@@ -60,54 +59,52 @@ Cryptic::Cryptic() {
   err = gcry_sexp_build(&ed25519_parms, NULL,
                         "(genkey (ecc (curve Ed25519) (flags eddsa)))");
   if (err)
-    std::printf ("Failure: %s/%s\n",
-                        gcry_strsource (err),
-                        gcry_strerror (err));
+    goto err;
 
   err = gcry_pk_genkey(&ed25519_keypair, ed25519_parms);
   if (err)
-    std::printf ("Failure to create ed25519 key pair: %s/%s\n",
-                        gcry_strsource (err),
-                        gcry_strerror (err));
+    goto err;
 
-  pub_key = gcry_sexp_find_token( ed25519_keypair, "public-key", 0 );
-  if ( !pub_key ) {
+  pub_key = gcry_sexp_find_token(ed25519_keypair, "public-key", 0);
+  if (!pub_key) {
     std::printf("ed25519Key: failed to retrieve public key");
+    return false;
   }
-  
-  prv_key = gcry_sexp_find_token( ed25519_keypair, "private-key", 0 );
-  if ( !prv_key ) {
+
+  prv_key = gcry_sexp_find_token(ed25519_keypair, "private-key", 0);
+  if (!prv_key) {
     std::printf("ed25519Key: failed to retrieve private key");
+    return false;
   }
 
-  //gcry_sexp_release( ed25519_params );
+  return true;
 
+err:
+  std::printf("Key failure: %s/%s\n", gcry_strsource(err), gcry_strerror(err));
+  return false;
 }
 
-std::string Cryptic::retrieveResult( gcry_sexp_t text_sexp ){
-  size_t buffer_size = gcry_sexp_sprint (text_sexp, GCRYSEXP_FMT_ADVANCED,
-                                            NULL, 0);
-  if(!buffer_size){
+std::string Cryptic::retrieveResult(gcry_sexp_t text_sexp) {
+  size_t buffer_size = gcry_sexp_sprint(text_sexp, GCRYSEXP_FMT_ADVANCED,
+                                        NULL, 0);
+  if (!buffer_size) {
     std::printf("ed25519Key: failed to convert s-expression to string");
     return NULL;
   }
-  char* buffer = (char *) malloc(buffer_size);
 
+  char* buffer = reinterpret_cast<char *>(malloc(buffer_size));
   std::string result = buffer;
   free(buffer);
   return result;
 }
 
-gcry_sexp_t Cryptic::ConvertToSexp(std::string text){
+gcry_sexp_t Cryptic::ConvertToSexp(std::string text) {
   gcry_error_t err = 0;
   gcry_sexp_t new_sexp;
 
-  err = gcry_sexp_new( &new_sexp, text.c_str(), text.size(), 1);
-  if( err ){
-    std::printf("ed25519Key: failed to convert plain_text to gcry_sexp_t\n");
-    std::printf ("Failure: %s/%s\n",
-                        gcry_strsource (err),
-                        gcry_strerror (err));
+  err = gcry_sexp_new(&new_sexp, text.c_str(), text.size(), 1);
+  if (err) {
+    std::printf("ed25519Key: failed to convert plain_text to gcry_sexp_t");
   }
 
   return new_sexp;
@@ -146,7 +143,7 @@ gcry_error_t Cryptic::Sign( unsigned char **sigp, size_t *siglenp,
     std::printf ("Failure: %s/%s\n",
                         gcry_strsource (err),
                         gcry_strerror (err));
-
+    return err;
   }
 
   gcry_sexp_release( plain_sexp );
@@ -204,6 +201,7 @@ gcry_error_t Cryptic::Verify( std::string plain_text, const unsigned char *sigbu
     std::printf ("Failure: %s/%s\n",
                         gcry_strsource (err),
                         gcry_strerror (err));
+    return err;
   }
 
 
@@ -214,7 +212,7 @@ gcry_error_t Cryptic::Verify( std::string plain_text, const unsigned char *sigbu
     std::printf ("Failure: %s/%s\n",
                         gcry_strsource (err),
                         gcry_strerror (err));
-    return false;
+    return err;
   }
   gcry_sexp_release(sigs);
 
@@ -240,28 +238,28 @@ std::string Cryptic::Encrypt(std::string plain_text){
   gcry_error_t err = 0;
   gcry_cipher_hd_t hd = OpenCipher();
 
-  err = gcry_cipher_encrypt( hd, const_cast<char *>(crypt_text.c_str()), crypt_text.size(), NULL, 0 );
-  if( err ){
+  err = gcry_cipher_encrypt(hd, const_cast<char *>(crypt_text.c_str()),
+                            crypt_text.size(), NULL, 0);
+  if (err) {
     std::printf("ed25519Key: Encryption of message failed");
   }
-  
-  gcry_cipher_close( hd );
 
+  gcry_cipher_close(hd);
   return crypt_text;
 }
 
-std::string Cryptic::Decrypt(std::string encrypted_text){
+std::string Cryptic::Decrypt(std::string encrypted_text) {
   std::string decrypted_text = encrypted_text;
   gcry_error_t err = 0;
   gcry_cipher_hd_t hd = OpenCipher();
 
-  err = gcry_cipher_decrypt( hd, const_cast<char *>(decrypted_text.c_str()), decrypted_text.size(), NULL, 0 );
-  if ( err ) {
+  err = gcry_cipher_decrypt(hd, const_cast<char *>(decrypted_text.c_str()),
+                            decrypted_text.size(), NULL, 0);
+  if (err) {
     std::printf("ed25519Key: failed to decrypt message");
   }
 
-  gcry_cipher_close( hd );
-
+  gcry_cipher_close(hd);
   return decrypted_text;
 }
 

@@ -1,4 +1,4 @@
-AC_INIT([libmpseq], [0.0.0])
+AC_INIT([libnp1sec], [0.0.0])
 
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])

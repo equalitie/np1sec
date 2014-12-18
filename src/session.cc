@@ -1,5 +1,3 @@
-// session.cc
-//
 /**
  * Multiparty Off-the-Record Messaging library
  * Copyright (C) 2014, eQualit.ie
@@ -18,44 +16,54 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#ifndef SRC_SESSION_CC_
+#define SRC_SESSION_CC_
+
 #include "src/session.h"
 #include <time.h>
 #include <stdlib.h>
 
+#include <time.h>
+#include <stdlib.h>
+
+
 void MessageDigest::update(std::string new_message) {
+  UNUSED(new_message);
   return;
 }
 
 uint32_t MessageDigest::compute_message_id(std::string cur_message) {
+  UNUSED(cur_message);
   return 0;
 }
 
-bool mpSeQSession::send_bare(mpSeQBareMessage message) {
+np1secSession::np1secSession() {
+  throw std::invalid_argument("Default constructor should not be used.");
+}
+
+np1secSession::np1secSession(np1secUserState *us, std::string room_name,
+                             std::string name) : us(us), room_name(room_name),
+                                                 name(name) {}
+
+bool np1secSession::join() {
+  if (!cryptic.init()) {
+    return false;
+  }
+  us->ops->send_bare(room_name, "testing 123");
   return true;
 }
 
-mpSeQSession::mpSeQSession(){
-  throw std::invalid_argument( "Default constructor should not be used." );
-}
-
-mpSeQSession::mpSeQSession(std::string new_room_name, std::string user_id,
-                           bool emptyroom) : cryptic() {
-  return;
-}
-
-bool mpSeQSession::join(std::string new_room_name, std::string user_id) {
+bool np1secSession::accept(std::string new_participant_id) {
+  UNUSED(new_participant_id);
   return true;
 }
 
-bool mpSeQSession::accept(std::string new_participant_id) {
+bool np1secSession::farewell(std::string leaver_id) {
+  UNUSED(leaver_id);
   return true;
 }
 
-bool mpSeQSession::farewell(std::string leaver_id) {
-  return true;
-}
-
-std::string mpSeQSession::send(mpSeQMessage message) {
+std::string np1secSession::send(np1secMessage message) {
   gcry_error_t err;
   unsigned char *buffer = NULL;
   std::string signature = NULL;
@@ -65,7 +73,6 @@ std::string mpSeQSession::send(mpSeQMessage message) {
   unsigned char *sigbuf = NULL;
   size_t siglen;
 
-  HashBlock hb;
   // Add random noise to message to ensure hashing/signing is unique
   // for similar messages
   message.user_message.append(":");
@@ -80,25 +87,27 @@ std::string mpSeQSession::send(mpSeQMessage message) {
   combined_content.append(" ");
   combined_content.append(signature);
 
-  //Hash(message.user_message, sizeof(message.user_message), hb, true);
 
-  return otrl_base64_otr_encode((unsigned char*)combined_content.c_str(), combined_content.size());
+  return otrl_base64_otr_encode((unsigned char*)combined_content.c_str(),
+                                combined_content.size());
 }
 
-mpSeQMessage mpSeQSession::receive(std::string raw_message) {
+np1secMessage np1secSession::receive(std::string raw_message) {
   std::string decoded_content;
   std::string signature, message_content, decrypted_message;
-  mpSeQMessage received_message;
+  np1secMessage received_message;
 
-  otrl_base64_otr_decode(raw_message.c_str(), (unsigned char**)decoded_content.c_str(), (size_t*)raw_message.size());
+  otrl_base64_otr_decode(raw_message.c_str(),
+                         (unsigned char**)decoded_content.c_str(),
+                         reinterpret_cast<size_t*>(raw_message.size()));
 
-
-  //split decoded content into encrypted message and signature
+  // split decoded content into encrypted message and signature
   std::stringstream ss(decoded_content);
   std::istream_iterator<std::string> begin(ss);
   std::istream_iterator<std::string> end;
   std::vector<std::string> vstrings(begin, end);
-  if( vstrings.size() != 2){
+
+  if (vstrings.size() != 2) {
     std::printf("mpSeSession: failed to retrieve valid content and signature");
     return received_message;
   }
@@ -106,15 +115,18 @@ mpSeQMessage mpSeQSession::receive(std::string raw_message) {
   message_content = std::string(vstrings[0]);
   signature = std::string(vstrings[1]); 
 
-  if( cryptic.Verify(message_content, (unsigned char*)signature.c_str()) == gcry_error(GPG_ERR_NO_ERROR)){
+  if( cryptic.Verify(message_content, 
+	(unsigned char*)signature.c_str()) == gcry_error(GPG_ERR_NO_ERROR))
+  {
     decrypted_message = cryptic.Decrypt(message_content);
   }
 
   received_message = {USER_MESSAGE, decrypted_message};
-
   return received_message;
 }
 
-mpSeQSession::~mpSeQSession() {
+np1secSession::~np1secSession() {
   return;
 }
+
+#endif  // SRC_SESSION_CC_

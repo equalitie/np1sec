@@ -8,26 +8,16 @@ noinst_PROGRAMS =
 
 TESTS =
 
-lib_LTLIBRARIES = libmpseq.la
-# Unit tests
+lib_LTLIBRARIES = libnp1sec.la
 
-libmpseq_la_SOURCES = src/crypt.cc \
+libnp1sec_la_SOURCES = \
+	src/crypt.cc \
 	src/session.cc \
 	src/base64.cc \
 	src/userstate.cc
 
-libmpseq_la_LIBADD = \
+libnp1sec_la_LIBADD = \
 	$(LIBGCRYPT_LIBS)
-
-noinst_LTLIBRARIES += contrib/gtest/lib/libgtest.la
-
-contrib_gtest_lib_libgtest_la_SOURCES = \
-	contrib/gtest/src/gtest-all.cc
-
-contrib_gtest_lib_libgtest_la_CPPFLAGS = \
-	-I$(top_srcdir)/${GTEST_BASE} \
-	-I$(top_srcdir)/${GTEST_INCLUDE}
-
 
 include test/Makefile.inc
 include Makefile.am.lint

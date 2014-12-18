@@ -1,4 +1,3 @@
-
 /**
  * Multiparty Off-the-Record Messaging library
  * Copyright (C) 2014, eQualit.ie
@@ -30,8 +29,9 @@ extern "C" {
 }
 
 #include "src/userstate.h"
+#include "src/common.h"
 
-#define UNUSED(expr) (void)(expr)
+
 #define CUSTOM_USER_DIRECTORY "/tmp/test_user"
 #define CUSTOM_PLUGIN_PATH ""
 #define PLUGIN_SAVE_PREF "/tmp/test_client/plugins/saved"
@@ -104,14 +104,14 @@ static void signed_on(PurpleConnection *gc, gpointer null) {
 static void process_sending_chat(PurpleAccount *account, char **message, int id,
                                  void *m) {
   UNUSED(account);
-  mpSeQUserState* user_state = reinterpret_cast<mpSeQUserState*>(m);
-  std::string prefix = std::string("mpSeQ:");
+  np1secUserState* user_state = reinterpret_cast<np1secUserState*>(m);
+  std::string prefix = std::string("np1sec:");
   prefix.append(*message);
   free(*message);
   *message = strdup(prefix.c_str());
-  PurpleConnection *gc = purple_account_get_connection(account);
-  PurpleConversation *conv = purple_find_chat(gc, id);
-  user_state->send_handler(conv->name, *message);
+  // PurpleConnection *gc = purple_account_get_connection(account);
+  // PurpleConversation *conv = purple_find_chat(gc, id);
+  // user_state->send_handler(conv->name, *message);
 }
 
 static gboolean process_receiving_chat(PurpleAccount *account, char **sender,
@@ -120,27 +120,49 @@ static gboolean process_receiving_chat(PurpleAccount *account, char **sender,
   UNUSED(account);
   UNUSED(sender);
   UNUSED(flags);
-  mpSeQUserState* user_state = reinterpret_cast<mpSeQUserState*>(m);
-  std::string prefix = std::string("mpSeQ:");
+  np1secUserState* user_state = reinterpret_cast<np1secUserState*>(m);
+  std::string prefix = std::string("np1sec:");
   prefix.append(*message);
   free(*message);
   *message = strdup(prefix.c_str());
-  user_state->receive_handler(conv->name, prefix);
+  // user_state->receive_handler(conv->name, prefix);
   return FALSE;
 }
 
 static void process_chat_join_failed(PurpleConnection *gc,
-                                     GHashTable *components) {
+                                     GHashTable *components, void *m) {
   UNUSED(gc);
   UNUSED(components);
+  UNUSED(m);
   printf("Join failed :(\n");
 }
 
-static void process_chat_joined(PurpleConversation *conv) {
-  printf("Joined %s\n", conv->name);
+static void process_chat_joined(PurpleConversation *conv, void *m) {
+  np1secUserState* user_state = reinterpret_cast<np1secUserState*>(m);
+  bool joined = user_state->join_room(conv->name);
+  printf("Joining %s: %s\n", conv->name, joined ? "succeeded" : "failed");
 }
 
-static void connect_to_signals(mpSeQUserState* user_state) {
+static void process_buddy_chat_joined(PurpleConversation *conv,
+                                      const char *name,
+                                      PurpleConvChatBuddyFlags flags,
+                                      gboolean new_arrival, void *m) {
+  UNUSED(conv);
+  UNUSED(flags);
+  UNUSED(new_arrival);
+  UNUSED(m);
+  printf("%s joined the chat\n", name);
+}
+
+static void process_chat_buddy_left(PurpleConversation *conv, const char *name,
+                                    const char *reason, void *m) {
+  UNUSED(conv);
+  UNUSED(reason);
+  UNUSED(m);
+  printf("%s left the chat\n", name);
+}
+
+static void connect_to_signals(np1secUserState* user_state) {
   static int handle;
   void *conn_handle = purple_connections_get_handle();
   void *conv_handle = purple_conversations_get_handle();
@@ -155,6 +177,10 @@ static void connect_to_signals(mpSeQUserState* user_state) {
                         PURPLE_CALLBACK(process_chat_join_failed), user_state);
   purple_signal_connect(conv_handle, "chat-joined", &handle,
                         PURPLE_CALLBACK(process_chat_joined), user_state);
+  purple_signal_connect(conv_handle, "chat-buddy-joined", &handle,
+                        PURPLE_CALLBACK(process_buddy_chat_joined), user_state);
+  purple_signal_connect(conv_handle, "chat-buddy-left", &handle,
+                        PURPLE_CALLBACK(process_chat_buddy_left), user_state);
 }
 
 #define PURPLE_GLIB_READ_COND  (G_IO_IN | G_IO_HUP | G_IO_ERR)
@@ -285,6 +311,11 @@ static gboolean io_callback(GIOChannel *io, GIOCondition condition,
   return FALSE;
 }
 
+void log(std::string room_name, std::string message) {
+  fprintf(stderr, "room: %s / message: %s\n", room_name.c_str(),
+          message.c_str());
+}
+
 int main(void) {
   GMainLoop *loop = g_main_loop_new(NULL, FALSE);
   purple_init();
@@ -314,8 +345,15 @@ int main(void) {
   name[strlen(name) - 1] = 0;  // strip the \n
 
   // here is the place to construct the user state
-  // all we need is username and the private key
-  mpSeQUserState* user_state = new mpSeQUserState(name);
+  static np1secAppOps ops = {
+    log
+  };
+
+  np1secUserState* user_state = new np1secUserState(name, &ops);
+  if (!user_state->init()) {
+    fprintf(stderr, "Failed to initiate the userstate.\n");
+    abort();
+  }
 
   PurpleAccount *account = purple_account_new(name, prpl);
   char *password = getpass("Password: ");
