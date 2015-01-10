@@ -242,6 +242,7 @@ gcry_cipher_hd_t Cryptic::OpenCipher() {
 
   return hd;
 }
+
 std::string Cryptic::Encrypt(std::string plain_text) {
   std::string crypt_text = plain_text;
   gcry_error_t err = 0;

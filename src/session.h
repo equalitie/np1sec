@@ -113,7 +113,7 @@ class np1secSession {
    * When a user wants to send a message to a session it needs to call its send
    * function.
    */
-  std::string send(np1secMessage message);
+  bool send(np1secMessage message);
 
   /**
    * When a message is received from a session the receive function needs to be

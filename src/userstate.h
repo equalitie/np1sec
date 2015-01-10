@@ -43,6 +43,8 @@ class RoomAction {
   std::string new_message;
 };
 
+typedef std::map<std::string, np1secSession*> session_room_map;
+
 /**
  * Calls from np1sec to the application.
  */
@@ -64,7 +66,7 @@ class np1secUserState {
   std::string name;
   LongTermIDKey *long_term_private_key;
   std::map<SessionID, np1secSession> np1sec_sessions;
-  std::map<std::string, SessionID> sessions_in_a_room;
+  session_room_map session_in_a_room;
 
  public:
   np1secAppOps *ops;
@@ -115,7 +117,7 @@ class np1secUserState {
    *
    * @return true in case of success, false in case of failure
    */
-  std::string send_handler(std::string room_name, std::string plain_message);
+  bool send_handler(std::string room_name, std::string plain_message);
 
   /**
    * The client need to call this function whenever a message is received. This
@@ -142,10 +144,9 @@ class np1secUserState {
    *
    * @param room_name the chat room_name
    *
-   * @return the current session if it exists for the given room or create
-   *         a new session and return that.
+   * @return the current session if it exists.
    */
-  np1secSession retrieve_session(std::string room_name);
+  np1secSession *retrieve_session(std::string room_name);
 
   ~np1secUserState();
 };

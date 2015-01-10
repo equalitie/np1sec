@@ -59,7 +59,7 @@ bool np1secSession::farewell(std::string leaver_id) {
   return true;
 }
 
-std::string np1secSession::send(np1secMessage message) {
+bool np1secSession::send(np1secMessage message) {
   gcry_error_t err;
   unsigned char *buffer = NULL;
   std::string signature = NULL;
@@ -68,6 +68,7 @@ std::string np1secSession::send(np1secMessage message) {
   gcry_randomize(buffer, 32, GCRY_STRONG_RANDOM);
   unsigned char *sigbuf = NULL;
   size_t siglen;
+  char *msg = NULL;
 
   // Add random noise to message to ensure hashing/signing is unique
   // for similar messages
@@ -85,8 +86,10 @@ std::string np1secSession::send(np1secMessage message) {
   combined_content.append(signature);
 
 
-  return otrl_base64_otr_encode((unsigned char*)combined_content.c_str(),
-                                combined_content.size());
+  msg = otrl_base64_otr_encode((unsigned char*)combined_content.c_str(),
+                               combined_content.size());
+  us->ops->send_bare(room_name, msg);
+  return true;
 }
 
 np1secMessage np1secSession::receive(std::string raw_message) {

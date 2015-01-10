@@ -42,47 +42,44 @@ bool np1secUserState::init() {
 }
 
 bool np1secUserState::join_room(std::string room_name) {
-  np1secSession new_session(this, room_name, name);
+  np1secSession *new_session = new np1secSession(this, room_name, name);
 
-  if (!new_session.join()) {
+  if (!new_session->join()) {
+    delete new_session;
     return false;
   }
 
-  // np1sec_sessions.insert({ new_session.session_id, new_session });
-  // sessions_in_a_room.insert({ room_name, new_session.session_id });
+  session_in_a_room.insert({ room_name, new_session });
   return true;
 }
 
 RoomAction np1secUserState::receive_handler(std::string room_name,
                                             std::string np1sec_message) {
-  np1secSession cur_session = retrieve_session(room_name);
-  np1secMessage received_message = cur_session.receive(np1sec_message);
+  np1secSession *cur_session = retrieve_session(room_name);
+  if (!cur_session) {
+    // uh oh
+  }
+  np1secMessage received_message = cur_session->receive(np1sec_message);
   RoomAction room_action = { NULL, received_message.user_message };
   return room_action;
 }
 
-std::string np1secUserState::send_handler(std::string room_name,
-                                          std::string plain_message) {
-  np1secSession cur_session = retrieve_session(room_name);
+bool np1secUserState::send_handler(std::string room_name,
+                                   std::string plain_message) {
+  np1secSession *cur_session = retrieve_session(room_name);
+  if (!cur_session) {
+    // uh oh
+  }
   np1secMessage message = { USER_MESSAGE, plain_message };
-  std::string b64_content = NULL;
-  b64_content = cur_session.send(message);
-
-  return b64_content;
+  return cur_session->send(message);
 }
 
-np1secSession np1secUserState::retrieve_session(std::string room_name) {
-  np1secSession cur_session;
+np1secSession *np1secUserState::retrieve_session(std::string room_name) {
+  np1secSession *cur_session = nullptr;
+  session_room_map::iterator it = session_in_a_room.find(room_name);
 
-  if (sessions_in_a_room.find(room_name) != sessions_in_a_room.end() &&
-      np1sec_sessions.find(sessions_in_a_room.find(room_name)->second)
-        != np1sec_sessions.end()
-  ) {
-    cur_session = np1sec_sessions[sessions_in_a_room.find(room_name)->second];
-  } else {
-    if (join_room(room_name)) {
-      cur_session = retrieve_session(room_name);
-    }
+  if ( it != session_in_a_room.end() ) {
+    cur_session = it->second;
   }
 
   return cur_session;
