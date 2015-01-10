@@ -34,13 +34,13 @@ gcry_error_t Hash(const void *buffer, size_t buffer_len, HashBlock hb,
   if (secure)
     flags |= GCRY_MD_FLAG_SECURE;
 
-  assert(!gcry_md_test_algo(c_mpseq_hash));
-  err = gcry_md_open(&digest, c_mpseq_hash, flags);
+  assert(!gcry_md_test_algo(c_np1sec_hash));
+  err = gcry_md_open(&digest, c_np1sec_hash, flags);
   if (err)
     goto done;
 
   gcry_md_write(digest, buffer, buffer_len);
-  hash_str = gcry_md_read(digest, c_mpseq_hash);
+  hash_str = gcry_md_read(digest, c_np1sec_hash);
   assert(hash_str);
   memcpy(hb, hash_str, sizeof(HashBlock));
 

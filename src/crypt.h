@@ -126,7 +126,7 @@ const unsigned char SESSION_IV[] = {
 };
 
 
-const int c_mpseq_hash = gcry_md_algos::GCRY_MD_SHA256;
+const int c_np1sec_hash = gcry_md_algos::GCRY_MD_SHA256;
 
 // The length of the output of the hash function in bytes.
 const size_t c_hash_length = 32;
