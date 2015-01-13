@@ -51,6 +51,7 @@ bool np1secUserState::join_room(std::string room_name) {
 
   session_in_a_room.insert({ room_name, new_session });
   return true;
+  
 }
 
 RoomAction np1secUserState::receive_handler(std::string room_name,

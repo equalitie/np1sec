@@ -55,6 +55,17 @@ struct np1secAppOps {
    * the user.
    */
   void (*send_bare)(std::string room_name, std::string message);
+
+  /** 
+   * Asks the app to join a room or a coversation 
+   */
+  void (*join)(std::string room_name);
+
+  /** 
+   * Asks the app to leave a room or a coversation 
+   */
+  void (*leave)(std::string room_name);
+
 };
 
 /**

@@ -163,6 +163,21 @@
     \;
   </proof>
 
+  <subsection|Confidentiality and Authenticity of TDH>
+
+  \;
+
+  <section|Security of (n+1)sec authenticated group key exchange>
+
+  In this section we prove the security of (n+1)sec group key exchange in the
+  proposed adversarial model. Because the key exchange is essentially FAKE
+  with only difference is that the traditional DH key exchange replaced by
+  TDH, we prove the security of (n+1)sec GKE based on the security of FAKE.
+
+  <subsection|Security of GKE>
+
+  We prove Theorem <reference|thrm-np1sec-gke>. Theorem\ 
+
   <section|Security of Transcript Consistency Assurance>
 
   <label|sect-tca-sec>
@@ -181,19 +196,21 @@
 
 <\references>
   <\collection>
-    <associate|auto-1|<tuple|1|1|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|auto-2|<tuple|1.1|1|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|auto-3|<tuple|1|2|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|auto-4|<tuple|1.2|1|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|auto-5|<tuple|2|2|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|auto-6|<tuple|3|2|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|auto-7|<tuple|4|2|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|auto-8|<tuple|4|?|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|sect-comp-sec|<tuple|4|2|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
+    <associate|auto-1|<tuple|1|1>>
+    <associate|auto-10|<tuple|5|?>>
+    <associate|auto-2|<tuple|1.1|1>>
+    <associate|auto-3|<tuple|1|2>>
+    <associate|auto-4|<tuple|1.2|1>>
+    <associate|auto-5|<tuple|1.3|2>>
+    <associate|auto-6|<tuple|2|2>>
+    <associate|auto-7|<tuple|2.1|2>>
+    <associate|auto-8|<tuple|3|?>>
+    <associate|auto-9|<tuple|4|?>>
+    <associate|sect-comp-sec|<tuple|5|2>>
     <associate|sect-np1sec-in-pcl|<tuple|3|?|../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|sect-np1sec-pclize|<tuple|3|2|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|sect-tca-sec|<tuple|2|2|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|sect-tdh-sec|<tuple|1.2|1|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
+    <associate|sect-np1sec-pclize|<tuple|4|2>>
+    <associate|sect-tca-sec|<tuple|3|2>>
+    <associate|sect-tdh-sec|<tuple|1.2|1>>
   </collection>
 </references>
 

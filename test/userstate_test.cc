@@ -43,5 +43,19 @@ TEST_F(UserStateTest, test_join) {
   np1secUserState* user_state = new np1secUserState(name, &ops);
   ASSERT_TRUE(user_state->init());
   ASSERT_TRUE(user_state->join_room(room_name));
+
+}
+
+TEST_F(UserStateTest, test_join_accept) {
+  std::string accepter_name = "accepter";
+  std::string joiner_name = "joiner";
+  std::string room_name = "room";
+  np1secUserState* joiner_state = new np1secUserState(joiner_name, &ops);
+  np1secUserState* accepter_state = new np1secUserState(acceptor_name, &ops);
+  ASSERT_TRUE(accepter_state->init());
+  ASSERT_TRUE(joiner_state->init());
+  ASSERT_TRUE(acceptor_state->join_room(room_name));
+  ASSERT_TRUE(joiner_state->join_room(room_name));
+
 }
 

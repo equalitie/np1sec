@@ -30,7 +30,6 @@ class np1secSession;
 
 #include "src/userstate.h"
 
-
 class MessageDigest {
  public:
   HashBlock digest;
