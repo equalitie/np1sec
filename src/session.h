@@ -21,39 +21,13 @@
 
 #include <string>
 #include <vector>
+
+#include <event2/event.h>
+
 #include "src/common.h"
 #include "src/participant.h"
-#include "src/crypt.h"
 
-typedef std::vector<uint8_t> SessionID;
 class np1secSession;
-
-#include "src/userstate.h"
-
-
-class MessageDigest {
- public:
-  HashBlock digest;
-  uint32_t message_id;
-
-  void update(std::string new_message);
-
-  /**
-   * Compute a unique globally ordered id from the time stamped message,
-   * ultimately this function should be overridable by the client.
-   */
-  uint32_t compute_message_id(std::string cur_message);
-};
-
-enum np1secMessageType {
-  USER_MESSAGE,
-  PURE_META_MESSAG
-};
-
-struct np1secMessage {
-  np1secMessageType metamessage;
-  std::string user_message;
-};
 
 // Defining essential types
 typedef uint8_t np1secBareMessage[];
@@ -65,8 +39,8 @@ typedef uint8_t np1secBareMessage[];
  */
 class np1secSession {
  protected:
-  HashBlock hashed_id;
   Cryptic cryptic;
+  HashBlock hashed_id;
 
   np1secUserState *us;
   std::string room_name;
@@ -84,7 +58,34 @@ class np1secSession {
    */
   std::vector<Participant> peers_in_limbo;
 
+  /**
+    * Keeps a list of the ack timers for recently sent messages indexed by peers
+    *
+    */
+  std::map<std::string, struct event> awaiting_ack;
+	 
+  /**
+   * Keeps a list of timers for acks that need to be sent for messages received
+   * the list is indexed by peer.
+   */
+  std::map<std::string, struct event> acks_to_send;
+
   time_t key_freshness_time_stamp;
+
+  /*
+   * Callback function to cause automatic sending of ack for 
+   * received message
+   *
+   */
+  void cb_send_ack(evutil_socket_t fd, short what, void *arg);
+
+  /*
+   * Callback function to cause automatic warning if ack not
+   * received for previously sent message
+   *
+   */
+  void cb_ack_not_received(evutil_socket_t fd, short what, void *arg);
+
 
  public:
   SessionID session_id;
@@ -110,10 +111,34 @@ class np1secSession {
   bool farewell(std::string leaver_id);
 
   /**
+   * Generate acknowledgement timers for all other participants
+   *
+   */
+  void start_ack_timers();
+
+  /*
+   * Start received message acknowledgement timer
+   *
+   */
+  void start_receive_ack_timer(Participant sender);
+
+  /**
+   * End ack timer on for given acknowledgeing participants
+   *
+   */
+  void stop_timer_receive(Participant acknowledger);
+
+  /*
+   * Stop ack to send timers when user sends new message before timer expires
+   *
+   */
+  void stop_timer_send(); 
+	
+  /**
    * When a user wants to send a message to a session it needs to call its send
    * function.
    */
-  bool send(np1secMessage message);
+  bool send(std::string message);
 
   /**
    * When a message is received from a session the receive function needs to be

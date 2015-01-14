@@ -30,7 +30,13 @@ extern "C" {
 
 #include "src/base64.h"
 
-
 #define UNUSED(expr) (void)(expr)
+
+typedef std::vector<uint8_t> SessionID;
+
+enum np1secMessageType {
+  USER_MESSAGE,
+  PURE_META_MESSAG
+};
 
 #endif  // SRC_COMMON_H_
