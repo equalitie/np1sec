@@ -33,7 +33,7 @@ np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic) {
   std::string np1sec, encrypted_message, phased_message, signed_message, signature;
   np1sec = strtok(raw_message, ":O3");
 
-  if (np1sec.compare("np1sec) {
+  if (np1sec.compare("np1sec") {
 
     encoded_message = strtok(NULL, ":O3");
 
