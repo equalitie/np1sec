@@ -55,7 +55,7 @@ class np1secSession {
    * Keeps the list of the live participants in the room and their current/new
    * keys/shares, last heartbeat, etc.
    */
-  std::vector<Participant> peers;
+  std::vector<std::string> peers;
 
   /**
    * Keeps the list of the updated participants in the room once the

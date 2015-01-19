@@ -60,8 +60,9 @@ bool np1secSession::farewell(std::string leaver_id) {
 
 void cb_ack_not_received(evutil_socket_t fd, short what, void *arg) {
   //Construct message for ack
+  std::string participant_id = static_cast<std::string>(arg);
   HashBlock* transcript_chain_hash = transcript_chain.rbegin(); 
-  np1secMessage outbound(session_id, sender_id, "", META_MESSAGE,
+  np1secMessage outbound(session_id, participant_id, "", META_MESSAGE,
                          transcript_chain_hash, cryptic);
 
   add_message_to_transcript(outbound.user_message, outbound.message_id);
@@ -70,6 +71,7 @@ void cb_ack_not_received(evutil_socket_t fd, short what, void *arg) {
 
 void cb_send_ack(evutil_socket_t fd, short what, void *arg) {
   //Construct message with p.id
+  std::string participant_id = static_cast<std::string>(arg);
   HashBlock* transcript_chain_hash = transcript_chain.rbegin(); 
   np1secMessage outbound(session_id, us.name, "", META_MESSAGE,
                          transcript_chain_hash, cryptic);
@@ -83,10 +85,10 @@ void np1secSession::start_ack_timers() {
   struct timeval ten_seconds = {10, 0};
   struct event_base *base = event_base_new();
 	
-  for (std::vector<Participant>::iterator it = peers.begin(); it != peers.end; ++it) {
-    timer_event = event_new(base, -1, EV_TIMEOUT, cb_ack_not_received, NULL);
-    awaiting_ack[it.id] = timer_event; 
-    event_add(awaiting_ack[it.id], &ten_seconds);
+  for (std::vector<std::string>::iterator it = peers.begin(); it != peers.end; ++it) {
+    timer_event = event_new(base, -1, EV_TIMEOUT, cb_ack_not_received, it->value);
+    awaiting_ack[it->value] = timer_event; 
+    event_add(awaiting_ack[it->value], &ten_seconds);
   }
 
   event_base_dispatch(base);
@@ -97,16 +99,16 @@ void np1secSession::start_receive_ack_timer(std::string sender_id) {
   struct timeval ten_seconds = {10, 0};
   struct event_base *base = event_base_new();
 	
-  timer_event = event_new(base, -1, EV_TIMEOUT, cb_ack_not_received, NULL);
+  timer_event = event_new(base, -1, EV_TIMEOUT, cb_ack_not_received, sender_id);
   acks_to_send[sender_id] = time_event;
   event_add(awaiting_ack[sender_id], &ten_seconds);
   event_base_dispatch(base);
 }
 
 void np1secSession::stop_timer_send() {
-  for (std::map<Particpant, struct event>::iterator it=acks_to_send.begin(); it!=acks_to_send.end(); ++it) {
+  for (std::map<std::string, struct event>::iterator it=acks_to_send.begin(); it!=acks_to_send.end(); ++it) {
     event_free(it->value);
-    acks_to_send.erase(it);
+    acks_to_send.erase(it->value);
   }
 }
 
