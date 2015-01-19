@@ -101,6 +101,13 @@ class np1secMessage {
   std::string format_sendable_message();
 
   /**
+   * Generate 128 bit nonce value to be placed inside the message 
+   * as random interesting data
+   *
+   */
+  void generate_nonce(unsigned char* buffer);
+
+  /**
    * Destructor
    *
    */

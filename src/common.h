@@ -39,4 +39,10 @@ enum np1secMessageType {
   PURE_META_MESSAG
 };
 
+// The length of the output of the hash function in bytes.
+const size_t c_hash_length = 32;
+
+typedef uint8_t HashBlock[c_hash_length];
+
+
 #endif  // SRC_COMMON_H_

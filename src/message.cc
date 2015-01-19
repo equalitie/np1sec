@@ -92,6 +92,10 @@ uint32_t np1secMessage::compute_message_id(std::string cur_message) {
 
 }
 
+void np1secMessage::generate_nonce(unsigned char* buffer) {
+  gcry_randomize(buffer, 128, GCRY_STRONG_RANDOM);
+}
+
 std::string np1secMessage::base64_encode(std::string message) {
   return otrl_base64_otr_encode((unsigned char*)message.c_str(), message.size());
 }

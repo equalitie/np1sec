@@ -106,12 +106,22 @@ void np1secSession::stop_timer_receive(std::string acknowledger_id) {
   awaiting_ack.erase(acknowledger_id);
 }
 
-bool np1secSession::send(std::string message) {
-  unsigned char *buffer = NULL;
-  gcry_randomize(buffer, 32, GCRY_STRONG_RANDOM);
+bool np1secSession::send(std::string message, std::string sender_id) {
+  HashBlock* transcript_chain_hash;
 
-  np1secMessage outbound(session_id, , USER_MESSAGE,
+  std::stringstream ss;
+  std::string pointlessconversion;
+
+  ss << transcript_chain.rbegin();
+  ss >> pointlessconversion;
+  pointlessconversion += message + ":O3";
+
+  compute_transcript_chain(transcript_chain_hash, 
+                           pointlessconversion); 
+
+  np1secMessage outbound(session_id, sender_id, message, USER_MESSAGE,
                          transcript_chain_hash, cryptic);
+
 
   // As we're sending a new message we are no longer required to ack
   // any received messages 

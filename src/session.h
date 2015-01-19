@@ -47,6 +47,11 @@ class np1secSession {
   std::string name;
 
   /**
+   * Stores Transcript chain hashes indexed by message id
+   */
+  std::map<uint32_t, HashBlock> transcript_chain; 
+
+  /**
    * Keeps the list of the live participants in the room and their current/new
    * keys/shares, last heartbeat, etc.
    */
