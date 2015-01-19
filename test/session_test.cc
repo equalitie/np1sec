@@ -21,7 +21,68 @@
 
 class SessionTest : public ::testing::Test{};
 
+TEST_F(SessionTest, test_cb_ack_not_received){
+
+}
+
+TEST_F(SessionTest, test_cb_send_ack){
+
+}
+
+TEST_F(SessionTest, test_start_ack_timers) {
+  //Gen participant list
+  Participant p;
+
+  session.start_ack_timers();
+  //Check timer is present for given participant
+  map<Participant, struct event>::iterator it = session.awaiting_ack.find(p.id);
+ 
+  ASSERT_NE(it, session.awaiting_ack.end());
+
+} 
+
+TEST_F(SessionTest, test_receive_ack_timer) {
+
+  std::string sender_id = "1";
+
+  session.start_receive_ack_timer(sender_id);
+
+  map<Participant, struct event>::iterator it = session.acks_to_send.find(sender_id);
+  ASSERT_NE(it, session.acks.to_send.end());
+
+}
+
+TEST_F(SessionTest, test_stop_timer_send) {
+  //Gen participant list
+  Participant p;
+
+  session.stop_timer_send();
+
+  map<Participant, struct event>::iterator it = session.acks_to_send.find(p.id);
+
+  ASSERT_EQ(it, session.acks_to_send.end());
+
+}
+
+TEST_F(SessionTest, test_stop_timer_receive) {
+  std::string acknowledger_id = "1";
+
+  session.stop_timer_receive(acknowledger_id);
+
+  map<Participant, struct event>::iterator it = session.awaiting_ack.find(
+                                                          acknowledger_id);
+  ASSERT_EQ(it, session.awaiting_ack.end());
+
+}
+
 TEST_F(SessionTest, test_send) {
+  std::string message = "This is a test message we hope to see on the otherside.";
+
+  bool result = session.send(message);
+
+  ASSERT_TRUE(result);
+  
+
 }
 
 TEST_F(SessionTest, test_receive) {

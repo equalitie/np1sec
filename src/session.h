@@ -70,6 +70,12 @@ class np1secSession {
   std::map<std::string, struct event> awaiting_ack;
 	 
   /**
+   * Insert new message hash into transcript chain
+   *
+   */
+  void insert_message_hash(std::message, uint32_t message_id);
+
+  /**
    * Keeps a list of timers for acks that need to be sent for messages received
    * the list is indexed by peer.
    */
@@ -150,7 +156,7 @@ class np1secSession {
    * called to decrypt. It updates the session status and returns the decrypted
    * message to be shown, it might be null if the message was a meta message.
    */
-  np1secMessage receive(std::string raw_message);
+  np1secMessage receive(std::string raw_message, std::string sender_id);
 
   /**
    * Destructor, session should be destroyed at leave.

@@ -29,7 +29,7 @@ class np1secMessage {
   np1secMessageType message_type;
 
  public:
-  std::string message_id;
+  uint32_t message_id;
   SessionID session_id;
   std::string sender_id;
   std::string user_message;

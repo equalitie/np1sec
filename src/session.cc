@@ -59,12 +59,22 @@ bool np1secSession::farewell(std::string leaver_id) {
 }
 
 void cb_ack_not_received(evutil_socket_t fd, short what, void *arg) {
+  //Construct message for ack
+  HashBlock* transcript_chain_hash = transcript_chain.rbegin(); 
+  np1secMessage outbound(session_id, sender_id, "", META_MESSAGE,
+                         transcript_chain_hash, cryptic);
 
+  insert_message_hash(outbound.user_message, outbound.message_id);
 
 }
 
 void cb_send_ack(evutil_socket_t fd, short what, void *arg) {
-  
+  //Construct message with p.id
+  HashBlock* transcript_chain_hash = transcript_chain.rbegin(); 
+  np1secMessage outbound(session_id, sender_id, "", META_MESSAGE,
+                         transcript_chain_hash, cryptic);
+
+  insert_message_hash(outbound.user_message, outbound.message_id);
 
 }
 
@@ -106,22 +116,30 @@ void np1secSession::stop_timer_receive(std::string acknowledger_id) {
   awaiting_ack.erase(acknowledger_id);
 }
 
-bool np1secSession::send(std::string message, std::string sender_id) {
-  HashBlock* transcript_chain_hash;
-
+void np1secSession::insert_message_hash(std::string message, 
+                                        unint32_t message_id) {
+  HashBlock* hb;
   std::stringstream ss;
   std::string pointlessconversion;
 
   ss << transcript_chain.rbegin();
   ss >> pointlessconversion;
-  pointlessconversion += message + ":O3";
+  pointlessconversion += ":O3" +message;
 
-  compute_transcript_chain(transcript_chain_hash, 
+  compute_transcript_chain(hb, 
                            pointlessconversion); 
+
+  transcript_chain[message_id] = hb;
+}
+
+bool np1secSession::send(std::string message) {
+  HashBlock* transcript_chain_hash = transcript_chain.rbegin()->second; 
 
   np1secMessage outbound(session_id, sender_id, message, USER_MESSAGE,
                          transcript_chain_hash, cryptic);
 
+
+  insert_message_hash(outbound.user_message, outbound.message_id);
 
   // As we're sending a new message we are no longer required to ack
   // any received messages 
@@ -133,21 +151,30 @@ bool np1secSession::send(std::string message, std::string sender_id) {
 
   us->ops->send_bare(room_name, outbound);
   return true;
+
 }
 
-np1secMessage np1secSession::receive(std::string raw_message) {
+np1secMessage np1secSession::receive(std::string raw_message, std::string sender_id) {
   std::string decoded_content;
+  HashBlock* transcript_chain_hash = transcript_chain.rbegin()->second; 
   std::string signature, message_content, decrypted_message;
   np1secMessage received_message(raw_message);
 
-  // Stop awaiting ack timer for the sender
-  stop_timer_receive(received_message.sender_id);
+  if (transcript_chain_hash == received_message.transcript_chain_hash) {
+    insert_message_hash(received_message.user_message, 
+                        received_message.message_id);
+    // Stop awaiting ack timer for the sender
+    stop_timer_receive(received_message.sender_id);
 
-  // Start an ack timer for us so we remember to say thank you
-  // for the message
-  start_receive_ack_timer(received_message.sender_id);
+    // Start an ack timer for us so we remember to say thank you
+    // for the message
+    start_receive_ack_timer(received_message.sender_id);
 
-  return received_message;
+    return received_message;
+  } else {
+    //The hash is a lie!
+    return NULL;
+  }
 }
 
 np1secSession::~np1secSession() {
