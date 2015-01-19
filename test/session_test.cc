@@ -32,12 +32,12 @@ TEST_F(SessionTest, test_cb_send_ack){
   //Awaiting test frame
 }
 
-TEST_F(SessionTest, test_insert_message_hash) {
+TEST_F(SessionTest, test_add_message_to_transcript) {
  uint32_t id = 1;
  std:string message = "test message";
  HashBlock* hb;
  compute_message_hash(hb, message);
- session.insert_message_hash(message, id);
+ session.add_message_to_transcript(message, id);
  
  ASSERT_EQ(hb, session.transcript_chain[id]);
 

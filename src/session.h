@@ -73,7 +73,7 @@ class np1secSession {
    * Insert new message hash into transcript chain
    *
    */
-  void insert_message_hash(std::message, uint32_t message_id);
+  void add_message_to_transcript(std::message, uint32_t message_id);
 
   /**
    * Keeps a list of timers for acks that need to be sent for messages received

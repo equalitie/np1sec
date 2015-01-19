@@ -64,17 +64,17 @@ void cb_ack_not_received(evutil_socket_t fd, short what, void *arg) {
   np1secMessage outbound(session_id, sender_id, "", META_MESSAGE,
                          transcript_chain_hash, cryptic);
 
-  insert_message_hash(outbound.user_message, outbound.message_id);
+  add_message_to_transcript(outbound.user_message, outbound.message_id);
 
 }
 
 void cb_send_ack(evutil_socket_t fd, short what, void *arg) {
   //Construct message with p.id
   HashBlock* transcript_chain_hash = transcript_chain.rbegin(); 
-  np1secMessage outbound(session_id, sender_id, "", META_MESSAGE,
+  np1secMessage outbound(session_id, us.name, "", META_MESSAGE,
                          transcript_chain_hash, cryptic);
 
-  insert_message_hash(outbound.user_message, outbound.message_id);
+  add_message_to_transcript(outbound.user_message, outbound.message_id);
 
 }
 
@@ -115,7 +115,7 @@ void np1secSession::stop_timer_receive(std::string acknowledger_id) {
   awaiting_ack.erase(acknowledger_id);
 }
 
-void np1secSession::insert_message_hash(std::string message, 
+void np1secSession::add_message_to_transcript(std::string message, 
                                         unint32_t message_id) {
   HashBlock* hb;
   std::stringstream ss;
@@ -134,7 +134,7 @@ void np1secSession::insert_message_hash(std::string message,
 bool np1secSession::send(std::string message) {
   HashBlock* transcript_chain_hash = transcript_chain.rbegin()->value; 
 
-  np1secMessage outbound(session_id, sender_id, message, USER_MESSAGE,
+  np1secMessage outbound(session_id, us.name, message, USER_MESSAGE,
                          transcript_chain_hash, cryptic);
 
   // As we're sending a new message we are no longer required to ack
@@ -155,7 +155,7 @@ np1secMessage np1secSession::receive(std::string raw_message, std::string sender
   np1secMessage received_message(raw_message);
 
   if (transcript_chain_hash == received_message.transcript_chain_hash) {
-    insert_message_hash(received_message.user_message, 
+    add_message_to_transcript(received_message.user_message, 
                         received_message.message_id);
     // Stop awaiting ack timer for the sender
     stop_timer_receive(received_message.sender_id);
