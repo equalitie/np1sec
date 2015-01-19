@@ -138,9 +138,6 @@ bool np1secSession::send(std::string message) {
   np1secMessage outbound(session_id, sender_id, message, USER_MESSAGE,
                          transcript_chain_hash, cryptic);
 
-
-  insert_message_hash(outbound.user_message, outbound.message_id);
-
   // As we're sending a new message we are no longer required to ack
   // any received messages 
   stop_timer_send();
@@ -155,9 +152,7 @@ bool np1secSession::send(std::string message) {
 }
 
 np1secMessage np1secSession::receive(std::string raw_message, std::string sender_id) {
-  std::string decoded_content;
   HashBlock* transcript_chain_hash = transcript_chain.rbegin()->second; 
-  std::string signature, message_content, decrypted_message;
   np1secMessage received_message(raw_message);
 
   if (transcript_chain_hash == received_message.transcript_chain_hash) {
