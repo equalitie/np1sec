@@ -104,7 +104,6 @@ void np1secSession::start_receive_ack_timer(std::string sender_id) {
 }
 
 void np1secSession::stop_timer_send() {
-	
   for (std::map<Particpant, struct event>::iterator it=acks_to_send.begin(); it!=acks_to_send.end(); ++it) {
     event_free(it->value);
     acks_to_send.erase(it);
@@ -126,14 +125,14 @@ void np1secSession::insert_message_hash(std::string message,
   ss >> pointlessconversion;
   pointlessconversion += ":O3" +message;
 
-  compute_transcript_chain(hb, 
+  compute_message_hash(hb, 
                            pointlessconversion); 
 
   transcript_chain[message_id] = hb;
 }
 
 bool np1secSession::send(std::string message) {
-  HashBlock* transcript_chain_hash = transcript_chain.rbegin()->second; 
+  HashBlock* transcript_chain_hash = transcript_chain.rbegin()->value; 
 
   np1secMessage outbound(session_id, sender_id, message, USER_MESSAGE,
                          transcript_chain_hash, cryptic);
@@ -152,7 +151,7 @@ bool np1secSession::send(std::string message) {
 }
 
 np1secMessage np1secSession::receive(std::string raw_message, std::string sender_id) {
-  HashBlock* transcript_chain_hash = transcript_chain.rbegin()->second; 
+  HashBlock* transcript_chain_hash = transcript_chain.rbegin()->value; 
   np1secMessage received_message(raw_message);
 
   if (transcript_chain_hash == received_message.transcript_chain_hash) {

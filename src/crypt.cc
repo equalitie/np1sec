@@ -49,7 +49,7 @@ done:
   return err;
 }
 
-gcry_error_t compute_transcript_hash(HashBlock transcript_chain, 
+gcry_error_t compute_message_hash(HashBlock transcript_chain, 
                                      std::string message) {
   
   Hash(message.c_str(), message.size(), transcript_chain); 

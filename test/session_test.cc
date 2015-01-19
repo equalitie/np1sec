@@ -18,14 +18,28 @@
 
 #include <gtest/gtest.h>
 #include "src/session.h"
+#include "src/cryptic.h"
+#include "src/common.h"
+#include "src/message.h"
 
 class SessionTest : public ::testing::Test{};
 
 TEST_F(SessionTest, test_cb_ack_not_received){
-
+  //Awaiting test frame
 }
 
 TEST_F(SessionTest, test_cb_send_ack){
+  //Awaiting test frame
+}
+
+TEST_F(SessionTest, test_insert_message_hash) {
+ uint32_t id = 1;
+ std:string message = "test message";
+ HashBlock* hb;
+ compute_message_hash(hb, message);
+ session.insert_message_hash(message, id);
+ 
+ ASSERT_EQ(hb, session.transcript_chain[id]);
 
 }
 
@@ -86,6 +100,13 @@ TEST_F(SessionTest, test_send) {
 }
 
 TEST_F(SessionTest, test_receive) {
+  //set up comparison message
+  np1secMessage test_example();
+  std::string raw_content = "";
+  std::sender_id = "1"; 
+  np1secMessage test_result = session.receive(raw_message, sender_id);
+  
+
 }
 
 // TEST_F(SessionTest, test_init) {
