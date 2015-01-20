@@ -83,6 +83,12 @@ class np1secSession {
 
   time_t key_freshness_time_stamp;
 
+  /**
+   * Callback function to manage sending of heartbeats
+   *
+   */
+  void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg);
+
   /*
    * Callback function to cause automatic sending of ack for 
    * received message
@@ -126,6 +132,11 @@ class np1secSession {
    *
    */
   void start_ack_timers();
+
+  /**
+   * Construct and start heartbeat timer
+   */
+  void start_heartbeat_timer();
 
   /*
    * Start received message acknowledgement timer
