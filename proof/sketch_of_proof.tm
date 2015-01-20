@@ -27,19 +27,7 @@
   The sketch of the proof goes as follows, in Section
   <reference|sect-tdh-sec> and Section <reference|sect-tca-sec> we give
   convential formal proof of the security properties of TDH and TCA
-  respectively. In Section <reference|sect-np1sec-pclize> we reforumlates the
-  proves of all four protocols in Protocol Composition Logic (PCL). In
-  Section <reference|sect-comp-sec>, we proof the security of (n+1)sec by
-  proving the relative security of above sub prorotocol in relation to each
-  other:
-
-  <\enumerate>
-    <item><math|Q<rsub|1>> as Parallel composition of TDH and FAGKE.
-
-    <item>Sequential composition of <math|Q<rsub|1>> and SecCom.
-
-    <item> Parallel compostion of SecCom and TCA.
-  </enumerate>
+  respectively.\ 
 
   <section|Security of Triple Diffie-Hellman Authentication>
 
@@ -163,17 +151,72 @@
     \;
   </proof>
 
+  <subsection|Confidentiality and Authenticity of TDH>
+
+  \;
+
+  <section|Security of (n+1)sec authenticated group key exchange>
+
+  In this section we prove the security of (n+1)sec group key exchange in the
+  proposed adversarial model. Because the key exchange is essentially FAGKE
+  with only difference is that the traditional DH key exchange replaced by
+  TDH, we prove the security of (n+1)sec GKE based on the security of FAKE.
+
+  <subsection|Security of GKE>
+
+  We recall that the GKE protocol in (n+1)Sec is essentially the same as
+  FAGKE protocol except that in <math|>(n+1)Sec we have:
+
+  <\equation*>
+    k<rsub|i,i+1>=H<around*|(|g<rsup|LS<rsub|i>x<rsub|i+1>>,g<rsup|LS<rsub|i+1>x<rsub|i>>\<nocomma\>,g<rsup|x<rsub|i>x<rsub|i+1>>|)>
+  </equation*>
+
+  Where as in FAGKE we have:
+
+  <\equation*>
+    k<rsub|i,i+1>=g<rsup|x<rsub|i>x<rsub|i+1>>
+  </equation*>
+
+  Therefore, to prove the that <math|<around*|(|n+1|)>>Sec we need to prove
+  Theorem <reference|thrm-np1sec-gke>:
+
+  <\theorem>
+    <label|thrm-np1sec-gke>If mBD+P protocol presented in <cite|ACMP10>
+    provides AKE-security of group keys, then so does the (n+1)sec key
+    exchange.
+  </theorem>
+
+  <\proof>
+    We only need to proof that if the adversary <math|\<cal-A\><rsub|GKE>>
+    can break the (n+1)sec with non-neglibile probablity then we can also
+    break mBD+P protocol.
+
+    We note that any attack against <math|<around*|(|n+1|)>>Sec can
+    immediately re-interpreted as an attack to <math|mBD+P> prototocl, as
+    long as it does not take advantage of the internal structure of
+    <math|k<rsub|i j>> values.
+
+    In particular games G0-G3 in proof of security of of mDB+P presented in
+    <cite|ACMP10> Theorem 4, is independent of how <math|k<rsub|i,j>> beside
+    assuming that it exihibt a choice from random probablity distribution.
+
+    We modify G4 to adopt to <math|<around*|(|n+ 1|)>>Sec protocol.
+    <math|A<rsub|GKE>> gets <math|g<rsup|a>> and <math|g<rsup|b>> from GDH
+    challenge and embeds them as <math|g<rsup|x<rsub|i>>> and
+    <math|g<rsup|x<rsub|i+1>>>. Ze generate random <math|LS<rsub|i>> and
+    <math|LS<rsub|i+1>> and compute <math|k<rprime|'><rsub|i,i+1>> using
+    <math|g<rsup|c>> value instead of <math|g<rsup|x<rsub|i>x<rsub|i+1>>>
+    then it uses the Oracle to see if <math|k<rprime|'><rsub|i,i+1>> is
+    distinguishable from <math|k<rsub|i,i+1>> to solve the DDH problem. The
+    remaining argument for game <math|G4> is the same as <math|mBD+P> proof.
+    \ 
+  </proof>
+
   <section|Security of Transcript Consistency Assurance>
 
   <label|sect-tca-sec>
 
-  <section|(n+1)Sec components in PCL Langugae>
-
-  <label|sect-np1sec-pclize>
-
-  <section|Security of composed sub protocols>
-
-  <label|sect-comp-sec>
+  \;
 </body>
 
 <initial|<\collection>
@@ -181,19 +224,22 @@
 
 <\references>
   <\collection>
-    <associate|auto-1|<tuple|1|1|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|auto-2|<tuple|1.1|1|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|auto-3|<tuple|1|2|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|auto-4|<tuple|1.2|1|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|auto-5|<tuple|2|2|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|auto-6|<tuple|3|2|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|auto-7|<tuple|4|2|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|auto-8|<tuple|4|?|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|sect-comp-sec|<tuple|4|2|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
+    <associate|auto-1|<tuple|1|1>>
+    <associate|auto-10|<tuple|5|?>>
+    <associate|auto-2|<tuple|1.1|1>>
+    <associate|auto-3|<tuple|1|2>>
+    <associate|auto-4|<tuple|1.2|1>>
+    <associate|auto-5|<tuple|1.3|2>>
+    <associate|auto-6|<tuple|2|2>>
+    <associate|auto-7|<tuple|2.1|2>>
+    <associate|auto-8|<tuple|3|?>>
+    <associate|auto-9|<tuple|4|?>>
+    <associate|sect-comp-sec|<tuple|5|2>>
     <associate|sect-np1sec-in-pcl|<tuple|3|?|../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|sect-np1sec-pclize|<tuple|3|2|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|sect-tca-sec|<tuple|2|2|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
-    <associate|sect-tdh-sec|<tuple|1.2|1|../../../../.TeXmacs/texts/scratch/no_name_12.tm>>
+    <associate|sect-np1sec-pclize|<tuple|4|2>>
+    <associate|sect-tca-sec|<tuple|3|2>>
+    <associate|sect-tdh-sec|<tuple|1.2|1>>
+    <associate|thrm-np1sec-gke|<tuple|3|?>>
   </collection>
 </references>
 
@@ -221,18 +267,31 @@
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-4>>
 
-      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|2<space|2spc>Security
-      of Transcript Consistency Assurance>
-      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-5><vspace|0.5fn>
+      <with|par-left|<quote|1tab>|1.3<space|2spc>Confidentiality and
+      Authenticity of TDH <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-5>>
 
-      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|3<space|2spc>(n+1)Sec
-      components in PCL Langugae> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|2<space|2spc>Security
+      of (n+1)sec authenticated group key exchange>
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-6><vspace|0.5fn>
 
-      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|4<space|2spc>Security
+      <with|par-left|<quote|1tab>|2.1<space|2spc>Security of GKE
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-7>>
+
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|3<space|2spc>Security
+      of Transcript Consistency Assurance>
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-8><vspace|0.5fn>
+
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|4<space|2spc>(n+1)Sec
+      components in PCL Langugae> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-9><vspace|0.5fn>
+
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|5<space|2spc>Security
       of composed sub protocols> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-7><vspace|0.5fn>
+      <no-break><pageref|auto-10><vspace|0.5fn>
     </associate>
   </collection>
 </auxiliary>

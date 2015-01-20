@@ -29,6 +29,8 @@
 
 class np1secSession;
 
+#include "src/userstate.h"
+
 // Defining essential types
 typedef uint8_t np1secBareMessage[];
 
