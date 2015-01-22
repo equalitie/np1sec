@@ -119,6 +119,24 @@ class np1secSession {
    */
   void cb_ack_not_received(evutil_socket_t fd, short what, void *arg);
 
+  /**
+   * Generate acknowledgement timers for all other participants
+   *
+   */
+  void start_ack_timers();
+
+  /**
+   * End ack timer on for given acknowledgeing participants
+   *
+   */
+  void stop_timer_receive(std::string acknowledger_id);
+
+  /*
+   * Stop ack to send timers when user sends new message before timer expires
+   *
+   */
+  void stop_timer_send(); 
+	
 
  public:
   SessionID session_id;
@@ -143,30 +161,7 @@ class np1secSession {
    */
   bool farewell(std::string leaver_id);
 
-  /**
-   * Generate acknowledgement timers for all other participants
-   *
-   */
-  void start_ack_timers();
-
-  /*
-   * Start received message acknowledgement timer
-   *
-   */
-  void start_receive_ack_timer(std::string sender_id);
-
-  /**
-   * End ack timer on for given acknowledgeing participants
-   *
-   */
-  void stop_timer_receive(std::string acknowledger_id);
-
-  /*
-   * Stop ack to send timers when user sends new message before timer expires
-   *
-   */
-  void stop_timer_send(); 
-	
+  
   /**
    * When a user wants to send a message to a session it needs to call its send
    * function.
