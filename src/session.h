@@ -26,6 +26,8 @@
 
 #include "src/common.h"
 #include "src/participant.h"
+#include "src/message.h"
+#include "src/crypt.h"
 
 class np1secSession;
 
@@ -70,12 +72,24 @@ class np1secSession {
     *
     */
   std::map<std::string, struct event> awaiting_ack;
-	 
+
+  /**
+    * Construct and start timers for acking received messages
+    *
+    */
+  void start_receive_ack_timer(std::string sender_id);	 
+
+  /**
+    * Construct and start timers for sending heartbeat messages
+    *
+    */
+  void start_heartbeat_timer();	 
+
   /**
    * Insert new message hash into transcript chain
    *
    */
-  void add_message_to_transcript(std::message, uint32_t message_id);
+  void add_message_to_transcript(std::string message, uint32_t message_id);
 
   /**
    * Keeps a list of timers for acks that need to be sent for messages received
@@ -135,22 +149,17 @@ class np1secSession {
    */
   void start_ack_timers();
 
-  /**
-   * Construct and start heartbeat timer
-   */
-  void start_heartbeat_timer();
-
   /*
    * Start received message acknowledgement timer
    *
    */
-  void start_receive_ack_timer(Participant sender);
+  void start_receive_ack_timer(std::string sender_id);
 
   /**
    * End ack timer on for given acknowledgeing participants
    *
    */
-  void stop_timer_receive(Participant acknowledger);
+  void stop_timer_receive(std::string acknowledger_id);
 
   /*
    * Stop ack to send timers when user sends new message before timer expires

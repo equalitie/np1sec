@@ -22,16 +22,6 @@
 #include "src/session.h"
 #include <stdlib.h>
 
-void MessageDigest::update(std::string new_message) {
-  UNUSED(new_message);
-  return;
-}
-
-uint32_t MessageDigest::compute_message_id(std::string cur_message) {
-  UNUSED(cur_message);
-  return 0;
-}
-
 np1secSession::np1secSession() {
   throw std::invalid_argument("Default constructor should not be used.");
 }
@@ -44,7 +34,7 @@ bool np1secSession::join() {
   if (!cryptic.init()) {
     return false;
   }
-  us->ops->send_bare(room_name, "testing 123");
+  us->ops->send_bare(room_name, us.username(), "testing 123");
   return true;
 }
 
@@ -58,19 +48,19 @@ bool np1secSession::farewell(std::string leaver_id) {
   return true;
 }
 
-void np1secSession::cb_send_heartbeat(evutil_socket_t fd, short what, void *arg) {
-  send("Heartbeat", META_MESSAGE);
+void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg) {
+  send("Heartbeat", PURE_META_MESSAGE);
   start_heartbeat_timer();
 }
 
-void np1secSession::cb_ack_not_received(evutil_socket_t fd, short what, void *arg) {
+void cb_ack_not_received(evutil_socket_t fd, short what, void *arg) {
   //Construct message for ack
-  send("Where is my ack?", META_MESSAGE);
+  send("Where is my ack?", PURE_META_MESSAGE);
 }
 
-void np1secSession::cb_send_ack(evutil_socket_t fd, short what, void *arg) {
+void cb_send_ack(evutil_socket_t fd, short what, void *arg) {
   //Construct message with p.id
-  send("ACK", META_MESSAGE);
+  send("ACK", PURE_META_MESSAGE);
 }
 
 void np1secSession::start_heartbeat_timer() {
@@ -78,7 +68,7 @@ void np1secSession::start_heartbeat_timer() {
   struct timeval ten_seconds = {10, 0};
   struct event_base *base = event_base_new();
 
-  timer_event = event_new(base, -1, EV_TIMEOUT, cb_send_heartbeat, us->name);
+  timer_event = event_new(base, -1, EV_TIMEOUT, cb_send_heartbeat, NULL);
   event_add(timer_event, &ten_seconds);
 
   event_base_dispatch(base);
@@ -89,10 +79,10 @@ void np1secSession::start_ack_timers() {
   struct timeval ten_seconds = {10, 0};
   struct event_base *base = event_base_new();
 	
-  for (std::vector<std::string>::iterator it = peers.begin(); it != peers.end; ++it) {
-    timer_event = event_new(base, -1, EV_TIMEOUT, cb_ack_not_received, it->value);
-    awaiting_ack[it->value] = timer_event; 
-    event_add(awaiting_ack[it->value], &ten_seconds);
+  for (std::vector<std::string>::iterator it = peers.begin(); it != peers.end(); ++it) {
+    timer_event = event_new(base, -1, EV_TIMEOUT, cb_ack_not_received, NULL);
+    awaiting_ack[it] = timer_event; 
+    event_add(awaiting_ack[it], &ten_seconds);
   }
 
   event_base_dispatch(base);
@@ -103,26 +93,26 @@ void np1secSession::start_receive_ack_timer(std::string sender_id) {
   struct timeval ten_seconds = {10, 0};
   struct event_base *base = event_base_new();
 	
-  timer_event = event_new(base, -1, EV_TIMEOUT, cb_ack_not_received, sender_id);
-  acks_to_send[sender_id] = time_event;
+  timer_event = event_new(base, -1, EV_TIMEOUT, cb_ack_not_received, NULL);
+  acks_to_send[sender_id] = timer_event;
   event_add(awaiting_ack[sender_id], &ten_seconds);
   event_base_dispatch(base);
 }
 
 void np1secSession::stop_timer_send() {
   for (std::map<std::string, struct event>::iterator it=acks_to_send.begin(); it!=acks_to_send.end(); ++it) {
-    event_free(it->value);
-    acks_to_send.erase(it->value);
+    event_free(it);
+    acks_to_send.erase(it);
   }
 }
 
 void np1secSession::stop_timer_receive(std::string acknowledger_id) {
-  event_free(awaiting_ack[acknowledger_id]);
+  event_free(&awaiting_ack[acknowledger_id]);
   awaiting_ack.erase(acknowledger_id);
 }
 
 void np1secSession::add_message_to_transcript(std::string message, 
-                                        unint32_t message_id) {
+                                        uint32_t message_id) {
   HashBlock* hb;
   std::stringstream ss;
   std::string pointlessconversion;
@@ -131,16 +121,15 @@ void np1secSession::add_message_to_transcript(std::string message,
   ss >> pointlessconversion;
   pointlessconversion += ":O3" + message;
 
-  compute_message_hash(hb, 
-                       pointlessconversion); 
+  compute_message_hash(hb, pointlessconversion); 
 
   transcript_chain[message_id] = hb;
 }
 
 bool np1secSession::send(std::string message, np1secMessageType message_type) {
-  HashBlock* transcript_chain_hash = transcript_chain.rbegin()->value; 
+  HashBlock* transcript_chain_hash = transcript_chain.rbegin()->second; 
 
-  np1secMessage outbound(session_id, us.name, message, message_type,
+  np1secMessage outbound(session_id, us.username(), message, message_type,
                          transcript_chain_hash, cryptic);
 
   // As we're sending a new message we are no longer required to ack
@@ -159,7 +148,7 @@ bool np1secSession::send(std::string message, np1secMessageType message_type) {
 }
 
 np1secMessage np1secSession::receive(std::string raw_message, std::string sender_id) {
-  HashBlock* transcript_chain_hash = transcript_chain.rbegin()->value; 
+  HashBlock transcript_chain_hash = transcript_chain.rbegin()->second; 
   np1secMessage received_message(raw_message);
 
   if (transcript_chain_hash == received_message.transcript_chain_hash) {
@@ -172,11 +161,10 @@ np1secMessage np1secSession::receive(std::string raw_message, std::string sender
     // for the message
     start_receive_ack_timer(received_message.sender_id);
 
-    return received_message;
   } else {
     //The hash is a lie!
-    return NULL;
   }
+  return received_message;
 }
 
 np1secSession::~np1secSession() {

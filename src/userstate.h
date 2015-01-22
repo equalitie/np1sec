@@ -161,7 +161,7 @@ class np1secUserState {
    * @return a RoomAction object informing the client how to update the
    *         interface (add, remove user or display a message
    */
-  RoomAction receive_handler(std::string room_name, std::string np1sec_message, message_id);
+  RoomAction receive_handler(std::string room_name, std::string np1sec_message, uint32_t message_id);
 
   /**
    * The client informs the user state about leaving the room by calling this

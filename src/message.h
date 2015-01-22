@@ -47,10 +47,7 @@ class np1secMessage {
    * Construct a new np1secMessage based on a set of message components
    * based on an encrypted message as input
    */
-  np1secMessage(string::id raw_message);
-
-  /**
-   * Format message 
+  np1secMessage(std::string raw_message);
 
   /**
    * Compute a unique globally ordered id from the time stamped message,
@@ -68,7 +65,7 @@ class np1secMessage {
    * Base 64 decode encrypted message
    *
    */
-  std::string base64_decode(std:string encode_message);
+  std::string base64_decode(std::string encode_message);
 
   /**
    * Create and return a signed form of the message

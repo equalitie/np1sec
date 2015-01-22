@@ -27,6 +27,7 @@ extern "C" {
 #include <sstream>
 #include <iterator>
 #include <stdexcept>
+#include <vector>
 
 #include "src/base64.h"
 
@@ -36,7 +37,7 @@ typedef std::vector<uint8_t> SessionID;
 
 enum np1secMessageType {
   USER_MESSAGE,
-  PURE_META_MESSAG
+  PURE_META_MESSAGE
 };
 
 // The length of the output of the hash function in bytes.

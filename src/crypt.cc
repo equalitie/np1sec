@@ -52,7 +52,7 @@ done:
 gcry_error_t compute_message_hash(HashBlock transcript_chain, 
                                      std::string message) {
   
-  Hash(message.c_str(), message.size(), transcript_chain); 
+  return Hash(message.c_str(), message.size(), transcript_chain, true); 
 }
 
 Cryptic::Cryptic() {}
@@ -95,7 +95,6 @@ gcry_error_t Cryptic::Sign(unsigned char **sigp, size_t *siglenp,
   gcry_mpi_t r, s;
   gcry_error_t err = 0;
   gcry_sexp_t plain_sexp, sigs, eddsa, rs, ss;
-  size_t sig_r_len, sig_s_len;
   size_t nr, ns;
   const enum gcry_mpi_format format = GCRYMPI_FMT_USG;
   const uint32_t magic_number = 64, half_magic_number = 32;
@@ -164,7 +163,7 @@ gcry_error_t Cryptic::Sign(unsigned char **sigp, size_t *siglenp,
 gcry_error_t Cryptic::Verify(std::string plain_text,
                              const unsigned char *sigbuf) {
   gcry_error_t err = 0;
-  gcry_mpi_t datampi, r, s;
+  gcry_mpi_t r, s;
   gcry_sexp_t datas, sigs;
   static const uint32_t nr = 32, ns = 32;
 
