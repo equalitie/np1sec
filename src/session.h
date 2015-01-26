@@ -71,21 +71,9 @@ class np1secSession {
     * Keeps a list of the ack timers for recently sent messages indexed by peers
     *
     */
-  std::map<std::string, struct event> awaiting_ack;
+  std::map<std::string, struct event*> awaiting_ack;
 
-  /**
-    * Construct and start timers for acking received messages
-    *
-    */
-  void start_receive_ack_timer(std::string sender_id);	 
-
-  /**
-    * Construct and start timers for sending heartbeat messages
-    *
-    */
-  void start_heartbeat_timer();	 
-
-  /**
+ /**
    * Insert new message hash into transcript chain
    *
    */
@@ -99,31 +87,17 @@ class np1secSession {
 
   time_t key_freshness_time_stamp;
 
-  /**
-   * Callback function to manage sending of heartbeats
-   *
-   */
-  void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg);
-
-  /*
-   * Callback function to cause automatic sending of ack for 
-   * received message
-   *
-   */
-  void cb_send_ack(evutil_socket_t fd, short what, void *arg);
-
-  /*
-   * Callback function to cause automatic warning if ack not
-   * received for previously sent message
-   *
-   */
-  void cb_ack_not_received(evutil_socket_t fd, short what, void *arg);
-
-  /**
+ /**
    * Generate acknowledgement timers for all other participants
    *
    */
   void start_ack_timers();
+
+  /**
+    * Construct and start timers for acking received messages
+    *
+    */
+  void start_receive_ack_timer(std::string sender_id);	 
 
   /**
    * End ack timer on for given acknowledgeing participants
@@ -147,6 +121,13 @@ class np1secSession {
    * Constructor, initiate by joining.
    */
   np1secSession(np1secUserState *us, std::string room_name, std::string name);
+
+  /**
+    * Construct and start timers for sending heartbeat messages
+    *
+    */
+  void start_heartbeat_timer();	 
+
 
   bool join();
 
@@ -181,4 +162,25 @@ class np1secSession {
   ~np1secSession();
 };
 
+   /**
+   * Callback function to manage sending of heartbeats
+   *
+   */
+  static void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg);
+
+  /*
+   * Callback function to cause automatic sending of ack for 
+   * received message
+   *
+   */
+  static void cb_send_ack(evutil_socket_t fd, short what, void *arg);
+
+  /*
+   * Callback function to cause automatic warning if ack not
+   * received for previously sent message
+   *
+   */
+  static void cb_ack_not_received(evutil_socket_t fd, short what, void *arg);
+
+ 
 #endif  // SRC_SESSION_H_

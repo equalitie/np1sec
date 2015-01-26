@@ -22,6 +22,24 @@
 #include "src/session.h"
 #include <stdlib.h>
 
+static void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg) {
+  np1secSession* session = (static_cast<np1secSession*>(arg));
+  session->send("Heartbeat", PURE_META_MESSAGE);
+  session->start_heartbeat_timer();
+}
+
+static void cb_ack_not_received(evutil_socket_t fd, short what, void *arg) {
+  //Construct message for ack
+  np1secSession* session = (static_cast<np1secSession*>(arg));
+  session->send("Where is my ack?", PURE_META_MESSAGE);
+}
+
+static void cb_send_ack(evutil_socket_t fd, short what, void *arg) {
+  //Construct message with p.id
+  np1secSession* session = (static_cast<np1secSession*>(arg));
+  session->send("ACK", PURE_META_MESSAGE);
+}
+
 np1secSession::np1secSession() {
   throw std::invalid_argument("Default constructor should not be used.");
 }
@@ -48,30 +66,12 @@ bool np1secSession::farewell(std::string leaver_id) {
   return true;
 }
 
-void np1secSession::cb_send_heartbeat(evutil_socket_t fd, short what, void *arg) {
-  np1secSession* session = (static_cast<np1secSession*>(arg));
-  session->send("Heartbeat", PURE_META_MESSAGE);
-  session->start_heartbeat_timer();
-}
-
-void np1secSession::cb_ack_not_received(evutil_socket_t fd, short what, void *arg) {
-  //Construct message for ack
-  np1secSession* session = (static_cast<np1secSession*>(arg));
-  session->send("Where is my ack?", PURE_META_MESSAGE);
-}
-
-void np1secSession::cb_send_ack(evutil_socket_t fd, short what, void *arg) {
-  //Construct message with p.id
-  np1secSession* session = (static_cast<np1secSession*>(arg));
-  session->send("ACK", PURE_META_MESSAGE);
-}
-
 void np1secSession::start_heartbeat_timer() {
   struct event *timer_event;
   struct timeval ten_seconds = {10, 0};
   struct event_base *base = event_base_new();
 
-  timer_event = event_new(base, -1, EV_TIMEOUT, &np1secSession::cb_send_heartbeat, this);
+  timer_event = event_new(base, -1, EV_TIMEOUT, &cb_send_heartbeat, this);
   event_add(timer_event, &ten_seconds);
 
   event_base_dispatch(base);
@@ -83,7 +83,7 @@ void np1secSession::start_ack_timers() {
   struct event_base *base = event_base_new();
 	
   for (std::vector<std::string>::iterator it = peers.begin(); it != peers.end(); ++it) {
-    timer_event = event_new(base, -1, EV_TIMEOUT, &np1secSession::cb_ack_not_received, this);
+    timer_event = event_new(base, -1, EV_TIMEOUT, &cb_ack_not_received, this);
     awaiting_ack[it] = timer_event; 
     event_add(awaiting_ack[it], &ten_seconds);
   }
@@ -96,7 +96,7 @@ void np1secSession::start_receive_ack_timer(std::string sender_id) {
   struct timeval ten_seconds = {10, 0};
   struct event_base *base = event_base_new();
 	
-  timer_event = event_new(base, -1, EV_TIMEOUT, &np1secSession::cb_ack_not_received, this);
+  timer_event = event_new(base, -1, EV_TIMEOUT, &cb_ack_not_received, this);
   acks_to_send[sender_id] = timer_event;
   event_add(awaiting_ack[sender_id], &ten_seconds);
   event_base_dispatch(base);
