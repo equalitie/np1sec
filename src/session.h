@@ -71,7 +71,7 @@ class np1secSession {
     * Keeps a list of the ack timers for recently sent messages indexed by peers
     *
     */
-  std::map<std::string, struct event*> awaiting_ack;
+  std::map<std::string, struct event> awaiting_ack;
 
  /**
    * Insert new message hash into transcript chain
