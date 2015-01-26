@@ -19,6 +19,7 @@
 #ifndef SRC_USERSTATE_CC_
 #define SRC_USERSTATE_CC_
 
+#include "src/interface.h"
 #include "src/userstate.h"
 
 
@@ -41,8 +42,8 @@ bool np1secUserState::init() {
   return long_term_private_key->init();
 }
 
-bool np1secUserState::join_room(std::string room_name) {
-  np1secSession *new_session = new np1secSession(this, room_name, name);
+bool np1secUserState::join_room(std::string room_name, std::vector<UnauthenticatedParticipant>participants_in_the_room) {
+  np1secSession *new_session = new np1secSession(this, room_name, name, participants_in_the_room);
 
   if (!new_session->join()) {
     delete new_session;

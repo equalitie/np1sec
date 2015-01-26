@@ -63,7 +63,7 @@ class MockRoom
 
   void send(std::string sender_nick, std::string message)
     {
-      broadcast(":o?SEND:o?"+std::to_string(global_message_id)+":o?"+nick+":o?"+message);
+      broadast(":o?SEND:o?"+std::to_string(global_message_id)+":o?"+nick+":o?"+message);
     };
 
 };

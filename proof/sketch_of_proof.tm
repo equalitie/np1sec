@@ -24,12 +24,13 @@
   has been studied as a subprotocol to various protocols. We are not aware of
   any existing proof for TDH and TCA subprotocol.
 
-  The sketch of the proof goes as follows, in Section
-  <reference|sect-tdh-sec> and Section <reference|sect-tca-sec> we give
-  convential formal proof of the security properties of TDH and TCA
-  respectively.\ 
+  The sketch of the proof goes as follows, Section <reference|sect-tdh> deals
+  with security of TDH namely authentication and deniability. Section
+  <reference|sect-GKE> prove the security properties of the group key
+  exchange protocol. \ Section <reference|sect-tca-sec> we give proof of the
+  security properties of TCA.
 
-  <section|Security of Triple Diffie-Hellman Authentication>
+  <section|Security of Triple Diffie-Hellman Authentication><label|sect-tdh>
 
   <subsection|The Triple Diffie-Hellman Protocol>
 
@@ -153,9 +154,11 @@
 
   <subsection|Confidentiality and Authenticity of TDH>
 
-  \;
+  In this section we prove that TDH is a secure two-party authenticated key
+  exchange. We prove this in the model offered in <cite|CaKr01>.
 
-  <section|Security of (n+1)sec authenticated group key exchange>
+  <section|Security of (n+1)sec authenticated group key
+  exchange><label|sect-gke>
 
   In this section we prove the security of (n+1)sec group key exchange in the
   proposed adversarial model. Because the key exchange is essentially FAGKE
@@ -214,7 +217,7 @@
 
   <section|Security of Transcript Consistency Assurance>
 
-  <label|sect-tca-sec>
+  <label|sect-tca>
 
   \;
 </body>
@@ -235,9 +238,12 @@
     <associate|auto-8|<tuple|3|?>>
     <associate|auto-9|<tuple|4|?>>
     <associate|sect-comp-sec|<tuple|5|2>>
+    <associate|sect-gke|<tuple|2|?>>
     <associate|sect-np1sec-in-pcl|<tuple|3|?|../../../.TeXmacs/texts/scratch/no_name_12.tm>>
     <associate|sect-np1sec-pclize|<tuple|4|2>>
+    <associate|sect-tca|<tuple|3|?>>
     <associate|sect-tca-sec|<tuple|3|2>>
+    <associate|sect-tdh|<tuple|1|?>>
     <associate|sect-tdh-sec|<tuple|1.2|1>>
     <associate|thrm-np1sec-gke|<tuple|3|?>>
   </collection>

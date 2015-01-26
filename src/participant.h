@@ -20,7 +20,7 @@
 #define SRC_PARTICIPANT_H_
 
 #include <string>
-
+#include "crypt.h"
 
 /** 
  * This class keeps the state of each participant in the room, including the
@@ -29,8 +29,8 @@
 class Participant {
  public:
   std::string id;
-  // np1secPublicKey long_term_pub_key;
-  // np1secPublicKey ephemeral_key;
+  LongTermPublicKey long_term_pub_key;
+  np1secPublicKey ephemeral_key;
   // MessageDigest message_digest;
 
   // np1secKeyShare cur_keyshare;
@@ -42,7 +42,24 @@ class Participant {
     KEY_SHARE
   };
 
-  // ForwardSecracyContribution ForwardSecracyStatus;
+  ForwardSecracyContribution ForwardSecracyStatus = NONE;
+
+  /**
+   * default constructor
+   */
+  Participant() {
+    
+  }
+    
 };
+
+/**
+ * To be used in std::sort to sort the particpant list
+ * in a way that is consistent way between all participants
+ */
+bool sort_by_long_term_pub_key(Participant& lhs, Participant& rhs)
+{
+  return Cryptic::retrieveResult(lhs.long_term_pub_key) < Cryptic::retrieveResult(rhs.long_term_pub_key);
+}
 
 #endif  // SRC_PARTICIPANT_H_

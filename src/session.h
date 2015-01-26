@@ -69,7 +69,9 @@ class np1secSession {
 
   np1secUserState *us;
   std::string room_name;
-  std::string name;
+
+  Participant myself;
+  vector<UnauthenticatedParticipant> participants_in_the_room;
 
   /**
    * Keeps the list of the live participants in the room and their current/new
@@ -85,15 +87,20 @@ class np1secSession {
 
   time_t key_freshness_time_stamp;
 
- public:
   SessionID session_id;
 
+ public:
   np1secSession();
 
   /**
    * Constructor, initiate by joining.
    */
-  np1secSession(np1secUserState *us, std::string room_name, std::string name);
+  np1secSession(np1secUserState *us, std::string room_name, std::string name, std::vector<UnauthenticatedParticipant>participants_in_the_room);
+
+  /**
+   * access function for session_id;
+   */
+  SeesionID my_session_id() { return session_id};
 
   bool join();
 

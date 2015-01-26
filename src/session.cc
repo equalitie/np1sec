@@ -37,15 +37,34 @@ np1secSession::np1secSession() {
   throw std::invalid_argument("Default constructor should not be used.");
 }
 
+/**
+ * This constructor should be only called when the session is generated
+ * to join. That's why all participant are not authenticated.
+ */
 np1secSession::np1secSession(np1secUserState *us, std::string room_name,
-                             std::string name) : us(us), room_name(room_name),
-                                                 name(name) {}
+                             std::string name, std::vector<UnauthenticatedParticipant>participants_in_the_room) : us(us), room_name(room_name), participants_in_the_room(participants_in_the_room)
+{
+  myself.id(name);
+}
 
-bool np1secSession::join() {
+bool np1secSession::join(long_term_pub_key, long_term_prv_key) {
+
+  //We need to generate our ephemerals anyways
   if (!cryptic.init()) {
     return false;
   }
-  us->ops->send_bare(room_name, "testing 123");
+  myself.ephemeral_key = cryptic.ephemeral_pub_key;
+
+  //we add ourselves to the (authenticated) participant list
+  peer.push_back(myself);
+
+  //if nobody else is in the room have nothing to do more than
+  //just computing the session_id
+  if (participants_in_the_room.size()== 1) {
+    this->compute_session_id();
+         
+  }
+  
   return true;
 }
 

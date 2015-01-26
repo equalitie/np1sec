@@ -27,13 +27,13 @@ extern "C" {
   #include "gcrypt.h"
 }
 
-
 /**
  * Encryption primitives and related definitions.
  */
 class Cryptic {
- public:
-  gcry_sexp_t pub_key, prv_key;
+ protocted:
+  gcry_sexp_t ephemeral_pub_key, ephemeral_prv_key;
+  
   // static const uint32_t ED25519_KEY_SIZE = 255;
 
   /**
@@ -68,7 +68,7 @@ class Cryptic {
    *
    * @return std::string representing the converted data.
    */
-  std::string retrieveResult(gcry_sexp_t text_sexp);
+  static std::string retrieveResult(gcry_sexp_t text_sexp);
 
   /**
    * Convert a given std:string to a valid gcrypt s-expression
@@ -112,7 +112,9 @@ class Cryptic {
   gcry_cipher_hd_t OpenCipher();
 };
 
-typedef Cryptic LongTermIDKey;
+typedef std::pair<gcry_sexp_t,gcry_sexp_t> LongTermIDKey;
+typedef LongTermPublicKey gcry_sexp_t;
+typedef np1secPublicKey gcry_sexp_t;
 
 const unsigned char SESSION_KEY[] = {
   0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe, 0x2b, 0x73, 0xae, 0xf0,
@@ -124,7 +126,6 @@ const unsigned char SESSION_IV[] = {
   0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
   0x0c, 0x0d, 0x0e, 0x0f
 };
-
 
 const int c_np1sec_hash = gcry_md_algos::GCRY_MD_SHA256;
 

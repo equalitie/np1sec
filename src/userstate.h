@@ -46,48 +46,13 @@ class RoomAction {
 typedef std::map<std::string, np1secSession*> session_room_map;
 
 /**
- * Calls from np1sec to the application.
- */
-struct np1secAppOps {
-  //Data that is passed to send_bare
-  void* bare_sender_data = NULL;
-  /**
-   * It is called by np1sec whenever the protocol needs to send meta data
-   * messages (key exchange, etc) which are not initiated by a message from
-   * the user.
-   *  
-   * @param data is member variable bare_sender_data which is passed to the 
-   *             function in case any auxilary data is needed
-   *
-   * 
-   */
-  void (*send_bare)(std::string room_name, std::string sender_nickname, std::string message, void* data);
-
-  //TODO://Why do we need to join a room?
-  //We can call back when join or leave is completed but
-  //then also we need a call back when other people
-  //join the room or leave that's why we have room
-  //action as the return of the receive handlere
-  /** 
-   * Asks the app to join a room or a coversation 
-   */
-  //void (*join)(std::string room_name);
-
-  /** 
-   * Asks the app to leave a room or a coversation 
-   */
-  //void (*leave)(std::string room_name);
-
-};
-
-/**
  * Manages a user with long term identity for participating in a multiparty
  * chat sessions. It keeps track of sessions that user is participating in.
  */
 class np1secUserState {
  protected:
   std::string name;
-  LongTermIDKey *long_term_private_key;
+  LongTermIDKey long_term_key_pair;
   std::map<SessionID, np1secSession> np1sec_sessions;
   session_room_map session_in_a_room;
 
@@ -113,7 +78,14 @@ class np1secUserState {
   std::string username()  {
     return name;
   };
-      
+
+  /**
+   * access function for for long term id key
+   */
+   LongTermIDKey user_id_key_pair()  {
+    return long_term_key_pair;
+  };
+
   
   /**
    * The client need to call this function when the user is joining a room.

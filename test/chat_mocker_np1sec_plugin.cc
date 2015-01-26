@@ -28,7 +28,7 @@
 
 using namespace std;
 
-void chat_mocker_plugin_receive_handler(std::string room_name, std::string message, void* aux_data);
+void chat_mocker_plugin_receive_handler(std::string room_name, std::string message, void* aux_data)
 {
   np1secUserState* user_state = reinterpret_cast<np1secUserState*>(aux_data);
 
