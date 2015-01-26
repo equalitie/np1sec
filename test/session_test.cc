@@ -18,7 +18,7 @@
 
 #include <gtest/gtest.h>
 #include "src/session.h"
-#include "src/cryptic.h"
+#include "src/crypt.h"
 #include "src/common.h"
 #include "src/message.h"
 
@@ -28,6 +28,7 @@
 using namespace std;
 
 //Just a wrapper to call the mocker send function 
+/*
 void send_bare(std::string room_name, std::string sender_nickname, std::string message, void* data)
 {
   static_cast<ChatMocker>(data)->send(room_name, sender_nickname, message);
@@ -150,3 +151,4 @@ TEST_F(SessionTest, test_init) {
   ASSERT_TRUE(new_session.join());
   
 }
+*/

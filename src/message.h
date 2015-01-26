@@ -41,13 +41,13 @@ class np1secMessage {
    * Construct a new np1secMessage based on a set of message components
    * as input
    */
-  np1secMessage(SessionID session_id, std::string sender_id, std::string user_message, np1secMessageType message_type, HashBlock transcript_chain_hash);
+  np1secMessage(SessionID session_id, std::string sender_id, std::string user_message, np1secMessageType message_type, HashBlock* transcript_chain_hash, Cryptic cryptic);
 
   /*
    * Construct a new np1secMessage based on a set of message components
    * based on an encrypted message as input
    */
-  np1secMessage(std::string raw_message);
+  np1secMessage(std::string raw_message, Cryptic cryptic);
 
   /**
    * Compute a unique globally ordered id from the time stamped message,

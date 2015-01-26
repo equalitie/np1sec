@@ -53,7 +53,7 @@ class np1secSession {
   /**
    * Stores Transcript chain hashes indexed by message id
    */
-  std::map<uint32_t, HashBlock> transcript_chain; 
+  std::map<uint32_t, HashBlock*> transcript_chain; 
 
   /**
    * Keeps the list of the live participants in the room and their current/new
@@ -71,7 +71,7 @@ class np1secSession {
     * Keeps a list of the ack timers for recently sent messages indexed by peers
     *
     */
-  std::map<std::string, struct event> awaiting_ack;
+  std::map<std::string, struct event*> awaiting_ack;
 
  /**
    * Insert new message hash into transcript chain
@@ -83,7 +83,7 @@ class np1secSession {
    * Keeps a list of timers for acks that need to be sent for messages received
    * the list is indexed by peer.
    */
-  std::map<std::string, struct event> acks_to_send;
+  std::map<std::string, struct event*> acks_to_send;
 
   time_t key_freshness_time_stamp;
 
@@ -154,7 +154,7 @@ class np1secSession {
    * called to decrypt. It updates the session status and returns the decrypted
    * message to be shown, it might be null if the message was a meta message.
    */
-  np1secMessage receive(std::string raw_message, std::string sender_id);
+  np1secMessage receive(std::string raw_message);
 
   /**
    * Destructor, session should be destroyed at leave.
