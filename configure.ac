@@ -35,6 +35,14 @@ PKG_CHECK_MODULES([PURPLE], [purple], [
 	AC_MSG_ERROR([No libpurple])
 ])
 
+PKG_CHECK_MODULES([LIBEVENT], [libevent], [
+	AC_DEFINE([HAVE_LIBEVENT], [1], [Define if we have found libevent.])
+	AC_SUBST(LIBEVENT_CFLAGS)
+	AC_SUBST(LIBEVENT_LIBS)
+], [
+	AC_MSG_RESULT(no)
+	AC_MSG_ERROR([No libevent])
+])
 
 AM_PATH_LIBGCRYPT([], [
 	AC_SUBST(LIBGCRYPT_CFLAGS)
