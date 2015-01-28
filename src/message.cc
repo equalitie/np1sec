@@ -20,12 +20,20 @@
 #define SRC_MESSAGE_H_
 #include message.h
 
-np1secMessage::np1secMessage(SessionID session_id, std::string sender_id, strd::string user_message, np1secMessageType message_type, transcript_chain_hash, Cryptic cryptic) {
+np1secMessage::np1secMessage(SessionID session_id, std::string sender_id, 
+                            str::string user_message, 
+                            np1secMessageType message_type, 
+                            HashBlock* transcript_chain_hash, 
+                            np1secLoadFlag meta_load_flag, std::string meta_load,
+                            int meta_only, Cryptic cryptic) {
   session_id = session_id;
   sender_id = sender_id;
   user_message = user_message;
   message_type = message_type;
   transcript_chain_hash = transcript_chain_hash; 	
+  meta_only = meta_only;
+  meta_load_flag = meta_load_flag;
+  meta_load = meta_load;
   cryptic = cryptic;
 }
 
@@ -52,7 +60,10 @@ np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic) {
       if(sid.compare(temp)) {
         sender_id = strtok(NULL, ":O3");
         user_message = strtok(NULL, ":O3");
+
         meta_message = strtok(NULL, ":O3");
+        unwrap_meta_message();
+
         transcript_chain_hash = strtok(NULL, ":O3");
         nonce = strtok(NULL, ":O3");
 	message_id = compute_message_id(user_message);
@@ -62,13 +73,38 @@ np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic) {
 
 }
 
+void format_meta_message() {
+  meta_message = "" + std::to_string (meta_only) + ":03";
+  meta_message += ":03" + ustate_values();
+  meta_message += ":03" + std::to_string (meta_load_flag);
+  meta_message += ":03" + meta_load;
+  meta_message = base64_encode(meta_message);
+}
+
+void unwrap_meta_message() {
+  
+  meta_message = base64_decode(meta_message);
+  meta_only = strtok(meta_message, ":03");
+  std::string ustates = strtok(NULL, ":03");
+  meta_load_flag = strtok(NULL, ":03");
+  meta_load = strtok(NULL, ":03");
+  
+}
+
+std::string ustate_values() {
+   	
+}
+
 std::string format_sendable_message() {
   std::string base_message, phased_message, signature;
 
   base_message = session_id + ":O3";
   base_message += sender_id + ":O3";
   base_message += user_message + ":O3";
+
+  format_meta_message();
   base_message += meta_message + ":O3";
+
   base_message += transcript_chain_hash + ":O3";
   base_message += nonce + ":O3";
 

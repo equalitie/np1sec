@@ -34,6 +34,9 @@ class np1secMessage {
   std::string sender_id;
   std::string user_message;
   std::string meta_message;
+  np1secLoadFlag meta_load_flag;
+  std::string meta_load;
+  int meta_only;
   HashBlock transcript_chain_hash;
   std::string nonce;
 
@@ -41,7 +44,10 @@ class np1secMessage {
    * Construct a new np1secMessage based on a set of message components
    * as input
    */
-  np1secMessage(SessionID session_id, std::string sender_id, std::string user_message, np1secMessageType message_type, HashBlock* transcript_chain_hash, Cryptic cryptic);
+  np1secMessage(SessionID session_id, std::string sender_id, 
+                std::string user_message, np1secMessageType message_type, 
+                HashBlock* transcript_chain_hash, np1secLoadFlag meta_load_flag,
+                std::string meta_load, int meta_only, Cryptic cryptic);
 
   /*
    * Construct a new np1secMessage based on a set of message components
@@ -96,6 +102,25 @@ class np1secMessage {
    *
    */
   std::string format_sendable_message();
+
+  /**
+   * Format Meta message for inclusion with standard message or for
+   * standalone use
+   *
+   */
+  std::string format_meta_message();
+
+  /**
+   * Unwrap meta message into its constituent components
+   *
+   */
+  void unwrap_meta_message();
+  
+  /**
+   * Return string containing the current state for all participants
+   *
+   */
+  std::string ustate_values();
 
   /**
    * Generate 128 bit nonce value to be placed inside the message 
