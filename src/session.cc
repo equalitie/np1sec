@@ -130,10 +130,18 @@ void np1secSession::add_message_to_transcript(std::string message,
 }
 
 bool np1secSession::send(std::string message, np1secMessageType message_type) {
-  HashBlock* transcript_chain_hash = transcript_chain.rbegin()->second; 
-
-  np1secMessage outbound(session_id, us->username(), message, message_type,
-                         transcript_chain_hash, cryptic);
+  HashBlock* transcript_chain_hash = transcript_chain.rbegin()->second;
+  
+  // TODO
+  //Add code to check message type and get
+  // meta load if needed 
+  np1secLoadFlag meta_load_flag = NO_LOAD;
+  std::string meta_load = NULL;
+  np1secMessage outbound(session_id, us->username(), 
+                         message, message_type,                         
+                         transcript_chain_hash, 
+                         meta_load_flag, meta_load,
+                         peers, cryptic);
 
   // As we're sending a new message we are no longer required to ack
   // any received messages 

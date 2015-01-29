@@ -25,16 +25,20 @@ np1secMessage::np1secMessage(SessionID session_id, std::string sender_id,
                             np1secMessageType message_type, 
                             HashBlock* transcript_chain_hash, 
                             np1secLoadFlag meta_load_flag, std::string meta_load,
-                            int meta_only, Cryptic cryptic) {
+                            std::vector<std::string> pstates,
+                            Cryptic cryptic) {
   session_id = session_id;
   sender_id = sender_id;
   user_message = user_message;
   message_type = message_type;
   transcript_chain_hash = transcript_chain_hash; 	
-  meta_only = meta_only;
+  if(message_type == PURE_META_MESSAGE) { 
+    meta_only = 1;
+  }
   meta_load_flag = meta_load_flag;
   meta_load = meta_load;
   cryptic = cryptic;
+  pstates = pstates;
 }
 
 np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic) {
@@ -92,7 +96,11 @@ void unwrap_meta_message() {
 }
 
 std::string ustate_values() {
-   	
+  std::string ustates;
+  for (std::vector<std::string>::iterator it pstates.begin(); it != pstates.end(); ++it) {
+    ustates += std::to_string(it->value);
+  }	
+  return ustates;
 }
 
 std::string format_sendable_message() {

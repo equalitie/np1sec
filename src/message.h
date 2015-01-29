@@ -39,6 +39,7 @@ class np1secMessage {
   int meta_only;
   HashBlock transcript_chain_hash;
   std::string nonce;
+  std::vector<std::string> pstates;
 
   /*
    * Construct a new np1secMessage based on a set of message components
@@ -47,7 +48,8 @@ class np1secMessage {
   np1secMessage(SessionID session_id, std::string sender_id, 
                 std::string user_message, np1secMessageType message_type, 
                 HashBlock* transcript_chain_hash, np1secLoadFlag meta_load_flag,
-                std::string meta_load, int meta_only, Cryptic cryptic);
+                std::string meta_load, std::vector<std::string> pstates, 
+                Cryptic cryptic);
 
   /*
    * Construct a new np1secMessage based on a set of message components
