@@ -128,12 +128,8 @@ const unsigned char SESSION_IV[] = {
 
 const int c_np1sec_hash = gcry_md_algos::GCRY_MD_SHA256;
 
-// The length of the output of the hash function in bytes.
-const size_t c_hash_length = 32;
-
-typedef uint8_t HashBlock[c_hash_length];
-
 gcry_error_t Hash(const void *buffer, size_t buffer_len, HashBlock hb,
                   bool secure);
-
+gcry_error_t compute_message_hash(HashBlock transcript_chain,
+                                  std::string message);
 #endif  // SRC_CRYPT_H_

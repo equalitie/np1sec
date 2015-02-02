@@ -16,40 +16,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef SRC_COMMON_H_
-#define SRC_COMMON_H_
+#include <gtest/gtest.h>
+#include "src/session.h"
+#include "src/cryptic.h"
+#include "src/common.h"
+#include "src/message.h"
 
-extern "C" {
-  #include <assert.h>
+class MessageTest : public ::testing::Test{};
+
+TEST_F(MessageTest, test_compute_message_id) {
 }
-
-#include <cstdint>
-#include <sstream>
-#include <iterator>
-#include <stdexcept>
-#include <vector>
-
-#include "src/base64.h"
-
-#define UNUSED(expr) (void)(expr)
-
-typedef std::vector<uint8_t> SessionID;
-
-enum np1secMessageType {
-  USER_MESSAGE,
-  PURE_META_MESSAGE
-};
-
-enum np1secLoadFlag {
-  NO_LOAD,
-  NEW_EPHEMERAL_KEY,
-  NEW_SECRET_SHARE
-};
-
-// The length of the output of the hash function in bytes.
-const size_t c_hash_length = 32;
-
-typedef uint8_t HashBlock[c_hash_length];
-
-
-#endif  // SRC_COMMON_H_

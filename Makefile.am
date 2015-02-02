@@ -14,6 +14,7 @@ libnp1sec_la_SOURCES = \
 	src/crypt.cc \
 	src/session.cc \
 	src/base64.cc \
+	src/message.cc \
 	src/userstate.cc
 
 libnp1sec_la_LIBADD = \
