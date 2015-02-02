@@ -47,34 +47,34 @@ np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic) {
 
   std::string np1sec, encrypted_message, phased_message,
               signed_message, signature;
-  np1sec = strtok_r(&raw_message[0], ":O3");
+  np1sec = strtok(&raw_message[0], ":O3");
 
   if (np1sec.compare("np1sec")) {
-    encrypted_message = strtok_r(NULL, ":O3");
+    encrypted_message = strtok(NULL, ":O3");
 
     phased_message = base64_decode(encrypted_message);
-    std::string temp = strtok_r(&phased_message[0], ":O3");
+    std::string temp = strtok(&phased_message[0], ":O3");
     session_id = std::vector<uint8_t>(temp.begin(), temp.end());
-    encrypted_message = strtok_r(NULL, ":O3");
+    encrypted_message = strtok(NULL, ":O3");
 
     phased_message = decrypt_message(base64_decode(encrypted_message));
-    signed_message = strtok_r(&phased_message[0], ":O3");
-    signature = strtok_r(NULL, ":O3");
+    signed_message = strtok(&phased_message[0], ":O3");
+    signature = strtok(NULL, ":O3");
 
     if (verify_message(signed_message, signature)) {
       signed_message = base64_decode(signed_message);
       std::string temp;
-      temp = strtok_r(&signed_message[0], ":O3");
+      temp = strtok(&signed_message[0], ":O3");
       // TODO(bill): clarify session id check
 //      if(session_id.compare(temp)) {
-        sender_id = strtok_r(NULL, ":O3");
-        user_message = strtok_r(NULL, ":O3");
+        sender_id = strtok(NULL, ":O3");
+        user_message = strtok(NULL, ":O3");
 
-        meta_message = strtok_r(NULL, ":O3");
+        meta_message = strtok(NULL, ":O3");
         unwrap_meta_message();
-        std::string hash_string = strtok_r(NULL, ":O3");
+        std::string hash_string = strtok(NULL, ":O3");
         memcpy(transcript_chain_hash, hash_string.c_str(), hash_string.size());
-        nonce = strtok_r(NULL, ":O3");
+        nonce = strtok(NULL, ":O3");
         message_id = compute_message_id(user_message);
 //      }
     }
@@ -91,10 +91,10 @@ void np1secMessage::format_meta_message() {
 
 void np1secMessage::unwrap_meta_message() {
   meta_message = base64_decode(meta_message);
-  meta_only = atoi(strtok_r(&meta_message[0], ":03"));
-  std::string ustates = strtok_r(NULL, ":03");
-  meta_load_flag = static_cast<np1secLoadFlag>(atoi(strtok_r(NULL, ":03")));
-  meta_load = strtok_r(NULL, ":03");
+  meta_only = atoi(strtok(&meta_message[0], ":03"));
+  std::string ustates = strtok(NULL, ":03");
+  meta_load_flag = static_cast<np1secLoadFlag>(atoi(strtok(NULL, ":03")));
+  meta_load = strtok(NULL, ":03");
 }
 
 std::string np1secMessage::ustate_values() {
