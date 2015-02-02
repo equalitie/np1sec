@@ -49,7 +49,7 @@ typedef std::map<std::string, np1secSession*> session_room_map;
  * Calls from np1sec to the application.
  */
 struct np1secAppOps {
-  //Data that is passed to send_bare
+  // Data that is passed to send_bare
   void* bare_sender_data = NULL;
   /**
    * It is called by np1sec whenever the protocol needs to send meta data
@@ -61,23 +61,25 @@ struct np1secAppOps {
    *
    * 
    */
-  void (*send_bare)(std::string room_name, std::string sender_nickname, std::string message, void* data);
+  void (*send_bare)(std::string room_name,
+                    std::string sender_nickname,
+                    std::string message,
+                    void* data);
 
-  //TODO://Why do we need to join a room?
-  //We can call back when join or leave is completed but
-  //then also we need a call back when other people
-  //join the room or leave that's why we have room
-  //action as the return of the receive handlere
+  // TODO(vmon) Why do we need to join a room?
+  // We can call back when join or leave is completed but
+  // then also we need a call back when other people
+  // join the room or leave that's why we have room
+  // action as the return of the receive handlere
   /** 
    * Asks the app to join a room or a coversation 
    */
-  //void (*join)(std::string room_name);
+  // void (*join)(std::string room_name);
 
   /** 
    * Asks the app to leave a room or a coversation 
    */
-  //void (*leave)(std::string room_name);
-
+  // void (*leave)(std::string room_name);
 };
 
 /**
@@ -112,9 +114,8 @@ class np1secUserState {
    */
   std::string username()  {
     return name;
-  };
-      
-  
+  }
+
   /**
    * The client need to call this function when the user is joining a room.
    *
@@ -161,7 +162,9 @@ class np1secUserState {
    * @return a RoomAction object informing the client how to update the
    *         interface (add, remove user or display a message
    */
-  RoomAction receive_handler(std::string room_name, std::string np1sec_message, uint32_t message_id);
+  RoomAction receive_handler(std::string room_name,
+                             std::string np1sec_message,
+                             uint32_t message_id);
 
   /**
    * The client informs the user state about leaving the room by calling this
@@ -193,7 +196,6 @@ class np1secUserState {
   np1secSession *retrieve_session(std::string room_name);
 
   ~np1secUserState();
-  
 };
 
 #endif  // SRC_USERSTATE_H_

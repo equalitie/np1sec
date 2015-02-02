@@ -19,10 +19,10 @@
 #ifndef SRC_SESSION_H_
 #define SRC_SESSION_H_
 
+#include <event2/event.h>
+
 #include <string>
 #include <vector>
-
-#include <event2/event.h>
 
 #include "src/common.h"
 #include "src/participant.h"
@@ -53,7 +53,7 @@ class np1secSession {
   /**
    * Stores Transcript chain hashes indexed by message id
    */
-  std::map<uint32_t, HashBlock*> transcript_chain; 
+  std::map<uint32_t, HashBlock*> transcript_chain;
 
   /**
    * Keeps the list of the live participants in the room and their current/new
@@ -97,7 +97,7 @@ class np1secSession {
     * Construct and start timers for acking received messages
     *
     */
-  void start_receive_ack_timer(std::string sender_id);	 
+  void start_receive_ack_timer(std::string sender_id);
 
   /**
    * End ack timer on for given acknowledgeing participants
@@ -109,8 +109,7 @@ class np1secSession {
    * Stop ack to send timers when user sends new message before timer expires
    *
    */
-  void stop_timer_send(); 
-	
+  void stop_timer_send();
 
  public:
   SessionID session_id;
@@ -126,8 +125,7 @@ class np1secSession {
     * Construct and start timers for sending heartbeat messages
     *
     */
-  void start_heartbeat_timer();	 
-
+  void start_heartbeat_timer();
 
   bool join();
 
@@ -142,7 +140,6 @@ class np1secSession {
    */
   bool farewell(std::string leaver_id);
 
-  
   /**
    * When a user wants to send a message to a session it needs to call its send
    * function.
@@ -182,5 +179,4 @@ class np1secSession {
    */
   static void cb_ack_not_received(evutil_socket_t fd, short what, void *arg);
 
- 
 #endif  // SRC_SESSION_H_

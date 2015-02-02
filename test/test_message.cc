@@ -25,5 +25,4 @@
 class MessageTest : public ::testing::Test{};
 
 TEST_F(MessageTest, test_compute_message_id) {
-
 }

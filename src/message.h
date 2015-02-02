@@ -45,10 +45,10 @@ class np1secMessage {
    * Construct a new np1secMessage based on a set of message components
    * as input
    */
-  np1secMessage(SessionID session_id, std::string sender_id, 
-                std::string user_message, np1secMessageType message_type, 
+  np1secMessage(SessionID session_id, std::string sender_id,
+                std::string user_message, np1secMessageType message_type,
                 HashBlock* transcript_chain_hash, np1secLoadFlag meta_load_flag,
-                std::string meta_load, std::vector<std::string> pstates, 
+                std::string meta_load, std::vector<std::string> pstates,
                 Cryptic cryptic);
 
   /*
@@ -79,7 +79,7 @@ class np1secMessage {
    * Create and return a signed form of the message
    *
    */
-  std::string sign_message();
+  std::string sign_message(std::string message);
 
   /**
    * Verify the message
@@ -91,13 +91,13 @@ class np1secMessage {
    * Create and return an encrypted form of the signed message
    *
    */
-  std::string encrypt_message();
+  std::string encrypt_message(std::string signed_message);
 
   /**
    * Decrypt and return the raw form of the message
    *
    */
-  std::string decrypt_message();
+  std::string decrypt_message(std::string encrypted_message);
 
   /**
    * Compose message into sendable formt
@@ -110,14 +110,14 @@ class np1secMessage {
    * standalone use
    *
    */
-  std::string format_meta_message();
+  void format_meta_message();
 
   /**
    * Unwrap meta message into its constituent components
    *
    */
   void unwrap_meta_message();
-  
+
   /**
    * Return string containing the current state for all participants
    *

@@ -49,10 +49,9 @@ done:
   return err;
 }
 
-gcry_error_t compute_message_hash(HashBlock transcript_chain, 
+gcry_error_t compute_message_hash(HashBlock transcript_chain,
                                      std::string message) {
-  
-  return Hash(message.c_str(), message.size(), transcript_chain, true); 
+  return Hash(message.c_str(), message.size(), transcript_chain, true);
 }
 
 Cryptic::Cryptic() {}

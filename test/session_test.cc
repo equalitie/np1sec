@@ -22,12 +22,12 @@
 #include "src/common.h"
 #include "src/message.h"
 
-#include "chat_mocker.h"
-#include "chat_mocker_np1sec_plugin.h"
+#include "test/chat_mocker.h"
+#include "test/chat_mocker_np1sec_plugin.h"
 
 using namespace std;
 
-//Just a wrapper to call the mocker send function 
+// Just a wrapper to call the mocker send function
 /*
 void send_bare(std::string room_name, std::string sender_nickname, std::string message, void* data)
 {
