@@ -38,7 +38,6 @@ TEST_F(MessageTest, test_np1secMessage_constructor) {
   np1secLoadFlag meta_load_flag = NO_LOAD;
   std::string meta_load = "";
   std::vector<std::string> pstates = {"1"};
-
   np1secMessage msg(session_id,
                     sender_id,
                     user_message,
