@@ -8,6 +8,7 @@ libnp1sec_test_SOURCES = \
 	test/session_test.cc \
 	test/userstate_test.cc \
 	test/crypt_test.cc \
+        test/test_message.cc \
 	test/main.cc
 
 libnp1sec_test_CPPFLAGS = \

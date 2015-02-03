@@ -20,7 +20,8 @@
 #define SRC_MESSAGE_CC_
 #include "src/message.h"
 
-np1secMessage::np1secMessage(SessionID session_id, std::string sender_id,
+np1secMessage::np1secMessage(SessionID session_id,
+                            std::string sender_id,
                             std::string user_message,
                             np1secMessageType message_type,
                             HashBlock* transcript_chain_hash,

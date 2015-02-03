@@ -26,9 +26,9 @@
 class np1secMessage {
  protected:
   Cryptic cryptic;
-  np1secMessageType message_type;
 
  public:
+  np1secMessageType message_type;
   uint32_t message_id;
   SessionID session_id;
   std::string sender_id;

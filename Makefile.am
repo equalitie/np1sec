@@ -1,7 +1,8 @@
 ACLOCAL_AMFLAGS = -I m4
 
 AM_CPPFLAGS = -I. -I$(srcdir)/src \
-	$(LIBGCRYPT_CFLAGS)
+	$(LIBGCRYPT_CFLAGS) \
+        $(LIBEVENT_CFLAGS)
 
 noinst_LTLIBRARIES =
 noinst_PROGRAMS =
@@ -18,7 +19,8 @@ libnp1sec_la_SOURCES = \
 	src/userstate.cc
 
 libnp1sec_la_LIBADD = \
-	$(LIBGCRYPT_LIBS)
+	$(LIBGCRYPT_LIBS) \
+        $(LIBEVENT_LIBS)
 
 include test/Makefile.inc
 include Makefile.am.lint
