@@ -30,6 +30,7 @@ class Participant {
  public:
   std::string id;
   LongTermPublicKey long_term_pub_key;
+  LongTermPrivateKey long_term_prv_key;
   np1secPublicKey ephemeral_key;
   // MessageDigest message_digest;
 

@@ -99,7 +99,7 @@ bool np1secSession::state_handler(np1secMessage receivd_message) {
   }
 }
 
-bool np1secSession::join(long_term_pub_key, long_term_prv_key) {
+bool np1secSession::join(LongTermPublicKey long_term_pub_key, LongTermPrivateKey long_term_prv_key) {
   // We need to generate our ephemerals anyways
   if (!cryptic.init()) {
     return false;

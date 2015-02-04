@@ -29,6 +29,7 @@ extern "C" {
 
 typedef std::pair<gcry_sexp_t, gcry_sexp_t> LongTermIDKey;
 typedef gcry_sexp_t LongTermPublicKey;
+typedef gcry_sexp_t LongTermPrivateKey;
 typedef gcry_sexp_t np1secPublicKey;
 
 /**

@@ -190,7 +190,7 @@ class np1secSession {
     */
   void start_heartbeat_timer();
 
-  bool join();
+  bool join(LongTermPublicKey long_term_pub_key, LongTermPrivateKey long_term_prv_key);
 
   /**
    * Should be called when someone new join the chatroom. This will modify the
