@@ -70,14 +70,15 @@ bool Cryptic::init() {
   if (err)
     goto err;
 
-  pub_key = gcry_sexp_find_token(ed25519_keypair, "public-key", 0);
-  if (!pub_key) {
+
+  ephemeral_pub_key = gcry_sexp_find_token(ed25519_keypair, "public-key", 0);
+  if (!ephemeral_pub_key) {
     std::printf("ed25519Key: failed to retrieve public key");
     return false;
   }
 
-  prv_key = gcry_sexp_find_token(ed25519_keypair, "private-key", 0);
-  if (!prv_key) {
+  ephemeral_prv_key = gcry_sexp_find_token(ed25519_keypair, "private-key", 0);
+  if (!ephemeral_prv_key) {
     std::printf("ed25519Key: failed to retrieve private key");
     return false;
   }
@@ -115,7 +116,7 @@ gcry_error_t Cryptic::Sign(unsigned char **sigp, size_t *siglenp,
                         gcry_strerror(err));
   }
 
-  err = gcry_pk_sign(&sigs, plain_sexp, prv_key);
+  err = gcry_pk_sign(&sigs, plain_sexp, ephemeral_prv_key);
 
   if ( err ) {
     std::printf("ed25519Key: failed to sign plain_text");
@@ -192,7 +193,7 @@ gcry_error_t Cryptic::Verify(std::string plain_text,
   }
 
 
-  err = gcry_pk_verify(sigs, datas, pub_key);
+  err = gcry_pk_verify(sigs, datas, ephemeral_pub_key);
 
   if ( err ) {
     std::printf("ed25519Key: failed to verify signed_text");

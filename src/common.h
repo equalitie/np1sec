@@ -36,8 +36,13 @@ extern "C" {
 typedef std::vector<uint8_t> SessionID;
 
 enum np1secMessageType {
+  JOIN_REQUEST,
+  PARTICIPANTS_INFO,
+  GROUP_SHARE,
   USER_MESSAGE,
-  PURE_META_MESSAGE
+  PURE_META_MESSAG,
+  LEAVE,
+  FAREWELL
 };
 
 enum np1secLoadFlag {

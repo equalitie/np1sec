@@ -16,6 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+
 #ifndef SRC_MESSAGE_CC_
 #define SRC_MESSAGE_CC_
 #include "src/message.h"
@@ -80,6 +81,23 @@ np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic) {
 //      }
     }
   }
+}
+
+/**
+ * @return if the message is of type PARTICIPANTS_INFO it returns 
+ *         the list of participants with their ephemerals otherwise
+ *         throw an exception
+ */
+std::vector<UnauthenticatedParticipant> np1secMessage::participants_in_the_room()
+{
+  if (message_type != np1secMessageType::PARTICPANT_INFO):
+    throw np1secMessageFormatException;
+
+  int main() {                                                       
+    std::string str = "This is a string";                                                      
+    for(auto& s: tokens)
+      std::cout << '"' << s << '"' << '\n';           
+  }                                                       
 }
 
 void np1secMessage::format_meta_message() {
@@ -195,3 +213,4 @@ np1secMessage::~np1secMessage() {
 }
 
 #endif  // SRC_MESSAGE_CC_
+>>>>>>> master

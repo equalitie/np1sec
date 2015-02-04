@@ -62,7 +62,7 @@ class MockRoom {
   void leave(std::string nick) {
       _participant_list.erase(nick);
       broadcast(":o?LEAVE:o?" + nick);
-    }
+    };
 
   void send(std::string sender_nick, std::string message) {
       broadcast(":o?SEND:o?"+

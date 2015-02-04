@@ -16,11 +16,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+
 #ifndef SRC_SESSION_CC_
 #define SRC_SESSION_CC_
 
 #include "src/session.h"
 #include <stdlib.h>
+
+void MessageDigest::update(std::string new_message) {
+  UNUSED(new_message);
+  return;
+}
 
 static void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg) {
   np1secSession* session = (static_cast<np1secSession*>(arg));
@@ -44,14 +50,69 @@ np1secSession::np1secSession() {
   throw std::invalid_argument("Default constructor should not be used.");
 }
 
+/**
+ * This constructor should be only called when the session is generated
+ * to join. That's why all participant are not authenticated.
+ */
 np1secSession::np1secSession(np1secUserState *us, std::string room_name,
-                             std::string name) : us(us), room_name(room_name),
-                                                 name(name) {}
+                             std::string name, std::vector<UnauthenticatedParticipant>participants_in_the_room) : us(us), room_name(room_name), participants_in_the_room(participants_in_the_room)
+{
+  myself.id(name);
+}
 
-bool np1secSession::join() {
+/**
+ * Received the pre-processed message and based on the state
+ * of the session decides what is the appropriate action
+ *
+ * @param receive_message pre-processed received message handed in by receive function
+ *
+ * @return true if state has been change 
+ */
+bool np1secSession::state_handler(np1secMessage receivd_message)
+{
+  switch(my_state) {
+    case np1session::NONE:
+      //This probably shouldn't happen, if a session has
+      //no state state_handler shouldn't be called.
+      //The receive_handler of the user_state should call
+      //approperiate inition of a session of session less
+      //message
+      throw  np1secSessionStateException;
+        
+    case np1session::JOIN_REQUESTED, //The thread has requested to join by sending ephemeral key
+      //Excepting to receive list of current participant
+      
+    REPLIED_TO_NEW_JOIN, //The thread has received a join from a participant replied by participant list
+    GROUP_KEY_GENERATED, //The thread has computed the session key and has sent the conformation
+    IN_SESSION, //Key has been confirmed
+    UPDATED_KEY, //all new shares has been received and new key has been generated, no more send possible
+    LEAVE_REQUESTED, //Leave requested by the thread, waiting for final transcirpt consitancy check
+    FAREWELLED, //LEAVE is received from another participant and a meta message for transcript consistancy and new shares has been sent
+    DEAD //Won't accept receive or sent messages, possibly throw up
+  }
+}
+
+bool np1secSession::join(long_term_pub_key, long_term_prv_key) {
+
+  //We need to generate our ephemerals anyways
   if (!cryptic.init()) {
     return false;
   }
+  myself.ephemeral_key = cryptic.ephemeral_pub_key;
+
+  //we add ourselves to the (authenticated) participant list
+  peer.push_back(myself);
+
+  //if nobody else is in the room have nothing to do more than
+  //just computing the session_id
+  if (participants_in_the_room.size()== 1) {
+    this->compute_session_id();
+         
+  }
+  else {
+    
+  }
+  
   us->ops->send_bare(room_name, us->username(), "testing 123", NULL);
   return true;
 }
@@ -184,5 +245,3 @@ np1secMessage np1secSession::receive(std::string raw_message) {
 np1secSession::~np1secSession() {
   return;
 }
-
-#endif  // SRC_SESSION_CC_
