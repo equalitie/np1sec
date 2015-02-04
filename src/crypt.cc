@@ -65,6 +65,7 @@ bool Cryptic::init() {
   if (err)
     goto err;
 
+
   ephemeral_pub_key = gcry_sexp_find_token(ed25519_keypair, "public-key", 0);
   if (!ephemeral_pub_key) {
     std::printf("ed25519Key: failed to retrieve public key");

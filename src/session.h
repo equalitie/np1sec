@@ -24,9 +24,11 @@
 #include "src/common.h"
 #include "src/participant.h"
 #include "src/crypt.h"
+#include "src/message.h"
 
 typedef std::vector<uint8_t> SessionID;
 class np1secSession;
+class np1secUserState;
 
 #include "src/userstate.h"
 
@@ -44,19 +46,8 @@ class MessageDigest {
   uint32_t compute_message_id(std::string cur_message);
 };
 
-enum np1secMessageType {
-  USER_MESSAGE,
-  PURE_META_MESSAG
-};
-
-struct np1secMessage {
-  np1secMessageType metamessage;
-  std::string user_message;
-};
-
 // Defining essential types
 typedef uint8_t np1secBareMessage[];
-
 
 /**
  * This class is encapsulating all information and action, a user needs and
@@ -71,7 +62,7 @@ class np1secSession {
   std::string room_name;
 
   Participant myself;
-  vector<UnauthenticatedParticipant> participants_in_the_room;
+  std::vector<UnauthenticatedParticipant> participants_in_the_room;
 
   /**
    * Keeps the list of the live participants in the room and their current/new
@@ -89,6 +80,37 @@ class np1secSession {
 
   SessionID session_id;
 
+  /**
+ * (n+1)sec sessions are implemented as finite state machines.
+ * Each message transaction might ends up in state change. 
+ * this is a generic class to store every state and manage its
+ * transition, illigiblity etc
+ * 
+ */
+  enum np1secSessionState {
+    NONE,
+    JOIN_REQUESTED, //The thread has requested to join by sending ephemeral key
+    REPLIED_TO_NEW_JOIN, //The thread has received a join from a participant replied by participant list
+    GROUP_KEY_GENERATED, //The thread has computed the session key and has sent the conformation
+    IN_SESSION, //Key has been confirmed
+    UPDATED_KEY, //all new shares has been received and new key has been generated, no more send possible
+    LEAVE_REQUESTED, //Leave requested by the thread, waiting for final transcirpt consitancy check
+    FAREWELLED, //LEAVE is received from another participant and a meta message for transcript consistancy and new shares has been sent
+    DEAD //Won't accept receive or sent messages, possibly throw up
+  };
+
+  np1secSessionState my_state;
+
+  /**
+   * Received the pre-processed message and based on the state
+   * of the session decides what is the appropriate action
+   *
+   * @param receive_message pre-processed received message handed in by receive function
+   *
+   * @return true if state has been change 
+   */
+  bool state_handler(np1secMessage receivd_message);
+  
  public:
   np1secSession();
 
@@ -100,7 +122,7 @@ class np1secSession {
   /**
    * access function for session_id;
    */
-  SeesionID my_session_id() { return session_id};
+  SessionID my_session_id() { return session_id};
 
   bool join();
 

@@ -27,15 +27,20 @@ extern "C" {
   #include "gcrypt.h"
 }
 
+typedef std::pair<gcry_sexp_t,gcry_sexp_t> LongTermIDKey;
+typedef gcry_sexp_t LongTermPublicKey;
+typedef gcry_sexp_t np1secPublicKey;
+
 /**
  * Encryption primitives and related definitions.
  */
 class Cryptic {
- protocted:
+ protected:
   gcry_sexp_t ephemeral_pub_key, ephemeral_prv_key;
   
   // static const uint32_t ED25519_KEY_SIZE = 255;
 
+ public:
   /**
    * Constructor setup the key
    */
@@ -111,10 +116,6 @@ class Cryptic {
    */
   gcry_cipher_hd_t OpenCipher();
 };
-
-typedef std::pair<gcry_sexp_t,gcry_sexp_t> LongTermIDKey;
-typedef LongTermPublicKey gcry_sexp_t;
-typedef np1secPublicKey gcry_sexp_t;
 
 const unsigned char SESSION_KEY[] = {
   0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe, 0x2b, 0x73, 0xae, 0xf0,
