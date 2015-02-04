@@ -27,9 +27,42 @@ extern "C" {
   #include "gcrypt.h"
 }
 
-typedef std::pair<gcry_sexp_t,gcry_sexp_t> LongTermIDKey;
+typedef std::pair<gcry_sexp_t,gcry_sexp_t> KeyPair;
 typedef gcry_sexp_t LongTermPublicKey;
 typedef gcry_sexp_t np1secPublicKey;
+
+class  LongTermIDKey {
+ protected:
+  KeyPair key_pair;
+  bool initiated = false;
+
+ public:
+  /**
+   * Access
+   */
+  int is_initiated() {return initiated;}
+
+  KeyPair get_key_pair(){return key_pair};
+  
+  /**
+   * @return false if key generation goes wrong (for example due to 
+   *         lack of entropy
+   */
+  bool generate() {
+    initiated = true;
+    //Use Crypt class to generate
+    //TODO::Bill
+    
+    return true;
+      
+  }
+
+  set(KeyPair user_key_pair) {
+    initiated = true;
+    key_pair = user_key_pair;
+  }
+  
+};
 
 /**
  * Encryption primitives and related definitions.
@@ -46,6 +79,17 @@ class Cryptic {
    */
   Cryptic();
 
+  /**
+   * Access function for ephemeral pub key 
+   * (Access is need for meta works like computing the session id  which are 
+   *  not crypto task per se)
+   *
+   */
+  gcry_sexp_t get_ephemeral_pub_key ()
+  {
+    return ephemeral_pub_key;
+  }
+  
   bool init();
 
   /**

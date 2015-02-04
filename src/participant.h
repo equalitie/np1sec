@@ -47,7 +47,8 @@ class Participant {
   /**
    * default constructor
    */
-  Participant() {
+ Participant(std::string participant_id)
+   :id(participant_id){
     
   }
     

@@ -19,7 +19,10 @@
 #include <time.h>
 #include <stdlib.h>
 
+#include <assert.h>
+
 #include "src/session.h"
+#include "src/exceptions.h"
 
 void MessageDigest::update(std::string new_message) {
   UNUSED(new_message);
@@ -31,7 +34,9 @@ uint32_t MessageDigest::compute_message_id(std::string cur_message) {
   return 0;
 }
 
-np1secSession::np1secSession() {
+np1secSession::np1secSession(np1secUserState *us)
+  :myself(us->username())
+{
   throw std::invalid_argument("Default constructor should not be used.");
 }
 
@@ -40,9 +45,32 @@ np1secSession::np1secSession() {
  * to join. That's why all participant are not authenticated.
  */
 np1secSession::np1secSession(np1secUserState *us, std::string room_name,
-                             std::string name, std::vector<UnauthenticatedParticipant>participants_in_the_room) : us(us), room_name(room_name), participants_in_the_room(participants_in_the_room)
+                             std::vector<UnauthenticatedParticipant>participants_in_the_room) : us(us), room_name(room_name), participants_in_the_room(participants_in_the_room),   myself(us->username())
 {
-  myself.id(name);
+}
+
+/**
+ * it should be invoked only once to compute the session id
+ * if one need session id then they need a new session
+ *
+ * @return return true upon successful computation
+ */
+bool np1secSession::compute_session_id()
+{
+  //sanity check: You can only compute session id once
+  assert(not session_id.size());
+
+  if (peers.size() == 0) //nothing to compute
+    return false;
+
+  /**
+   * Generate Session ID
+   */
+
+  //TODO:: Bill
+  //session_id = Hash of (U1,ehpmeral1, U2);
+  return true;
+
 }
 
 /**
@@ -56,45 +84,54 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name,
 bool np1secSession::state_handler(np1secMessage receivd_message)
 {
   switch(my_state) {
-    case np1session::NONE:
+    case np1secSession::NONE:
       //This probably shouldn't happen, if a session has
       //no state state_handler shouldn't be called.
       //The receive_handler of the user_state should call
       //approperiate inition of a session of session less
       //message
-      throw  np1secSessionStateException;
+      throw  np1secSessionStateException();
+      break;
         
-    case np1session::JOIN_REQUESTED, //The thread has requested to join by sending ephemeral key
+    case np1secSession::JOIN_REQUESTED: //The thread has requested to join by sending ephemeral key
       //Excepting to receive list of current participant
+      break;
       
-    REPLIED_TO_NEW_JOIN, //The thread has received a join from a participant replied by participant list
-    GROUP_KEY_GENERATED, //The thread has computed the session key and has sent the conformation
-    IN_SESSION, //Key has been confirmed
-    UPDATED_KEY, //all new shares has been received and new key has been generated, no more send possible
-    LEAVE_REQUESTED, //Leave requested by the thread, waiting for final transcirpt consitancy check
-    FAREWELLED, //LEAVE is received from another participant and a meta message for transcript consistancy and new shares has been sent
-    DEAD //Won't accept receive or sent messages, possibly throw up
-
-    
-  }
+    case np1secSession::REPLIED_TO_NEW_JOIN: //The thread has received a join from a participant replied by participant list
+      break;
+    case np1secSession::GROUP_KEY_GENERATED: //The thread has computed the session key and has sent the conformation
+      break;
+    case np1secSession::IN_SESSION: //Key has been confirmed
+      break;
+    case np1secSession::UPDATED_KEY: //all new shares has been received and new key has been generated: no more send possible
+      break;
+    case np1secSession::LEAVE_REQUESTED: //Leave requested by the thread: waiting for final transcirpt consitancy check
+      break;
+    case np1secSession::FAREWELLED: //LEAVE is received from another participant and a meta message for transcript consistancy and new shares has been sent
+      break;
+    case np1secSession::DEAD: //Won't accept receive or sent messages, possibly throw up
+      break;
+    default:
+      return false;
+  };
   
 }
 
-bool np1secSession::join(long_term_pub_key, long_term_prv_key) {
+bool np1secSession::join(LongTermIDKey long_term_id_key) {
 
   //We need to generate our ephemerals anyways
   if (!cryptic.init()) {
     return false;
   }
-  myself.ephemeral_key = cryptic.ephemeral_pub_key;
+  myself.ephemeral_key = cryptic.get_ephemeral_pub_key();
 
   //we add ourselves to the (authenticated) participant list
-  peer.push_back(myself);
+  peers.push_back(myself);
 
   //if nobody else is in the room have nothing to do more than
   //just computing the session_id
   if (participants_in_the_room.size()== 1) {
-    this->compute_session_id();
+    assert(this->compute_session_id());
          
   }
   else {
@@ -143,7 +180,7 @@ bool np1secSession::send(np1secMessage message) {
 
   msg = otrl_base64_otr_encode((unsigned char*)combined_content.c_str(),
                                combined_content.size());
-  us->ops->send_bare(room_name, msg);
+  (us->ops->send_bare)(room_name, myself.id, msg, static_cast<void*>(us));
   return true;
 }
 
@@ -175,7 +212,8 @@ np1secMessage np1secSession::receive(std::string raw_message) {
     decrypted_message = cryptic.Decrypt(message_content);
   }
 
-  received_message = {USER_MESSAGE, decrypted_message};
+  received_message.message_type = np1secMessage::USER_MESSAGE;
+  received_message.user_message = decrypted_message;
   return received_message;
 }
 

@@ -98,7 +98,7 @@ class np1secUserState {
    *         in case of failure. client need to inform server of leaving the
    *         room in case of failure
    */
-  bool join_room(std::string room_name);
+   bool join_room(std::string room_name, std::vector<UnauthenticatedParticipant>participants_in_the_room);
 
   /**
    * the client need to call this function when a user join the chatroom.

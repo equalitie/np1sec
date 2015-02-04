@@ -31,15 +31,14 @@ np1secUserState::np1secUserState(std::string name, np1secAppOps *ops,
 }
 
 np1secUserState::~np1secUserState() {
-  delete long_term_private_key;
+  delete long_term_key_pair;
 }
 
 bool np1secUserState::init() {
-  if (long_term_private_key) {
+  if (long_term_key_pair.is_initated()) {
     return true;
   }
-  long_term_private_key = new LongTermIDKey();
-  return long_term_private_key->init();
+  return long_term_key_pair.generate();
 }
 
 bool np1secUserState::join_room(std::string room_name, std::vector<UnauthenticatedParticipant>participants_in_the_room) {
@@ -56,7 +55,7 @@ bool np1secUserState::join_room(std::string room_name, std::vector<Unauthenticat
 }
 
 RoomAction np1secUserState::receive_handler(std::string room_name,
-                                            std::string np1sec_message) {
+                                            std::string np1sec_message, uint32_t message_id) {
   np1secSession *cur_session = retrieve_session(room_name);
   if (!cur_session) {
     // uh oh

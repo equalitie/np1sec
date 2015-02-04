@@ -23,6 +23,11 @@
  * See test/chat_mocker_np1sec_plugin.h/.cc  example
  */
 
+#ifndef SRC_INTERFACE_H_
+#define SRC_INTERFACE_H_
+
+#include <string>
+
 /**
  * This sturct is used by the client to send the list of participant in
  * the room. consequently np1sec will try to authenticate the participant 
@@ -69,3 +74,5 @@ struct np1secAppOps {
   //void (*leave)(std::string room_name);
 
 };
+
+#endif
