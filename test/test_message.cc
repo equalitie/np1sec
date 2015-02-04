@@ -80,5 +80,4 @@ TEST_F(MessageTest, test_format_sendable_message) {
                     cryptic);
 
   std::string sendable_msg = msg.format_sendable_message();
-
 }

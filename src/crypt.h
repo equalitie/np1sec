@@ -27,7 +27,7 @@ extern "C" {
   #include "gcrypt.h"
 }
 
-typedef std::pair<gcry_sexp_t,gcry_sexp_t> LongTermIDKey;
+typedef std::pair<gcry_sexp_t, gcry_sexp_t> LongTermIDKey;
 typedef gcry_sexp_t LongTermPublicKey;
 typedef gcry_sexp_t np1secPublicKey;
 
@@ -37,7 +37,6 @@ typedef gcry_sexp_t np1secPublicKey;
 class Cryptic {
  protected:
   gcry_sexp_t ephemeral_pub_key, ephemeral_prv_key;
-  
   // static const uint32_t ED25519_KEY_SIZE = 255;
 
  public:

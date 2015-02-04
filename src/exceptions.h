@@ -17,25 +17,21 @@
  */
 
 #ifndef SRC_EXCEPTIONS_H_
-#define SRC_EXCEPTIONS_H__
+#define SRC_EXCEPTIONS_H_
 
 #include <exception>
 
-class np1secSessionStateException: public std::exception                               
-{                                                                 
-   virtual const char* what() const throw()                        
-   {                                                               
-     return "Invalid session state";                               
-   }                                                               
- };                                   
+class np1secSessionStateException: public std::exception {
+  virtual const char* what() const throw() {
+    return "Invalid session state";
+  }
+};
 
-class np1secMessageFormatException: public std::exception                               
-{                                                                 
-   virtual const char* what() const throw()                        
-   {                                                               
-     return "Invalid message format";                               
-   }                                                               
- };                                   
+class np1secMessageFormatException: public std::exception {
+  virtual const char* what() const throw() {
+    return "Invalid message format";
+  }
+};
 
 
 #endif  // SRC_EXCEPTIONS_H_

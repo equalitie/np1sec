@@ -114,21 +114,15 @@ class np1secUserState {
    */
   std::string username()  {
     return name;
-<<<<<<< HEAD
-  };
+  }
 
   /**
    * access function for for long term id key
    */
-   LongTermIDKey user_id_key_pair()  {
+  LongTermIDKey user_id_key_pair() {
     return long_term_key_pair;
-  };
-
-  
-=======
   }
 
->>>>>>> master
   /**
    * The client need to call this function when the user is joining a room.
    *
@@ -175,13 +169,9 @@ class np1secUserState {
    * @return a RoomAction object informing the client how to update the
    *         interface (add, remove user or display a message
    */
-<<<<<<< HEAD
-  RoomAction receive_handler(std::string room_name, std::string np1sec_message, uint32_t message_id);
-=======
   RoomAction receive_handler(std::string room_name,
                              std::string np1sec_message,
                              uint32_t message_id);
->>>>>>> master
 
   /**
    * The client informs the user state about leaving the room by calling this

@@ -19,7 +19,6 @@
 #ifndef SRC_MESSAGE_H_
 #define SRC_MESSAGE_H_
 
-    
 #include "src/common.h"
 #include "src/crypt.h"
 #include "src/base64.h"
@@ -28,7 +27,9 @@ class np1secMessage {
  protected:
   Cryptic cryptic;
 
-  std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
+  std::vector<std::string> &split(const std::string &s,
+                                  char delim,
+                                  std::vector<std::string> &elems) {
     std::stringstream ss(s);
     std::string item;
     while (std::getline(ss, item, delim)) {
@@ -43,7 +44,7 @@ class np1secMessage {
     split(s, delim, elems);
     return elems;
   }
- 
+
  public:
   np1secMessageType message_type;
   uint32_t message_id;
@@ -80,7 +81,7 @@ class np1secMessage {
    *         throw an exception
    */
   std::vector<UnauthenticatedParticipant> participants_in_the_room();
- 
+
   /**
    * Compute a unique globally ordered id from the time stamped message,
    * ultimately this function should be overridable by the client.

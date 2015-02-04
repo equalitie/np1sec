@@ -8,8 +8,9 @@
 #include <map>
 #include <vector>
 
-#ifndef TEST_CHAT_MOCKER_H
-#define CHAT_MOCKER_H
+#ifndef TEST_CHAT_MOCKER_H_
+#define TEST_CHAT_MOCKER_H_
+
 /**
    This class store the information about different participants
    including their receive and send functions 
@@ -52,17 +53,17 @@ class MockRoom {
   std::vector<std::string>  participant_list()  {
     std::vector<std::string> participant_nicks;
       for (std::map<std::string, MockParticipant>::iterator
-          cur_participant = _participant_list.begin();
-          cur_participant != _participant_list.end(); cur_participant++)
-          participant_nicks.push_back((cur_participant->second).nick);
+        cur_participant = _participant_list.begin();
+        cur_participant != _participant_list.end(); cur_participant++)
+        participant_nicks.push_back((cur_participant->second).nick);
 
       return participant_nicks;
   }
 
   void leave(std::string nick) {
-      _participant_list.erase(nick);
-      broadcast(":o?LEAVE:o?" + nick);
-    };
+    _participant_list.erase(nick);
+    broadcast(":o?LEAVE:o?" + nick);
+  }
 
   void send(std::string sender_nick, std::string message) {
       broadcast(":o?SEND:o?"+
@@ -126,4 +127,4 @@ class ChatMocker {
   }
 };
 
-#endif  // TEST_CHAT_MICKER_H_
+#endif  // TEST_CHAT_MOCKER_H_

@@ -28,7 +28,6 @@
 #include "src/participant.h"
 #include "src/message.h"
 #include "src/crypt.h"
-#include "src/message.h"
 
 class np1secSession;
 class np1secUserState;
@@ -140,14 +139,21 @@ class np1secSession {
  */
   enum np1secSessionState {
     NONE,
-    JOIN_REQUESTED, //The thread has requested to join by sending ephemeral key
-    REPLIED_TO_NEW_JOIN, //The thread has received a join from a participant replied by participant list
-    GROUP_KEY_GENERATED, //The thread has computed the session key and has sent the conformation
-    IN_SESSION, //Key has been confirmed
-    UPDATED_KEY, //all new shares has been received and new key has been generated, no more send possible
-    LEAVE_REQUESTED, //Leave requested by the thread, waiting for final transcirpt consitancy check
-    FAREWELLED, //LEAVE is received from another participant and a meta message for transcript consistancy and new shares has been sent
-    DEAD //Won't accept receive or sent messages, possibly throw up
+    JOIN_REQUESTED,  // The thread has requested to join
+                     // by sending ephemeral key
+    REPLIED_TO_NEW_JOIN,  // The thread has received a join from a
+                          // participant replied by participant list
+    GROUP_KEY_GENERATED,  // The thread has computed the session
+                          // key and has sent the conformation
+    IN_SESSION,  // Key has been confirmed
+    UPDATED_KEY,  // all new shares has been received and new
+                  // key has been generated, no more send possible
+    LEAVE_REQUESTED,  // Leave requested by the thread, waiting
+                      // for final transcirpt consitancy check
+    FAREWELLED,  // LEAVE is received from another participant and a
+                 // meta message for transcript consistancy and
+                 // new shares has been sent
+    DEAD  // Won't accept receive or sent messages, possibly throw up
   };
 
   np1secSessionState my_state;
@@ -161,19 +167,22 @@ class np1secSession {
    * @return true if state has been change 
    */
   bool state_handler(np1secMessage receivd_message);
-  
+
  public:
   np1secSession();
 
   /**
    * Constructor, initiate by joining.
    */
-  np1secSession(np1secUserState *us, std::string room_name, std::string name, std::vector<UnauthenticatedParticipant>participants_in_the_room);
+  np1secSession(np1secUserState *us,
+               std::string room_name,
+               std::string name,
+               std::vector<UnauthenticatedParticipant>participants_in_the_room);
 
   /**
    * access function for session_id;
    */
-  SessionID my_session_id() { return session_id};
+  SessionID my_session_id() { return session_id}
 
   /**
     * Construct and start timers for sending heartbeat messages

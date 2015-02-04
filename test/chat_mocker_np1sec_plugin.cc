@@ -22,7 +22,7 @@
  */
 #include "test/chat_mocker.h"
 
-//npsec1 functions
+// npsec1 functions
 #include "src/userstate.h"
 #include "src/common.h"
 

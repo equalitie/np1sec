@@ -15,7 +15,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-
+#ifndef SRC_INTERFACE_H_
+#define SRC_INTERFACE_H_
 /**
  * This file should be included by the client to use develop the interface 
  * between np1sec and the client.
@@ -31,15 +32,15 @@
  */
 struct UnauthenticatedParticipant {
   std::string participants;
-  std::string long_term_pub_key_hex; //This should be in some convienient Hex
-  //Format
+  std::string long_term_pub_key_hex;  // This should be in some convienient Hex
+  // Format
 };
 
 /**
  * Calls from np1sec to the application.
  */
 struct np1secAppOps {
-  //Data that is passed to send_bare
+  // Data that is passed to send_bare
   void* bare_sender_data = NULL;
   /**
    * It is called by np1sec whenever the protocol needs to send meta data
@@ -51,21 +52,25 @@ struct np1secAppOps {
    *
    * 
    */
-  void (*send_bare)(std::string room_name, std::string sender_nickname, std::string message, void* data);
+  void (*send_bare)(std::string room_name,
+                    std::string sender_nickname,
+                    std::string message,
+                    void* data);
 
-  //TODO://Why do we need to join a room?
-  //We can call back when join or leave is completed but
-  //then also we need a call back when other people
-  //join the room or leave that's why we have room
-  //action as the return of the receive handlere
+  // TODO(vmon): Why do we need to join a room?
+  // We can call back when join or leave is completed but
+  // then also we need a call back when other people
+  // join the room or leave that's why we have room
+  // action as the return of the receive handlere
   /** 
    * Asks the app to join a room or a coversation 
    */
-  //void (*join)(std::string room_name);
+  // void (*join)(std::string room_name);
 
   /** 
    * Asks the app to leave a room or a coversation 
    */
-  //void (*leave)(std::string room_name);
-
+  // void (*leave)(std::string room_name);
 };
+
+#endif  // SRC_INTERFACE_H_

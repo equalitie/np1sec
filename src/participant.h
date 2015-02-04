@@ -20,7 +20,7 @@
 #define SRC_PARTICIPANT_H_
 
 #include <string>
-#include "crypt.h"
+#include "src/crypt.h"
 
 /** 
  * This class keeps the state of each participant in the room, including the
@@ -48,18 +48,16 @@ class Participant {
    * default constructor
    */
   Participant() {
-    
   }
-    
 };
 
 /**
  * To be used in std::sort to sort the particpant list
  * in a way that is consistent way between all participants
  */
-bool sort_by_long_term_pub_key(Participant& lhs, Participant& rhs)
-{
-  return Cryptic::retrieveResult(lhs.long_term_pub_key) < Cryptic::retrieveResult(rhs.long_term_pub_key);
+bool sort_by_long_term_pub_key(Participant& lhs, Participant& rhs) {
+  return Cryptic::retrieveResult(lhs.long_term_pub_key)
+         < Cryptic::retrieveResult(rhs.long_term_pub_key);
 }
 
 #endif  // SRC_PARTICIPANT_H_

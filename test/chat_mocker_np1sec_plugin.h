@@ -14,14 +14,16 @@
  *  Authors: Vmon, 2015-01: initial version
  */
 
-#ifndef CHAT_MOCKER_NP1SEC_PLUGIN_H
-#define CHAT_MOCKER_NP1SEC_PLUGIN_H
+#ifndef CHAT_MOCKER_NP1SEC_PLUGIN_H_
+#define CHAT_MOCKER_NP1SEC_PLUGIN_H_
 /**
  * Receive the messages from chat mocker, interpret the message and
  * call the approperiate function from userstate class  of npsec1 
  * libreary.
  * 
  */
-void chat_mocker_plugin_receive_handler(std::string room_name, std::string message, void* aux_data);
+void chat_mocker_plugin_receive_handler(std::string room_name,
+                                        std::string message,
+                                        void* aux_data);
 
-#endif
+#endif  // TEST_CHAT_MOCKER_NP!SEC_PLUGIN_H_
