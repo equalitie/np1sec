@@ -19,14 +19,17 @@
 #ifndef SRC_SESSION_H_
 #define SRC_SESSION_H_
 
+#include <event2/event.h>
+
 #include <string>
 #include <vector>
+
 #include "src/common.h"
 #include "src/participant.h"
+#include "src/message.h"
 #include "src/crypt.h"
 #include "src/message.h"
 
-typedef std::vector<uint8_t> SessionID;
 class np1secSession;
 class np1secUserState;
 
@@ -55,8 +58,8 @@ typedef uint8_t np1secBareMessage[];
  */
 class np1secSession {
  protected:
-  HashBlock hashed_id;
   Cryptic cryptic;
+  HashBlock hashed_id;
 
   np1secUserState *us;
   std::string room_name;
@@ -65,10 +68,15 @@ class np1secSession {
   std::vector<UnauthenticatedParticipant> participants_in_the_room;
 
   /**
+   * Stores Transcript chain hashes indexed by message id
+   */
+  std::map<uint32_t, HashBlock*> transcript_chain;
+
+  /**
    * Keeps the list of the live participants in the room and their current/new
    * keys/shares, last heartbeat, etc.
    */
-  std::vector<Participant> peers;
+  std::vector<std::string> peers;
 
   /**
    * Keeps the list of the updated participants in the room once the
@@ -76,8 +84,51 @@ class np1secSession {
    */
   std::vector<Participant> peers_in_limbo;
 
+  /**
+    * Keeps a list of the ack timers for recently sent messages indexed by peers
+    *
+    */
+  std::map<std::string, struct event*> awaiting_ack;
+
+ /**
+   * Insert new message hash into transcript chain
+   *
+   */
+  void add_message_to_transcript(std::string message, uint32_t message_id);
+
+  /**
+   * Keeps a list of timers for acks that need to be sent for messages received
+   * the list is indexed by peer.
+   */
+  std::map<std::string, struct event*> acks_to_send;
+
   time_t key_freshness_time_stamp;
 
+ /**
+   * Generate acknowledgement timers for all other participants
+   *
+   */
+  void start_ack_timers();
+
+  /**
+    * Construct and start timers for acking received messages
+    *
+    */
+  void start_receive_ack_timer(std::string sender_id);
+
+  /**
+   * End ack timer on for given acknowledgeing participants
+   *
+   */
+  void stop_timer_receive(std::string acknowledger_id);
+
+  /*
+   * Stop ack to send timers when user sends new message before timer expires
+   *
+   */
+  void stop_timer_send();
+
+ public:
   SessionID session_id;
 
   /**
@@ -124,6 +175,12 @@ class np1secSession {
    */
   SessionID my_session_id() { return session_id};
 
+  /**
+    * Construct and start timers for sending heartbeat messages
+    *
+    */
+  void start_heartbeat_timer();
+
   bool join();
 
   /**
@@ -141,7 +198,7 @@ class np1secSession {
    * When a user wants to send a message to a session it needs to call its send
    * function.
    */
-  bool send(np1secMessage message);
+  bool send(std::string message, np1secMessageType message_type);
 
   /**
    * When a message is received from a session the receive function needs to be
@@ -155,5 +212,25 @@ class np1secSession {
    */
   ~np1secSession();
 };
+
+   /**
+   * Callback function to manage sending of heartbeats
+   *
+   */
+  static void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg);
+
+  /*
+   * Callback function to cause automatic sending of ack for 
+   * received message
+   *
+   */
+  static void cb_send_ack(evutil_socket_t fd, short what, void *arg);
+
+  /*
+   * Callback function to cause automatic warning if ack not
+   * received for previously sent message
+   *
+   */
+  static void cb_ack_not_received(evutil_socket_t fd, short what, void *arg);
 
 #endif  // SRC_SESSION_H_

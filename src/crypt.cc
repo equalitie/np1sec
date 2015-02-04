@@ -49,6 +49,11 @@ done:
   return err;
 }
 
+gcry_error_t compute_message_hash(HashBlock transcript_chain,
+                                     std::string message) {
+  return Hash(message.c_str(), message.size(), transcript_chain, true);
+}
+
 Cryptic::Cryptic() {}
 
 bool Cryptic::init() {
@@ -85,38 +90,11 @@ err:
   return false;
 }
 
-std::string Cryptic::retrieveResult(gcry_sexp_t text_sexp) {
-  size_t buffer_size = gcry_sexp_sprint(text_sexp, GCRYSEXP_FMT_ADVANCED,
-                                        NULL, 0);
-  if (!buffer_size) {
-    std::printf("ed25519Key: failed to convert s-expression to string");
-    return NULL;
-  }
-
-  char* buffer = reinterpret_cast<char *>(malloc(buffer_size));
-  std::string result = buffer;
-  free(buffer);
-  return result;
-}
-
-gcry_sexp_t Cryptic::ConvertToSexp(std::string text) {
-  gcry_error_t err = 0;
-  gcry_sexp_t new_sexp;
-
-  err = gcry_sexp_new(&new_sexp, text.c_str(), text.size(), 1);
-  if (err) {
-    std::printf("ed25519Key: failed to convert plain_text to gcry_sexp_t");
-  }
-
-  return new_sexp;
-}
-
 gcry_error_t Cryptic::Sign(unsigned char **sigp, size_t *siglenp,
                            std::string plain_text) {
   gcry_mpi_t r, s;
   gcry_error_t err = 0;
   gcry_sexp_t plain_sexp, sigs, eddsa, rs, ss;
-  size_t sig_r_len, sig_s_len;
   size_t nr, ns;
   const enum gcry_mpi_format format = GCRYMPI_FMT_USG;
   const uint32_t magic_number = 64, half_magic_number = 32;
@@ -185,7 +163,7 @@ gcry_error_t Cryptic::Sign(unsigned char **sigp, size_t *siglenp,
 gcry_error_t Cryptic::Verify(std::string plain_text,
                              const unsigned char *sigbuf) {
   gcry_error_t err = 0;
-  gcry_mpi_t datampi, r, s;
+  gcry_mpi_t r, s;
   gcry_sexp_t datas, sigs;
   static const uint32_t nr = 32, ns = 32;
 

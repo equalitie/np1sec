@@ -20,7 +20,7 @@
  * libreary.
  * 
  */
-#include "chat_mocker.h"
+#include "test/chat_mocker.h"
 
 //npsec1 functions
 #include "src/userstate.h"
@@ -28,13 +28,14 @@
 
 using namespace std;
 
-void chat_mocker_plugin_receive_handler(std::string room_name, std::string message, void* aux_data)
-{
+void chat_mocker_plugin_receive_handler(std::string room_name,
+                                        std::string message,
+                                        void* aux_data) {
   np1secUserState* user_state = reinterpret_cast<np1secUserState*>(aux_data);
 
-  //we need to process message and see if it is join leave or actual message
+  // we need to process message and see if it is join leave or actual message
   if (message.find(":o?JOIN:o?") == 0) {
-    //check if it is ourselves or somebody else who is joining
+    // check if it is ourselves or somebody else who is joining
     string joining_nick = message.substr(strlen(":o?JOIN:o?"));
 
     if (user_state->username() == joining_nick) {
@@ -55,14 +56,16 @@ void chat_mocker_plugin_receive_handler(std::string room_name, std::string messa
     string message_id_str = message_with_id.substr(0, nick_pos);
     int message_id;
     stringstream(message_id_str) >> message_id;
-    string sender_and_message = message_with_id.substr(nick_pos + strlen(":o?"));
+    string sender_and_message = message_with_id.substr(
+                                  nick_pos + strlen(":o?"));
     string message_pos = sender_and_message.find(":o?");
-    string sender =  = message_with_id.substr(0, message_pos); //we don't care really about sender
-    string pure_message = sender_and_message.substr(message_pos + strlen(":o?"));
-        
-    RoomAction the_action = user_statereceive->receive_handler(room_name, np1sec_message, message_id);
+    string sender =  = message_with_id.substr(0, message_pos);
+    // we don't care really about sender
+    string pure_message = sender_and_message.substr(
+                                    message_pos + strlen(":o?"));
+    RoomAction the_action = user_statereceive->receive_handler(room_name,
+                                                               np1sec_message,
+                                                               message_id);
   }
-  
   user_state->receive_handler(room_name, message);
-  
 }

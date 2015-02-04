@@ -27,10 +27,34 @@ extern "C" {
 #include <sstream>
 #include <iterator>
 #include <stdexcept>
+#include <vector>
 
 #include "src/base64.h"
 
-
 #define UNUSED(expr) (void)(expr)
+
+typedef std::vector<uint8_t> SessionID;
+
+enum np1secMessageType {
+  JOIN_REQUEST,
+  PARTICIPANTS_INFO,
+  GROUP_SHARE,
+  USER_MESSAGE,
+  PURE_META_MESSAG,
+  LEAVE,
+  FAREWELL
+};
+
+enum np1secLoadFlag {
+  NO_LOAD,
+  NEW_EPHEMERAL_KEY,
+  NEW_SECRET_SHARE
+};
+
+// The length of the output of the hash function in bytes.
+const size_t c_hash_length = 32;
+
+typedef uint8_t HashBlock[c_hash_length];
+
 
 #endif  // SRC_COMMON_H_

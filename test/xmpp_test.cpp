@@ -345,9 +345,7 @@ int main(void) {
   name[strlen(name) - 1] = 0;  // strip the \n
 
   // here is the place to construct the user state
-  static np1secAppOps ops = {
-    log
-  };
+  static np1secAppOps ops;
 
   np1secUserState* user_state = new np1secUserState(name, &ops);
   if (!user_state->init()) {

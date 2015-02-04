@@ -32,8 +32,11 @@
 // char server[128];
 // char room[128];
 
-// void write_conv(PurpleConversation *conv, const char *who, const char *alias,
-//                 const char *message, PurpleMessageFlags flags, time_t mtime) {
+// void write_conv(PurpleConversation *conv,
+//                 const char *who, const char *alias,
+//                 const char *message,
+//                 PurpleMessageFlags flags,
+//                 time_t mtime) {
 //   UNUSED(conv);
 //   UNUSED(flags);
 //   UNUSED(mtime);
@@ -85,7 +88,8 @@
 // static void signed_on(PurpleConnection *gc, gpointer null) {
 //   UNUSED(null);
 //   PurpleAccount *account = purple_connection_get_account(gc);
-//   printf("Account connected: %s %s\n", account->username, account->protocol_id);
+//   printf("Account connected: %s %s\n",
+//          account->username, account->protocol_id);
 
 //   GHashTable *components = g_hash_table_new(g_str_hash, g_str_equal);
 //   g_hash_table_insert(components, strdup("room"), strdup(room));
@@ -93,7 +97,8 @@
 //   serv_join_chat(gc, components);
 // }
 
-// static void process_sending_chat(PurpleAccount *account, char **message, int id,
+// static void process_sending_chat(PurpleAccount *account,
+//                                  char **message, int id,
 //                                  void *m) {
 //   UNUSED(account);
 //   np1secUserState* user_state = reinterpret_cast<np1secUserState*>(m);
@@ -107,7 +112,8 @@
 // }
 
 // static gboolean process_receiving_chat(PurpleAccount *account, char **sender,
-//                                        char **message, PurpleConversation *conv,
+//                                        char **message,
+//                                        PurpleConversation *conv,
 //                                        int *flags, void *m) {
 //   UNUSED(account);
 //   UNUSED(sender);
@@ -146,8 +152,9 @@
 //   printf("%s joined the chat\n", name);
 // }
 
-// static void process_chat_buddy_left(PurpleConversation *conv, const char *name,
-//                                     const char *reason, void *m) {
+// static void process_chat_buddy_left(PurpleConversation *conv,
+//                             const char *name,
+//                             const char *reason, void *m) {
 //   UNUSED(conv);
 //   UNUSED(reason);
 //   UNUSED(m);
@@ -160,19 +167,19 @@
 //   void *conv_handle = purple_conversations_get_handle();
 
 //   purple_signal_connect(conn_handle, "signed-on", &handle,
-//                         PURPLE_CALLBACK(signed_on), user_state);
+//            PURPLE_CALLBACK(signed_on), user_state);
 //   purple_signal_connect(conv_handle, "sending-chat-msg", &handle,
-//                         PURPLE_CALLBACK(process_sending_chat), user_state);
+//            PURPLE_CALLBACK(process_sending_chat), user_state);
 //   purple_signal_connect(conv_handle, "receiving-chat-msg", &handle,
-//                         PURPLE_CALLBACK(process_receiving_chat), user_state);
+//            PURPLE_CALLBACK(process_receiving_chat), user_state);
 //   purple_signal_connect(conv_handle, "chat-join-failed", &handle,
-//                         PURPLE_CALLBACK(process_chat_join_failed), user_state);
+//            PURPLE_CALLBACK(process_chat_join_failed), user_state);
 //   purple_signal_connect(conv_handle, "chat-joined", &handle,
-//                         PURPLE_CALLBACK(process_chat_joined), user_state);
+//            PURPLE_CALLBACK(process_chat_joined), user_state);
 //   purple_signal_connect(conv_handle, "chat-buddy-joined", &handle,
-//                         PURPLE_CALLBACK(process_buddy_chat_joined), user_state);
+//            PURPLE_CALLBACK(process_buddy_chat_joined), user_state);
 //   purple_signal_connect(conv_handle, "chat-buddy-left", &handle,
-//                         PURPLE_CALLBACK(process_chat_buddy_left), user_state);
+//            PURPLE_CALLBACK(process_chat_buddy_left), user_state);
 // }
 
 // #define PURPLE_GLIB_READ_COND  (G_IO_IN | G_IO_HUP | G_IO_ERR)
@@ -353,7 +360,7 @@
 //   purple_account_set_enabled(account, UI_ID, TRUE);
 
 //   PurpleSavedStatus *status = purple_savedstatus_new(NULL,
-//                                                      PURPLE_STATUS_AVAILABLE);
+//                               PURPLE_STATUS_AVAILABLE);
 //   purple_savedstatus_activate(status);
 
 //   // user_state need to be sent in order to be available to call backs
@@ -384,8 +391,6 @@
 /**
  * join the room by adding the name of the participant to the room list
  */
-void ChatMocker::join(std::string room, std::string nick)
-{
+void ChatMocker::join(std::string room, std::string nick) {
   rooms[room].join(nick);
-  
-};
+}
