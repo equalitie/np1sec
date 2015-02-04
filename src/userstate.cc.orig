@@ -54,8 +54,12 @@ bool np1secUserState::join_room(std::string room_name, std::vector<Unauthenticat
 }
 
 RoomAction np1secUserState::receive_handler(std::string room_name,
+<<<<<<< HEAD
+                                            std::string np1sec_message, uint32_t message_id) {
+=======
                                             std::string np1sec_message,
                                             uint32_t message_id) {
+>>>>>>> 71a23eef69c26a671bb5c584443e476347a19a67
   np1secSession *cur_session = retrieve_session(room_name);
   if (!cur_session) {
     // uh oh

@@ -16,22 +16,40 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <time.h>
-#include <stdlib.h>
+
+#ifndef SRC_SESSION_CC_
+#define SRC_SESSION_CC_
 
 #include <assert.h>
 
 #include "src/session.h"
+<<<<<<< HEAD
 #include "src/exceptions.h"
+=======
+#include <stdlib.h>
+>>>>>>> 71a23eef69c26a671bb5c584443e476347a19a67
 
 void MessageDigest::update(std::string new_message) {
   UNUSED(new_message);
   return;
 }
 
-uint32_t MessageDigest::compute_message_id(std::string cur_message) {
-  UNUSED(cur_message);
-  return 0;
+static void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg) {
+  np1secSession* session = (static_cast<np1secSession*>(arg));
+  session->send("Heartbeat", PURE_META_MESSAGE);
+  session->start_heartbeat_timer();
+}
+
+static void cb_ack_not_received(evutil_socket_t fd, short what, void *arg) {
+  // Construct message for ack
+  np1secSession* session = (static_cast<np1secSession*>(arg));
+  session->send("Where is my ack?", PURE_META_MESSAGE);
+}
+
+static void cb_send_ack(evutil_socket_t fd, short what, void *arg) {
+  // Construct message with p.id
+  np1secSession* session = (static_cast<np1secSession*>(arg));
+  session->send("ACK", PURE_META_MESSAGE);
 }
 
 np1secSession::np1secSession(np1secUserState *us)
@@ -97,6 +115,7 @@ bool np1secSession::state_handler(np1secMessage receivd_message)
       //Excepting to receive list of current participant
       break;
       
+<<<<<<< HEAD
     case np1secSession::REPLIED_TO_NEW_JOIN: //The thread has received a join from a participant replied by participant list
       break;
     case np1secSession::GROUP_KEY_GENERATED: //The thread has computed the session key and has sent the conformation
@@ -115,6 +134,16 @@ bool np1secSession::state_handler(np1secMessage receivd_message)
       return false;
   };
   
+=======
+    REPLIED_TO_NEW_JOIN, //The thread has received a join from a participant replied by participant list
+    GROUP_KEY_GENERATED, //The thread has computed the session key and has sent the conformation
+    IN_SESSION, //Key has been confirmed
+    UPDATED_KEY, //all new shares has been received and new key has been generated, no more send possible
+    LEAVE_REQUESTED, //Leave requested by the thread, waiting for final transcirpt consitancy check
+    FAREWELLED, //LEAVE is received from another participant and a meta message for transcript consistancy and new shares has been sent
+    DEAD //Won't accept receive or sent messages, possibly throw up
+  }
+>>>>>>> 71a23eef69c26a671bb5c584443e476347a19a67
 }
 
 bool np1secSession::join(LongTermIDKey long_term_id_key) {
@@ -138,6 +167,7 @@ bool np1secSession::join(LongTermIDKey long_term_id_key) {
     
   }
   
+  us->ops->send_bare(room_name, us->username(), "testing 123", NULL);
   return true;
 }
 
@@ -151,69 +181,130 @@ bool np1secSession::farewell(std::string leaver_id) {
   return true;
 }
 
-bool np1secSession::send(np1secMessage message) {
-  gcry_error_t err;
-  unsigned char *buffer = NULL;
-  std::string signature = NULL;
-  std::string encrypted_content = NULL;
-  std::string combined_content = NULL;
-  gcry_randomize(buffer, 32, GCRY_STRONG_RANDOM);
-  unsigned char *sigbuf = NULL;
-  size_t siglen;
-  char *msg = NULL;
+void np1secSession::start_heartbeat_timer() {
+  struct event *timer_event;
+  struct timeval ten_seconds = {10, 0};
+  struct event_base *base = event_base_new();
 
-  // Add random noise to message to ensure hashing/signing is unique
-  // for similar messages
-  message.user_message.append(":");
-  message.user_message.append(reinterpret_cast<const char*>(buffer));
-  gcry_free(buffer);
+  timer_event = event_new(base, -1, EV_TIMEOUT, &cb_send_heartbeat, this);
+  event_add(timer_event, &ten_seconds);
 
-  if ( cryptic.Sign(&sigbuf, &siglen,
-        message.user_message) == gcry_error(GPG_ERR_NO_ERROR)) {
-    encrypted_content = cryptic.Encrypt(message.user_message);
+  event_base_dispatch(base);
+}
+
+void np1secSession::start_ack_timers() {
+  struct event *timer_event;
+  struct timeval ten_seconds = {10, 0};
+  struct event_base *base = event_base_new();
+
+  for (std::vector<std::string>::iterator it = peers.begin();
+       it != peers.end();
+       ++it) {
+    timer_event = event_new(base, -1, EV_TIMEOUT, &cb_ack_not_received, this);
+    awaiting_ack[*it] = timer_event;
+    event_add(awaiting_ack[*it], &ten_seconds);
   }
 
-  combined_content = encrypted_content;
-  combined_content.append(" ");
-  combined_content.append(signature);
+  event_base_dispatch(base);
+}
 
+void np1secSession::start_receive_ack_timer(std::string sender_id) {
+  struct event *timer_event;
+  struct timeval ten_seconds = {10, 0};
+  struct event_base *base = event_base_new();
 
+<<<<<<< HEAD
   msg = otrl_base64_otr_encode((unsigned char*)combined_content.c_str(),
                                combined_content.size());
   (us->ops->send_bare)(room_name, myself.id, msg, static_cast<void*>(us));
   return true;
+=======
+  timer_event = event_new(base, -1, EV_TIMEOUT, &cb_send_ack, this);
+  acks_to_send[sender_id] = timer_event;
+  event_add(awaiting_ack[sender_id], &ten_seconds);
+  event_base_dispatch(base);
+>>>>>>> 71a23eef69c26a671bb5c584443e476347a19a67
+}
+
+void np1secSession::stop_timer_send() {
+  for (std::map<std::string, struct event*>::iterator
+       it = acks_to_send.begin();
+       it != acks_to_send.end();
+       ++it) {
+    event_free(it->second);
+    acks_to_send.erase(it);
+  }
+}
+
+void np1secSession::stop_timer_receive(std::string acknowledger_id) {
+  event_free(awaiting_ack[acknowledger_id]);
+  awaiting_ack.erase(acknowledger_id);
+}
+
+void np1secSession::add_message_to_transcript(std::string message,
+                                        uint32_t message_id) {
+  HashBlock* hb;
+  std::stringstream ss;
+  std::string pointlessconversion;
+
+  ss << transcript_chain.rbegin()->second;
+  ss >> pointlessconversion;
+  pointlessconversion += ":O3" + message;
+
+  compute_message_hash(*hb, pointlessconversion);
+
+  transcript_chain[message_id] = hb;
+}
+
+bool np1secSession::send(std::string message, np1secMessageType message_type) {
+  HashBlock* transcript_chain_hash = transcript_chain.rbegin()->second;
+  // TODO(bill)
+  // Add code to check message type and get
+  // meta load if needed
+  np1secLoadFlag meta_load_flag = NO_LOAD;
+  std::string meta_load = NULL;
+  np1secMessage outbound(session_id, us->username(),
+                         message, message_type,
+                         transcript_chain_hash,
+                         meta_load_flag, meta_load,
+                         peers, cryptic);
+
+  // As we're sending a new message we are no longer required to ack
+  // any received messages
+  stop_timer_send();
+
+  if (message_type == USER_MESSAGE) {
+    // We create a set of times for all other peers for acks we expect for
+    // our sent message
+    start_ack_timers();
+  }
+
+<<<<<<< HEAD
+  received_message.message_type = np1secMessage::USER_MESSAGE;
+  received_message.user_message = decrypted_message;
+=======
+  // us->ops->send_bare(room_name, outbound);
+  return true;
 }
 
 np1secMessage np1secSession::receive(std::string raw_message) {
-  std::string decoded_content;
-  std::string signature, message_content, decrypted_message;
-  np1secMessage received_message;
+  HashBlock* transcript_chain_hash = transcript_chain.rbegin()->second;
+  np1secMessage received_message(raw_message, cryptic);
 
-  otrl_base64_otr_decode(raw_message.c_str(),
-                         (unsigned char**)decoded_content.c_str(),
-                         reinterpret_cast<size_t*>(raw_message.size()));
+  if (*transcript_chain_hash == received_message.transcript_chain_hash) {
+    add_message_to_transcript(received_message.user_message,
+                        received_message.message_id);
+    // Stop awaiting ack timer for the sender
+    stop_timer_receive(received_message.sender_id);
 
-  // split decoded content into encrypted message and signature
-  std::stringstream ss(decoded_content);
-  std::istream_iterator<std::string> begin(ss);
-  std::istream_iterator<std::string> end;
-  std::vector<std::string> vstrings(begin, end);
+    // Start an ack timer for us so we remember to say thank you
+    // for the message
+    start_receive_ack_timer(received_message.sender_id);
 
-  if (vstrings.size() != 2) {
-    std::printf("mpSeSession: failed to retrieve valid content and signature");
-    return received_message;
+  } else {
+    // The hash is a lie!
   }
-
-  message_content = std::string(vstrings[0]);
-  signature = std::string(vstrings[1]);
-
-  if ( cryptic.Verify(message_content, (unsigned char*)signature.c_str())
-       == gcry_error(GPG_ERR_NO_ERROR)) {
-    decrypted_message = cryptic.Decrypt(message_content);
-  }
-
-  received_message.message_type = np1secMessage::USER_MESSAGE;
-  received_message.user_message = decrypted_message;
+>>>>>>> 71a23eef69c26a671bb5c584443e476347a19a67
   return received_message;
 }
 
