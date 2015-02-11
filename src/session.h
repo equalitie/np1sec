@@ -189,7 +189,13 @@ class np1secSession {
   SessionID my_session_id() { return session_id;};
 
   /**
-<<<<<<< HEAD
+    * Construct and start timers for sending heartbeat messages
+    *
+    */
+  void start_heartbeat_timer();
+
+
+  /**
    * Should be called by userstate when the user wants to join a new room
    *
    * @parma long_term_id_key the key pair of joining party is need for 
@@ -198,14 +204,7 @@ class np1secSession {
    * @return return true if the first stage of join is completed successfully
    */
   bool join(LongTermIDKey long_term_id_key);
-=======
-    * Construct and start timers for sending heartbeat messages
-    *
-    */
-  void start_heartbeat_timer();
 
-  bool join();
->>>>>>> 71a23eef69c26a671bb5c584443e476347a19a67
 
   /**
    * Should be called when someone new join the chatroom. This will modify the

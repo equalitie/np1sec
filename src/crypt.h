@@ -42,7 +42,7 @@ class  LongTermIDKey {
    */
   int is_initiated() {return initiated;}
 
-  KeyPair get_key_pair(){return key_pair};
+  KeyPair get_key_pair(){return key_pair;}
   
   /**
    * @return false if key generation goes wrong (for example due to 
@@ -57,7 +57,7 @@ class  LongTermIDKey {
       
   }
 
-  set(KeyPair user_key_pair) {
+  void set_key_pair(KeyPair user_key_pair) {
     initiated = true;
     key_pair = user_key_pair;
   }

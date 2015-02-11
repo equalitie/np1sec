@@ -160,7 +160,6 @@ class np1secMessage {
    *
    */
   ~np1secMessage();
->>>>>>> master
 };
 
 #endif  // SRC_MESSAGE_H_

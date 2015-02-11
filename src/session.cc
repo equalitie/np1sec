@@ -17,17 +17,11 @@
  */
 
 
-#ifndef SRC_SESSION_CC_
-#define SRC_SESSION_CC_
-
 #include <assert.h>
 
 #include "src/session.h"
-<<<<<<< HEAD
 #include "src/exceptions.h"
-=======
 #include <stdlib.h>
->>>>>>> 71a23eef69c26a671bb5c584443e476347a19a67
 
 void MessageDigest::update(std::string new_message) {
   UNUSED(new_message);
@@ -114,8 +108,6 @@ bool np1secSession::state_handler(np1secMessage receivd_message)
     case np1secSession::JOIN_REQUESTED: //The thread has requested to join by sending ephemeral key
       //Excepting to receive list of current participant
       break;
-      
-<<<<<<< HEAD
     case np1secSession::REPLIED_TO_NEW_JOIN: //The thread has received a join from a participant replied by participant list
       break;
     case np1secSession::GROUP_KEY_GENERATED: //The thread has computed the session key and has sent the conformation
@@ -134,16 +126,6 @@ bool np1secSession::state_handler(np1secMessage receivd_message)
       return false;
   };
   
-=======
-    REPLIED_TO_NEW_JOIN, //The thread has received a join from a participant replied by participant list
-    GROUP_KEY_GENERATED, //The thread has computed the session key and has sent the conformation
-    IN_SESSION, //Key has been confirmed
-    UPDATED_KEY, //all new shares has been received and new key has been generated, no more send possible
-    LEAVE_REQUESTED, //Leave requested by the thread, waiting for final transcirpt consitancy check
-    FAREWELLED, //LEAVE is received from another participant and a meta message for transcript consistancy and new shares has been sent
-    DEAD //Won't accept receive or sent messages, possibly throw up
-  }
->>>>>>> 71a23eef69c26a671bb5c584443e476347a19a67
 }
 
 bool np1secSession::join(LongTermIDKey long_term_id_key) {
@@ -213,17 +195,14 @@ void np1secSession::start_receive_ack_timer(std::string sender_id) {
   struct timeval ten_seconds = {10, 0};
   struct event_base *base = event_base_new();
 
-<<<<<<< HEAD
-  msg = otrl_base64_otr_encode((unsigned char*)combined_content.c_str(),
-                               combined_content.size());
-  (us->ops->send_bare)(room_name, myself.id, msg, static_cast<void*>(us));
-  return true;
-=======
+  //msg = otrl_base64_otr_encode((unsigned char*)combined_content.c_str(),
+  //                             combined_content.size());
+  //(us->ops->send_bare)(room_name, myself.id, msg, static_cast<void*>(us));
+
   timer_event = event_new(base, -1, EV_TIMEOUT, &cb_send_ack, this);
   acks_to_send[sender_id] = timer_event;
   event_add(awaiting_ack[sender_id], &ten_seconds);
   event_base_dispatch(base);
->>>>>>> 71a23eef69c26a671bb5c584443e476347a19a67
 }
 
 void np1secSession::stop_timer_send() {
@@ -279,10 +258,6 @@ bool np1secSession::send(std::string message, np1secMessageType message_type) {
     start_ack_timers();
   }
 
-<<<<<<< HEAD
-  received_message.message_type = np1secMessage::USER_MESSAGE;
-  received_message.user_message = decrypted_message;
-=======
   // us->ops->send_bare(room_name, outbound);
   return true;
 }
@@ -304,7 +279,9 @@ np1secMessage np1secSession::receive(std::string raw_message) {
   } else {
     // The hash is a lie!
   }
->>>>>>> 71a23eef69c26a671bb5c584443e476347a19a67
+  received_message.message_type = np1secMessage::USER_MESSAGE;
+  received_message.user_message = decrypted_message;
+
   return received_message;
 }
 
