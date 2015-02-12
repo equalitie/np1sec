@@ -30,20 +30,20 @@ void MessageDigest::update(std::string new_message) {
 
 static void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg) {
   np1secSession* session = (static_cast<np1secSession*>(arg));
-  session->send("Heartbeat", PURE_META_MESSAGE);
+  session->send("Heartbeat", np1secMessage::PURE_META_MESSAGE);
   session->start_heartbeat_timer();
 }
 
 static void cb_ack_not_received(evutil_socket_t fd, short what, void *arg) {
   // Construct message for ack
   np1secSession* session = (static_cast<np1secSession*>(arg));
-  session->send("Where is my ack?", PURE_META_MESSAGE);
+  session->send("Where is my ack?", np1secMessage::PURE_META_MESSAGE);
 }
 
 static void cb_send_ack(evutil_socket_t fd, short what, void *arg) {
   // Construct message with p.id
   np1secSession* session = (static_cast<np1secSession*>(arg));
-  session->send("ACK", PURE_META_MESSAGE);
+  session->send("ACK", np1secMessage::PURE_META_MESSAGE);
 }
 
 np1secSession::np1secSession(np1secUserState *us)
@@ -137,7 +137,8 @@ bool np1secSession::join(LongTermIDKey long_term_id_key) {
   myself.ephemeral_key = cryptic.get_ephemeral_pub_key();
 
   //we add ourselves to the (authenticated) participant list
-  peers.push_back(myself);
+  participants[myself.id];
+  peers[0]=myself.id;
 
   //if nobody else is in the room have nothing to do more than
   //just computing the session_id
@@ -235,7 +236,7 @@ void np1secSession::add_message_to_transcript(std::string message,
   transcript_chain[message_id] = hb;
 }
 
-bool np1secSession::send(std::string message, np1secMessageType message_type) {
+bool np1secSession::send(std::string message, np1secMessage::np1secMessageType message_type) {
   HashBlock* transcript_chain_hash = transcript_chain.rbegin()->second;
   // TODO(bill)
   // Add code to check message type and get
@@ -252,7 +253,7 @@ bool np1secSession::send(std::string message, np1secMessageType message_type) {
   // any received messages
   stop_timer_send();
 
-  if (message_type == USER_MESSAGE) {
+  if (message_type == np1secMessage::USER_MESSAGE) {
     // We create a set of times for all other peers for acks we expect for
     // our sent message
     start_ack_timers();
@@ -279,8 +280,6 @@ np1secMessage np1secSession::receive(std::string raw_message) {
   } else {
     // The hash is a lie!
   }
-  received_message.message_type = np1secMessage::USER_MESSAGE;
-  received_message.user_message = decrypted_message;
 
   return received_message;
 }

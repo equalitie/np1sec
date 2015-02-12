@@ -33,7 +33,7 @@ TEST_F(MessageTest, test_np1secMessage_constructor) {
   SessionID session_id = {1};
   std::string sender_id = "test_user";
   std::string user_message = "test message";
-  np1secMessageType message_type = USER_MESSAGE;
+  np1secMessage::np1secMessageType message_type = np1secMessage::USER_MESSAGE;
   HashBlock* transcript_chain_hash = 0;
   np1secLoadFlag meta_load_flag = NO_LOAD;
   std::string meta_load = "";
@@ -63,7 +63,7 @@ TEST_F(MessageTest, test_format_sendable_message) {
   SessionID session_id = {1};
   std::string sender_id = "test_user";
   std::string user_message = "test message";
-  np1secMessageType message_type = USER_MESSAGE;
+  np1secMessage::np1secMessageType message_type = np1secMessage::USER_MESSAGE;
   HashBlock* transcript_chain_hash = 0;
   np1secLoadFlag meta_load_flag = NO_LOAD;
   std::string meta_load = "";

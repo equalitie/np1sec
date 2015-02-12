@@ -21,6 +21,7 @@
 
     
 #include "src/common.h"
+#include "src/interface.h"
 #include "src/crypt.h"
 #include "src/base64.h"
 
@@ -45,6 +46,17 @@ class np1secMessage {
   }
  
  public:
+  enum np1secMessageType {
+    UNKNOWN,
+    JOIN_REQUEST,
+    PARTICIPANTS_INFO,
+    GROUP_SHARE,
+    USER_MESSAGE,
+    PURE_META_MESSAGE,
+    LEAVE,
+    FAREWELL
+  };
+
   np1secMessageType message_type;
   uint32_t message_id;
   SessionID session_id;

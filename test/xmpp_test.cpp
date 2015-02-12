@@ -30,7 +30,7 @@ extern "C" {
 
 #include "src/userstate.h"
 #include "src/common.h"
-
+#include "src/interface.h"
 
 #define CUSTOM_USER_DIRECTORY "/tmp/test_user"
 #define CUSTOM_PLUGIN_PATH ""
@@ -139,7 +139,7 @@ static void process_chat_join_failed(PurpleConnection *gc,
 
 static void process_chat_joined(PurpleConversation *conv, void *m) {
   np1secUserState* user_state = reinterpret_cast<np1secUserState*>(m);
-  bool joined = user_state->join_room(conv->name);
+  bool joined = user_state->join_room(conv->name, std::vector<UnauthenticatedParticipant>());
   printf("Joining %s: %s\n", conv->name, joined ? "succeeded" : "failed");
 }
 

@@ -117,7 +117,10 @@ class Cryptic {
    *
    * @return std::string representing the converted data.
    */
-  static std::string retrieveResult(gcry_sexp_t text_sexp);
+  static std::string retrieveResult(gcry_sexp_t text_sexp)
+  {
+    return "";
+  }
 
   /**
    * Convert a given std:string to a valid gcrypt s-expression

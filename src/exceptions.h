@@ -27,9 +27,9 @@ class np1secSessionStateException: public std::exception
    {                                                               
      return "Invalid session state";                               
    }                                                               
- };                                   
+};
 
-class np1secMessageFormatException: public std::exception                               
+class np1secMessageFormatException : public std::exception                               
 {                                                                 
    virtual const char* what() const throw()                        
    {                                                               
