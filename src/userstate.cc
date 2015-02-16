@@ -45,7 +45,6 @@ bool np1secUserState::init() {
   return long_term_key_pair.generate();
 }
 
-<<<<<<< HEAD
 bool np1secUserState::join_room(std::string room_name,
    std::vector<UnauthenticatedParticipant>participants_in_the_room) {
   np1secSession *new_session = new np1secSession(this,
