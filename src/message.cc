@@ -20,6 +20,7 @@
 #ifndef SRC_MESSAGE_CC_
 #define SRC_MESSAGE_CC_
 #include "src/message.h"
+#include "src/exceptions.h"
 
 np1secMessage::np1secMessage(SessionID session_id,
                             std::string sender_id,
@@ -79,6 +80,8 @@ np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic) {
         nonce = strtok(NULL, ":O3");
         message_id = compute_message_id(user_message);
 //      }
+
+        message_type = UNKNOWN;
     }
   }
 }
@@ -88,16 +91,16 @@ np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic) {
  *         the list of participants with their ephemerals otherwise
  *         throw an exception
  */
-std::vector<UnauthenticatedParticipant>
-np1secMessage::participants_in_the_room() {
-  if (message_type != np1secMessageType::PARTICPANT_INFO):
-    throw np1secMessageFormatException;
+std::vector<UnauthenticatedParticipant> np1secMessage::participants_in_the_room()
+{
+  if (message_type != PARTICIPANTS_INFO)
+    
+    throw np1secMessageFormatException();
 
-  int main() {
-    std::string str = "This is a string";
-    for (auto& s : tokens)
-      std::cout << '"' << s << '"' << '\n';
-  }
+  std::vector<UnauthenticatedParticipant> disceted_participants;
+  
+  return disceted_participants;
+
 }
 
 void np1secMessage::format_meta_message() {
@@ -156,7 +159,7 @@ std::string np1secMessage::format_sendable_message() {
 }
 
 uint32_t np1secMessage::compute_message_id(std::string cur_message) {
-  return NULL;
+  return 0;
 }
 
 void np1secMessage::generate_nonce(unsigned char* buffer) {
@@ -213,4 +216,3 @@ np1secMessage::~np1secMessage() {
 }
 
 #endif  // SRC_MESSAGE_CC_
->>>>>>> master

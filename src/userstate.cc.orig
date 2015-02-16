@@ -31,28 +31,20 @@ np1secUserState::np1secUserState(std::string name, np1secAppOps *ops,
 }
 
 np1secUserState::~np1secUserState() {
-  //TODO:Maybe for security reason we have
-  //to turn long_term_key_pair into
-  //pointer and fill-up mem before
-  //deleting it
-  //delete long_term_key_pair;
+  delete long_term_key_pair;
 }
 
 bool np1secUserState::init() {
-  if (long_term_key_pair.is_initiated()) {
+  if (long_term_key_pair.is_initated()) {
     return true;
   }
   return long_term_key_pair.generate();
 }
 
-<<<<<<< HEAD
-bool np1secUserState::join_room(std::string room_name,
-   std::vector<UnauthenticatedParticipant>participants_in_the_room) {
-  np1secSession *new_session = new np1secSession(this,
-                                                 room_name,
-                                                 participants_in_the_room);
+bool np1secUserState::join_room(std::string room_name, std::vector<UnauthenticatedParticipant>participants_in_the_room) {
+  np1secSession *new_session = new np1secSession(this, room_name, name, participants_in_the_room);
 
-  if (!new_session->join(long_term_key_pair)) {
+  if (!new_session->join()) {
     delete new_session;
     return false;
   }
@@ -62,8 +54,12 @@ bool np1secUserState::join_room(std::string room_name,
 }
 
 RoomAction np1secUserState::receive_handler(std::string room_name,
+<<<<<<< HEAD
+                                            std::string np1sec_message, uint32_t message_id) {
+=======
                                             std::string np1sec_message,
                                             uint32_t message_id) {
+>>>>>>> 71a23eef69c26a671bb5c584443e476347a19a67
   np1secSession *cur_session = retrieve_session(room_name);
   if (!cur_session) {
     // uh oh
@@ -79,7 +75,7 @@ bool np1secUserState::send_handler(std::string room_name,
   if (!cur_session) {
     // uh oh
   }
-  return cur_session->send(plain_message, np1secMessage::USER_MESSAGE);
+  return cur_session->send(plain_message, USER_MESSAGE);
 }
 
 np1secSession *np1secUserState::retrieve_session(std::string room_name) {

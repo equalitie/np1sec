@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "src/common.h"
+#include "src/interface.h"
 #include "src/participant.h"
 #include "src/message.h"
 #include "src/crypt.h"
@@ -73,7 +74,14 @@ class np1secSession {
 
   /**
    * Keeps the list of the live participants in the room and their current/new
-   * keys/shares, last heartbeat, etc.
+   * keys/shares, last heartbeat, etc. The correct way of uisng this array is
+   * participants[peers[i]]
+   *
+   * let change the name to peer_id
+   * 
+   * sorting of this list by LongTermId,peer_id is important because
+   * it determines the order of the room which affect the session key
+   * computation.
    */
   std::vector<std::string> peers;
 
@@ -81,7 +89,7 @@ class np1secSession {
    * Keeps the list of the updated participants in the room once the
    * join/accept or farewell finishes.
    */
-  std::vector<Participant> peers_in_limbo;
+  std::map<std::string,Participant> participants;
 
   /**
     * Keeps a list of the ack timers for recently sent messages indexed by peers
@@ -131,6 +139,14 @@ class np1secSession {
   SessionID session_id;
 
   /**
+   * it should be invoked only once to compute the session id
+   * if one need session id then they need a new session
+   *
+   * @return return true upon successful computation
+   */
+  bool compute_session_id();
+
+  /**
  * (n+1)sec sessions are implemented as finite state machines.
  * Each message transaction might ends up in state change. 
  * this is a generic class to store every state and manage its
@@ -169,14 +185,17 @@ class np1secSession {
   bool state_handler(np1secMessage receivd_message);
 
  public:
-  np1secSession();
+  /**
+     constructor
+     You can't have a session without a user
+   */
+  np1secSession(np1secUserState *us);
 
   /**
    * Constructor, initiate by joining.
    */
   np1secSession(np1secUserState *us,
                std::string room_name,
-               std::string name,
                std::vector<UnauthenticatedParticipant>participants_in_the_room);
 
   /**
@@ -190,7 +209,15 @@ class np1secSession {
     */
   void start_heartbeat_timer();
 
-  bool join(LongTermPublicKey long_term_pub_key, LongTermPrivateKey long_term_prv_key);
+  /**
+   * Should be called by userstate when the user wants to join a new room
+   *
+   * @parma long_term_id_key the key pair of joining party is need for 
+   *        deniable authentication
+   *
+   * @return return true if the first stage of join is completed successfully
+   */
+  bool join(LongTermIDKey long_term_id_key);
 
   /**
    * Should be called when someone new join the chatroom. This will modify the
@@ -207,7 +234,7 @@ class np1secSession {
    * When a user wants to send a message to a session it needs to call its send
    * function.
    */
-  bool send(std::string message, np1secMessageType message_type);
+  bool send(std::string message, np1secMessage::np1secMessageType message_type);
 
   /**
    * When a message is received from a session the receive function needs to be
