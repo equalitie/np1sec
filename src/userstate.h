@@ -45,42 +45,6 @@ class RoomAction {
 
 typedef std::map<std::string, np1secSession*> session_room_map;
 
-/**
- * Calls from np1sec to the application.
- */
-struct np1secAppOps {
-  // Data that is passed to send_bare
-  void* bare_sender_data = NULL;
-  /**
-   * It is called by np1sec whenever the protocol needs to send meta data
-   * messages (key exchange, etc) which are not initiated by a message from
-   * the user.
-   *  
-   * @param data is member variable bare_sender_data which is passed to the 
-   *             function in case any auxilary data is needed
-   *
-   * 
-   */
-  void (*send_bare)(std::string room_name,
-                    std::string sender_nickname,
-                    std::string message,
-                    void* data);
-
-  // TODO(vmon) Why do we need to join a room?
-  // We can call back when join or leave is completed but
-  // then also we need a call back when other people
-  // join the room or leave that's why we have room
-  // action as the return of the receive handlere
-  /** 
-   * Asks the app to join a room or a coversation 
-   */
-  // void (*join)(std::string room_name);
-
-  /** 
-   * Asks the app to leave a room or a coversation 
-   */
-  // void (*leave)(std::string room_name);
-};
 
 /**
  * Manages a user with long term identity for participating in a multiparty
@@ -134,7 +98,7 @@ class np1secUserState {
    *         in case of failure. client need to inform server of leaving the
    *         room in case of failure
    */
-  bool join_room(std::string room_name);
+   bool join_room(std::string room_name, std::vector<UnauthenticatedParticipant>participants_in_the_room);
 
   /**
    * the client need to call this function when a user join the chatroom.

@@ -16,49 +16,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef SRC_PARTICIPANT_H_
-#define SRC_PARTICIPANT_H_
-
-#include <string>
-#include "src/crypt.h"
-
-/** 
- * This class keeps the state of each participant in the room, including the
- * user themselves.
- */
-class Participant {
- public:
-  std::string id;
-  LongTermPublicKey long_term_pub_key;
-  LongTermPrivateKey long_term_prv_key;
-  np1secPublicKey ephemeral_key;
-  // MessageDigest message_digest;
-
-  // np1secKeyShare cur_keyshare;
-  // np1secKeySHare future_key_share;
-
-  enum ForwardSecracyContribution {
-    NONE,
-    EPHEMERAL,
-    KEY_SHARE
-  };
-
-  ForwardSecracyContribution ForwardSecracyStatus = NONE;
-
-  /**
-   * default
-   */
- Participant(std::string participant_id = "")
-   :id(participant_id){
-    
-  }
-
-};
+#include "src/participant.h"
 
 /**
  * To be used in std::sort to sort the particpant list
  * in a way that is consistent way between all participants
  */
-bool sort_by_long_term_pub_key(Participant& lhs, Participant& rhs);
-
-#endif  // SRC_PARTICIPANT_H_
+bool sort_by_long_term_pub_key(Participant& lhs, Participant& rhs)
+{
+  return Cryptic::retrieveResult(lhs.long_term_pub_key) < Cryptic::retrieveResult(rhs.long_term_pub_key);
+}
