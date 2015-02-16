@@ -15,8 +15,6 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#ifndef SRC_INTERFACE_H_
-#define SRC_INTERFACE_H_
 /**
  * This file should be included by the client to use develop the interface 
  * between np1sec and the client.

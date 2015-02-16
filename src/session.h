@@ -201,7 +201,7 @@ class np1secSession {
   /**
    * access function for session_id;
    */
-  SessionID my_session_id() { return session_id}
+  SessionID my_session_id() { return session_id;}
 
   /**
     * Construct and start timers for sending heartbeat messages
