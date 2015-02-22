@@ -61,12 +61,12 @@ bool Cryptic::init() {
   gcry_error_t err = 0;
   gcry_sexp_t ed25519_parms, ed25519_keypair;
 
-  err = gcry_sexp_build(&ed25519_parms, NULL,
+  err = gcry_sexp_build(&ed25519_params, NULL,
                         "(genkey (ecc (curve Ed25519) (flags eddsa)))");
   if (err)
     goto err;
 
-  err = gcry_pk_genkey(&ed25519_keypair, ed25519_parms);
+  err = gcry_pk_genkey(&ed25519_keypair, ed25519_params);
   if (err)
     goto err;
 

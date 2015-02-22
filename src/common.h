@@ -42,7 +42,8 @@ enum np1secMessageType {
   USER_MESSAGE,
   PURE_META_MESSAG,
   LEAVE,
-  FAREWELL
+  FAREWELL,
+  SESSION_P_LIST
 };
 
 enum np1secLoadFlag {

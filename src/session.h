@@ -92,6 +92,11 @@ class np1secSession {
   std::map<std::string,Participant> participants;
 
   /**
+   * Keeps the list of the unauthenticated participants in the room before the
+   * join/accept or farewell finishes.
+   */
+  std::map<std::string,Participant> unauthed_participants;
+  /**
     * Keeps a list of the ack timers for recently sent messages indexed by peers
     *
     */
@@ -224,6 +229,12 @@ class np1secSession {
    * session id.
    */
   bool accept(std::string new_participant_id);
+
+  /**
+   * Insert the list of unauthenticated participants
+   * based on the input received
+   */
+  bool received_p_list(std::string participant_list);
 
   /**
    * This will be called when a user leaves a chatroom to update the key.
