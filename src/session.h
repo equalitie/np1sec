@@ -144,7 +144,7 @@ class np1secSession {
    *
    * @return return true upon successful computation
    */
-  bool compute_session_id();
+  std::string compute_session_id();
 
   /**
  * (n+1)sec sessions are implemented as finite state machines.

@@ -67,8 +67,8 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name,
  *
  * @return return true upon successful computation
  */
-bool np1secSession::compute_session_id()
-{
+std::string np1secSession::compute_session_id() {
+  std::string cat_string = "";
   //sanity check: You can only compute session id once
   assert(not session_id.size());
 
@@ -81,7 +81,12 @@ bool np1secSession::compute_session_id()
 
   //TODO:: Bill
   //session_id = Hash of (U1,ehpmeral1, U2);
-  return true;
+  for (std::vector<string>::iterator it = peers.begin(); it != peers.end(); ++it) {
+    Participant p = participants[it];
+    cat_string += p.id;
+    cat_string += cryptic.retrieveResult(p.ephemeral_key);
+  }
+  return cat_string;
 
 }
 
