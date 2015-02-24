@@ -59,7 +59,7 @@ Cryptic::Cryptic() {}
 bool Cryptic::init() {
   /* Generate a new Ed25519 key pair. */
   gcry_error_t err = 0;
-  gcry_sexp_t ed25519_parms, ed25519_keypair;
+  gcry_sexp_t ed25519_params, ed25519_keypair;
 
   err = gcry_sexp_build(&ed25519_params, NULL,
                         "(genkey (ecc (curve Ed25519) (flags eddsa)))");

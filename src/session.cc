@@ -19,11 +19,13 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string>
 
 #include "src/session.h"
 #include "src/exceptions.h"
 #include "src/userstate.h"
 
+using namespace std;
 void MessageDigest::update(std::string new_message) {
   UNUSED(new_message);
   return;
@@ -68,7 +70,7 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name,
  *
  * @return return true upon successful computation
  */
-std::string np1secSession::compute_session_id() {
+bool np1secSession::compute_session_id() {
   std::string cat_string = "";
   //sanity check: You can only compute session id once
   assert(not session_id.size());
@@ -83,11 +85,13 @@ std::string np1secSession::compute_session_id() {
   //TODO:: Bill
   //session_id = Hash of (U1,ehpmeral1, U2);
   for (std::vector<string>::iterator it = peers.begin(); it != peers.end(); ++it) {
-    Participant p = participants[it];
+    Participant p = *it;
     cat_string += p.id;
     cat_string += cryptic.retrieveResult(p.ephemeral_key);
   }
-  return cat_string;
+
+  this->session_id = cat_string;
+  return true;
 
 }
 

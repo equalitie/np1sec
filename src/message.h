@@ -55,7 +55,8 @@ class np1secMessage {
     USER_MESSAGE,
     PURE_META_MESSAGE,
     LEAVE,
-    FAREWELL
+    FAREWELL,
+    SESSION_P_LIST
   };
 
   np1secMessageType message_type;

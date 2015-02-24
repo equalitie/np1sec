@@ -35,6 +35,20 @@ extern "C" {
 
 typedef std::vector<uint8_t> SessionID;
 
+<<<<<<< HEAD
+enum np1secMessageType {
+  JOIN_REQUEST,
+  PARTICIPANTS_INFO,
+  GROUP_SHARE,
+  USER_MESSAGE,
+  PURE_META_MESSAG,
+  LEAVE,
+  FAREWELL,
+  SESSION_P_LIST
+};
+
+=======
+>>>>>>> session_test compile for join, need to be tested
 enum np1secLoadFlag {
   NO_LOAD,
   NEW_EPHEMERAL_KEY,
