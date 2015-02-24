@@ -6,7 +6,7 @@
  */
 
 #include <map>
-#include <vector>
+#include <list>
 
 #ifndef TEST_CHAT_MOCKER_H_
 #define TEST_CHAT_MOCKER_H_
@@ -15,6 +15,13 @@
    This class store the information about different participants
    including their receive and send functions 
  */
+
+void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
+                                               std::string np1sec_message,
+                                               void* aux_data);
+/*void chat_mocker_plugin_receive_handler(std::string room_name,
+                                        std::string message,
+                                        void* aux_data);*/
 
 class MockParticipant {
  public:
@@ -45,11 +52,16 @@ class MockRoom {
                                     std::string message,
                                     void* user_data)) {
       _participant_list[nick].nick = nick;
-      _participant_list[nick].receive_handler = receive_handler;
+      _participant_list[nick].receive_handler = chat_mocker_np1sec_plugin_receive_handler;
+      
+        //receive_handler; in real life, its re doesn't happen here
       // _participant_list[nick].aux_data = user_data;
-      broadcast(":o?JOIN:o?"+nick);
+      broadcast("@<o>@JOIN@<o>@"+nick);
     }
 
+  /**
+     access function for participants
+   */
   std::vector<std::string>  participant_list()  {
     std::vector<std::string> participant_nicks;
       for (std::map<std::string, MockParticipant>::iterator
@@ -62,13 +74,14 @@ class MockRoom {
 
   void leave(std::string nick) {
     _participant_list.erase(nick);
-    broadcast(":o?LEAVE:o?" + nick);
+    broadcast("@<o>@LEAVE@<o>@" + nick);
   }
 
   void send(std::string sender_nick, std::string message) {
-      broadcast(":o?SEND:o?"+
+      global_message_id++;
+      broadcast("@<o>@SEND@<o>@"+
                std::to_string(global_message_id)+
-               ":o?"+sender_nick+":o?"+message);
+               "@<o>@"+sender_nick+"@<o>@"+message);
     }
 };
 
@@ -119,10 +132,9 @@ class ChatMocker {
   }
 
   /**
-   * drop the participant from the room
+   * send a message to the room
    */
   void send(std::string room, std::string nick, std::string message) {
-    // global_message_id++;
     rooms[room].send(nick, message);
   }
 };

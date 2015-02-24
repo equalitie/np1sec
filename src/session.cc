@@ -18,10 +18,11 @@
 
 
 #include <assert.h>
+#include <stdlib.h>
 
 #include "src/session.h"
 #include "src/exceptions.h"
-#include <stdlib.h>
+#include "src/userstate.h"
 
 void MessageDigest::update(std::string new_message) {
   UNUSED(new_message);
@@ -47,7 +48,7 @@ static void cb_send_ack(evutil_socket_t fd, short what, void *arg) {
 }
 
 np1secSession::np1secSession(np1secUserState *us)
-  :myself(us->username())
+  :myself(us->user_id())
 {
   throw std::invalid_argument("Default constructor should not be used.");
 }
@@ -57,7 +58,7 @@ np1secSession::np1secSession(np1secUserState *us)
  * to join. That's why all participant are not authenticated.
  */
 np1secSession::np1secSession(np1secUserState *us, std::string room_name,
-                             std::vector<UnauthenticatedParticipant>participants_in_the_room) : us(us), room_name(room_name), participants_in_the_room(participants_in_the_room),   myself(us->username())
+                             UnauthenticatedParticipantList participants_in_the_room) : us(us), room_name(room_name), participants_in_the_room(participants_in_the_room),   myself(us->user_id())
 {
 }
 
@@ -149,7 +150,7 @@ bool np1secSession::join(LongTermIDKey long_term_id_key) {
   else {
     
   }
-  us->ops->send_bare(room_name, us->username(), "testing 123", NULL);
+  us->ops->send_bare(room_name, us->user_id(), "testing 123", NULL);
   return true;
 }
 
@@ -242,7 +243,7 @@ bool np1secSession::send(std::string message, np1secMessage::np1secMessageType m
   // meta load if needed
   np1secLoadFlag meta_load_flag = NO_LOAD;
   std::string meta_load = NULL;
-  np1secMessage outbound(session_id, us->username(),
+  np1secMessage outbound(session_id, us->user_id(),
                          message, message_type,
                          transcript_chain_hash,
                          meta_load_flag, meta_load,

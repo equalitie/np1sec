@@ -19,9 +19,12 @@
 #ifndef SRC_USERSTATE_CC_
 #define SRC_USERSTATE_CC_
 
+#include <string>
+
 #include "src/interface.h"
 #include "src/userstate.h"
 
+using namespace std;
 
 np1secUserState::np1secUserState(std::string name, np1secAppOps *ops,
                                  uint8_t* key_pair) : name(name), ops(ops) {
@@ -46,7 +49,7 @@ bool np1secUserState::init() {
 }
 
 bool np1secUserState::join_room(std::string room_name,
-   std::vector<UnauthenticatedParticipant>participants_in_the_room) {
+   UnauthenticatedParticipantList participants_in_the_room) {
   np1secSession *new_session = new np1secSession(this,
                                                  room_name,
                                                  participants_in_the_room);
@@ -65,8 +68,40 @@ RoomAction np1secUserState::receive_handler(std::string room_name,
                                             uint32_t message_id) {
   np1secSession *cur_session = retrieve_session(room_name);
   if (!cur_session) {
-    // uh oh
+    //only possible operation should be join and leave 
+  if (np1sec_message.find(":o?JOIN:o?") == 0) {
+    // check if it is ourselves or somebody else who is joining
+    string joining_nick = np1sec_message.substr(strlen(":o?JOIN:o?"));
+
+    if (name == joining_nick) {
+      ;//ignore
+    } else {
+      this->accept_new_user(room_name, joining_nick);
+    }
+  } else if (np1sec_message.find(":o?LEAVE:o?") == 0) {
+    string leaving_nick = np1sec_message.substr(strlen(":o?LEAVE:o?"));
+    if (leaving_nick==name) {
+      leave_room(room_name);
+    } else {
+      shrink_on_leave(room_name, leaving_nick);
+    }
+  } else if (np1sec_message.find(":o?SEND:o?") == 0) {
+    string message_with_id = np1sec_message.substr(strlen(":o?SEND:o?"));
+    size_t sender_pos = message_with_id.find(":o?");
+    string message_id_str = message_with_id.substr(0, sender_pos);
+    int message_id;
+    stringstream(message_id_str) >> message_id;
+    string sender_and_message = message_with_id.substr(
+                                  sender_pos + strlen(":o?"));
+    size_t message_pos = sender_and_message.find(":o?");
+    string sender = message_with_id.substr(0, message_pos);
+    // we don't care really about sender
+    string pure_message = sender_and_message.substr(
+                                    message_pos + strlen(":o?"));
   }
+    
+  }
+  
   np1secMessage received_message = cur_session->receive(np1sec_message);
   RoomAction room_action = { NULL, received_message.user_message };
   return room_action;

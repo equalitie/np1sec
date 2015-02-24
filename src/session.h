@@ -21,6 +21,7 @@
 
 #include <event2/event.h>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -32,8 +33,6 @@
 
 class np1secSession;
 class np1secUserState;
-
-#include "src/userstate.h"
 
 class MessageDigest {
  public:
@@ -65,7 +64,7 @@ class np1secSession {
   std::string room_name;
 
   Participant myself;
-  std::vector<UnauthenticatedParticipant> participants_in_the_room;
+  UnauthenticatedParticipantList participants_in_the_room;
 
   /**
    * Stores Transcript chain hashes indexed by message id
@@ -188,6 +187,8 @@ class np1secSession {
   /**
      constructor
      You can't have a session without a user
+
+     TODO:What about a session without a room?
    */
   np1secSession(np1secUserState *us);
 
@@ -196,7 +197,7 @@ class np1secSession {
    */
   np1secSession(np1secUserState *us,
                std::string room_name,
-               std::vector<UnauthenticatedParticipant>participants_in_the_room);
+               UnauthenticatedParticipantList participants_in_the_room);
 
   /**
    * access function for session_id;

@@ -23,6 +23,7 @@
 
 #include "src/userstate.h"
 #include "src/common.h"
+#include "test/chat_mocker.h"
 
 // #define CUSTOM_USER_DIRECTORY "/tmp/test_user"
 // #define CUSTOM_PLUGIN_PATH ""
@@ -391,6 +392,7 @@
 /**
  * join the room by adding the name of the participant to the room list
  */
-void ChatMocker::join(std::string room, std::string nick) {
+/*void ChatMocker::join(std::string room, std::string nick) {
   rooms[room].join(nick);
-}
+  }*/
+
