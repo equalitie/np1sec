@@ -76,7 +76,7 @@ class np1secUserState {
   /**
    * access function for nick
    */
-  std::string username()  {
+  std::string user_id()  {
     return name;
   }
 
@@ -98,7 +98,7 @@ class np1secUserState {
    *         in case of failure. client need to inform server of leaving the
    *         room in case of failure
    */
-   bool join_room(std::string room_name, std::vector<UnauthenticatedParticipant>participants_in_the_room);
+   bool join_room(std::string room_name, UnauthenticatedParticipantList participants_in_the_room);
 
   /**
    * the client need to call this function when a user join the chatroom.
@@ -109,7 +109,9 @@ class np1secUserState {
    * @return true in case initiating the join was successful. This does not
    *         mean that the successful join false if process fails
    */
-  bool accept_new_user(std::string room_name, std::string new_user_id);
+  bool accept_new_user(std::string room_name, std::string new_user_id)
+  {return false; //place holder for now
+  }
 
   /**
    * When the user uses the client interface to send a message the client need
@@ -143,7 +145,8 @@ class np1secUserState {
    * 
    * @param room_name the chat room name to leave from
    */
-  void leave_room(std::string room_name);
+  void leave_room(std::string room_name)
+  {}
 
   /**
    * the client need to call this function when another user leave the chatroom.
@@ -154,8 +157,9 @@ class np1secUserState {
    * @return true in case initiating the leave was successful. This does not
    *         mean that the successful leave false if process fails
    */
-  bool shrink_on_leave(std::string room_name, std::string leaving_user_id);
-
+  bool shrink_on_leave(std::string room_name, std::string leaving_user_id)
+  {}
+  
   /**
    * Retrieve the session object associated with the given room name. To
    * allow sending and receiving of messages relative to that session

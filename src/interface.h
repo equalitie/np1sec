@@ -25,6 +25,7 @@
 #ifndef SRC_INTERFACE_H_
 #define SRC_INTERFACE_H_
 
+#include <list>
 #include <string>
 
 /**
@@ -39,6 +40,7 @@ struct UnauthenticatedParticipant {
   // Format
 };
 
+typedef std::list<UnauthenticatedParticipant> UnauthenticatedParticipantList;
 /**
  * Calls from np1sec to the application.
  */
@@ -65,15 +67,33 @@ struct np1secAppOps {
   // then also we need a call back when other people
   // join the room or leave that's why we have room
   // action as the return of the receive handlere
+
+  //The problem is that some of the actions are
+  //not message dependent like fail to ping for example.
+  
   /** 
-   * Asks the app to join a room or a coversation 
+   * inform the app that someone (including the user themselves) 
+   * join a room or a coversation left the room.
    */
-  // void (*join)(std::string room_name);
+  void (*join)(std::string room_name,
+                std::string joiner_nickname,
+               void* aux_data);
 
   /** 
-   * Asks the app to leave a room or a coversation 
+   * inform the app that someone (including the user themself) left  
+   a room or a coversation, for ui purpose
    */
-  // void (*leave)(std::string room_name);
+   void (*leave)(std::string room_name,
+         std::string joiner_nickname,
+         void* aux_data);
+
+  /**
+   * Asks the app to display a message in the room
+   */
+  void (*display_message)(std::string room_name,
+                          std::string message,
+                          void* aux_data);
+               
 };
 
 #endif  // SRC_INTERFACE_H_

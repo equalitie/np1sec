@@ -35,6 +35,7 @@ extern "C" {
 
 typedef std::vector<uint8_t> SessionID;
 
+<<<<<<< variant A
 enum np1secMessageType {
   JOIN_REQUEST,
   PARTICIPANTS_INFO,
@@ -46,6 +47,19 @@ enum np1secMessageType {
   SESSION_P_LIST
 };
 
+>>>>>>> variant B
+####### Ancestor
+enum np1secMessageType {
+  JOIN_REQUEST,
+  PARTICIPANTS_INFO,
+  GROUP_SHARE,
+  USER_MESSAGE,
+  PURE_META_MESSAG,
+  LEAVE,
+  FAREWELL
+};
+
+======= end
 enum np1secLoadFlag {
   NO_LOAD,
   NEW_EPHEMERAL_KEY,
