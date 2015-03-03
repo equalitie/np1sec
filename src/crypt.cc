@@ -54,12 +54,26 @@ gcry_error_t compute_message_hash(HashBlock transcript_chain,
   return Hash(message.c_str(), message.size(), transcript_chain, true);
 }
 
+gcry_error_t compute_session_hash(HashBlock transcript_chain,
+                                     std::string message) {
+  assert(message.size() % 2 == 0);
+
+  unsigned char *bin;
+  const char *p = message.c_str();
+  for (int i=0; i < message.size(); i++, p+=2) {
+    sscanf(p, "%2hhx", &bin);
+  }
+  return Hash(bin, message.size()/2, transcript_chain, true);
+}
+
+
+
 Cryptic::Cryptic() {}
 
 bool Cryptic::init() {
   /* Generate a new Ed25519 key pair. */
   gcry_error_t err = 0;
-  gcry_sexp_t ed25519_parms, ed25519_keypair;
+  gcry_sexp_t ed25519_params, ed25519_keypair;
 
   err = gcry_sexp_build(&ed25519_params, NULL,
                         "(genkey (ecc (curve Ed25519) (flags eddsa)))");
@@ -90,7 +104,7 @@ err:
   return false;
 }
 
-static std::string retrieveResult(gcry_sexp_t text_sexp) {
+std::string Cryptic::retrieveResult(gcry_sexp_t text_sexp) {
   size_t buffer_size = gcry_sexp_sprint(text_sexp, GCRYSEXP_FMT_ADVANCED, 	
   NULL, 0); 	
   if (!buffer_size) { 	

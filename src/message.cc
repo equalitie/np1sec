@@ -57,7 +57,7 @@ np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic) {
 
     phased_message = base64_decode(encrypted_message);
     std::string temp = strtok(&phased_message[0], ":O3");
-    session_id = std::vector<uint8_t>(temp.begin(), temp.end());
+    memcpy(session_id, temp.c_str(), temp.size());
     encrypted_message = strtok(NULL, ":O3");
 
     phased_message = decrypt_message(base64_decode(encrypted_message));
@@ -130,7 +130,7 @@ std::string np1secMessage::ustate_values() {
 
 std::string np1secMessage::format_sendable_message() {
   std::string base_message, phased_message, signature;
-  std::string sid_string(session_id.begin(), session_id.end());
+  std::string sid_string(reinterpret_cast<char const*>(session_id));
 
   base_message = sid_string + ":O3";
   base_message += sender_id + ":O3";

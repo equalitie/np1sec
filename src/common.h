@@ -33,7 +33,6 @@ extern "C" {
 
 #define UNUSED(expr) (void)(expr)
 
-typedef std::vector<uint8_t> SessionID;
 
 enum np1secMessageType {
   JOIN_REQUEST,
@@ -56,6 +55,9 @@ enum np1secLoadFlag {
 const size_t c_hash_length = 32;
 
 typedef uint8_t HashBlock[c_hash_length];
+//typedef std::vector<uint8_t> SessionID;
+typedef HashBlock SessionID;
+
 
 
 #endif  // SRC_COMMON_H_

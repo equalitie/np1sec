@@ -149,7 +149,7 @@ class np1secSession {
    *
    * @return return true upon successful computation
    */
-  std::string compute_session_id();
+  bool compute_session_id();
 
   /**
  * (n+1)sec sessions are implemented as finite state machines.
@@ -202,11 +202,6 @@ class np1secSession {
   np1secSession(np1secUserState *us,
                std::string room_name,
                std::vector<UnauthenticatedParticipant>participants_in_the_room);
-
-  /**
-   * access function for session_id;
-   */
-  SessionID my_session_id() { return session_id;}
 
   /**
     * Construct and start timers for sending heartbeat messages
