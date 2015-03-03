@@ -56,7 +56,7 @@ class np1secMessage {
     GROUP_SHARE,
     USER_MESSAGE,
     PURE_META_MESSAGE,
-    LEAVE,
+    LEAVE_REQUEST,
     FAREWELL,
     SESSION_P_LIST,
     TOTAL_NO_OF_MESSAGE_TYPE //This should be always the last message type

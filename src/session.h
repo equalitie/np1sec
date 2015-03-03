@@ -142,8 +142,9 @@ class np1secSession {
    */
   void stop_timer_send();
 
- public:
+ protected:
   SessionID session_id;
+  np1secSession* my_parent = NULL;
 
   /**
    * it should be invoked only once to compute the session id
@@ -152,6 +153,13 @@ class np1secSession {
    * @return return true upon successful computation
    */
   bool compute_session_id();
+
+  /**
+   * When someone join and authenticated, we should
+   * tell all other joining users to stop joining the
+   * sessions they are joining
+   */
+  void kill_my_sibling();
 
   /**
  * (n+1)sec sessions are implemented as finite state machines.
@@ -166,7 +174,13 @@ class np1secSession {
                      // by sending ephemeral key
     REPLIED_TO_NEW_JOIN,  // The thread has received a join from a
                           // participant replied by participant list
-    AUTHED_JOINER,
+    AUTHED_JOINER,  //This mean that the joiner is authed by the thread
+                    //thread is waiting for more share to generate the key
+                    //so no more join till t
+    RE_SHARED,      // key is being made, thread has been sent its share,
+                    // waiting for more shares. This is the same as
+                    // AUTHED_JOINER but for leave procedure where there
+                    // is no need to auth
 
     GROUP_KEY_GENERATED,  // The thread has computed the session
                           // key and has sent the conformation
@@ -239,6 +253,8 @@ class np1secSession {
      message.
 
      sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), Hash(GroupKey, U_sender)
+     
+     of SESSION_CONFIRMATION type
 
      if it is the same sid as the session id, marks the confirmation in 
      the confirmation list for the sender. If all confirmed, change 
@@ -264,6 +280,8 @@ class np1secSession {
      - send 
 
      sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), (kc_{sender, joiner}), z_sender
+     
+     of PARTICIPANT_INFO message type
 
      change status to REPLIED_TO_NEW_JOIN
 
@@ -310,6 +328,44 @@ class np1secSession {
   np1secSessionState mark_confirm_and_may_move_session(np1secMessage received_message);
 
   /**
+   * This will be called when another user leaves a chatroom to update the key.
+   * 
+   * This should send a message the same an empty meta message for sending
+   * the leaving user the status of transcript consistency
+   * 
+   * This also make new session which send new share list for the shrinked session
+   *
+   * sid, ((U_1,y_i)...(U_{n-1},y_{n-1}), z_sender, transcript_consistency_stuff
+   * 
+   * Of FAREWELL type
+   *
+   * kills all sibling sessions in making as the leaving user is no longer 
+   * available to confirm any new session.
+   * 
+   * The status of the session is changed to farewelled. 
+   * The statatus of new sid session is changed to re_shared
+   */
+  np1secSessionState send_farewell_and_reshare(np1secMessage received_message);
+
+  /**
+     For the current/leaving user, calls it when receive FAREWELL
+     
+     sid, ((U_1,y_i)...(U_{n-1},y_{n-1}), z_sender, transcript_consistency_stuff
+
+     -if sid matches, ask parent to run a routine transcript consistency check
+     - if not, we are the leaving user just run a routine transcript consistency check
+     - add z_sender to share table
+     - if all share are there compute the group key send the confirmation
+     
+       sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), Hash(GroupKey, U_sender)
+
+       change status GROUP_KEY_GENERATED
+     otherwise no change to the status
+
+   */
+  np1secSessionState chcek_transcript_consistancy_update_share_repo(np1secMessage received_message);
+
+  /**
      This pointer represent an edge in the transition
      graph of the session state machine.
 
@@ -342,6 +398,23 @@ class np1secSession {
     np1secFSMGraphTransitionMatrix[REPLIED_TO_NEW_JOIN][np1secMessageType::PARTICIANT_INFO] = confirm_auth_add_update_share_repo;
 
     np1secFSMGraphTransitionMatrix[GROUP_KEY_GENERATED][np1secMessageType::SESSION_CONFIRMATION] = mark_confirm_and_may_move_session;
+
+    //Leave should have priority over join because the leaving user
+    //is not gonna confirm the session and as such the join will
+    //fail any way.
+
+    //Therefore when leave is requested, 1. corresponding child sesion should
+    //killall its sibling 2. No new child session should be created till
+    //transition to the left session is complete
+
+    np1secFSMGraphTransitionMatrix[IN_SESSION][np1secMessageType::LEAVE_REQUEST] = send_farewell;
+
+    np1secFSMGraphTransitionMatrix[RE_SHARED][np1secMessageType::FAREWELL] = chcek_transcript_consistancy_update_share_repo;
+
+    np1secFSMGraphTransitionMatrix[LEAVE_REQUESTED][np1secMessageType::FAREWELL] = chcek_transcript_consistancy_update_share_repo
+
+      //We don't accept join request while in farewelled state (for now at least)
+
 
   }
   
@@ -384,22 +457,10 @@ class np1secSession {
   bool join(LongTermIDKey long_term_id_key);
 
   /**
-   * Should be called when someone new join the chatroom 
-   * This will start a new session object with different
-   * session id.
-   */
-  bool accept(std::string new_participant_id);
-
-  /**
    * Insert the list of unauthenticated participants
    * based on the input received
    */
   bool received_p_list(std::string participant_list);
-
-  /**
-   * This will be called when a user leaves a chatroom to update the key.
-   */
-  bool farewell(std::string leaver_id);
 
   /**
    * When a user wants to send a message to a session it needs to call its send
@@ -407,7 +468,6 @@ class np1secSession {
    */
   bool send(std::string message, np1secMessage::np1secMessageType message_type);
 
- public:
  public:
   /**
      constructor

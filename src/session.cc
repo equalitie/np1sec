@@ -122,7 +122,7 @@ bool np1secSession::state_handler(np1secMessage receivd_message)
       break;
     case np1secSession::GROUP_KEY_GENERATED: //The thread has computed the session key and has sent the conformation
       break;
-    case np1secSession::IN_SESSION: //Key has been confirmed
+    case np1secSession::IN_SESSION: //Key has been confirmed      
       break;
     case np1secSession::UPDATED_KEY: //all new shares has been received and new key has been generated: no more send possible
       break;
