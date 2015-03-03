@@ -16,6 +16,18 @@
 
 #ifndef CHAT_MOCKER_NP1SEC_PLUGIN_H_
 #define CHAT_MOCKER_NP1SEC_PLUGIN_H_
+
+/**
+ * This need to be given to np1sec to info the ui of joinig 
+ * a room 
+ */
+void chat_mocker_np1sec_plugin_join(std::string room_name,
+                                        std::string message,
+                                    void* aux_data);
+
+// Just a wrapper to call the mocker send function
+void send_bare(std::string room_name, std::string sender_nickname, std::string message, void* data);
+
 /**
  * Receive the messages from chat mocker, interpret the message and
  * call the approperiate function from userstate class  of npsec1 

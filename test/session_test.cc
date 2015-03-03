@@ -17,7 +17,10 @@
  */
 
 #include <gtest/gtest.h>
+
 #include "src/session.h"
+#include "src/userstate.h"
+
 #include "src/crypt.h"
 #include "src/common.h"
 #include "src/message.h"
@@ -27,31 +30,24 @@
 
 using namespace std;
 
-// Just a wrapper to call the mocker send function
-/*
-void send_bare(std::string room_name, std::string sender_nickname, std::string message, void* data)
-{
-  static_cast<ChatMocker>(data)->send(room_name, sender_nickname, message);
-  
-};
 
 class SessionTest : public ::testing::Test{
 
+protected: //gtest needs the elements to be protocted
   //First we need to run a chatserver but this is always the case so I'm making
   //class to setup chat server
   ChatMocker mock_server;
-  struct np1secAppOps mockops
+  struct np1secAppOps mockops;
 
   string mock_room_name = "testroom";
   
   virtual void SetUp() {
-    bare_sender_data = static_cast<void*>mock_server;
+    //bare_sender_data = static_cast<void*>(&mock_server);
     mockops.send_bare = send_bare;
     
   };
   
 };
-
 
 TEST_F(SessionTest, test_cb_ack_not_received){
   //Awaiting test frame
@@ -61,7 +57,7 @@ TEST_F(SessionTest, test_cb_send_ack){
   //Awaiting test frame
 }
 
-TEST_F(SessionTest, test_add_message_to_transcript) {
+/*TEST_F(SessionTest, test_add_message_to_transcript) {
  uint32_t id = 1;
  std:string message = "test message";
  HashBlock* hb;
@@ -70,7 +66,7 @@ TEST_F(SessionTest, test_add_message_to_transcript) {
  
  ASSERT_EQ(hb, session.transcript_chain[id]);
 
-}
+ }
 
 TEST_F(SessionTest, test_start_ack_timers) {
   //Gen participant list
@@ -136,7 +132,7 @@ TEST_F(SessionTest, test_receive) {
   np1secMessage test_result = session.receive(raw_message, sender_id);
   
 
-}
+  }*/
 
 TEST_F(SessionTest, test_init) {
   //first we need a username and we use it
@@ -144,11 +140,14 @@ TEST_F(SessionTest, test_init) {
   string username = "sole-tester";
   np1secUserState* user_state = new np1secUserState(username, &mockops);
 
-  mock_server.sign_in(username, chat_mocker_plugin_receive_handler, static_cast<void*>user_state);
-  mock_server.join(mock_room_name);
-  
-  np1secSession new_session(room_name, name);
-  ASSERT_TRUE(new_session.join());
+  mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(user_state));
+  mock_server.join(mock_room_name, user_state->user_id());
+
+  UnauthenticatedParticipantList participants_in_the_room;
+  participants_in_the_room.push_back((UnauthenticatedParticipant){user_state->user_id(), ""});
+
+  np1secSession new_session(user_state, mock_room_name, participants_in_the_room);
+  ASSERT_TRUE(new_session.join(user_state->user_id_key_pair()));
   
 }
-*/
+

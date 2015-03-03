@@ -33,7 +33,22 @@ extern "C" {
 
 #define UNUSED(expr) (void)(expr)
 
+typedef std::vector<uint8_t> SessionID;
 
+<<<<<<< HEAD
+enum np1secMessageType {
+  JOIN_REQUEST,
+  PARTICIPANTS_INFO,
+  GROUP_SHARE,
+  USER_MESSAGE,
+  PURE_META_MESSAG,
+  LEAVE,
+  FAREWELL,
+  SESSION_P_LIST
+};
+
+=======
+>>>>>>> session_test compile for join, need to be tested
 enum np1secLoadFlag {
   NO_LOAD,
   NEW_EPHEMERAL_KEY,
@@ -44,9 +59,6 @@ enum np1secLoadFlag {
 const size_t c_hash_length = 32;
 
 typedef uint8_t HashBlock[c_hash_length];
-//typedef std::vector<uint8_t> SessionID;
-typedef HashBlock SessionID;
-
 
 
 #endif  // SRC_COMMON_H_
