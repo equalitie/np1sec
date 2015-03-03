@@ -381,6 +381,7 @@ class np1secSession {
   np1secFSMGraphTransitionEdge np1secFSMGraphTransitionMatrix[np1secSession::TOTAL_NO_OF_STATES][np1secMessage::TOTAL_NO_OF_MESSAGE_TYPE] = {};
 
   /**
+<<<<<<< HEAD
      Setups the state machine transition double array once and
      for all during the initiation.
   */
@@ -439,6 +440,8 @@ class np1secSession {
 
 
   /**
+=======
+>>>>>>> master
     * Construct and start timers for sending heartbeat messages
     *
     */

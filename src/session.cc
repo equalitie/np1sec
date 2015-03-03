@@ -73,7 +73,7 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name,
 bool np1secSession::compute_session_id() {
   std::string cat_string = "";
   //sanity check: You can only compute session id once
-  assert(not session_id.size());
+  assert(session_id);
 
   if (peers.size() == 0) //nothing to compute
     return false;
@@ -84,13 +84,13 @@ bool np1secSession::compute_session_id() {
 
   //TODO:: Bill
   //session_id = Hash of (U1,ehpmeral1, U2);
-  for (std::vector<string>::iterator it = peers.begin(); it != peers.end(); ++it) {
-    Participant p = *it;
+  for (std::vector<std::string>::iterator it = peers.begin(); it != peers.end(); ++it) {
+    Participant p = participants[*it];
     cat_string += p.id;
     cat_string += cryptic.retrieveResult(p.ephemeral_key);
   }
 
-  this->session_id = cat_string;
+  compute_session_hash(session_id, cat_string);
   return true;
 
 }
@@ -170,25 +170,28 @@ bool np1secSession::accept(std::string new_participant_id) {
 
 bool np1secSession::received_p_list(std::string participant_list) {
   //Split up participant list and load it into the map
-  std::string ids_keys = strtok(participant_list, ":03");
+  char* tmp = strdup(participant_list.c_str());
+
+  std::string ids_keys = strtok(tmp, ":03");
   std::vector<std::string> list_ids_keys;
-  while (ids_keys != NULL) {
-    std::decoded = "";
+  while (!ids_keys.empty()) {
+    std::string decoded = "";
     otrl_base64_otr_decode(ids_keys.c_str(),
                            (unsigned char**)decoded.c_str(),
                            reinterpret_cast<size_t*>(ids_keys.size()));
-    list_ids_keys.insert(ids_keys);
-    ids_keys = strok(NULL, ":03");
+    list_ids_keys.push_back(ids_keys);
+    ids_keys = strtok(NULL, ":03");
   }
 
   for (std::vector<std::string>::iterator it = list_ids_keys.begin();
        it != list_ids_keys.end(); ++it) {
-    std::string id = strtok(it, ":03");
+    tmp = strdup((*it).c_str());
+    std::string id = strtok(tmp, ":03");
     std::string key = strtok(NULL, ":03");
-    gcryp_sexp_t sexp_key = cryptic.ConvertToSexp(key); 
+    gcry_sexp_t sexp_key = cryptic.ConvertToSexp(key); 
     Participant p(id);
     p.ephemeral_key = sexp_key;
-    unauthed_participants.insert(id, p);
+    unauthed_participants.insert(std::pair<std::string, Participant>(id, p));
   }
 
   return true;
@@ -316,7 +319,7 @@ np1secMessage np1secSession::receive(std::string raw_message) {
     // The hash is a lie!
   }
 
-  if (received_message.message_type == "SESSION_P_LIST") {
+  if (received_message.message_type == SESSION_P_LIST) {
     //TODO
     // function to separate peers
     // add peers to map
