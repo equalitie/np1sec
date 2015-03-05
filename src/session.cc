@@ -138,6 +138,28 @@ bool np1secSession::state_handler(np1secMessage receivd_message)
   
 }
 
+np1secSessionState auth_and_reshare(np1secMessage received_message) {
+  np1secMessage recieved = receive(received_message);
+  if (compute_session_id()) {
+    
+  }
+}
+
+np1secSessionState confirm_or_resession(np1secMessage received_message) {
+
+}
+
+np1secSessionState send_auth_share_and_participant_info(np1secMessage received_message) {
+}
+
+np1secSessionState confirm_auth_add_update_share_repo(np1secMessage received_message) {
+}
+
+np1secSessionState mark_confirm_and_may_move_session(np1secMessage received_message) {
+}
+
+np1secSessionState send_farewell_and_reshare(np1secMessage received_message) {
+}
 bool np1secSession::join(LongTermIDKey long_term_id_key) {
 
   //We need to generate our ephemerals anyways
