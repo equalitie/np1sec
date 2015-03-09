@@ -115,6 +115,108 @@ gcry_sexp_t Cryptic::ConvertToSexp(std::string text) {
   return new_sexp; 	
 }
 
+/**
+ * Given the peer's long term and ephemeral public key AP and ap, and ours 
+ * BP, bP, all points on ed25519 curve, this 
+ * compute the triple dh value.
+ *
+ * @param peer_ephemeral_key the ephemeral public key of peer i.e. aP 
+ *                           in grcypt eddsa public key format
+ * @param peer_long_term_key the long term public key of the peer i.e AP 
+ *                            in gcrypt eddsa public key format
+ * @param my_long_term_key   our longterm key in eddsa format
+ * @param order
+ * @param teddh_token        a pointer to hash block to store 
+ *        Hash(bAP|BaP|baP) if AP.X|AP.Y < BP.X|BP.Y other wise 
+ *        Hash(BaP|bAP|baP) in GCRYMPI_FMT_USG format if the pointer is null
+ *         , necessary space will be allocated.
+ *
+ * @return a gcrypt error if the operation fails
+ */
+gcry_error_t Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, LongTermPublicKey peer_long_term_key, LongTermIDKey my_long_term_key, bool peer_is_first, HashBlock* teddh_token)
+{
+
+  //we need to call 
+  //static gcry_err_code_t ecc_decrypt_raw (gcry_sexp_t *r_plain, gcry_sexp_t s_data, gcry_sexp_t keyparms)
+  //which is ecdh function of gcryp (what a weird name?) such that:
+  // gcrypt:
+  // give the secret key as a key pair in keyparams
+  // extract the point of  public key of the peer as s_data
+  gcry_sexp_t peer_ephemeral_point = gcry_sexp_find_token(peer_ephemeral_key, "q", 0);
+  gcry_sexp_t peer_long_term_point = gcry_sexp_find_token(peer_long_term_key, "q", 0);
+  
+  gcry_error_t err = 0;
+  gcry_sexp_t triple_dh_sexp[3];
+
+  const enum gcry_mpi_format format = GCRYMPI_FMT_USG;
+
+  //bAP
+  err = ecc_decrypt_raw(gcry_sexp_t *triple_dh_sexp[peer_is_first ? 0 : 1]
+                        peer_long_term_point,
+                        ephemeral_key);
+
+  if ( err ) {
+    std::printf("teddh: failed to compute dh token\n");
+    std::printf("Failure: %s/%s\n",
+                        gcry_strsource(err),
+                        gcry_strerror(err));
+    return err;
+  }
+
+  //BaP
+  err = ecc_decrypt_raw(gcry_sexp_t *triple_dh_sexp[peer_is_first ? 1 : 0]
+                        peer_ephemeral_point,
+                        my_long_term_key);
+  if ( err ) {
+    std::printf("teddh: failed to compute dh token\n");
+    std::printf("Failure: %s/%s\n",
+                        gcry_strsource(err),
+                        gcry_strerror(err));
+
+    return err;
+  }
+  
+  //abP
+  err = ecc_decrypt_raw(gcry_sexp_t *triple_dh_sexp[2]
+                        peer_ephemeral_point,
+                        ephemeral_key);
+
+  if ( err ) {
+    std::printf("teddh: failed to compute dh token\n");
+    std::printf("Failure: %s/%s\n",
+                        gcry_strsource(err),
+                        gcry_strerror(err));
+    return err;
+
+  }
+
+  for(int i = 0; i < 3; i++)
+    r = gcry_sexp_nth_mpi(rs, 1, GCRYMPI_FMT_USG);
+
+  gcry_sexp_release(rs);
+
+  s = gcry_sexp_nth_mpi(ss, 1, GCRYMPI_FMT_USG);
+  gcry_sexp_release(ss);
+
+  gcry_mpi_print(format, NULL, 0, &nr, r);
+  gcry_mpi_print(format, NULL, 0, &ns, s);
+  memset(*sigp, 0, magic_number);
+
+  gcry_mpi_print(format, (*sigp)+(half_magic_number - nr), nr, NULL, r);
+  /* 
+   * if r has 0 on the left decimal positions, gcry_mpi_print cut them out 
+   * and hence nr < half_magic_number
+   */
+  gcry_mpi_print(format, (*sigp)+ half_magic_number + (half_magic_number-ns),
+                 ns, NULL, s);
+
+  gcry_mpi_release(r);
+  gcry_mpi_release(s);
+
+  return gcry_error(GPG_ERR_NO_ERROR);
+  
+};
+
 gcry_error_t Cryptic::Sign(unsigned char **sigp, size_t *siglenp,
                            std::string plain_text) {
   gcry_mpi_t r, s;

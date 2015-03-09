@@ -90,7 +90,7 @@ bool np1secSession::compute_session_id() {
     cat_string += cryptic.retrieveResult(p.ephemeral_key);
   }
 
-  this->session_id = cat_string;
+  //this->session_id = static_cast<SessionID>(cat_string.c_str());
   return true;
 
 }
