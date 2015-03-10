@@ -66,3 +66,34 @@ TEST_F(CryptTest, test_sign_verify) {
               == gcry_error(GPG_ERR_NO_ERROR));
 }
 
+TEST_F(CryptTest, test_teddh_test) {
+
+  np1secAsymmetricKey alice_long_term_key = NULL;
+  np1secAsymmetricKey bob_long_term_key = NULL;
+
+  ASSERT_TRUE(Cryptic::generate_key_pair(&alice_long_term_key));
+  ASSERT_TRUE(Cryptic::generate_key_pair(&bob_long_term_key));
+
+  //Extract just the public key to hand over to the peer
+  np1secPublicKey alice_long_term_pub_key = gcry_sexp_find_token(alice_long_term_key, "public-key", 0);
+  np1secPublicKey bob_long_term_pub_key = gcry_sexp_find_token(bob_long_term_key, "public-key", 0);
+
+  ASSERT_TRUE(alice_long_term_pub_key && bob_long_term_pub_key);
+  Cryptic alice_crypt, bob_crypt;
+  alice_crypt.init(); //This is either stupid or have stupid name
+  bob_crypt.init();
+
+  //suppose we are first without lost of generality
+  bool alice_is_first = true;
+  bool bob_is_first = !alice_is_first;
+  HashBlock teddh_alice_bob, teddh_bob_alice;
+//Alice is making the tdh token, peer is bob
+  ASSERT_TRUE(alice_crypt.triple_ed_dh(bob_crypt.get_ephemeral_pub_key(), bob_long_term_pub_key, alice_long_term_key, bob_is_first, &teddh_alice_bob));
+  //Bob is making the tdh token, peer is alice
+  ASSERT_TRUE(bob_crypt.triple_ed_dh(alice_crypt.get_ephemeral_pub_key(), alice_long_term_pub_key, bob_long_term_key, alice_is_first, &teddh_bob_alice));
+
+  for(unsigned int i = 0; i < sizeof(HashBlock); i++)
+    ASSERT_EQ(teddh_alice_bob[i], teddh_bob_alice[i]);
+
+}
+
