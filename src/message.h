@@ -178,7 +178,7 @@ class np1secMessage {
    * Unwrap sys message into its constituent components
    *
    */
-  void np1seMessage::unwrap_meta_message(sys_message) {
+  void np1seMessage::unwrap_sys_message(sys_message) {
 
   /**
    * Format Meta message for inclusion with standard message or for

@@ -130,7 +130,7 @@ void np1secMessage::format_sys_message() {
   sys_message = base64_encode(sys_message);
 }
 
-void np1seMessage::unwrap_meta_message(sys_message) {
+void np1seMessage::unwrap_sys_message(sys_message) {
   std::string message = base64_decode(sys_message);
   message_type = atoi(strtok(&message[0], ":03"));
   std::string temp = strtok(NULL, ":O3");
