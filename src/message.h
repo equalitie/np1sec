@@ -76,7 +76,7 @@ class np1secMessage {
   HashBlock transcript_chain_hash;
   std::string nonce;
   std::string z_sender;
-  std::string session_view;
+  std::vector<UnauthenticatedParticipant> session_view;
   std::string session_key_confirmation;
   std::string key_confirmation;
   std::string joiner_info;

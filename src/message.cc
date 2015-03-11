@@ -125,26 +125,50 @@ std::vector<UnauthenticatedParticipant> np1secMessage::participants_in_the_room(
 
 }
 
+std::string np1secMessage::session_view_as_string(){
+  std::string output = ":03";
+  for (std::vector<UnauthenticatedParticipant>::iterator it = session_view.begin(); it != it.end(); ++it){
+    output += it.participant + ":03";
+    output += it.long_term_pub_key_hex + ":03";
+  }
+  return base64_encode(output);
+}
+
+void np1secMessage::string_to_session_view(std::string sv_string) {
+  std::string temp = base64_decode(sv_string);
+  std::token = strtok(temp[0], ":03");
+  //this is dangerous as it assumes the string is
+  //in pairs
+  while (!tokens.empty()) {
+    UnAuthenticatedParticipant uap;
+    uap.participant = token;
+    token = strtok(NULL, ":03");
+    uap.long_term_pub_key_hex = token;
+    token = strtok(NULL, ":03");
+    session_view.push_back(uap);
+  }
+}
+
 void np1secMessage::format_generic_message() {
   sys_message = "" + std::to_string(message_type) + ":03";
   std::string sid_string(reinterpret_cast<char const*>(session_id));
   sys_message += ":03" + sid_string;
-
+  
   switch (message_type) {
     case PARTICIPANTS_INFO:
-      sys_message += ":03" + session_view;
+      sys_message += ":03" + session_view_as_string();
       sys_message += ":03" + key_confirmation;
       sys_message += ":03" + z_sender;
       break;
     case SESSION_CONFIRMATION:
-      sys_message += ":03" + session_view;
+      sys_message += ":03" + session_view_as_string();
       sys_message += ":03" + session_key_confirmation;
       break;
     case JOIN_REQUEST:
       sys_message += ":03" + joiner_info;
       break;
     case FAREWELL:
-      sys_message += ":03" + session_view;
+      sys_message += ":03" + session_view_as_string();
       sys_message += ":03" + z_sender;
       meta_load = "";
       meta_load_flag = NO_LOAD;
@@ -171,19 +195,19 @@ void np1secMessage::unwrap_generic_message(std::string generic_message) {
 
   switch (message_type) {
     case PARTICIPANTS_INFO:
-      session_view = strtok(NULL, ":03");
+      session_view = string_to_session_view(strtok(NULL, ":03"));
       key_confirmation = strtok(NULL, ":03");
       z_sender = strtok(NULL, ":03");
       break;
     case SESSION_CONFIRMATION:
-      session_view = strtok(NULL, ":03");
+      session_view = string_to_session_view(strtok(NULL, ":03"));
       session_key_confirmation = strtok(NULL, ":03");
       break;
     case JOIN_REQUEST:
       joiner_info = strtok(NULL, ":03");
       break;
     case FAREWELL:
-      session_view = strtok(NULL, ":03");
+      session_view = string_to_session_view(strtok(NULL, ":03"));
       z_sender = strtok(NULL, ":03");
       meta_message = strtok(NULL, ":03");
       break;
