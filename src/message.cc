@@ -127,20 +127,20 @@ std::vector<UnauthenticatedParticipant> np1secMessage::participants_in_the_room(
 
 std::string np1secMessage::session_view_as_string(){
   std::string output = ":03";
-  for (std::vector<UnauthenticatedParticipant>::iterator it = session_view.begin(); it != it.end(); ++it){
-    output += it.participant + ":03";
-    output += it.long_term_pub_key_hex + ":03";
+  for (std::vector<UnauthenticatedParticipant>::iterator it = session_view.begin(); it != session_view.end(); ++it){
+    output += (*it).participant + ":03";
+    output += (*it).long_term_pub_key_hex + ":03";
   }
   return base64_encode(output);
 }
 
 void np1secMessage::string_to_session_view(std::string sv_string) {
   std::string temp = base64_decode(sv_string);
-  std::token = strtok(temp[0], ":03");
+  std::string token = strtok(&temp[0], ":03");
   //this is dangerous as it assumes the string is
   //in pairs
-  while (!tokens.empty()) {
-    UnAuthenticatedParticipant uap;
+  while (!token.empty()) {
+    UnauthenticatedParticipant uap;
     uap.participant = token;
     token = strtok(NULL, ":03");
     uap.long_term_pub_key_hex = token;

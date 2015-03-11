@@ -123,6 +123,10 @@ class np1secMessage {
    */
   std::vector<UnauthenticatedParticipant> participants_in_the_room();
 
+  std::string session_view_as_string();
+
+  void string_to_session_view(std::string sv_string);
+
   /**
    * Compute a unique globally ordered id from the time stamped message,
    * ultimately this function should be overridable by the client.
