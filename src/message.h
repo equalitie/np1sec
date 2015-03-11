@@ -69,7 +69,7 @@ class np1secMessage {
   std::string sender_id;
   std::string user_message;
   std::string meta_message;
-  std::string sys_message;
+  std::string p_info_message;
   np1secLoadFlag meta_load_flag;
   std::string meta_load;
   int meta_only;
@@ -97,13 +97,13 @@ class np1secMessage {
   np1secMessage(std::string raw_message, Cryptic cryptic);
 
   /*
-   * Construct a new np1secMessage for system messages
+   * Construct a new np1secMessage for p_infotem messages
    * based on an input string received
    */
-  np1secMessage(std::string sys_message);
+  np1secMessage(std::string p_info_message);
 
   /*
-   * Construct a new np1secMessage for system messages
+   * Construct a new np1secMessage for p_infotem messages
    * based on a set of input components 
    **/
   np1secMessage::np1secMessage(SessionID session_id,
@@ -168,17 +168,17 @@ class np1secMessage {
   std::string format_sendable_message();
 
   /**
-   * Format sys message for inclusion for
+   * Format p_info message for inclusion for
    * standalone use
    *
    */
-  void np1secMessage::format_sys_message() {
+  void np1secMessage::format_p_info_message() {
 
   /**
-   * Unwrap sys message into its constituent components
+   * Unwrap p_info message into its constituent components
    *
    */
-  void np1seMessage::unwrap_sys_message(sys_message) {
+  void np1seMessage::unwrap_p_info_message(p_info_message) {
 
   /**
    * Format Meta message for inclusion with standard message or for

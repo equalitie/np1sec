@@ -45,8 +45,8 @@ np1secMessage::np1secMessage(SessionID session_id,
   pstates = pstates;
 }
 
-np1secMessage::np1secMessage(std::string sys_message){
-  unwrap_sys_message(sys_message);  
+np1secMessage::np1secMessage(std::string p_info_message){
+  unwrap_p_info_message(p_info_message);  
 }
 
 np1secMessage::np1secMessage(SessionID session_id,
@@ -120,7 +120,7 @@ std::vector<UnauthenticatedParticipant> np1secMessage::participants_in_the_room(
 
 }
 
-void np1secMessage::format_sys_message() {
+void np1secMessage::format_p_info_message() {
   sys_message = "" + std::to_string(message_type) + ":03";
   std::string sid_string(reinterpret_cast<char const*>(session_id));
   sys_message += ":03" + sid_string;
@@ -130,7 +130,7 @@ void np1secMessage::format_sys_message() {
   sys_message = base64_encode(sys_message);
 }
 
-void np1seMessage::unwrap_sys_message(sys_message) {
+void np1seMessage::unwrap_p_info_message(sys_message) {
   std::string message = base64_decode(sys_message);
   message_type = atoi(strtok(&message[0], ":03"));
   std::string temp = strtok(NULL, ":O3");
