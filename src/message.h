@@ -69,15 +69,17 @@ class np1secMessage {
   std::string sender_id;
   std::string user_message;
   std::string meta_message;
-  std::string p_info_message;
+  std::string sys_message;
   np1secLoadFlag meta_load_flag;
   std::string meta_load;
   int meta_only;
   HashBlock transcript_chain_hash;
   std::string nonce;
   std::string z_sender;
-  std::string kc;
   std::string session_view;
+  std::string session_key_confirmation;
+  std::string key_confirmation;
+  std::string joiner_info;
   std::vector<std::string> pstates;
 
   /*
@@ -106,11 +108,13 @@ class np1secMessage {
    * Construct a new np1secMessage for p_infotem messages
    * based on a set of input components 
    **/
-  np1secMessage::np1secMessage(SessionID session_id,
+  np1secMessage(SessionID session_id,
                              np1secMessageType message_type,
                              std::string session_view,
-                             std::string kc,
-                             std::string z_sender,)
+                             std::string key_confirmation,
+                             std::string session_key_confirmation,
+                             std::string joiner_info,
+                             std::string z_sender);
 
   /**
    * @return if the message is of type PARTICIPANTS_INFO it returns 
@@ -172,13 +176,13 @@ class np1secMessage {
    * standalone use
    *
    */
-  void np1secMessage::format_p_info_message() {
+  void format_generic_message();
 
   /**
    * Unwrap p_info message into its constituent components
    *
    */
-  void np1seMessage::unwrap_p_info_message(p_info_message) {
+  void unwrap_generic_message(std::string generic_message);
 
   /**
    * Format Meta message for inclusion with standard message or for

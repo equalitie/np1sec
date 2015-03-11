@@ -46,18 +46,23 @@ np1secMessage::np1secMessage(SessionID session_id,
 }
 
 np1secMessage::np1secMessage(std::string p_info_message){
-  unwrap_p_info_message(p_info_message);  
+
+  unwrap_generic_message(p_info_message);  
 }
 
 np1secMessage::np1secMessage(SessionID session_id,
                              np1secMessageType message_type,
                              std::string session_view,
-                             std::string kc,
-                             std::string z_sender,){
+                             std::string key_confirmation,
+                             std::string session_key_confirmation,
+                             std::string joiner_info,
+                             std::string z_sender){
   session_id = session_id;
   message_type = message_type;
   session_view = session_view;
-  kc = kc;
+  key_confirmation = key_confirmation;
+  session_key_confirmation = session_key_confirmation;
+  joiner_info = joiner_info;
   z_sender = z_sender;
 }
 
@@ -120,25 +125,72 @@ std::vector<UnauthenticatedParticipant> np1secMessage::participants_in_the_room(
 
 }
 
-void np1secMessage::format_p_info_message() {
+void np1secMessage::format_generic_message() {
   sys_message = "" + std::to_string(message_type) + ":03";
   std::string sid_string(reinterpret_cast<char const*>(session_id));
   sys_message += ":03" + sid_string;
-  sys_message += ":03" + session_view;
-  sys_message += ":03" + kc;
-  sys_message += ":03" + z_sender;
+
+  switch (message_type) {
+    case PARTICIPANTS_INFO:
+      sys_message += ":03" + session_view;
+      sys_message += ":03" + key_confirmation;
+      sys_message += ":03" + z_sender;
+      break;
+    case SESSION_CONFIRMATION:
+      sys_message += ":03" + session_view;
+      sys_message += ":03" + session_key_confirmation;
+      break;
+    case JOIN_REQUEST:
+      sys_message += ":03" + joiner_info;
+      break;
+    case FAREWELL:
+      sys_message += ":03" + session_view;
+      sys_message += ":03" + z_sender;
+      meta_load = "";
+      meta_load_flag = NO_LOAD;
+      
+      format_meta_message();
+      sys_message += ":03" + meta_message;
+      break;
+    case LEAVE:
+      meta_load = "";
+      meta_load_flag = NO_LOAD;
+      
+      format_meta_message();
+      sys_message += ":03" + meta_message;
+   } 
+
   sys_message = base64_encode(sys_message);
 }
 
-void np1seMessage::unwrap_p_info_message(sys_message) {
-  std::string message = base64_decode(sys_message);
+void np1secMessage::unwrap_generic_message(std::string generic_message) {
+  std::string message = base64_decode(generic_message);
   message_type = atoi(strtok(&message[0], ":03"));
   std::string temp = strtok(NULL, ":O3");
   memcpy(session_id, temp.c_str(), temp.size());
 
-  session_view = strtok(NULL, ":03");
-  kc = strtok(NULL, ":03");
-  z_sender = strtok(NULL, ":03");
+  switch (message_type) {
+    case PARTICIPANTS_INFO:
+      session_view = strtok(NULL, ":03");
+      key_confirmation = strtok(NULL, ":03");
+      z_sender = strtok(NULL, ":03");
+      break;
+    case SESSION_CONFIRMATION:
+      session_view = strtok(NULL, ":03");
+      session_key_confirmation = strtok(NULL, ":03");
+      break;
+    case JOIN_REQUEST:
+      joiner_info = strtok(NULL, ":03");
+      break;
+    case FAREWELL:
+      session_view = strtok(NULL, ":03");
+      z_sender = strtok(NULL, ":03");
+      meta_message = strtok(NULL, ":03");
+      break;
+    case LEAVE:
+      meta_message = strtok(NULL, ":03");
+      break;
+  }
 }
 
 void np1secMessage::format_meta_message() {
@@ -252,5 +304,4 @@ std::string np1secMessage::decrypt_message(std::string encrypted_message) {
 np1secMessage::~np1secMessage() {
   return;
 }
-
 #endif  // SRC_MESSAGE_CC_
