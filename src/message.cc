@@ -165,45 +165,47 @@ void np1secMessage::unwrap_generic_message() {
   message_type = (np1secMessageType)atoi()strtok(&message[0], ":03");
   std::string temp = strtok(NULL, ":O3");
   std::string signature, sv_string;
-  memcpy(session_id, temp.c_str(), temp.size());
-
-  switch (message_type) {
-    case PARTICIPANTS_INFO:
-      sv_string = strtok(NULL, ":03");
-      key_confirmation = strtok(NULL, ":03");
-      z_sender = strtok(NULL, ":03");
-      signature = strtok(NULL, ":03");
-      string_to_session_view(sv_string);
-      break;
-    case SESSION_CONFIRMATION:
-      sv_string = strtok(NULL, ":03");
-      session_key_confirmation = strtok(NULL, ":03");
-      signature = strtok(NULL, ":03");
-      string_to_session_view(sv_string);
-      break;
-    case JOIN_REQUEST:
-      joiner_info = strtok(NULL, ":03");
-      signature = strtok(NULL, ":03");
-      break;
-    case JOINER_AUTH:
-      key_confirmation = strtok(NULL, ":03");
-      z_sender = strtok(NULL, ":03");
-      signature = strtok(NULL, ":03");
-      break;
-    case FAREWELL:
-      sv_string = strtok(NULL, ":03");
-      z_sender = strtok(NULL, ":03");
-      meta_message = strtok(NULL, ":03");
-      signature = strtok(NULL, ":03");
-      string_to_session_view(sv_string);
-      break;
-    case LEAVE_REQUEST:
-      meta_message = strtok(NULL, ":03");
-      signature = strtok(NULL, ":03");
-      break;
-    case USER_MESSAGE:
-      unwrap_user_message();
-      break;
+  if (temp != NULL) {
+    memcpy(session_id, temp.c_str(), temp.size());
+  
+    switch (message_type) {
+      case PARTICIPANTS_INFO:
+        sv_string = strtok(NULL, ":03");
+        key_confirmation = strtok(NULL, ":03");
+        z_sender = strtok(NULL, ":03");
+        signature = strtok(NULL, ":03");
+        string_to_session_view(sv_string);
+        break;
+      case SESSION_CONFIRMATION:
+        sv_string = strtok(NULL, ":03");
+        session_key_confirmation = strtok(NULL, ":03");
+        signature = strtok(NULL, ":03");
+        string_to_session_view(sv_string);
+        break;
+      case JOIN_REQUEST:
+        joiner_info = strtok(NULL, ":03");
+        signature = strtok(NULL, ":03");
+        break;
+      case JOINER_AUTH:
+        key_confirmation = strtok(NULL, ":03");
+        z_sender = strtok(NULL, ":03");
+        signature = strtok(NULL, ":03");
+        break;
+      case FAREWELL:
+        sv_string = strtok(NULL, ":03");
+        z_sender = strtok(NULL, ":03");
+        meta_message = strtok(NULL, ":03");
+        signature = strtok(NULL, ":03");
+        string_to_session_view(sv_string);
+        break;
+      case LEAVE_REQUEST:
+        meta_message = strtok(NULL, ":03");
+        signature = strtok(NULL, ":03");
+        break;
+      case USER_MESSAGE:
+        unwrap_user_message();
+        break;
+    }
   }
 }
 
