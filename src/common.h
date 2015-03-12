@@ -37,6 +37,7 @@ extern "C" {
 enum np1secLoadFlag {
   NO_LOAD,
   NEW_EPHEMERAL_KEY,
+  LEAVE,
   NEW_SECRET_SHARE
 };
 

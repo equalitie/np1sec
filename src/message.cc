@@ -144,12 +144,6 @@ void np1secMessage::format_generic_message() {
       format_meta_message();
       sys_message += ":03" + meta_message;
       break;
-    case LEAVE_REQUEST:
-      meta_load = "";
-      meta_load_flag = NO_LOAD;
-      
-      format_meta_message();
-      sys_message += ":03" + meta_message;
    } 
 
   signature = sign_message(sys_message);
@@ -197,10 +191,6 @@ void np1secMessage::unwrap_generic_message() {
         meta_message = strtok(NULL, ":03");
         signature = strtok(NULL, ":03");
         string_to_session_view(sv_string);
-        break;
-      case LEAVE_REQUEST:
-        meta_message = strtok(NULL, ":03");
-        signature = strtok(NULL, ":03");
         break;
       case USER_MESSAGE:
         unwrap_user_message();
