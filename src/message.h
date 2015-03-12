@@ -100,12 +100,6 @@ class np1secMessage {
 
   /*
    * Construct a new np1secMessage for p_infotem messages
-   * based on an input string received
-   */
-  np1secMessage(std::string p_info_message);
-
-  /*
-   * Construct a new np1secMessage for p_infotem messages
    * based on a set of input components 
    **/
   np1secMessage(SessionID session_id,
@@ -186,7 +180,9 @@ class np1secMessage {
    * Unwrap p_info message into its constituent components
    *
    */
-  void unwrap_generic_message(std::string generic_message);
+  void unwrap_generic_message();
+
+  void unwrap_user_message();
 
   /**
    * Format Meta message for inclusion with standard message or for

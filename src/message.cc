@@ -45,11 +45,6 @@ np1secMessage::np1secMessage(SessionID session_id,
   pstates = pstates;
 }
 
-np1secMessage::np1secMessage(std::string p_info_message){
-
-  unwrap_generic_message(p_info_message);  
-}
-
 np1secMessage::np1secMessage(SessionID session_id,
                              np1secMessageType message_type,
                              std::string session_view,
@@ -70,41 +65,11 @@ np1secMessage::np1secMessage(SessionID session_id,
 np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic) {
   cryptic = cryptic;
 
-  std::string np1sec, encrypted_message, phased_message,
-              signed_message, signature;
-  np1sec = strtok(&raw_message[0], ":O3");
+  std::string message = base64_decode(raw_message);
+  np1sec = strtok(&message[0], ":O3");
 
   if (np1sec.compare("np1sec")) {
-    encrypted_message = strtok(NULL, ":O3");
-
-    phased_message = base64_decode(encrypted_message);
-    std::string temp = strtok(&phased_message[0], ":O3");
-    memcpy(session_id, temp.c_str(), temp.size());
-    encrypted_message = strtok(NULL, ":O3");
-
-    phased_message = decrypt_message(base64_decode(encrypted_message));
-    signed_message = strtok(&phased_message[0], ":O3");
-    signature = strtok(NULL, ":O3");
-
-    if (verify_message(signed_message, signature)) {
-      signed_message = base64_decode(signed_message);
-      std::string temp;
-      temp = strtok(&signed_message[0], ":O3");
-      // TODO(bill): clarify session id check
-//      if(session_id.compare(temp)) {
-        sender_id = strtok(NULL, ":O3");
-        user_message = strtok(NULL, ":O3");
-
-        meta_message = strtok(NULL, ":O3");
-        unwrap_meta_message();
-        std::string hash_string = strtok(NULL, ":O3");
-        memcpy(transcript_chain_hash, hash_string.c_str(), hash_string.size());
-        nonce = strtok(NULL, ":O3");
-        message_id = compute_message_id(user_message);
-//      }
-
-        message_type = UNKNOWN;
-    }
+    unwrap_generic_message();  
   }
 }
 
@@ -187,33 +152,74 @@ void np1secMessage::format_generic_message() {
   sys_message = base64_encode(sys_message);
 }
 
-void np1secMessage::unwrap_generic_message(std::string generic_message) {
-  std::string message = base64_decode(generic_message);
+void np1secMessage::unwrap_generic_message() {
   message_type = atoi(strtok(&message[0], ":03"));
   std::string temp = strtok(NULL, ":O3");
   memcpy(session_id, temp.c_str(), temp.size());
 
   switch (message_type) {
     case PARTICIPANTS_INFO:
-      session_view = string_to_session_view(strtok(NULL, ":03"));
+      std::string sv_string = strtok(NULL, ":03")
       key_confirmation = strtok(NULL, ":03");
       z_sender = strtok(NULL, ":03");
+      session_view = string_to_session_view(sv_string);
       break;
     case SESSION_CONFIRMATION:
-      session_view = string_to_session_view(strtok(NULL, ":03"));
+      std::string sv_string = strtok(NULL, ":03")
       session_key_confirmation = strtok(NULL, ":03");
+      session_view = string_to_session_view(sv_string);
       break;
     case JOIN_REQUEST:
       joiner_info = strtok(NULL, ":03");
       break;
     case FAREWELL:
-      session_view = string_to_session_view(strtok(NULL, ":03"));
+      std::string sv_string = strtok(NULL, ":03")
       z_sender = strtok(NULL, ":03");
       meta_message = strtok(NULL, ":03");
+      session_view = string_to_session_view(sv_string);
       break;
     case LEAVE:
       meta_message = strtok(NULL, ":03");
       break;
+    case USER_MESSAGE:
+      unwrap_user_message();
+      break;
+  }
+}
+
+void np1secMessage::unwrap_user_message() {
+  std::string np1sec, encrypted_message, phased_message,
+              signed_message, signature;
+
+  encrypted_message = strtok(NULL, ":O3");
+
+  phased_message = base64_decode(encrypted_message);
+  std::string temp = strtok(&phased_message[0], ":O3");
+  memcpy(session_id, temp.c_str(), temp.size());
+  encrypted_message = strtok(NULL, ":O3");
+
+  phased_message = decrypt_message(base64_decode(encrypted_message));
+  signed_message = strtok(&phased_message[0], ":O3");
+  signature = strtok(NULL, ":O3");
+
+  if (verify_message(signed_message, signature)) {
+    signed_message = base64_decode(signed_message);
+    std::string temp;
+    temp = strtok(&signed_message[0], ":O3");
+    // TODO(bill): clarify session id check
+//      if(session_id.compare(temp)) {
+      sender_id = strtok(NULL, ":O3");
+      user_message = strtok(NULL, ":O3");
+
+      meta_message = strtok(NULL, ":O3");
+      unwrap_meta_message();
+      std::string hash_string = strtok(NULL, ":O3");
+      memcpy(transcript_chain_hash, hash_string.c_str(), hash_string.size());
+      nonce = strtok(NULL, ":O3");
+      message_id = compute_message_id(user_message);
+//      }
+
+      message_type = UNKNOWN;
   }
 }
 
