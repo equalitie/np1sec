@@ -151,8 +151,9 @@ void np1secMessage::format_generic_message() {
 
   signature = sign_message(sys_message);
   sys_message += signature + ":O3";
-  sys_message = "np1sec:O3" + sid_string + ":03" + sys_message;
+  sys_message = ":03" + sid_string + ":03" + sys_message;
   sys_message = base64_encode(sys_message);
+  sys_message = "np1sec:O3" + sys_message;
 }
 
 void np1secMessage::unwrap_generic_message() {
