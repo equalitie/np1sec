@@ -63,9 +63,35 @@ bool np1secUserState::join_room(std::string room_name,
   return true;
 }
 
+/**
+   This is the main message handler of the whole protocol:
+
+   The most important thing that user state message handler
+   does is to 
+       - Process the unencrypted part of the message.
+       - decide which session should handle the message using
+         the following procedure:
+           1. If the message has sid:
+                if there is a live session with that sid, deligate
+                to that session
+                else if the message has sid but session with such
+                sid does not exists or the session is dead
+                   if the room has active session, give it to the active sesssion of the room
+                   else 
+                      make a new session for that room and deligate it to it 
+                      (but it is a sort of error, ignore the message. Join message doesn't have                    sid)
+
+           2. If the message doesn't have sid, it is a join message
+                if the room has active session
+                  deligate it to the active session. 
+                else
+                  (this shouldn't happen either).
+ */
 RoomAction np1secUserState::receive_handler(std::string room_name,
                                             std::string np1sec_message,
                                             uint32_t message_id) {
+
+  np1secMessage recieved = receive(received_message);
   np1secSession *cur_session = retrieve_session(room_name);
   if (!cur_session) {
     //only possible operation should be join and leave 

@@ -25,4 +25,48 @@
 bool sort_by_long_term_pub_key(Participant& lhs, Participant& rhs)
 {
   return Cryptic::retrieveResult(lhs.long_term_pub_key) < Cryptic::retrieveResult(rhs.long_term_pub_key);
+
+}
+
+/**
+ * Generate the approperiate authentication token check its equality
+ * to authenticate the alleged participant
+ *
+ * @param auth_token authentication token received as a message
+ * 
+ * @return true if peer's authenticity could be established
+ */
+bool participant::be_authenticated(std::string authenicator_id, HashBlock auth_token) {
+  if (!compute_p2p())
+    return false;
+
+  std::string to_be_hashed(p2p_key, sizeof(HashBlock));
+  to_be_hashed+= authenticator_id;
+  HashBlock regenerated_auth_token;
+
+  Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), regenerated_auth_token);
+
+  return (!cryptic.compare_hash(regenerated_auth_token, auth_token));
+
+}
+
+/**
+ * Generate the approperiate authentication token check its equality
+ * to authenticate the alleged participant
+ *
+ * @param auth_token authentication token received as a message
+ * 
+ * @return true if peer's authenticity could be established
+ */
+bool participant::authenticate_to(HashBlock auth_token) {
+
+  if (!compute_p2p_private())
+    return false;
+
+  std::string to_be_hashed(p2p_key, sizeof(HashBlock));
+  to_be_hashed+= id;
+  Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), auth_token);
+
+  return true;
+
 }

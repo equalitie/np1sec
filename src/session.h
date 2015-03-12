@@ -51,8 +51,7 @@ class MessageDigest {
 
 // Defining essential types
 typedef uint8_t np1secBareMessage[];
-
-
+typedef std::map<std::string,Participant> ParticipantMap;
 
 /**
  * This class is encapsulating all information and action, a user needs and
@@ -67,6 +66,10 @@ class np1secSession {
   std::string room_name;
 
   Participant myself;
+  /**
+   * Keeps the list of the unauthenticated participants in the room before the
+   * join/accept or farewell finishes.
+   */
   UnauthenticatedParticipantList participants_in_the_room;
 
   /**
@@ -74,6 +77,12 @@ class np1secSession {
    */
   std::map<uint32_t, HashBlock*> transcript_chain;
 
+  //participants data:
+  /**
+   * Keeps the list of the updated participants in the room once the
+   * join/accept or farewell finishes.
+   */
+  ParticipantMap participants;
   /**
    * Keeps the list of the live participants in the room and their current/new
    * keys/shares, last heartbeat, etc. The correct way of uisng this array is
@@ -88,10 +97,15 @@ class np1secSession {
   std::vector<std::string> peers;
 
   /**
-   * Keeps the list of the updated participants in the room once the
-   * join/accept or farewell finishes.
+   * Checkoff confirmed participant indexed by participant index
+   * this information is not stored in the participant object
+   * as:
+   *  1. Very short term needed, only before the establishement of the session. 
+   *  (in contrast to heart beat timer for e.g.)
+   *  2. Is no longer valid for subsequent sessions. (new session need new confirmation). (In contrast to authenticated for e.g.)
+   *  
    */
-  std::map<std::string,Participant> participants;
+  std::vector<bool> confirmed_peers;
 
   /**
    * Create a new np1secSession object based on the combination of participants
@@ -147,7 +161,10 @@ class np1secSession {
 
  protected:
   SessionID session_id;
+  bool session_id_is_set = false;
   np1secSession* my_parent = NULL;
+
+  std::map<np1secSession*> my_childern;
 
   /**
    * it should be invoked only once to compute the session id
@@ -163,6 +180,15 @@ class np1secSession {
    * sessions they are joining
    */
   void kill_my_sibling();
+
+  /**
+   * When someone join and authenticated, we should
+   * tell all other joining users to stop joining the
+   * other sessions, the request for killing session
+   * rival session coming from the authenticated
+   * child session
+   */
+  void kill_rival_children();
 
   /**
  * (n+1)sec sessions are implemented as finite state machines.
@@ -269,7 +295,7 @@ class np1secSession {
   np1secSessionState confirm_or_resession(np1secMessage received_message);
 
   /**
-     For the current user, calls it when receive join_request with
+     For the current user, calls it when receive JOIN_REQUEST with
      
      (U_joiner, y_joiner)
 
@@ -291,13 +317,11 @@ class np1secSession {
    */
   np1secSessionState send_auth_share_and_participant_info(np1secMessage received_message);
 
-
   /**
-     For the current user, calls it when receive PARTICIANT_INFO
+     For the current user, calls it when receive JOINER_AUTH
      
-      sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), kc, z_sender
+      sid, kc, z_sender
 
-     -if the sender is the joiner, 
       - Authenticate joiner halt if fails
       - Change status to AUTHED_JOINER
       - Halt all sibling sessions
@@ -311,9 +335,11 @@ class np1secSession {
      otherwise no change to the status
 
    */
-  np1secSessionState confirm_auth_add_update_share_repo(np1secMessage received_message);
-  
-
+  np1secSessionState np1secSession::confirm_auth_add_update_share_repo(np1secMessage received_message) {
+    
+    
+  }
+    
   /**
      For the current user, calls it when receive a session confirmation
      message.
@@ -328,7 +354,7 @@ class np1secSession {
      If the sid is different, something is wrong halt drop session
 
   */
-  np1secSessionState mark_confirm_and_may_move_session(np1secMessage received_message);
+  np1secSessionState mark_confirmed_and_may_move_session(np1secMessage received_message);
 
   /**
    * This will be called when another user leaves a chatroom to update the key.
@@ -336,11 +362,10 @@ class np1secSession {
    * This should send a message the same an empty meta message for sending
    * the leaving user the status of transcript consistency
    * 
-   * This also make new session which send new share list for the shrinked session
+   * This also make new session which send message of Of FAREWELL type new
+   * share list for the shrinked session 
    *
    * sid, ((U_1,y_i)...(U_{n-1},y_{n-1}), z_sender, transcript_consistency_stuff
-   * 
-   * Of FAREWELL type
    *
    * kills all sibling sessions in making as the leaving user is no longer 
    * available to confirm any new session.
@@ -384,7 +409,6 @@ class np1secSession {
   np1secFSMGraphTransitionEdge np1secFSMGraphTransitionMatrix[np1secSession::TOTAL_NO_OF_STATES][np1secMessage::TOTAL_NO_OF_MESSAGE_TYPE] = {};
 
   /**
-<<<<<<< HEAD
      Setups the state machine transition double array once and
      for all during the initiation.
   */
@@ -417,7 +441,7 @@ class np1secSession {
 
     np1secFSMGraphTransitionMatrix[LEAVE_REQUESTED][np1secMessage::FAREWELL] = chcek_transcript_consistancy_update_share_repo
 
-      //We don't accept join request while in farewelled state (for now at least)
+    //We don't accept join request while in farewelled state (for now at least)
 
 
   }
@@ -443,8 +467,6 @@ class np1secSession {
 
 
   /**
-=======
->>>>>>> master
     * Construct and start timers for sending heartbeat messages
     *
     */
@@ -452,15 +474,15 @@ class np1secSession {
 
   //This really doesn't make sense because we create a sessien based on
   //join request
-  /**
-   * Should be called by userstate when the user wants to join a new room
-   *
-   * @parma long_term_id_key the key pair of joining party is need for 
-   *        deniable authentication
-   *
-   * @return return true if the first stage of join is completed successfully
-   */
-  bool join(LongTermIDKey long_term_id_key);
+  /* /\** */
+  /*  * Should be called by userstate when the user wants to join a new room */
+  /*  * */
+  /*  * @parma long_term_id_key the key pair of joining party is need for  */
+  /*  *        deniable authentication */
+  /*  * */
+  /*  * @return return true if the first stage of join is completed successfully */
+  /*  *\/ */
+  /* bool join(LongTermIDKey long_term_id_key); */
 
   /**
    * Insert the list of unauthenticated participants

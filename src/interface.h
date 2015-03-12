@@ -29,14 +29,27 @@
 #include <string>
 
 /**
+   Participant id
+   
+   consists of nickname and "a" fingerprint of public key
+   the finger print is compact ed25519 point representation
+   in 32 bit (x cordinate and one bit for sign)
+ */
+struct ParticipantId
+{
+  std::string nickname;
+  HashBlock Fingerprint;
+}
+
+/**
  * This sturct is used by the client to send the list of participant in
  * the room. consequently np1sec will try to authenticate the participant 
  * and establish a group session
  *
  */
 struct UnauthenticatedParticipant {
-  std::string participant;
-  std::string long_term_pub_key_hex;  // This should be in some convienient Hex
+  std::string participant_id;
+  HashBlock ephemeral_pub_key;  // This should be in some convienient 
   // Format
 };
 

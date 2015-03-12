@@ -86,6 +86,67 @@ np1secSession np1secSession::operator-(np1secSession a) {
 }
 
 /**
+   Constructor being called by current participant receiving join request
+   That's why (in room) participants are are already authenticated
+   
+     - in new session constructor these will happen
+       - computes session_id
+       - compute kc = kc_{sender, joiner}
+       - compute z_sender (self)
+       - set new session status to REPLIED_TO_NEW_JOIN
+       - send 
+ */
+np1secSession::np1secSession(std::string room_name, np1secMessage join_message, ParticipantMap current_authed_participants)
+  :room_name(room_name) //TODO: not sure the session needs to know the room name
+{
+  my_state = DEAD; //in case anything fails
+  
+  this->participant = current_authed_participants;
+   joiner = received_message.joiner_participant();
+  //update participant info or let it be there if they are consistent with
+
+  joiner_participant.insert(Participant(it->participant_id)); //the participant is added unauthenticated
+  if (!participants[participant_id].set_ephemeral_key(it->ephemeral_key))
+    throw np1secMessage::MessageFormatException;
+
+  //We can't authenticate here, join message doesn't have kc
+  // if (!participants[received_message.sender_id].authenticate(my_id, received_message.kc)) {
+  //   return;
+  // }
+
+  compute_session_id();
+  if (send_info_auth_and_share_message())
+    my_state = REPLIED_TO_NEW_JOIN;
+
+}
+
+/**
+   Constructor being called by current participant receiving leave request
+   
+     - in new session constructor these will happen
+       - drop leaver
+       - computes session_id
+       - compute z_sender (self)
+       - set new session status to RE_SHARED
+
+*/
+np1secSession::np1secSession(std::string room_name, string leaver_id, ParticipantMap current_authed_participants)
+  :room_name(room_name) //TODO: not sure the session needs to know the room name
+{
+  my_state = DEAD; //in case anything fails
+
+  participant = current_authed_participants;
+  current_authed_participants.drop_participant(leaver_id);
+  if (!participants[participant_id].set_ephemeral_key(it->ephemeral_key))
+    throw np1secMessage::MessageFormatException;
+
+  compute_session_id();
+  if (send_share_message())
+    my_state = RE_SHARED;
+
+}
+
+/**
  * it should be invoked only once to compute the session id
  * if one need session id then they need a new session
  *
@@ -94,7 +155,7 @@ np1secSession np1secSession::operator-(np1secSession a) {
 bool np1secSession::compute_session_id() {
   std::string cat_string = "";
   //sanity check: You can only compute session id once
-  assert(session_id);
+  assert(!session_id_set);
 
   if (peers.size() == 0) //nothing to compute
     return false;
@@ -108,16 +169,137 @@ bool np1secSession::compute_session_id() {
   for (std::vector<std::string>::iterator it = peers.begin(); it != peers.end(); ++it) {
     Participant p = participants[*it];
     cat_string += p.id;
-    cat_string += cryptic.retrieveResult(p.ephemeral_key);
+    cat_string += cryptic.retrieve_result(p.ephemeral_key);
   }
 
   compute_session_hash(session_id, cat_string);
+  session_id_is_set = true;
   return true;
 
 }
 
 /**
- * Received the pre-processed message and based on the state
+ *  setup session view based on session view message,
+ *  note the session view is set once and for all change in 
+ *  session view always need new session object.
+ */
+bool np1secSession::setup_session_view(np1secMessage session_view_message) {
+
+  //First get a list of user identities
+  UnauthenticatedParticipantList plist =  received_message.participants_in_the_room();
+  //update participant info or let it be there if they are consistent with
+
+  assert(!session_id); //if session id isn't set we have to set it
+
+  for(UnauthenticatedParticipantList::iterator it = plist.begin(); it != plist.begin(); it++) {
+      //new participant we need to recompute the session id
+    participants.insert(Participant(it->participant_id)); //the participant is added unauthenticated
+    if (!participants[participant_id].set_ephemeral_key(it->ephemeral_key))
+        throw np1secMessage::MessageFormatException;
+
+  }
+
+  compute_session_id();
+
+}
+
+bool np1secSessionState::everybody_authenticated_and_contributed()
+{
+  for(ParticipantMap::iterator it = participants.begin(); it != participants.end(); it++)
+    if (!it->authenticated or !it->cur_keyshare)
+      return false;
+
+  return true;
+  
+}
+
+bool np1secSessionState::everybody_confirmed()
+{
+  for(ParticipantMap::iterator it = confirmed.begin(); it != participants.end(); it++)
+    if (!(*it))
+      return false;
+
+  return true;
+  
+}
+
+/**
+ *   Joiner call this after receiving the participant info to
+ *    authenticate to everybody in the room
+ */
+bool np1secSessionState::joiner_send_auth_and_share() {
+  assert(session_id_is_set);
+  if (!group_enc()) //compute my share for group key
+    return false;
+
+  HashBlock cur_auth_token;
+
+  std::string auth_batch; 
+
+  for(uint32_t i = 0; i < peers.size(); i++) {
+    if (!participants[peers[i]].authed_to) {
+      participants[peers[i]].authenticate_to(cur_auth_token);
+      auth_batch.append(reinterpret_cast<char*> &i, sizeof(uint32_t));
+      auth_batch.append(cur_auth_token, sizeof(HashBlock));
+    }
+  }
+
+  np1secMessage outboundmessage.create_participant_info(JOINER_AUTH,
+                                                        sid,
+                                                        "", //no unauthenticated_participant                                                                                  auth_batch,
+                                                        session_key_share);
+  outboundmessage.send();
+  return true;
+
+}
+/**
+   Preparinig PARTICIPANT_INFO Message
+
+    current user calls this to send participant info to joiner
+    and others
+    sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), kc, z_joiner
+*/
+
+bool np1secSessionState::send_view_auth_and_share(string joiner_id) {
+  assert(session_id_is_set);
+  if (!group_enc()) //compute my share for group key
+    return false;
+
+  HashBlock cur_auth_token;
+  //    if (!participants[joiner_id].authed_to) {
+  participants[joiner_id].authenticate_to(cur_auth_token);
+
+  np1secMessage outboundmessage.create_participant_info(PARTICIPANT_INFO,
+                                                        sid,
+                                                        unauthenticated_participants,                                                                                  auth_token,
+                                                        session_key_share);
+  outboundmessage.send();
+  return true;
+
+}
+
+/**
+   Current user will use this to inform new user
+   about their share and also the session plist klist
+
+*/
+bool np1secSessionState::send_share_message() {
+  assert(session_id_is_set);
+  if (!group_enc()) //compute my share for group key
+    return false;
+  
+  np1secMessage outboundmessage.create_participant_info(RE_SHARE,
+                                                        sid,
+                                                        //unauthenticated_participants
+                                                        //"",//auth_batch,
+                                                        session_key_share);
+  outboundmessage.send();
+  return true;
+
+}
+
+/**
+ * Receives the pre-processed message and based on the state
  * of the session decides what is the appropriate action
  *
  * @param receive_message pre-processed received message handed in by receive function
@@ -159,30 +341,269 @@ bool np1secSession::state_handler(np1secMessage receivd_message)
   
 }
 
-np1secSessionState auth_and_reshare(np1secMessage received_message) {
-  np1secMessage recieved = receive(received_message);
-  if (compute_session_id()) {
+//***** Joiner state transitors ****
+
+/**
+   For join user calls this when receivemessage has type of PARTICIPANTS_INFO
+   
+   sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), (kc_{sender, joiner}), z_sender
+
+   - Authenticate sender if fail halt
+
+   for everybody including the sender
+
+   joiner should:
+   - set session view
+   - compute session_id
+   - add z_sender to the table of shares 
+   - compute kc = kc_{joiner, everybody}
+   - compute z_joiner
+   - send 
+   sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), kc, z_joiner
+*/
+np1secSessionState np1secSession::auth_and_reshare(np1secMessage received_message) {
+  if (!session_id_is_set) {
+    if (!setup_session_view(received_message))
+      return DEAD;
+    send_auth_and_share_message();
+
+  }
+
+  if (!participants.find(received_message.sender_id))
+    return DEAD;
+
+  if (!participants[received_message.sender_id].authenticate(my_id, received_message.kc))
+    return DEAD;
+
+  participants[received_message.sender_id].set_key_share(received_message.z_share);
+
+  return my_state;
+
+  //TODO: check the ramification of lies by other participants about honest
+  //participant ephemeral key. Normally nothing should happen as we recompute
+  //the session id and so the session will never get messages from honest
+  //participants and so will never be authed.
+
+}
+
+/**
+   For the joiner user, calls it when receive a session confirmation
+   message.
+   
+   sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), Hash(GroupKey, U_sender)
+   
+   of SESSION_CONFIRMATION type
+   
+   if it is the same sid as the session id, marks the confirmation in 
+   the confirmation list for the sender. If all confirmed, change 
+   state to IN_SESSION, call the call back join from ops.
+   
+   If the sid is different send a new join request
+   
+*/
+np1secSessionState np1secSession::confirm_or_resession(np1secMessage received_message) {
+  //if sid is the same mark the participant as confirmed
+  //receiving mismatch sid basically means rejoin
+  if (received_message.sid == session_id) {
+    if (validate_session_confirmation())
+      confirmed_peers[participant[received_message.sender_id].index] = true;
+    else {
+      my_state = DEAD;
+      //as US to rejoin
+      return;
+    }
+
+    if (everybody_confirmed())
+      return IN_SESSION;
     
   }
+  else {
+    //we need to rejoin, categorically we are against chanigng session id
+    //so we make a new session. This make us safely ignore replies to
+    //old session id (they go to the dead session)
+    np1secSession* new_child_session = new np1secSession(room_name); //calling join constructor;
+    if (new_child_session->session_id_is_set) {
+      new_child_session->my_parent = this;
+      my_children[new_child_session->session_id] = new_child_session;
+    }
+    return DEAD;
+    
+  }
+
+  return my_state;
+  
 }
 
-np1secSessionState confirm_or_resession(np1secMessage received_message) {
+//*****Joiner state transitors END*****
+
+//*****Current participant state transitors*****
+/**
+     For the current user, calls it when receive JOIN_REQUEST with
+     
+     (U_joiner, y_joiner)
+
+     - start a new new participant list which does
+     
+     - computes session_id
+     - new session does:
+     - compute kc = kc_{joiner, everybody}
+     - compute z_sender (self)
+     - set new session status to REPLIED_TO_NEW_JOIN
+     - send
+
+     sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), (kc_{sender, joiner}), z_sender
+     
+     of PARTICIPANT_INFO message type
+
+     change status to REPLIED_TO_NEW_JOIN
+
+ */
+np1secSessionState np1secSession::send_auth_share_and_participant_info(np1secMessage received_message)
+{
+
+  np1secSession* new_child_session = new np1secSession(received_message, participants);
+  if (new_child_session->session_id_is_set) {
+    new_child_session->my_parent = this;
+    my_children[new_child_session->session_id] = new_child_session;
+  }
+  else //just throw the session out
+    delete new_child_session;
+    
+  //our state doesn't need to change
+  return my_state;
 
 }
 
-np1secSessionState send_auth_share_and_participant_info(np1secMessage received_message) {
-}
+/**
+   For the current user, calls it when receive JOINER_AUTH
+   
+   sid, U_sender, y_i, _kc, z_sender, signature
 
+   or PARTICIPANT_INFO from users in the session
+   
+   - Authenticate joiner halt if fails
+   - Change status to AUTHED_JOINER
+   - Halt all sibling sessions
+   
+   - add z_sender to share table
+   - if all share are there compute the group key send the confirmation
+   
+   sid, Hash(GroupKey, U_sender), signature 
+   
+   change status GROUP_KEY_GENERATED
+   otherwise no change to the status
+   
+*/
 np1secSessionState confirm_auth_add_update_share_repo(np1secMessage received_message) {
+  if (received_message.type == np1secMessage::JOINER_AUTH) {
+    if (!participants[received_message.sender_id].authenticate(my_id, received_message.kc))  {
+        return DEAD;
+      }
+
+      kill_all_my_siblings(); 
+      participants[received_message.sender_id].set_key_share(received_message.z_share);
+  }
+  else { //assuming the message is PARTICIPANT_INFO from other in
+    //session people
+    
+  }
+
+  if (everybody_authenticated_and_contributed) {
+    if (group_dec()) {
+      np1secMessage outboundmessage(SESSION_CONFIRMATION,
+                                    sid,
+                                    unauthenticated_participants,                                                           ""
+                                    session_confirmation());
+      outboundmessage.send();
+
+      return GROUP_KEY_GENERATED;
+    }
+
+    return DEAD;
+  }
+  //otherwise just wait for more shares
+  return my_state;
+  
 }
 
-np1secSessionState mark_confirm_and_may_move_session(np1secMessage received_message) {
+/**
+   For the current user, calls it when receive a session confirmation
+   message.
+   
+   sid, Hash(GroupKey, U_sender), signature
+   
+   if it is the same sid as the session id, marks the confirmation in 
+   the confirmation list for the sender. If all confirmed, change 
+   state to IN_SESSION, make this session the main session of the
+   room
+   
+   If the sid is different, something is wrong halt drop session
+   
+*/
+np1secSessionState np1secSession::mark_confirm_and_may_move_session(np1secMessage received_message) {
+  //TODO:realistically we need to check sid, if sid
+  //doesn't match we shouldn't have reached this point
+  if (validate_session_confirmation())
+    confirmed_peers[participant[received_message.sender_id].index] = true;
+  else
+    return DEAD;
+  
+  confirmed_peers[participant[received_message.sender_id].index] = true;
+  
+  if (everybody_confirmed()) {
+    activate();
+    return IN_SESSION;
+  }
+
+  return my_state;
+    
 }
 
-np1secSessionState send_farewell_and_reshare(np1secMessage received_message) {
+/**
+ * This will be called when another user leaves a chatroom to update the key.
+ * 
+ * This should send a message the same an empty meta message for sending
+ * the leaving user the status of transcript consistency
+ * 
+ * This also make new session which send message of Of FAREWELL type new
+ * share list for the shrinked session 
+ *
+ * sid, z_sender, transcript_consistency_stuff
+ *
+ * kills all sibling sessions in making as the leaving user is no longer 
+ * available to confirm any new session.
+ * 
+ * The status of the session is changed to farewelled. 
+ * The statatus of new sid session is changed to re_shared
+ */
+np1secSessionState np1secSession::send_farewell_and_reshare(np1secMessage received_message) {
+  LoadFlag meta_load_flag = NO_LOAD;
+  std::string meta_load = NULL;
+  np1secMessage outbound(session_id, my_id,
+                         FAREWELL,
+                         group_enc()
+                         transcript_chain_hash,
+                         meta_load_flag,
+                         meta_load,
+                         peers, cryptic);
+
+
+  np1secSession* new_child_session = new np1secSession(received_message, participants, leaver_id);
+  
+  if (new_child_session->session_id_is_set) {
+    new_child_session->my_parent = this;
+    my_children[new_child_session->session_id] = new_child_session;
+  }
+  else //just throw the session out
+    delete new_child_session;
+    
+  //our state doesn't need to change
+  return my_state;
+
+
 }
+
 bool np1secSession::join(LongTermIDKey long_term_id_key) {
-
   //We need to generate our ephemerals anyways
   if (!cryptic.init()) {
     return false;
@@ -340,6 +761,7 @@ bool np1secSession::send(std::string message, np1secMessage::np1secMessageType m
 
   // us->ops->send_bare(room_name, outbound);
   return true;
+  
 }
 
 np1secMessage np1secSession::receive(std::string raw_message) {

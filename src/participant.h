@@ -29,16 +29,28 @@
  */
 class Participant {
  public:
-  std::string id;
+  std::string id; //nickname;
+  std::string nickname;
   LongTermPublicKey long_term_pub_key;
-  LongTermPrivateKey long_term_prv_key;
   np1secPublicKey ephemeral_key;
   event* receive_ack_timer;
   event* send_ack_timer;
+  HashBlock raw_ephemeral_key;
   // MessageDigest message_digest;
 
-  // np1secKeyShare cur_keyshare;
+  np1secKeyShare cur_keyshare;
+  HashBlock p2p_key = {};
+  bool authenticated;
+  bool authed_to;
   // np1secKeySHare future_key_share;
+
+  uint32_t in_session_index; /* this is the i in U_i and we have
+                                participants[peers[i]].index == i
+                                tautology
+                                
+                                sorry we barely have space for half
+                                half of human kind in a room :(
+                             */
 
   enum ForwardSecracyContribution {
     NONE,
@@ -49,10 +61,26 @@ class Participant {
   ForwardSecracyContribution ForwardSecracyStatus = NONE;
 
   /**
-   * default
+   * crypto material access functions
+   */
+  bool set_ephmeral_key(HashBlock raw_ephemeral_key)
+  {
+    gcry_sexp_release(ephemeral_key);
+    this->raw_ephemeral_key = raw_ephemeral_key;
+    ephemeral_key = Cryptic::convert_to_sexp(it->ephemeral_key);
+
+    return (ephemeral_key != NULL);
+  }
+  
+  /**
+   * default constructor
    */
  Participant(std::string participant_id = "")
-   :id(participant_id){
+   :id(participant_id),
+    raw_ephemeral_key(NULL),
+    ephemeral_key(NULL),
+    authenticated(false),
+    authed_to(false){
     
   }
 
