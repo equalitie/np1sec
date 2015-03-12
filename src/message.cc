@@ -66,7 +66,7 @@ np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic) {
   cryptic = cryptic;
 
   std::string message = base64_decode(raw_message);
-  np1sec = strtok(&message[0], ":O3");
+  std::string np1sec = strtok(&message[0], ":O3");
 
   if (np1sec.compare("np1sec")) {
     unwrap_generic_message();  
@@ -115,9 +115,9 @@ void np1secMessage::string_to_session_view(std::string sv_string) {
 }
 
 void np1secMessage::format_generic_message() {
+  std::string signature;
   sys_message = "" + std::to_string(message_type) + ":03";
   std::string sid_string(reinterpret_cast<char const*>(session_id));
-  sys_message += ":03" + sid_string;
   
   switch (message_type) {
     case PARTICIPANTS_INFO:
@@ -141,7 +141,7 @@ void np1secMessage::format_generic_message() {
       format_meta_message();
       sys_message += ":03" + meta_message;
       break;
-    case LEAVE:
+    case LEAVE_REQUEST:
       meta_load = "";
       meta_load_flag = NO_LOAD;
       
@@ -149,37 +149,46 @@ void np1secMessage::format_generic_message() {
       sys_message += ":03" + meta_message;
    } 
 
+  signature = sign_message(sys_message);
+  sys_message += signature + ":O3";
+  sys_message = "np1sec:O3" + sid_string + ":03" + sys_message;
   sys_message = base64_encode(sys_message);
 }
 
 void np1secMessage::unwrap_generic_message() {
-  message_type = atoi(strtok(&message[0], ":03"));
+  message_type = (np1secMessageType)atoi(strtok(NULL, ":03"));
   std::string temp = strtok(NULL, ":O3");
+  std::string signature, sv_string;
   memcpy(session_id, temp.c_str(), temp.size());
 
   switch (message_type) {
     case PARTICIPANTS_INFO:
-      std::string sv_string = strtok(NULL, ":03")
+      sv_string = strtok(NULL, ":03");
       key_confirmation = strtok(NULL, ":03");
       z_sender = strtok(NULL, ":03");
-      session_view = string_to_session_view(sv_string);
+      signature = strtok(NULL, ":03");
+      string_to_session_view(sv_string);
       break;
     case SESSION_CONFIRMATION:
-      std::string sv_string = strtok(NULL, ":03")
+      sv_string = strtok(NULL, ":03");
       session_key_confirmation = strtok(NULL, ":03");
-      session_view = string_to_session_view(sv_string);
+      signature = strtok(NULL, ":03");
+      string_to_session_view(sv_string);
       break;
     case JOIN_REQUEST:
       joiner_info = strtok(NULL, ":03");
+      signature = strtok(NULL, ":03");
       break;
     case FAREWELL:
-      std::string sv_string = strtok(NULL, ":03")
+      sv_string = strtok(NULL, ":03");
       z_sender = strtok(NULL, ":03");
       meta_message = strtok(NULL, ":03");
-      session_view = string_to_session_view(sv_string);
+      signature = strtok(NULL, ":03");
+      string_to_session_view(sv_string);
       break;
-    case LEAVE:
+    case LEAVE_REQUEST:
       meta_message = strtok(NULL, ":03");
+      signature = strtok(NULL, ":03");
       break;
     case USER_MESSAGE:
       unwrap_user_message();
