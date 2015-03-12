@@ -65,7 +65,6 @@ np1secMessage::np1secMessage(SessionID session_id,
 np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic) {
   cryptic = cryptic;
 
-  std::string message = base64_decode(raw_message);
   std::string np1sec = strtok(&message[0], ":O3");
 
   if (np1sec.compare("np1sec")) {
@@ -161,7 +160,9 @@ void np1secMessage::format_generic_message() {
 }
 
 void np1secMessage::unwrap_generic_message() {
-  message_type = (np1secMessageType)atoi(strtok(NULL, ":03"));
+
+  std::string message = base64_decode(strtok(NULL, ":03"));
+  message_type = (np1secMessageType)atoi()strtok(&message[0], ":03");
   std::string temp = strtok(NULL, ":O3");
   std::string signature, sv_string;
   memcpy(session_id, temp.c_str(), temp.size());
