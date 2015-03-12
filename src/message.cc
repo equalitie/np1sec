@@ -132,6 +132,10 @@ void np1secMessage::format_generic_message() {
     case JOIN_REQUEST:
       sys_message += ":03" + joiner_info;
       break;
+    case JOINER_AUTH:
+      sys_message += ":03" + key_confirmation;
+      sys_message += ":03" + z_sender;
+      break;
     case FAREWELL:
       sys_message += ":03" + session_view_as_string();
       sys_message += ":03" + z_sender;
@@ -178,6 +182,11 @@ void np1secMessage::unwrap_generic_message() {
       break;
     case JOIN_REQUEST:
       joiner_info = strtok(NULL, ":03");
+      signature = strtok(NULL, ":03");
+      break;
+    case JOINER_AUTH:
+      key_confirmation = strtok(NULL, ":03");
+      z_sender = strtok(NULL, ":03");
       signature = strtok(NULL, ":03");
       break;
     case FAREWELL:
