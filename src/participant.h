@@ -20,6 +20,7 @@
 #define SRC_PARTICIPANT_H_
 
 #include <string>
+#include <event2/event.h>
 #include "src/crypt.h"
 
 /** 
@@ -32,6 +33,8 @@ class Participant {
   LongTermPublicKey long_term_pub_key;
   LongTermPrivateKey long_term_prv_key;
   np1secPublicKey ephemeral_key;
+  event* receive_ack_timer;
+  event* send_ack_timer;
   // MessageDigest message_digest;
 
   // np1secKeyShare cur_keyshare;

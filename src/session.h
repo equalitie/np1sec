@@ -98,23 +98,12 @@ class np1secSession {
    * join/accept or farewell finishes.
    */
   std::map<std::string,Participant> unauthed_participants;
-  /**
-    * Keeps a list of the ack timers for recently sent messages indexed by peers
-    *
-    */
-  std::map<std::string, struct event*> awaiting_ack;
 
  /**
    * Insert new message hash into transcript chain
    *
    */
   void add_message_to_transcript(std::string message, uint32_t message_id);
-
-  /**
-   * Keeps a list of timers for acks that need to be sent for messages received
-   * the list is indexed by peer.
-   */
-  std::map<std::string, struct event*> acks_to_send;
 
   time_t key_freshness_time_stamp;
 
@@ -376,7 +365,7 @@ class np1secSession {
      to be taken and return the next state
      
   */
-  typedef np1secSessionState (np1secSessionTransition::*np1secFSMGraphTransitionEdge) (np1secMessage received_message);
+  typedef np1secSessionState (np1secSession::*np1secFSMGraphTransitionEdge) (np1secMessage received_message);
 
   np1secFSMGraphTransitionEdge np1secFSMGraphTransitionMatrix[np1secSession::TOTAL_NO_OF_STATES][np1secMessage::TOTAL_NO_OF_MESSAGE_TYPE] = {};
 
@@ -388,17 +377,17 @@ class np1secSession {
   void engrave_transition_graph()
   {
     //joining user
-    np1secFSMGraphTransitionMatrix[JOIN_REQUESTED][np1secMessageType::PARTICIPANTS_INFO] = auth_and_reshare;
+    np1secFSMGraphTransitionMatrix[JOIN_REQUESTED][np1secMessage::PARTICIPANTS_INFO] = auth_and_reshare;
 
-    np1secFSMGraphTransitionMatrix[JOIN_REQUESTED][np1secMessageType::SESSION_CONFIRMATION] = confirm_or_resession;
+    np1secFSMGraphTransitionMatrix[JOIN_REQUESTED][np1secMessage::SESSION_CONFIRMATION] = confirm_or_resession;
 
     //user currently in the session: current session
-    np1secFSMGraphTransitionMatrix[IN_SESSION][np1secMessageType::JOIN_REQUEST] = send_auth_share_and_participant_info;
+    np1secFSMGraphTransitionMatrix[IN_SESSION][np1secMessage::JOIN_REQUEST] = send_auth_share_and_participant_info;
 
     //new session for currently in previous session
-    np1secFSMGraphTransitionMatrix[REPLIED_TO_NEW_JOIN][np1secMessageType::PARTICIANT_INFO] = confirm_auth_add_update_share_repo;
+    np1secFSMGraphTransitionMatrix[REPLIED_TO_NEW_JOIN][np1secMessage::PARTICIANT_INFO] = confirm_auth_add_update_share_repo;
 
-    np1secFSMGraphTransitionMatrix[GROUP_KEY_GENERATED][np1secMessageType::SESSION_CONFIRMATION] = mark_confirm_and_may_move_session;
+    np1secFSMGraphTransitionMatrix[GROUP_KEY_GENERATED][np1secMessage::SESSION_CONFIRMATION] = mark_confirm_and_may_move_session;
 
     //Leave should have priority over join because the leaving user
     //is not gonna confirm the session and as such the join will
@@ -408,11 +397,11 @@ class np1secSession {
     //killall its sibling 2. No new child session should be created till
     //transition to the left session is complete
 
-    np1secFSMGraphTransitionMatrix[IN_SESSION][np1secMessageType::LEAVE_REQUEST] = send_farewell;
+    np1secFSMGraphTransitionMatrix[IN_SESSION][np1secMessage::LEAVE_REQUEST] = send_farewell;
 
-    np1secFSMGraphTransitionMatrix[RE_SHARED][np1secMessageType::FAREWELL] = chcek_transcript_consistancy_update_share_repo;
+    np1secFSMGraphTransitionMatrix[RE_SHARED][np1secMessage::FAREWELL] = chcek_transcript_consistancy_update_share_repo;
 
-    np1secFSMGraphTransitionMatrix[LEAVE_REQUESTED][np1secMessageType::FAREWELL] = chcek_transcript_consistancy_update_share_repo
+    np1secFSMGraphTransitionMatrix[LEAVE_REQUESTED][np1secMessage::FAREWELL] = chcek_transcript_consistancy_update_share_repo
 
       //We don't accept join request while in farewelled state (for now at least)
 

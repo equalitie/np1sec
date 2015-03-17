@@ -49,6 +49,7 @@ class np1secMessage {
  public:
   enum np1secMessageType {
     UNKNOWN,
+    JOINER_AUTH,
     JOIN_REQUEST,
     PARTICIPANTS_INFO,
     SESSION_CONFIRMATION,

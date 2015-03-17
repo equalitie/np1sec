@@ -240,12 +240,12 @@ void np1secSession::start_ack_timers() {
   struct timeval ten_seconds = {10, 0};
   struct event_base *base = event_base_new();
 
-  for (std::vector<std::string>::iterator it = peers.begin();
-       it != peers.end();
+  for (std::map<std::string, Participant>::iterator it = participants.begin();
+       it != participants.end();
        ++it) {
     timer_event = event_new(base, -1, EV_TIMEOUT, &cb_ack_not_received, this);
-    awaiting_ack[*it] = timer_event;
-    event_add(awaiting_ack[*it], &ten_seconds);
+    (*it).receive_ack_timer = timer_event;
+    event_add((*it).receive_ack_timer, &ten_seconds);
   }
 
   event_base_dispatch(base);
@@ -261,24 +261,22 @@ void np1secSession::start_receive_ack_timer(std::string sender_id) {
   //(us->ops->send_bare)(room_name, myself.id, msg, static_cast<void*>(us));
 
   timer_event = event_new(base, -1, EV_TIMEOUT, &cb_send_ack, this);
-  acks_to_send[sender_id] = timer_event;
-  event_add(awaiting_ack[sender_id], &ten_seconds);
+  participants[sender_id].receive_ack_timer = timer_event;
+  event_add(participants[sender_id].recieve_ack_timer, &ten_seconds);
   event_base_dispatch(base);
 }
 
 void np1secSession::stop_timer_send() {
-  for (std::map<std::string, struct event*>::iterator
-       it = acks_to_send.begin();
-       it != acks_to_send.end();
+  for (std::map<std::string, Participant>::iterator
+       it = participants.begin();
+       it != participants.end();
        ++it) {
-    event_free(it->second);
-    acks_to_send.erase(it);
+    event_free((*it).send_ack_timer);
   }
 }
 
 void np1secSession::stop_timer_receive(std::string acknowledger_id) {
-  event_free(awaiting_ack[acknowledger_id]);
-  awaiting_ack.erase(acknowledger_id);
+  event_free(participants[acknowledger_id].receive_ack_timer);
 }
 
 void np1secSession::add_message_to_transcript(std::string message,
