@@ -178,4 +178,4 @@ Makefile.in
 /libnp1sec_test*
 /xmpp_test*
 .libs/*
-.org
+*.orig

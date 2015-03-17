@@ -1,6 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4
 
 AM_CPPFLAGS = -I. -I$(srcdir)/src \
+	-I$(srcdir)/contrib/gtest/include \
 	$(LIBGCRYPT_CFLAGS) \
         $(LIBEVENT_CFLAGS)
 
@@ -13,11 +14,12 @@ lib_LTLIBRARIES = libnp1sec.la
 
 libnp1sec_la_SOURCES = \
 	src/crypt.cc \
-	src/base64.cc \
-	src/message.cc \
-	src/participant.cc \
-	src/session.cc \
-	src/userstate.cc
+	src/base64.cc
+#	src/message.cc \
+#	src/participant.cc \
+#	src/session.cc \
+#	src/userstate.cc
+
 
 libnp1sec_la_LIBADD = \
 	$(LIBGCRYPT_LIBS) \

@@ -31,6 +31,7 @@ typedef std::pair<gcry_sexp_t,gcry_sexp_t> KeyPair;
 typedef gcry_sexp_t LongTermPublicKey;
 typedef gcry_sexp_t LongTermPrivateKey;
 typedef gcry_sexp_t np1secPublicKey;
+typedef gcry_sexp_t np1secAsymmetricKey;
 
 class  LongTermIDKey {
  protected:
@@ -70,8 +71,10 @@ class  LongTermIDKey {
  */
 class Cryptic {
  protected:
-  gcry_sexp_t ephemeral_pub_key, ephemeral_prv_key;
+  gcry_sexp_t ephemeral_key, ephemeral_pub_key, ephemeral_prv_key;
+  
   // static const uint32_t ED25519_KEY_SIZE = 255;
+  const static gcry_mpi_format NP1SEC_BLOB_OUT_FORMAT = GCRYMPI_FMT_USG;
 
  public:
   /**
@@ -103,7 +106,7 @@ class Cryptic {
 
   /**
    * Decrypt a give encrypted text using the previously created ed25519 keys
-   *
+teddh   *
    * @param encrypted_text an encrypted text message string to be decrypted
    *
    * @return a string containing the decrypted text
@@ -111,13 +114,20 @@ class Cryptic {
   std::string Decrypt(std::string encrypted_text);
 
   /**
+   * Generates a random ed25519 key pair 
+   *
+   * @return false in case of error otherwise true
+   */
+  static bool generate_key_pair(np1secAsymmetricKey* generated_key);
+  
+  /**
    * Convert a given gcrypt s-expression into a std::string
    *
    * @param gcry_sexp_t gcrypt s-expression to be converted
    *
    * @return std::string representing the converted data.
    */
-  static std::string retrieveResult(gcry_sexp_t text_sexp);
+  static std::string retrieve_result(gcry_sexp_t text_sexp);
 
   /**
    * Convert a given std:string to a valid gcrypt s-expression
@@ -126,7 +136,27 @@ class Cryptic {
    *
    * @return gcry_sexp_t gcrypt s-expression respresentation
    */
-  gcry_sexp_t ConvertToSexp(std::string text);
+  gcry_sexp_t convert_to_sexp(std::string text);
+
+  /**
+   * Given the peer's long term and ephemeral public key AP and ap, and ours 
+   * BP, bP, all points on ed25519 curve, this 
+   * compute the triple dh value.
+   *
+   * @param peer_ephemeral_key the ephemeral public key of peer i.e. aP 
+   *                           in grcypt eddsa public key format
+   * @param peer_long_term_key the long term public key of the peer i.e AP 
+   *                            in gcrypt eddsa public key format
+   * @param my_long_term_key   our longterm key in eddsa format
+   * @param peer_is_first      true if AP.X|AP.Y < BP.X|BP.Y   
+   * @param teddh_token        a pointer to hash block to store 
+   *        Hash(bAP|BaP|baP) if peer_is_first
+   *        Hash(BaP|bAP|baP) in GCRYMPI_FMT_USG format if the pointer is null
+   *         , necessary space will be allocated.
+   *
+   * @return false if the operation fails, true on success
+   */
+  bool triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey peer_long_term_key, np1secAsymmetricKey my_long_term_key, bool peer_is_first, HashBlock* teddh_token);
 
   /**
    * Given a valid std:string sign the string using the sessions

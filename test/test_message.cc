@@ -16,7 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <gtest/gtest.h>
+#include "contrib/gtest/gtest.h"
 #include "src/session.h"
 #include "src/crypt.h"
 #include "src/common.h"
@@ -26,7 +26,6 @@ class MessageTest : public ::testing::Test{};
 
 TEST_F(MessageTest, test_compute_message_id) {
 }
-
 
 TEST_F(MessageTest, test_np1secMessage_constructor) {
   Cryptic cryptic;
