@@ -56,6 +56,20 @@ gcry_error_t compute_message_hash(HashBlock transcript_chain,
   return Hash(message.c_str(), message.size(), transcript_chain, true);
 }
 
+gcry_error_t compute_session_hash(HashBlock transcript_chain,
+                                     std::string message) {
+  assert(message.size() % 2 == 0);
+
+  unsigned char *bin;
+  const char *p = message.c_str();
+  for (int i=0; i < message.size(); i++, p+=2) {
+    sscanf(p, "%2hhx", &bin);
+  }
+  return Hash(bin, message.size()/2, transcript_chain, true);
+}
+
+
+
 Cryptic::Cryptic() {}
 
 bool Cryptic::generate_key_pair(np1secAsymmetricKey* generated_key) {

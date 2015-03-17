@@ -51,12 +51,16 @@ class np1secMessage {
     UNKNOWN,
     JOIN_REQUEST,
     PARTICIPANTS_INFO,
+    SESSION_CONFIRMATION,
+    SESSION_HALT,
     GROUP_SHARE,
     USER_MESSAGE,
     PURE_META_MESSAGE,
-    LEAVE,
+    LEAVE_REQUEST,
     FAREWELL,
-    SESSION_P_LIST
+    SESSION_P_LIST,
+    TOTAL_NO_OF_MESSAGE_TYPE //This should be always the last message type
+
   };
 
   np1secMessageType message_type;
@@ -65,11 +69,17 @@ class np1secMessage {
   std::string sender_id;
   std::string user_message;
   std::string meta_message;
+  std::string sys_message;
   np1secLoadFlag meta_load_flag;
   std::string meta_load;
   int meta_only;
   HashBlock transcript_chain_hash;
   std::string nonce;
+  std::string z_sender;
+  std::vector<UnauthenticatedParticipant> session_view;
+  std::string session_key_confirmation;
+  std::string key_confirmation;
+  std::string joiner_info;
   std::vector<std::string> pstates;
 
   /*
@@ -88,12 +98,28 @@ class np1secMessage {
    */
   np1secMessage(std::string raw_message, Cryptic cryptic);
 
+  /*
+   * Construct a new np1secMessage for p_infotem messages
+   * based on a set of input components 
+   **/
+  np1secMessage(SessionID session_id,
+                             np1secMessageType message_type,
+                             std::string session_view,
+                             std::string key_confirmation,
+                             std::string session_key_confirmation,
+                             std::string joiner_info,
+                             std::string z_sender);
+
   /**
    * @return if the message is of type PARTICIPANTS_INFO it returns 
    *         the list of participants with their ephemerals otherwise
    *         throw an exception
    */
   std::vector<UnauthenticatedParticipant> participants_in_the_room();
+
+  std::string session_view_as_string();
+
+  void string_to_session_view(std::string sv_string);
 
   /**
    * Compute a unique globally ordered id from the time stamped message,
@@ -142,6 +168,21 @@ class np1secMessage {
    *
    */
   std::string format_sendable_message();
+
+  /**
+   * Format p_info message for inclusion for
+   * standalone use
+   *
+   */
+  void format_generic_message();
+
+  /**
+   * Unwrap p_info message into its constituent components
+   *
+   */
+  void unwrap_generic_message();
+
+  void unwrap_user_message();
 
   /**
    * Format Meta message for inclusion with standard message or for

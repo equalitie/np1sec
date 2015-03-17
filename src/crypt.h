@@ -208,4 +208,7 @@ gcry_error_t Hash(const void *buffer, size_t buffer_len, HashBlock hb,
                   bool secure);
 gcry_error_t compute_message_hash(HashBlock transcript_chain,
                                   std::string message);
+gcry_error_t compute_session_hash(HashBlock transcript_chain,
+                                  std::string message);
+
 #endif  // SRC_CRYPT_H_

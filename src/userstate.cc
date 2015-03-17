@@ -111,6 +111,7 @@ bool np1secUserState::send_handler(std::string room_name,
                                    std::string plain_message) {
   np1secSession *cur_session = retrieve_session(room_name);
   if (!cur_session) {
+    assert(false); 
     // uh oh
   }
   return cur_session->send(plain_message, np1secMessage::USER_MESSAGE);

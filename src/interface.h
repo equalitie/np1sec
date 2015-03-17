@@ -35,7 +35,7 @@
  *
  */
 struct UnauthenticatedParticipant {
-  std::string participants;
+  std::string participant;
   std::string long_term_pub_key_hex;  // This should be in some convienient Hex
   // Format
 };
