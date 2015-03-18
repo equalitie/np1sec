@@ -82,7 +82,7 @@ class np1secMessage {
   std::string key_confirmation;
   std::string joiner_info;
   std::vector<std::string> pstates;
-
+  np1secUserState us;
   /*
    * Construct a new np1secMessage based on a set of message components
    * as input
@@ -91,13 +91,13 @@ class np1secMessage {
                 std::string user_message, np1secMessageType message_type,
                 HashBlock* transcript_chain_hash, np1secLoadFlag meta_load_flag,
                 std::string meta_load, std::vector<std::string> pstates,
-                Cryptic cryptic);
+                Cryptic cryptic, np1secUserState us std::string room_name);
 
   /*
    * Construct a new np1secMessage based on a set of message components
    * based on an encrypted message as input
    */
-  np1secMessage(std::string raw_message, Cryptic cryptic);
+  np1secMessage(std::string raw_message, Cryptic cryptic, np1secUserState us, std::string room_name);
 
   /*
    * Construct a new np1secMessage for p_infotem messages
@@ -109,7 +109,9 @@ class np1secMessage {
                              std::string key_confirmation,
                              std::string session_key_confirmation,
                              std::string joiner_info,
-                             std::string z_sender);
+                             std::string z_sender,
+                             np1secUserState us,
+                             std::string room_name);
 
   /**
    * @return if the message is of type PARTICIPANTS_INFO it returns 
@@ -127,6 +129,12 @@ class np1secMessage {
    * ultimately this function should be overridable by the client.
    */
   uint32_t compute_message_id(std::string cur_message);
+
+  /**
+   * This function is responsible for sending of bare messages
+   *
+   */
+  void send();
 
   /**
    * Base 64 encode encrypted message

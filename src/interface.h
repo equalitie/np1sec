@@ -58,7 +58,6 @@ struct np1secAppOps {
    * 
    */
   void (*send_bare)(std::string room_name,
-                    std::string sender_nickname,
                     std::string message,
                     void* data);
 

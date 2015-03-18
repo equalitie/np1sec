@@ -30,7 +30,9 @@ np1secMessage::np1secMessage(SessionID session_id,
                             np1secLoadFlag meta_load_flag,
                             std::string meta_load,
                             std::vector<std::string> pstates,
-                            Cryptic cryptic) {
+                            Cryptic cryptic, 
+                            np1secUserState us,
+                            std::string room_name) {
   session_id = session_id;
   sender_id = sender_id;
   user_message = user_message;
@@ -43,6 +45,8 @@ np1secMessage::np1secMessage(SessionID session_id,
   meta_load = meta_load;
   cryptic = cryptic;
   pstates = pstates;
+  us = us;
+  room_name = room_name;
 }
 
 np1secMessage::np1secMessage(SessionID session_id,
@@ -51,7 +55,9 @@ np1secMessage::np1secMessage(SessionID session_id,
                              std::string key_confirmation,
                              std::string session_key_confirmation,
                              std::string joiner_info,
-                             std::string z_sender){
+                             std::string z_sender,
+                             np1secUserState us,
+                             std::string room_name){
   session_id = session_id;
   message_type = message_type;
   session_view = session_view;
@@ -59,14 +65,17 @@ np1secMessage::np1secMessage(SessionID session_id,
   session_key_confirmation = session_key_confirmation;
   joiner_info = joiner_info;
   z_sender = z_sender;
+  us = us;
+  room_name = room_name;
 }
 
 
-np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic) {
+np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic, np1secUserState usi, std::string room_name) {
   cryptic = cryptic;
   char* buf = strdup(raw_message.c_str());
   std::string np1sec = strtok(buf, ":O3");
-
+  us = us;
+  room_name = room_name;
   if (np1sec.compare("np1sec")) {
     unwrap_generic_message();  
   }
@@ -292,6 +301,10 @@ std::string np1secMessage::format_sendable_message() {
 
 uint32_t np1secMessage::compute_message_id(std::string cur_message) {
   return 0;
+}
+
+void send() {
+  us.ops.send_bare(room_name, sys_message, &us);
 }
 
 void np1secMessage::generate_nonce(unsigned char* buffer) {
