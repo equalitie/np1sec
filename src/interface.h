@@ -38,7 +38,7 @@
 struct ParticipantId
 {
   std::string nickname;
-  HashBlock Fingerprint;
+  HashBlock Fingerprint; //Finger print is actually the long term public point of participant
 }
 
 /**

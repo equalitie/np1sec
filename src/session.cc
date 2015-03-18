@@ -308,36 +308,45 @@ bool np1secSessionState::send_share_message() {
  */
 bool np1secSession::state_handler(np1secMessage receivd_message)
 {
-  switch(my_state) {
-    case np1secSession::NONE:
-      //This probably shouldn't happen, if a session has
-      //no state state_handler shouldn't be called.
-      //The receive_handler of the user_state should call
-      //approperiate inition of a session of session less
-      //message
-      throw  np1secSessionStateException();
-      break;
+  if (np1secFSMGraphTransitionMatrix[my_state][received_message]) //other wise just ignore
+    {
+      my_state = np1secFSMGraphTransitionMatrix[my_state][received_message](received_message);
+      return true;
+    }
+  
+  return false;
+
+//depricated in favor of double array fsm model
+  // switch(my_state) {
+  //   case np1secSession::NONE:
+  //     //This probably shouldn't happen, if a session has
+  //     //no state state_handler shouldn't be called.
+  //     //The receive_handler of the user_state should call
+  //     //approperiate inition of a session of session less
+  //     //message
+  //     throw  np1secSessionStateException();
+  //     break;
         
-    case np1secSession::JOIN_REQUESTED: //The thread has requested to join by sending ephemeral key
-      //Excepting to receive list of current participant
-      break;
-    case np1secSession::REPLIED_TO_NEW_JOIN: //The thread has received a join from a participant replied by participant list
-      break;
-    case np1secSession::GROUP_KEY_GENERATED: //The thread has computed the session key and has sent the conformation
-      break;
-    case np1secSession::IN_SESSION: //Key has been confirmed      
-      break;
-    case np1secSession::UPDATED_KEY: //all new shares has been received and new key has been generated: no more send possible
-      break;
-    case np1secSession::LEAVE_REQUESTED: //Leave requested by the thread: waiting for final transcirpt consitancy check
-      break;
-    case np1secSession::FAREWELLED: //LEAVE is received from another participant and a meta message for transcript consistancy and new shares has been sent
-      break;
-    case np1secSession::DEAD: //Won't accept receive or sent messages, possibly throw up
-      break;
-    default:
-      return false;
-  };
+  //   case np1secSession::JOIN_REQUESTED: //The thread has requested to join by sending ephemeral key
+  //     //Excepting to receive list of current participant
+  //     break;
+  //   case np1secSession::REPLIED_TO_NEW_JOIN: //The thread has received a join from a participant replied by participant list
+  //     break;
+  //   case np1secSession::GROUP_KEY_GENERATED: //The thread has computed the session key and has sent the conformation
+  //     break;
+  //   case np1secSession::IN_SESSION: //Key has been confirmed      
+  //     break;
+  //   case np1secSession::UPDATED_KEY: //all new shares has been received and new key has been generated: no more send possible
+  //     break;
+  //   case np1secSession::LEAVE_REQUESTED: //Leave requested by the thread: waiting for final transcirpt consitancy check
+  //     break;
+  //   case np1secSession::FAREWELLED: //LEAVE is received from another participant and a meta message for transcript consistancy and new shares has been sent
+  //     break;
+  //   case np1secSession::DEAD: //Won't accept receive or sent messages, possibly throw up
+  //     break;
+  //   default:
+  //     return false;
+  // };
   
 }
 

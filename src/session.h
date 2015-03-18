@@ -336,8 +336,7 @@ class np1secSession {
 
    */
   np1secSessionState np1secSession::confirm_auth_add_update_share_repo(np1secMessage received_message) {
-    
-    
+
   }
     
   /**
@@ -452,18 +451,11 @@ class np1secSession {
    *
    * @param receive_message pre-processed received message handed in by receive function
    *
-   * @return true if it was a valid message
+   * @return the external action which need to be taken over the room
+   *         states of other session, user state etc. This is the 
+   *         main way 
    */
-  bool state_handler(np1secMessage receivd_message)
-  {
-    if (np1secFSMGraphTransitionMatrix[my_state][received_message]) //other wise just ignore
-      {
-        my_state = np1secFSMGraphTransitionMatrix[my_state][received_message](received_message);
-        return true
-      }
-
-    return false;
-  }
+  RoomAction state_handler(np1secMessage receivd_message);
 
 
   /**

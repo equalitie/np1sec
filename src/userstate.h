@@ -28,22 +28,10 @@
 
 class np1secUserState;
 
+#include "src/room.h"
 #include "src/session.h"
 
-class RoomAction {
- public:
-  enum ActionType {
-    NO_ACTION,
-    JOIN,
-    LEAVE,
-    NEW_MESSAGE
-  };
-
-  std::string acting_user;  // The user which joined, left or sent a message.
-  std::string new_message;
-};
-
-typedef std::map<std::string, np1secSession*> session_room_map;
+typedef std::map<std::string, np1secRoom> RoomMap;
 
 
 /**
@@ -54,8 +42,7 @@ class np1secUserState {
  protected:
   std::string name;
   LongTermIDKey long_term_key_pair;
-  std::map<SessionID, np1secSession> np1sec_sessions;
-  session_room_map session_in_a_room;
+  RoomMap chatrooms;
 
  public:
   np1secAppOps *ops;
@@ -91,27 +78,31 @@ class np1secUserState {
    * The client need to call this function when the user is joining a room.
    *
    * @param room_name the chat room name
-   * @param user_in_room_id the id that user is using to join this room, this
-   *                        is similar to alias.
    *
    * @return true in case of success (does not mean successful join) and false
    *         in case of failure. client need to inform server of leaving the
    *         room in case of failure
    */
-   bool join_room(std::string room_name, UnauthenticatedParticipantList participants_in_the_room);
+  //TODO it is not clear that return value is useful at all. drop it if it
+  //has no use
+  bool join_room(std::string room_name
+                 /*, UnauthenticatedParticipantList participants_in_the_room
+                 Participant list is sent by other participants in the room
+                 */);
 
-  /**
-   * the client need to call this function when a user join the chatroom.
-   *
-   * @param room_name the chat room name
-   * @param new_user_id is the id that the new user is using in the room.
-   *
-   * @return true in case initiating the join was successful. This does not
-   *         mean that the successful join false if process fails
-   */
-  bool accept_new_user(std::string room_name, std::string new_user_id)
-  {return false; //place holder for now
-  }
+  //Depricate, join request is triggered through join message
+  /* /\** */
+  /*  * the client need to call this function when a user join the chatroom. */
+  /*  * */
+  /*  * @param room_name the chat room name */
+  /*  * @param new_user_id is the id that the new user is using in the room. */
+  /*  * */
+  /*  * @return true in case initiating the join was successful. This does not */
+  /*  *         mean that the successful join false if process fails */
+  /*  *\/ */
+  /* bool accept_new_user(std::string room_name, std::string new_user_id) */
+  /* {return false; //place holder for now */
+  /* } */
 
   /**
    * When the user uses the client interface to send a message the client need

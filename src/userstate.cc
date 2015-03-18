@@ -48,19 +48,27 @@ bool np1secUserState::init() {
   return long_term_key_pair.generate();
 }
 
-bool np1secUserState::join_room(std::string room_name,
-   UnauthenticatedParticipantList participants_in_the_room) {
-  np1secSession *new_session = new np1secSession(this,
-                                                 room_name,
-                                                 participants_in_the_room);
+bool np1secUserState::join_room(std::string room_name/*,
+                                                       UnauthenticatedParticipantList participants_in_the_room*/) {
+  //we join the room, the room make a join session
 
-  if (!new_session->join(long_term_key_pair)) {
-    delete new_session;
-    return false;
+  //if the room is not made, we make it.
+  if (chatrooms.find(room_name)) {
+    //room creation triger joining
+    chatroom.insert(room_name, np1secRoom(room_name, this));
+  } else {
+    //we asks the room to re-join.
+    //it is not clear if it is a good idea
+    //we need to have a better way in retrying
+    //join 
+    //if (!chatrooms[room_name].join()) {
+      //TODO:garbage collector for the room?
+      return false;
+      //}
   }
 
-  session_in_a_room.insert({ room_name, new_session });
   return true;
+  
 }
 
 /**
@@ -69,89 +77,25 @@ bool np1secUserState::join_room(std::string room_name,
    The most important thing that user state message handler
    does is to 
        - Process the unencrypted part of the message.
-       - decide which session should handle the message using
-         the following procedure:
-           1. If the message has sid:
-                if there is a live session with that sid, deligate
-                to that session
-                else if the message has sid but session with such
-                sid does not exists or the session is dead
-                   if the room has active session, give it to the active sesssion of the room
-                   else 
-                      make a new session for that room and deligate it to it 
-                      (but it is a sort of error, ignore the message. Join message doesn't have                    sid)
-
-           2. If the message doesn't have sid, it is a join message
-                if the room has active session
-                  deligate it to the active session. 
-                else
-                  (this shouldn't happen either).
+       - decide which room should handle the message using the room name
  */
 RoomAction np1secUserState::receive_handler(std::string room_name,
                                             std::string np1sec_message,
                                             uint32_t message_id) {
+  np1secMessage recieved.receive(received_message); //so no decryption key here
 
-  np1secMessage recieved = receive(received_message);
-  np1secSession *cur_session = retrieve_session(room_name);
-  if (!cur_session) {
-    //only possible operation should be join and leave 
-  if (np1sec_message.find(":o?JOIN:o?") == 0) {
-    // check if it is ourselves or somebody else who is joining
-    string joining_nick = np1sec_message.substr(strlen(":o?JOIN:o?"));
+  //if there is no room, it was a mistake to give us the message
+  assert(chatrooms.find(room_name));
 
-    if (name == joining_nick) {
-      ;//ignore
-    } else {
-      this->accept_new_user(room_name, joining_nick);
-    }
-  } else if (np1sec_message.find(":o?LEAVE:o?") == 0) {
-    string leaving_nick = np1sec_message.substr(strlen(":o?LEAVE:o?"));
-    if (leaving_nick==name) {
-      leave_room(room_name);
-    } else {
-      shrink_on_leave(room_name, leaving_nick);
-    }
-  } else if (np1sec_message.find(":o?SEND:o?") == 0) {
-    string message_with_id = np1sec_message.substr(strlen(":o?SEND:o?"));
-    size_t sender_pos = message_with_id.find(":o?");
-    string message_id_str = message_with_id.substr(0, sender_pos);
-    int message_id;
-    stringstream(message_id_str) >> message_id;
-    string sender_and_message = message_with_id.substr(
-                                  sender_pos + strlen(":o?"));
-    size_t message_pos = sender_and_message.find(":o?");
-    string sender = message_with_id.substr(0, message_pos);
-    // we don't care really about sender
-    string pure_message = sender_and_message.substr(
-                                    message_pos + strlen(":o?"));
-  }
-    
-  }
+  chatrooms[room_name].receive_handler(received_message);
   
-  np1secMessage received_message = cur_session->receive(np1sec_message);
-  RoomAction room_action = { NULL, received_message.user_message };
-  return room_action;
 }
 
 bool np1secUserState::send_handler(std::string room_name,
                                    std::string plain_message) {
-  np1secSession *cur_session = retrieve_session(room_name);
-  if (!cur_session) {
-    assert(false); 
-    // uh oh
-  }
-  return cur_session->send(plain_message, np1secMessage::USER_MESSAGE);
-}
-
-np1secSession *np1secUserState::retrieve_session(std::string room_name) {
-  np1secSession *cur_session = nullptr;
-  session_room_map::iterator it = session_in_a_room.find(room_name);
-
-  if ( it != session_in_a_room.end() ) {
-    cur_session = it->second;
-  }
-
-  return cur_session;
+  assert(chatrooms.find(room_name) != chatrooms.end());    // uh oh 
+  return chatrooms[room_name].send(plain_message);
+  
 }
 
 #endif  // SRC_USERSTATE_CC_
