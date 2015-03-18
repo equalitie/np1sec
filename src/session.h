@@ -94,6 +94,20 @@ class np1secSession {
   std::map<std::string,Participant> participants;
 
   /**
+   * Create a new np1secSession object based on the combination of participants
+   * from the current session plus another session
+   *
+   */
+  np1secSession operator+(np1secSession a);
+
+  /**
+   * Create a new np1secSession object based which has all the participants
+   * from the current session minus the provided session
+   *
+   */
+  np1secSession operator-(np1secSession a);
+
+  /**
    * Keeps the list of the unauthenticated participants in the room before the
    * join/accept or farewell finishes.
    */

@@ -64,6 +64,27 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name,
 {
 }
 
+
+np1secSession np1secSession::operator+(np1secSession a) {
+  std::map<std::string, Participant> combination;
+  combination.insert(participants.begin(), participants.end());
+  combination.insert(a.participants.begin(), a.participants.end());
+  np1secSession new(us, room_name, combination);
+
+  return new;  
+}
+
+np1secSession np1secSession::operator-(np1secSession a) {
+  std::map<std::string, Participant> difference;
+  std::set_difference(
+    participants.begin(), participants.end(),
+    a.begin(), a.end(),
+    std::back_inserter(difference) );
+  np1secSession new(us, room_name, difference);
+
+  return new;
+}
+
 /**
  * it should be invoked only once to compute the session id
  * if one need session id then they need a new session
