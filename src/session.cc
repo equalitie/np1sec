@@ -16,7 +16,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-
 #include <assert.h>
 #include <stdlib.h>
 #include <string>
@@ -47,6 +46,18 @@ static void cb_send_ack(evutil_socket_t fd, short what, void *arg) {
   // Construct message with p.id
   np1secSession* session = (static_cast<np1secSession*>(arg));
   session->send("ACK", np1secMessage::PURE_META_MESSAGE);
+}
+
+gcry_error_t np1secSession::compute_hash(HashBlock transcript_chain,
+                                     std::string message) {
+  assert(message.size() % 2 == 0);
+
+  unsigned char *bin;
+  const char *p = message.c_str();
+  for (int i=0; i < message.size(); i++, p+=2) {
+    sscanf(p, "%2hhx", &bin);
+  }
+  return cryptic.hash(bin, message.size()/2, transcript_chain, true);
 }
 
 np1secSession::np1secSession(np1secUserState *us)
@@ -370,7 +381,7 @@ bool np1secSession::state_handler(np1secMessage receivd_message)
    - send 
    sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), kc, z_joiner
 */
-np1secSessionState np1secSession::auth_and_reshare(np1secMessage received_message) {
+StateAndAction np1secSession::auth_and_reshare(np1secMessage received_message) {
   if (!session_id_is_set) {
     if (!setup_session_view(received_message))
       return DEAD;
@@ -399,7 +410,7 @@ np1secSessionState np1secSession::auth_and_reshare(np1secMessage received_messag
    For the joiner user, calls it when receive a session confirmation
    message.
    
-   sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), Hash(GroupKey, U_sender)
+   sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), hash(GroupKey, U_sender)
    
    of SESSION_CONFIRMATION type
    
@@ -410,7 +421,7 @@ np1secSessionState np1secSession::auth_and_reshare(np1secMessage received_messag
    If the sid is different send a new join request
    
 */
-np1secSessionState np1secSession::confirm_or_resession(np1secMessage received_message) {
+StateAndAction np1secSession::confirm_or_resession(np1secMessage received_message) {
   //if sid is the same mark the participant as confirmed
   //receiving mismatch sid basically means rejoin
   if (received_message.sid == session_id) {
@@ -467,19 +478,32 @@ np1secSessionState np1secSession::confirm_or_resession(np1secMessage received_me
      change status to REPLIED_TO_NEW_JOIN
 
  */
-np1secSessionState np1secSession::send_auth_share_and_participant_info(np1secMessage received_message)
+StateAndAction np1secSession::send_auth_share_and_participant_info(np1secMessage received_message)
 {
 
-  np1secSession* new_child_session = new np1secSession(received_message, participants);
-  if (new_child_session->session_id_is_set) {
-    new_child_session->my_parent = this;
-    my_children[new_child_session->session_id] = new_child_session;
-  }
-  else //just throw the session out
-    delete new_child_session;
+  RoomAction new_session_action;
+  new_session_action.bred_session = new np1secSession(received_message, participants);
+  
+   if (!new_child_session->session_id)
+     delete new_child_session;
+   else
+     new_session_action.action_typ = NEW_SESSION;
+     
+    //Depricated: np1secRoom manages the set of sessions
+    //new_child_session->my_parent = this;
+    //my_children[new_child_session->session_id] = new_child_session;
+
+    //TODO: this is incomplete, you need to report your session 
+    //to the room. more logically the room just need to request the
+    //creation of the room.
+  // }
+  // else {*
+  //   //throw the session out
+  //   //trigger the session (in-lmbo) about the repeated join/
+  //   */
     
   //our state doesn't need to change
-  return my_state;
+  return StateAndAction(my_state, new_session_action);
 
 }
 
@@ -497,13 +521,13 @@ np1secSessionState np1secSession::send_auth_share_and_participant_info(np1secMes
    - add z_sender to share table
    - if all share are there compute the group key send the confirmation
    
-   sid, Hash(GroupKey, U_sender), signature 
+   sid, hash(GroupKey, U_sender), signature 
    
    change status GROUP_KEY_GENERATED
    otherwise no change to the status
    
 */
-np1secSessionState confirm_auth_add_update_share_repo(np1secMessage received_message) {
+StateAndAction confirm_auth_add_update_share_repo(np1secMessage received_message) {
   if (received_message.type == np1secMessage::JOINER_AUTH) {
     if (!participants[received_message.sender_id].authenticate(my_id, received_message.kc))  {
         return DEAD;
@@ -539,7 +563,7 @@ np1secSessionState confirm_auth_add_update_share_repo(np1secMessage received_mes
    For the current user, calls it when receive a session confirmation
    message.
    
-   sid, Hash(GroupKey, U_sender), signature
+   sid, hash(GroupKey, U_sender), signature
    
    if it is the same sid as the session id, marks the confirmation in 
    the confirmation list for the sender. If all confirmed, change 
@@ -549,7 +573,7 @@ np1secSessionState confirm_auth_add_update_share_repo(np1secMessage received_mes
    If the sid is different, something is wrong halt drop session
    
 */
-np1secSessionState np1secSession::mark_confirm_and_may_move_session(np1secMessage received_message) {
+StateAndAction np1secSession::mark_confirm_and_may_move_session(np1secMessage received_message) {
   //TODO:realistically we need to check sid, if sid
   //doesn't match we shouldn't have reached this point
   if (validate_session_confirmation())
@@ -585,7 +609,7 @@ np1secSessionState np1secSession::mark_confirm_and_may_move_session(np1secMessag
  * The status of the session is changed to farewelled. 
  * The statatus of new sid session is changed to re_shared
  */
-np1secSessionState np1secSession::send_farewell_and_reshare(np1secMessage received_message) {
+StateAndAction np1secSession::send_farewell_and_reshare(np1secMessage received_message) {
   LoadFlag meta_load_flag = NO_LOAD;
   std::string meta_load = NULL;
   np1secMessage outbound(session_id, my_id,
@@ -645,7 +669,7 @@ bool np1secSession::received_p_list(std::string participant_list) {
   //Split up participant list and load it into the map
   char* tmp = strdup(participant_list.c_str());
 
-  std::string ids_keys = strtok(tmp, ":03");
+  std::string ids_keys = strtok(tmp, c_np1sec_delim);
   std::vector<std::string> list_ids_keys;
   while (!ids_keys.empty()) {
     std::string decoded = "";
@@ -653,14 +677,14 @@ bool np1secSession::received_p_list(std::string participant_list) {
                            (unsigned char**)decoded.c_str(),
                            reinterpret_cast<size_t*>(ids_keys.size()));
     list_ids_keys.push_back(ids_keys);
-    ids_keys = strtok(NULL, ":03");
+    ids_keys = strtok(NULL, c_np1sec_delim);
   }
 
   for (std::vector<std::string>::iterator it = list_ids_keys.begin();
        it != list_ids_keys.end(); ++it) {
     tmp = strdup((*it).c_str());
-    std::string id = strtok(tmp, ":03");
-    std::string key = strtok(NULL, ":03");
+    std::string id = strtok(tmp, c_np1sec_delim);
+    std::string key = strtok(NULL, c_np1sec_delim);
     gcry_sexp_t sexp_key = cryptic.ConvertToSexp(key); 
     Participant p(id);
     p.ephemeral_key = sexp_key;
@@ -738,7 +762,7 @@ void np1secSession::add_message_to_transcript(std::string message,
 
   ss << transcript_chain.rbegin()->second;
   ss >> pointlessconversion;
-  pointlessconversion += ":O3" + message;
+  pointlessconversion += c_np1sec_delim + message;
 
   compute_message_hash(*hb, pointlessconversion);
 

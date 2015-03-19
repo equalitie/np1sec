@@ -28,42 +28,12 @@
 #include "src/session.h"
 
 class np1secUserState;
-//This has been removed in favor of np1secSession::operator- function
-//np1secSession::operator+ functions.
-//which compute the contrast of two sessions and gives set up of joining
-//and leaving users.
-/* /\** */
-/*  * it represents a message from a session to the room. When a room needs */
-/*  * to take action based on result of a message that a session is received */
-/*  * */
-/*  *  */
-/*  * */
-/*  *\/ */
-/* class RoomAction { */
-/*   //historically RoomAction was the way to inform chat client about */
-/*   //actions, however we decided the main tool for action transmission */
-/*   //to chat client are callback function */
-
-/*   // the only real action type is only */
-/*   //activate which signal changing active session and hence */
-/*   //cryptographically verifiable join and leave. */
-/*  public: */
-/*   enum ActionType { */
-/*     NO_ACTION, */
-/*     JOIN, */
-/*     LEAVE, */
-/*     REKEY, */
-/*     NEW_MESSAGE */
-/*   }; */
-
-/*   ActionType action_type; */
-/*   UserEphemeralId acting_user;  // The user which joined, left or sent a message. */
-  
-/* }; */
 
 //The type that keep the set of all sessions associated with this room
 //It really need to be a pointer, because the sessions are mostly
 //create by other sessions and handed to the room.
+
+//Should we point to a session or store the session itself?
 typedef std::map<SessionID, np1secSession> SessionMap;
 
 /**
@@ -99,7 +69,7 @@ class np1secRoom {
   };
 
   UserInRoomState user_in_room_state;
-  crypto np1sec_ephemeral_crypto; //We keep ephemeral crypo constant
+  Cryptic np1sec_ephemeral_crypto; //We keep ephemeral crypo constant
   //during join request to avoid repeated need for authentication
   //forward serecy procedure can update it consequently. 
   SessionMap session_universe;
@@ -119,11 +89,22 @@ class np1secRoom {
    */
   np1secRoom(std::string room_name, np1secUserState* user_state);
   
+  //Depricated: the approach of session factor is not working
+  //as some of request for new session (specifically leave)
+  //might come in encrypted format and as such the room
+  //has no idea about the new session. 
+  /* /\** */
+  /*  * When a join request is received, it create a session */
+  /*  * */
+  /*  *\/ */
+  /* np1secSession np1secRoom::session_factory(breeding_session, */
+  /*                                         join_message);
+  
   /**
    * called by UserState, everytime the user trys to join a room
    * it just simply send a join message to the room.
    */
-  join();
+  void join();
     
   /**
    * manages the finite state machine of the sid part of the message
@@ -158,3 +139,5 @@ class np1secRoom {
 };    
 
 typedef std::map<std::string, np1secSession*> session_room_map;
+
+#endif //SRC_ROOM_H_

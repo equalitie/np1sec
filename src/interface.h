@@ -37,9 +37,33 @@
  */
 struct ParticipantId
 {
+  static const unsigned int c_finger_print_length = 32;
   std::string nickname;
-  HashBlock Fingerprint; //Finger print is actually the long term public point of participant
-}
+  uint8_t fingerprint[c_finger_print_length]; //Finger print is actually the long term public point of participant that
+  //is x coordinate and one bit for distinguishing the corresponding y
+
+  /**
+   * @return nickname|FingerPrint;
+   */
+  std::string id_to_stringbuffer() {
+    std::string string_id(nickname);
+    string_id += c_subfield_delim; 
+    string_id.append(reinterpret_cast<char*>(fingerprint, c_finger_print_length));
+
+    return string_id;
+  }
+
+  /**
+   *  constructor
+   *
+   */
+  ParticipantId(std::string nickname = "", std::string fingerprint_strbuff = "")
+  :nickname(nickname)
+  {
+    memcpy(fingerprint, fingerprint_strbuff.c_str(), fingerprint_strbuff.size());
+  }
+  
+};
 
 /**
  * This sturct is used by the client to send the list of participant in
@@ -48,7 +72,7 @@ struct ParticipantId
  *
  */
 struct UnauthenticatedParticipant {
-  std::string participant_id;
+  ParticipantId participant_id;
   HashBlock ephemeral_pub_key;  // This should be in some convienient 
   // Format
 };

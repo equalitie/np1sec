@@ -101,8 +101,13 @@ void np1secRoom::receive_handler(np1secMessage received_message)
       }
       // else //ignon
     } else  //no sid, it should be a join message, verify and send to active session
-      if (received_message.type == np1secMessage::JOIN_REQUEST)
-        session_universe[active_session].receive_handler(received_message);
+      if (received_message.type == np1secMessage::JOIN_REQUEST) {
+        RoomAction action_to_take = session_universe[active_session].receive_handler(received_message);
+        if (action_to_take == RoomAction::NEW_SESSION) {
+          session_universe.insert(*(action_to_take.bred_session));
+          delete action_to_take.bred_session; //:(
+        }
+      }
     //else just ignore it
   }
     

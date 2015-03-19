@@ -29,7 +29,7 @@ TEST_F(CryptTest, test_hash) {
     "ba7816bf8f01cfea414140de5dae2223"
     "b00361a396177a9cb410ff61f20015ad";
   uint8_t *res = new HashBlock;
-  gcry_error_t err = Hash(reinterpret_cast<const void *>(str.c_str()),
+  gcry_error_t err = Cryptic::hash(reinterpret_cast<const void *>(str.c_str()),
                           3, res, false);
   EXPECT_FALSE(err);
   char *buf = new char[c_hash_length*2+1];

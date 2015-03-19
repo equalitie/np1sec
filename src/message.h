@@ -23,10 +23,12 @@
 #include "src/interface.h"
 #include "src/crypt.h"
 #include "src/base64.h"
+#include "src/userstate.h"
 
 class np1secMessage {
  protected:
-  Cryptic cryptic;
+
+  Cryptic* cryptic; //message class is never responsible to delete the cryptic object
 
   std::vector<std::string> &split(const std::string &s,
                                   char delim,
@@ -57,7 +59,7 @@ class np1secMessage {
     GROUP_SHARE,
     USER_MESSAGE,
     PURE_META_MESSAGE,
-    LEAVE_REQUEST,
+    //LEAVE_REQUEST,
     FAREWELL,
     SESSION_P_LIST,
     TOTAL_NO_OF_MESSAGE_TYPE //This should be always the last message type
@@ -82,7 +84,7 @@ class np1secMessage {
   std::string key_confirmation;
   std::string joiner_info;
   std::vector<std::string> pstates;
-  np1secUserState us;
+  np1secUserState* us;
   /*
    * Construct a new np1secMessage based on a set of message components
    * as input
@@ -91,7 +93,7 @@ class np1secMessage {
                 std::string user_message, np1secMessageType message_type,
                 HashBlock* transcript_chain_hash, np1secLoadFlag meta_load_flag,
                 std::string meta_load, std::vector<std::string> pstates,
-                Cryptic cryptic, np1secUserState us std::string room_name);
+                Cryptic* cryptic, np1secUserState* us, std::string room_name);
 
   /*
    * Construct a new np1secMessage based on a set of message components
@@ -110,7 +112,7 @@ class np1secMessage {
                              std::string session_key_confirmation,
                              std::string joiner_info,
                              std::string z_sender,
-                             np1secUserState us,
+                             np1secUserState* us,
                              std::string room_name);
 
   /**
@@ -219,11 +221,14 @@ class np1secMessage {
    */
   void generate_nonce(unsigned char* buffer);
 
+  gcry_error_t compute_hash(HashBlock transcript_chain,
+                                  std::string message);
   /**
    * Destructor
    *
    */
   ~np1secMessage();
+
 };
 
 #endif  // SRC_MESSAGE_H_

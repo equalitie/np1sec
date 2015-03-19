@@ -6,11 +6,11 @@ TESTS += libnp1sec_test
 
 libnp1sec_test_SOURCES = \
 	test/crypt_test.cc \
-	test/main.cc
-#    test/chat_mocker.cc \
-#    test/chat_mocker_np1sec_plugin.cc \
-# 	test/session_test.cc \
-#    test/test_message.cc \
+	test/main.cc \
+    test/chat_mocker.cc \
+    test/chat_mocker_np1sec_plugin.cc \
+ 	test/session_test.cc \
+    test/test_message.cc \
 libnp1sec_test_CPPFLAGS = \
 	-I$(top_srcdir)/${GTEST_BASE} \
 	-I$(top_srcdir)/${GTEST_INCLUDE}
@@ -23,17 +23,17 @@ libnp1sec_test_LDFLAGS = \
 
 # Integration tests
 
-# noinst_PROGRAMS += xmpp_test
+noinst_PROGRAMS += xmpp_test
 
-# xmpp_test_SOURCES = test/xmpp_test.cpp
+xmpp_test_SOURCES = test/xmpp_test.cpp
 
-# xmpp_test_LDADD = \
-# 	$(PURPLE_LIBS) \
-# 	libnp1sec.la
+xmpp_test_LDADD = \
+ 	$(PURPLE_LIBS) \
+ 	libnp1sec.la
 
-# xmpp_test_CPPFLAGS = \
-# 	$(PURPLE_CFLAGS) \
-# 	-I$(srcdir)/src
+xmpp_test_CPPFLAGS = \
+	$(PURPLE_CFLAGS) \
+	-I$(srcdir)/src
 
 # gtest
 

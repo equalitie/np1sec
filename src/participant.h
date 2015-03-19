@@ -35,7 +35,7 @@ class Participant {
   np1secPublicKey ephemeral_key;
   event* receive_ack_timer;
   event* send_ack_timer;
-  HashBlock raw_ephemeral_key;
+  HashBlock raw_ephemeral_key = {};
   // MessageDigest message_digest;
 
   np1secKeyShare cur_keyshare;
@@ -62,23 +62,25 @@ class Participant {
 
   /**
    * crypto material access functions
+   *
+   * @return true if successfully updated to the new key
    */
   bool set_ephmeral_key(HashBlock raw_ephemeral_key)
   {
     gcry_sexp_release(ephemeral_key);
-    this->raw_ephemeral_key = raw_ephemeral_key;
-    ephemeral_key = Cryptic::convert_to_sexp(it->ephemeral_key);
+    delete [] raw_ephemeral_key;
+    memcpy(this->raw_ephemeral_key, raw_ephemeral_key, sizeof(HashBlock));
+    ephemeral_key = Cryptic::convert_to_sexp(std::string(reinterpret_cast<char*>(raw_ephemeral_key), c_ephemeral_key_length));
 
-    return (ephemeral_key != NULL);
+    return (ephemeral_key != nullptr);
   }
   
   /**
-   * default constructor
+   * default constructoro
    */
  Participant(std::string participant_id = "")
    :id(participant_id),
-    raw_ephemeral_key(NULL),
-    ephemeral_key(NULL),
+    ephemeral_key(nullptr),
     authenticated(false),
     authed_to(false){
     

@@ -35,6 +35,9 @@ typedef gcry_sexp_t np1secAsymmetricKey;
 
 typedef HashBlock np1secKeyShare;
 
+const unsigned int c_ephemeral_key_length = 32;
+const unsigned int c_key_share = c_hash_length;
+
 class  LongTermIDKey {
  protected:
   KeyPair key_pair;
@@ -75,7 +78,7 @@ class Cryptic {
  protected:
   gcry_sexp_t ephemeral_key, ephemeral_pub_key, ephemeral_prv_key;
   
-  // static const uint32_t ED25519_KEY_SIZE = 255;
+  static const uint32_t ED25519_KEY_SIZE = 32;
   const static gcry_mpi_format NP1SEC_BLOB_OUT_FORMAT = GCRYMPI_FMT_USG;
 
  public:
@@ -131,6 +134,9 @@ teddh   *
    */
   static std::string retrieve_result(gcry_sexp_t text_sexp);
 
+  static gcry_error_t hash(const void *buffer, size_t buffer_len, HashBlock hb,
+                  bool secure = true);
+  
   /**
    * Convert a given std:string to a valid gcrypt s-expression
    *
@@ -138,7 +144,7 @@ teddh   *
    *
    * @return gcry_sexp_t gcrypt s-expression respresentation
    */
-  gcry_sexp_t convert_to_sexp(std::string text);
+  static gcry_sexp_t convert_to_sexp(std::string text);
 
   /**
    * Given the peer's long term and ephemeral public key AP and ap, and ours 
@@ -152,8 +158,8 @@ teddh   *
    * @param my_long_term_key   our longterm key in eddsa format
    * @param peer_is_first      true if AP.X|AP.Y < BP.X|BP.Y   
    * @param teddh_token        a pointer to hash block to store 
-   *        Hash(bAP|BaP|baP) if peer_is_first
-   *        Hash(BaP|bAP|baP) in GCRYMPI_FMT_USG format if the pointer is null
+   *        hash(bAP|BaP|baP) if peer_is_first
+   *        hash(BaP|bAP|baP) in GCRYMPI_FMT_USG format if the pointer is null
    *         , necessary space will be allocated.
    *
    * @return false if the operation fails, true on success
@@ -191,6 +197,8 @@ teddh   *
    * @return gcry_cipher_hd_t representing a cipher session handle
    */
   gcry_cipher_hd_t OpenCipher();
+
+
 };
 
 const unsigned char SESSION_KEY[] = {
@@ -205,12 +213,5 @@ const unsigned char SESSION_IV[] = {
 };
 
 const int c_np1sec_hash = gcry_md_algos::GCRY_MD_SHA256;
-
-gcry_error_t hash(const void *buffer, size_t buffer_len, HashBlock hb,
-                  bool secure = true);
-gcry_error_t compute_message_hash(HashBlock transcript_chain,
-                                  std::string message);
-gcry_error_t compute_session_hash(HashBlock transcript_chain,
-                                  std::string message);
 
 #endif  // SRC_CRYPT_H_

@@ -26,7 +26,7 @@
 
 using namespace std;
 
-gcry_error_t Hash(const void *buffer, size_t buffer_len, HashBlock hb,
+gcry_error_t Cryptic::hash(const void *buffer, size_t buffer_len, HashBlock hb,
                   bool secure) {
   gcry_error_t err = 0;
   gcry_md_hd_t digest = nullptr;
@@ -50,25 +50,6 @@ done:
   gcry_md_close(digest);
   return err;
 }
-
-gcry_error_t compute_message_hash(HashBlock transcript_chain,
-                                     std::string message) {
-  return Hash(message.c_str(), message.size(), transcript_chain, true);
-}
-
-gcry_error_t compute_session_hash(HashBlock transcript_chain,
-                                     std::string message) {
-  assert(message.size() % 2 == 0);
-
-  unsigned char *bin;
-  const char *p = message.c_str();
-  for (int i=0; i < message.size(); i++, p+=2) {
-    sscanf(p, "%2hhx", &bin);
-  }
-  return Hash(bin, message.size()/2, transcript_chain, true);
-}
-
-
 
 Cryptic::Cryptic() {}
 
@@ -171,8 +152,8 @@ gcry_sexp_t Cryptic::convert_to_sexp(std::string text) {
  * @param my_long_term_key   our longterm key in eddsa format
  * @param order
  * @param teddh_token        a pointer to hash block to store 
- *        Hash(bAP|BaP|baP) if AP.X|AP.Y < BP.X|BP.Y other wise 
- *        Hash(BaP|bAP|baP) in GCRYMPI_FMT_USG format if the pointer is null
+ *        hash(bAP|BaP|baP) if AP.X|AP.Y < BP.X|BP.Y other wise 
+ *        hash(BaP|bAP|baP) in GCRYMPI_FMT_USG format if the pointer is null
  *         , necessary space will be allocated.
  *
  * @return true if succeeds otherwise false
@@ -355,7 +336,7 @@ bool Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, LongTermPublicKey
   if (teddh_token == NULL)
     teddh_token = new HashBlock[1]; //so stupid!!!
   
-  Hash(feed_to_hash_buffer, token_concat.size(), *teddh_token, true);
+  hash(feed_to_hash_buffer, token_concat.size(), *teddh_token, true);
 
   failed = false;
 

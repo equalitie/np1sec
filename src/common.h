@@ -28,6 +28,7 @@ extern "C" {
 #include <iterator>
 #include <stdexcept>
 #include <vector>
+#include <string>
 
 #include "src/base64.h"
 
@@ -48,6 +49,8 @@ typedef uint8_t HashBlock[c_hash_length];
 //typedef std::vector<uint8_t> SessionID;
 typedef HashBlock SessionID;
 
-
+const std::string c_np1sec_protocol_name("np1sec");
+const std::string c_np1sec_delim(":o)"); //because http://en.wikipedia.org/wiki/Man%27s_best_friend_(phrase)
+const std::string c_subfield_delim(":"); //needed by ParticipantId defined in interface.h 
 
 #endif  // SRC_COMMON_H_

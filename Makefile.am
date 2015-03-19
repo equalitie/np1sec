@@ -14,10 +14,11 @@ lib_LTLIBRARIES = libnp1sec.la
 
 libnp1sec_la_SOURCES = \
 	src/crypt.cc \
-	src/base64.cc
+	src/base64.cc \
 	src/message.cc \
 	src/participant.cc \
 	src/session.cc \
+	src/room.cc \
 	src/userstate.cc
 
 
