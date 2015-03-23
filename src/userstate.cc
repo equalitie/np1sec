@@ -79,7 +79,7 @@ bool np1secUserState::join_room(std::string room_name/*,
        - Process the unencrypted part of the message.
        - decide which room should handle the message using the room name
  */
-RoomAction np1secUserState::receive_handler(std::string room_name,
+void np1secUserState::receive_handler(std::string room_name,
                                             std::string np1sec_message,
                                             uint32_t message_id) {
   np1secMessage recieved.receive(received_message); //so no decryption key here

@@ -26,8 +26,11 @@
 #include "src/crypt.h"
 #include "src/interface.h"
 #include "src/session.h"
+#include "src/message.h"
 
 class np1secUserState;
+class np1secSession;
+class np1secMessage;
 
 //The type that keep the set of all sessions associated with this room
 //It really need to be a pointer, because the sessions are mostly
@@ -37,14 +40,14 @@ class np1secUserState;
 typedef std::map<SessionID, np1secSession> SessionMap;
 
 /**
- * Manage all sessions associated to a room, this is follow the concurrent join
- * protocol described in the np1sec spec
+ * Manage all sessions associated to a room, this is follow the concurrent 
+ * join protocol described in the np1sec spec
  * 
  * The session-room invarients is that:
  *  - All participant in active session, share the same view about who is in 
  *    the active session of the room.
  *
- * Therefore session creation fololws the following algorithm:
+ * nTherefore session creation fololws the following algorithm:
  *
  * User is in active session:
  * - Receive a join join requet-> make a new session immediately with session id.

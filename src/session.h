@@ -35,6 +35,26 @@
 class np1secSession;
 class np1secUserState;
 
+   /**
+   * Callback function to manage sending of heartbeats
+   *
+   */
+static void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg);
+
+  /*
+   * Callback function to cause automatic sending of ack for 
+   * received message
+   *
+   */
+static void cb_send_ack(evutil_socket_t fd, short what, void *arg);
+
+  /*
+   * Callback function to cause automatic warning if ack not
+   * received for previously sent message
+   *
+   */
+static void cb_ack_not_received(evutil_socket_t fd, short what, void *arg);
+
 class MessageDigest {
  public:
   HashBlock digest;
@@ -544,16 +564,13 @@ class np1secSession {
    */
   bool received_p_list(std::string participant_list);
 
+ public:
   /**
    * When a user wants to send a message to a session it needs to call its send
    * function.
    */
   bool send(std::string message, np1secMessage::np1secMessageType message_type);
 
-  gcry_error_t compute_session_hash(HashBlock transcript_chain,
-                                  std::string message);
-
- public:
   /**
      constructor
      You can't have a session without a user
@@ -585,26 +602,13 @@ class np1secSession {
    * Destructor, session should be destroyed at leave.
    */
   ~np1secSession();
+
+  //friend all timer call backs
+  friend /*static*/ void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg);
+  friend /*static*/ void cb_send_ack(evutil_socket_t fd, short what, void *arg);
+  friend /*static*/ void cb_ack_not_received(evutil_socket_t fd, short what, void *arg);
+
 };
 
-   /**
-   * Callback function to manage sending of heartbeats
-   *
-   */
-  static void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg);
-
-  /*
-   * Callback function to cause automatic sending of ack for 
-   * received message
-   *
-   */
-  static void cb_send_ack(evutil_socket_t fd, short what, void *arg);
-
-  /*
-   * Callback function to cause automatic warning if ack not
-   * received for previously sent message
-   *
-   */
-  static void cb_ack_not_received(evutil_socket_t fd, short what, void *arg);
 
 #endif  // SRC_SESSION_H_

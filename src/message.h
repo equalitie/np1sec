@@ -68,7 +68,7 @@ class np1secMessage {
 
   np1secMessageType message_type;
   uint32_t message_id;
-  SessionID session_id;
+  uint8_t* session_id;
   std::string sender_id;
   std::string user_message;
   std::string meta_message;
@@ -76,7 +76,7 @@ class np1secMessage {
   np1secLoadFlag meta_load_flag;
   std::string meta_load;
   int meta_only;
-  HashBlock transcript_chain_hash;
+  uint8_t* transcript_chain_hash;
   std::string nonce;
   std::string z_sender;
   std::vector<UnauthenticatedParticipant> session_view;
@@ -85,13 +85,14 @@ class np1secMessage {
   std::string joiner_info;
   std::vector<std::string> pstates;
   np1secUserState* us;
+  std::string room_name;
   /*
    * Construct a new np1secMessage based on a set of message components
    * as input
    */
   np1secMessage(SessionID session_id, std::string sender_id,
                 std::string user_message, np1secMessageType message_type,
-                HashBlock* transcript_chain_hash, np1secLoadFlag meta_load_flag,
+                HashBlock transcript_chain_hash, np1secLoadFlag meta_load_flag,
                 std::string meta_load, std::vector<std::string> pstates,
                 Cryptic* cryptic, np1secUserState* us, std::string room_name);
 

@@ -48,17 +48,18 @@ static void cb_send_ack(evutil_socket_t fd, short what, void *arg) {
   session->send("ACK", np1secMessage::PURE_META_MESSAGE);
 }
 
-gcry_error_t np1secSession::compute_hash(HashBlock transcript_chain,
-                                     std::string message) {
-  assert(message.size() % 2 == 0);
+// TODO: Who is calling this?
+// gcry_error_t np1secSession::compute_hash(HashBlock transcript_chain,
+//                                      std::string message) {
+//   assert(message.size() % 2 == 0);
 
-  unsigned char *bin;
-  const char *p = message.c_str();
-  for (int i=0; i < message.size(); i++, p+=2) {
-    sscanf(p, "%2hhx", &bin);
-  }
-  return cryptic.hash(bin, message.size()/2, transcript_chain, true);
-}
+//   unsigned char *bin;
+//   const char *p = message.c_str();
+//   for (int i=0; i < message.size(); i++, p+=2) {
+//     sscanf(p, "%2hhx", &bin);
+//   }
+//   return cryptic.hash(bin, message.size()/2, transcript_chain, true);
+// }
 
 np1secSession::np1secSession(np1secUserState *us)
   :myself(us->user_id())
@@ -80,9 +81,9 @@ np1secSession np1secSession::operator+(np1secSession a) {
   std::map<std::string, Participant> combination;
   combination.insert(participants.begin(), participants.end());
   combination.insert(a.participants.begin(), a.participants.end());
-  np1secSession new(us, room_name, combination);
+  np1secSession new_session(us, room_name, combination);
 
-  return new;  
+  return new_session;  
 }
 
 np1secSession np1secSession::operator-(np1secSession a) {
@@ -91,9 +92,9 @@ np1secSession np1secSession::operator-(np1secSession a) {
     participants.begin(), participants.end(),
     a.begin(), a.end(),
     std::back_inserter(difference) );
-  np1secSession new(us, room_name, difference);
+  np1secSession new_session(us, room_name, difference);
 
-  return new;
+  return new_session;
 }
 
 /**
