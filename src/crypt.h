@@ -101,6 +101,15 @@ class Cryptic {
   bool init();
 
   /**
+   *
+   */
+  bool group_enc(std::map<std::string, Participant> participants, sid, std::string* hash);
+
+  /*
+   *
+   */
+  bool group_dec();
+  /**
    * Encrypt a give plain text using the previously created ed25519 keys
    *
    * @param plain_text a plain text message string to be encrypted

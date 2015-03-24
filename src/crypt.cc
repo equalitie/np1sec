@@ -128,6 +128,28 @@ std::string Cryptic::retrieve_result(gcry_sexp_t text_sexp) {
 
 }
 
+bool Cryptic::group_enc(std::map<std::string, Particpant> participants, 
+                        std::vector<std::string> peers,
+                        sid, 
+                        std::string* hash) {
+  for (unsigned i=0; i < peers.size(); i++) {
+    unsigned index = i+1;
+    if (index == peers.size()) {
+      index = 0;
+    }
+    std::string to_hash = participants[peers[index]].p2p_key + sid;
+    HashBlock hb;
+    hash(to_hash.c_str(), to_hash.size(), hb, true);
+    hash ^= hb;
+  }
+  return true;
+}
+
+bool cryptic::group_dec() {
+
+  return true;
+}
+
 gcry_sexp_t Cryptic::convert_to_sexp(std::string text) { 	
   gcry_error_t err = 0; 	
   gcry_sexp_t new_sexp; 	
