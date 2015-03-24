@@ -291,7 +291,8 @@ class np1secSession {
    */
   bool compute_session_id();
 
-  HashBlock group_enc();
+  void group_enc();
+  void group_dec();
   //Messaging functions
   bool send_auth_and_share_message();
   /**

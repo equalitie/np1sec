@@ -287,6 +287,33 @@ void np1secSession::group_enc() {
   
 }
 
+void np1secSession::group_dec() {
+  unsigned int my_right = (my_index + 1 == peers.size()) ? 0 : my_index+1;
+  std::vector<HashBlock> all_r;
+  HashBlock all;
+
+  for (unsigned counter = 0; counter < peers.size(); counter++) {
+    std::string to_hash_right = participants[peers[my_right]].p2p_key + sid;
+    HashBlock hbr;
+    Cryptic::hash(to_hash_right.c_str(), to_hash_right.size(), hbr, true);
+     
+    for (unsigned i=0; i < sizeof(HashBlock); i++) {
+        hbr[i] ^= participants[peer[my_right]].cur_keyshare;
+    }
+    all_r.push_back(hbr);
+    my_right = (my_right + 1 == peers.size()) ? 0 : my_right+1;
+  } 
+
+  for (std::vector<HashBlock>::iterator it = all_r.begin(); it != all_r.end(); ++it) {
+    for (unsigned i=0; i < sizeof(HashBlock); i++) {
+        all[i] ^= *it[i];
+    }
+  }
+  std::string to_hash(reinterpret_cast<char const*>(transcript_chain_hash));
+  to_hash += sid;
+  Cryptic::hash(to_hash.c_str(), to_hash.size(), group_share, true);
+}
+
 bool np1secSessionState::everybody_authenticated_and_contributed()
 {
   for(ParticipantMap::iterator it = participants.begin(); it != participants.end(); it++)

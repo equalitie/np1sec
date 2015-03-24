@@ -128,30 +128,6 @@ std::string Cryptic::retrieve_result(gcry_sexp_t text_sexp) {
 
 }
 
-HashBlock np1secSession::group_enc() {
-  unsigned int my_right = (my_index + 1 == peers.size()) ? 0 : my_index+1;
-  unsigned int my_left = (my_index == 0) ? peers.size() - 1 : my_index-1;
-  std::string to_hash_right = participants[peers[my_right]].p2p_key + sid;
-  std::string to_hash_left = participants[peers[my_left]].p2p_key + sid;
-
-  HashBlock hbr;
-  hash(to_hash_right.c_str(), to_hash_right.size(), hbr, true);
-
-  HashBlock hbl;
-  hash(to_hash_left.c_str(), to_hash_left.size(), hbl, true);
-
-  std::string result;
-  for (unsigned i=0; i < sizeof(HashBlock); i++) {
-      hbr[i] ^= hbl[i];
-  }
-  return hbr;
-}
-
-bool cryptic::group_dec() {
-
-  return true;
-}
-
 gcry_sexp_t Cryptic::convert_to_sexp(std::string text) { 	
   gcry_error_t err = 0; 	
   gcry_sexp_t new_sexp; 	
