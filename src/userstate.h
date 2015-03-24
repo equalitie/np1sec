@@ -39,12 +39,12 @@ typedef std::map<std::string, np1secRoom> RoomMap;
  * chat sessions. It keeps track of sessions that user is participating in.
  */
 class np1secUserState {
- protected:
+
+ public:
+  //TOOD: protoct these guys
   std::string name;
   np1secAsymmetricKey long_term_key;
   RoomMap chatrooms;
-
- public:
   np1secAppOps *ops;
 
   /**

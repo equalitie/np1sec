@@ -20,9 +20,123 @@
 #define SRC_PARTICIPANT_H_
 
 #include <string>
+#include <list>
 #include <event2/event.h>
 #include "src/crypt.h"
 
+/**
+   Participant id
+   
+   consists of nickname and "a" fingerprint of public key
+   the finger print is compact ed25519 point representation
+   in 32 bit (x cordinate and one bit for sign)
+ */
+struct ParticipantId
+{
+  static const unsigned int c_fingerprint_length = 32;
+  std::string nickname;
+  uint8_t fingerprint[c_fingerprint_length]; //Finger print is actually the long term public point of participant that
+  //is x coordinate and one bit for distinguishing the corresponding y
+
+  /**
+   * @return nickname|FingerPrint;
+   */
+  std::string id_to_stringbuffer() {
+    std::string string_id(nickname);
+    string_id += c_subfield_delim; 
+    string_id.append(reinterpret_cast<char*>(fingerprint), c_fingerprint_length);
+
+    return string_id;
+  }
+
+  /**
+   *  constructor
+   *
+   */
+  ParticipantId(std::string nickname, std::string fingerprint_strbuff)
+  :nickname(nickname)
+  {
+    memcpy(fingerprint, fingerprint_strbuff.c_str(), fingerprint_strbuff.size());
+  }
+
+  ParticipantId(std::string nickname, np1secAsymmetricKey fingerprint_sexp)
+  {
+    std::string fingerprint_strbuff(Cryptic::retrieve_result(fingerprint_sexp));
+    ParticipantId(nickname, fingerprint_strbuff);
+  }
+
+  /**
+   *  constructor using one string buff which has both nick 
+   *  and fingerprint
+   *
+   */
+  ParticipantId(std::string nick_clone_fingerprint_strbuff)
+  {
+    //TODO:: We need to throw up if the format isn't correct
+    std::string nickname = nick_clone_fingerprint_strbuff.substr(0, nick_clone_fingerprint_strbuff.find(c_subfield_delim.c_str()));
+    std::string fingerprint_strbuff = nick_clone_fingerprint_strbuff.substr(nickname.length() + c_subfield_delim.length() , ParticipantId::c_fingerprint_length);
+    memcpy(fingerprint, fingerprint_strbuff.c_str(), fingerprint_strbuff.size());
+  }
+
+  /**
+   * copy constructor
+   */
+  ParticipantId(const ParticipantId& lhs)
+  {
+    nickname = lhs.nickname;
+    memcpy(fingerprint, lhs.fingerprint, c_fingerprint_length);
+  }
+  
+};
+
+/**
+ * This sturct is used by the client to send the list of participant in
+ * the room. consequently np1sec will try to authenticate the participant 
+ * and establish a group session
+ *
+ */
+struct UnauthenticatedParticipant {
+  ParticipantId participant_id;
+  HashBlock ephemeral_pub_key;  // This should be in some convienient 
+  // Format
+
+  /**
+  * constructor 
+  */
+  UnauthenticatedParticipant(ParticipantId participant_id, std::string ephemeral_pub_key)
+   :participant_id (participant_id)
+  {
+    memcpy(this->ephemeral_pub_key, ephemeral_pub_key.c_str(), c_ephemeral_key_length);
+  }
+
+  /**
+   * Default copy constructor
+   */
+  UnauthenticatedParticipant(const UnauthenticatedParticipant& rhs)
+  :participant_id(rhs.participant_id)
+  {
+    memcpy(this->ephemeral_pub_key, rhs.ephemeral_pub_key, c_ephemeral_key_length);
+  }
+  
+  /**
+   * turns a string of type:
+   * 
+   *  nick:fingerprintephemeralkey 
+   *
+   * to an authenticated particpiant
+   */
+UnauthenticatedParticipant(std::string participant_id_and_ephmeralkey)
+:participant_id(participant_id_and_ephmeralkey)
+  {
+    std::string ephemeral_pub_key = participant_id_and_ephmeralkey.substr(participant_id.nickname.length() + c_subfield_delim.length() + ParticipantId::c_fingerprint_length, c_ephemeral_key_length);
+    memcpy(this->ephemeral_pub_key, ephemeral_pub_key.c_str(), c_ephemeral_key_length);
+    
+  }
+
+  
+};
+
+typedef std::list<UnauthenticatedParticipant> UnauthenticatedParticipantList;
 /** 
  * This class keeps the state of each participant in the room, including the
  * user themselves.
@@ -40,7 +154,7 @@ class Participant {
   Participant* thread_user_as_participant;
   
  public:
-  std::string id; //nickname;
+  ParticipantId id;
   std::string nickname;
   np1secPublicKey long_term_pub_key;
   np1secPublicKey ephemeral_key;
@@ -84,7 +198,7 @@ class Participant {
    *
    * @return true if successfully updated to the new key
    */
-  bool set_ephmeral_key(HashBlock raw_ephemeral_key)
+  bool set_ephemeral_key(HashBlock raw_ephemeral_key)
   {
     gcry_sexp_release(ephemeral_key);
     delete [] raw_ephemeral_key;
@@ -106,13 +220,16 @@ class Participant {
   bool be_authenticated(std::string authenicator_id, HashBlock auth_token, np1secAsymmetricKey thread_user_id_key);
 
   /**
-   * default constructoro
+   * default constructor
    */
- Participant(std::string participant_id = "")
+ Participant(ParticipantId participant_id)
    :id(participant_id),
     ephemeral_key(nullptr),
     authenticated(false),
-    authed_to(false){
+    authed_to(false),
+    long_term_pub_key(Cryptic::convert_to_sexp(reinterpret_cast<char*>(participant_id.fingerprint))) 
+      {
+
     
   }
 

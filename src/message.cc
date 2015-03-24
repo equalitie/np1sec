@@ -118,13 +118,14 @@ void np1secMessage::string_to_session_view(std::string sv_string) {
   //in pairs
   //TOOD::This need to be fixed, also how do we know end
   //Why aren't we using string::find?
+  //TODO:: We need to delegiate breaking to the Participant Id class
   while (!token.empty()) {
     std::string nickname = token.substr(0, token.find(c_subfield_delim.c_str()));
-    std::string fingerprint = token.substr(nickname.length(), nickname.length() + ParticipantId::c_fingerprint_length);
-    std::string ephemeral_key = token.substr(nickname.length() + ParticipantId::c_fingerprint_length, nickname.length() + ParticipantId::c_fingerprint_length + c_ephemeral_key_length);
+    std::string fingerprint = token.substr(nickname.length() + c_subfield_delim.length(), nickname.length() + c_subfield_delim.length() +ParticipantId::c_fingerprint_length);
+    std::string ephemeral_key = token.substr(nickname.length() +c_subfield_delim.length() + ParticipantId::c_fingerprint_length, nickname.length() + ParticipantId::c_fingerprint_length + c_ephemeral_key_length);
     ParticipantId pid(nickname, fingerprint);
     UnauthenticatedParticipant uap(pid, ephemeral_key);
-    token = token.substr(nickname.length() + ParticipantId::c_fingerprint_length + c_ephemeral_key_length);
+    token = token.substr(nickname.length() + c_subfield_delim.length() + ParticipantId::c_fingerprint_length + c_ephemeral_key_length);
     /*uap.participant = token;
     token = strtok(NULL, c_subfield_delim.c_str());
     uap.long_term_pub_key_hex = token;

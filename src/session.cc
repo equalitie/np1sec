@@ -48,6 +48,8 @@ static void cb_send_ack(evutil_socket_t fd, short what, void *arg) {
   session->send("ACK", np1secMessage::PURE_META_MESSAGE);
 }
 
+
+//All constructors
 // TODO: Who is calling this?
 // gcry_error_t np1secSession::compute_hash(HashBlock transcript_chain,
 //                                      std::string message) {
@@ -61,11 +63,11 @@ static void cb_send_ack(evutil_socket_t fd, short what, void *arg) {
 //   return cryptic.hash(bin, message.size()/2, transcript_chain, true);
 // }
 
-np1secSession::np1secSession(np1secUserState *us)
-  :myself(us->user_id())
-{
-  throw std::invalid_argument("Default constructor should not be used.");
-}
+// np1secSession::np1secSession(np1secUserState *us)
+//   :myself(us->user_id())
+// {
+//   throw std::invalid_argument("Default constructor should not be used.");
+// }
 
 /**
  * This constructor should be only called when the session is generated
@@ -76,26 +78,18 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name,
 {
 }
 
+/**
+ * Almost copy constructor, we only alter the plist
+ */
+// np1secSession::np1secSession(np1secSession& breeding_session, 
+//               ParticipantMap updated_participants)
+//   :participants(updated_participants)
+// {
 
-np1secSession np1secSession::operator+(np1secSession a) {
-  std::map<std::string, Participant> combination;
-  combination.insert(participants.begin(), participants.end());
-  combination.insert(a.participants.begin(), a.participants.end());
-  np1secSession new_session(us, room_name, combination);
+//   compute_session_id();
+  
+// }
 
-  return new_session;  
-}
-
-np1secSession np1secSession::operator-(np1secSession a) {
-  std::map<std::string, Participant> difference;
-  std::set_difference(
-    participants.begin(), participants.end(),
-    a.begin(), a.end(),
-    std::back_inserter(difference) );
-  np1secSession new_session(us, room_name, difference);
-
-  return new_session;
-}
 
 /**
    Constructor being called by current participant receiving join request
@@ -108,28 +102,33 @@ np1secSession np1secSession::operator-(np1secSession a) {
        - set new session status to REPLIED_TO_NEW_JOIN
        - send 
  */
-np1secSession::np1secSession(std::string room_name, np1secMessage join_message, ParticipantMap current_authed_participants)
-  :room_name(room_name) //TODO: not sure the session needs to know the room name
+np1secSession::np1secSession(np1secUserState *us, std::string room_name, np1secMessage join_message, ParticipantMap current_authed_participants)
+  :room_name(room_name),
+   myself(ParticipantId(us->name, us->long_term_key))
+   //TODO: not sure the session needs to know the room name: It needs because message class
+          //need  to know to send the message to :-/
+          //send should be the function of np1secRoom maybe :-?
 {
   my_state = DEAD; //in case anything fails
   
-  this->participant = current_authed_participants;
-   joiner = received_message.joiner_participant();
+  this->participants = current_authed_participants;
+  UnauthenticatedParticipant  joiner(join_message.joiner_info);
+  //TODO:: obviously we need an access function to make sure there is joiner info
   //update participant info or let it be there if they are consistent with
 
-  joiner_participant.insert(Participant(it->participant_id)); //the participant is added unauthenticated
-  if (!participants[participant_id].set_ephemeral_key(it->ephemeral_key))
-    throw np1secMessage::MessageFormatException;
+  this->participants.insert(pair<string,Participant> (joiner.participant_id.nickname, Participant(joiner.participant_id)));
+  //the participant is added unauthenticated
+  
+  if (!participants[joiner.participant_id.nickname].set_ephemeral_key(joiner.ephemeral_pub_key))
+    throw np1secMessageFormatException();
 
   //We can't authenticate here, join message doesn't have kc
   // if (!participants[received_message.sender_id].authenticate(my_id, received_message.kc)) {
   //   return;
   // }
+  populate_peers_discover_myself();
 
   compute_session_id();
-  if (send_info_auth_and_share_message())
-    my_state = REPLIED_TO_NEW_JOIN;
-
 }
 
 /**
@@ -142,20 +141,72 @@ np1secSession::np1secSession(std::string room_name, np1secMessage join_message, 
        - set new session status to RE_SHARED
 
 */
-np1secSession::np1secSession(std::string room_name, string leaver_id, ParticipantMap current_authed_participants)
-  :room_name(room_name) //TODO: not sure the session needs to know the room name
+np1secSession::np1secSession(np1secUserState* us, std::string room_name, string leaver_id, ParticipantMap current_authed_participants)
+  :room_name(room_name),
+   myself(ParticipantId(us->name, us->long_term_key))
+   //TODO: not sure the session needs to know the room name
 {
   my_state = DEAD; //in case anything fails
 
-  participant = current_authed_participants;
-  current_authed_participants.drop_participant(leaver_id);
-  if (!participants[participant_id].set_ephemeral_key(it->ephemeral_key))
-    throw np1secMessage::MessageFormatException;
+  participants = current_authed_participants;
+  current_authed_participants.erase(leaver_id);
+  /*if (!participants[participant_id].set_ephemeral_key(it->ephemeral_key))
+    throw np1secMessage::MessageFormatException;*/
+
+  populate_peers_and_spot_myself();
 
   compute_session_id();
-  if (send_share_message())
+  if (send_auth_and_share_message()) //TODO a reshare message
     my_state = RE_SHARED;
 
+}
+
+/**
+   Constructor being called by operator+ and operator- to breed 
+   new (unestablished) session
+   
+     - in new session constructor these will happen
+       - computes session_id
+       - compute z_sender (self)
+       - set new session status to RE_SHARED
+
+*/
+np1secSession::np1secSession(np1secUserState* us, std::string room_name, string leaver_id, ParticipantMap current_authed_participants)
+  :room_name(room_name),
+   myself(ParticipantId(us->name, us->long_term_key))
+   //TODO: not sure the session needs to know the room name
+{
+  my_state = DEAD; //in case anything fails
+
+  participants = current_authed_participants;
+
+  populate_peers_and_spot_myself();
+  compute_session_id();
+  
+  if (send_auth_and_share_message())
+    my_state = RE_SHARED;
+
+}
+
+np1secSession np1secSession::operator+(np1secSession a) {
+  std::map<std::string, Participant> combination;
+  combination.insert(participants.begin(), participants.end());
+  combination.insert(a.participants.begin(), a.participants.end());
+  np1secSession new_session(us, room_name, combination);
+
+  return new_session;
+  
+}
+
+np1secSession np1secSession::operator-(np1secSession a) {
+  std::map<std::string, Participant> difference;
+  std::set_difference(
+    participants.begin(), participants.end(),
+    a.begin(), a.end(),
+    std::back_inserter(difference) );
+  np1secSession new_session(us, room_name, difference);
+
+  return new_session;
 }
 
 /**
@@ -264,6 +315,26 @@ bool np1secSessionState::joiner_send_auth_and_share() {
   return true;
 
 }
+
+bool np1secSessionState::send_auth_and_share_message() {
+
+  assert(session_id_is_set);
+  if (!group_enc()) //compute my share for group key
+    return false;
+
+  HashBlock cur_auth_token;
+  //    if (!participants[joiner_id].authed_to) {
+  participants[joiner_id].authenticate_to(cur_auth_token);
+
+  np1secMessage outboundmessage.(RE_SHARE,
+                                 sid,
+                                 unauthenticated_participants,                                                                                  auth_token,
+                                 session_key_share);
+  outboundmessage.send();
+  return true;
+
+}
+
 /**
    Preparinig PARTICIPANT_INFO Message
 
@@ -483,13 +554,18 @@ StateAndAction np1secSession::send_auth_share_and_participant_info(np1secMessage
 {
 
   RoomAction new_session_action;
-  new_session_action.bred_session = new np1secSession(received_message, participants);
+  new_session_action.bred_session = new np1secSession(us, room_name, received_message, participants);
   
    if (!new_child_session->session_id)
      delete new_child_session;
-   else
+   else {
      new_session_action.action_typ = NEW_SESSION;
-     
+     new_child_session->send_view_auth_and_share(received_message.joiner_info.participant_id);
+     new_child_session->my_state = REPLIED_TO_NEW_JOIN;
+
+     //This broadcast not happens in session constructor because sometime we want just to make
+     //a session object and not tell the whole world about it.
+   }
     //Depricated: np1secRoom manages the set of sessions
     //new_child_session->my_parent = this;
     //my_children[new_child_session->session_id] = new_child_session;
@@ -824,6 +900,7 @@ np1secMessage np1secSession::receive(std::string raw_message) {
   }
 
   return received_message;
+
 }
 
 np1secSession::~np1secSession() {

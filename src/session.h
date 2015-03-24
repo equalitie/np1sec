@@ -144,6 +144,7 @@ class np1secSession {
   std::list<RaisonDEtre> raisons_detre;
 
   Participant myself;
+  size_t my_index;
   /**
    * Keeps the list of the unauthenticated participants in the room before the
    * join/accept or farewell finishes.
@@ -151,7 +152,7 @@ class np1secSession {
   UnauthenticatedParticipantList participants_in_the_room;
 
   /**
-   * Stores Transcript chain hashes indexed by message id
+   * Stores Transcritp chain hashes indexed by message id
    */
   std::map<uint32_t, HashBlock*> transcript_chain;
 
@@ -265,12 +266,46 @@ class np1secSession {
   /* void kill_rival_children(); */
 
   /**
+   * reading the particpant map, it populate the 
+   * peers vector then find the index of thread runner
+   */
+  void populate_peers_and_spot_myself()
+  {
+    for(ParticipantMap::iterator it = participants.begin(); it != participants.end(); peers.append(it->first), it++);
+
+    peers.sort();
+    
+    std::vector<std::string>::iterator my_entry = std::find(peers.begin(), peers.end(), my_self.nickname);
+    if (my_entry == vector.end())
+      assert(0); //throw up
+
+    my_index = std::distance(vec.begin(), my_entry);
+    
+  }
+  /**
    * it should be invoked only once to compute the session id
    * if one need session id then they need a new session
    *
    * @return return true upon successful computation
    */
   bool compute_session_id();
+
+  //Messaging functions
+  bool send_auth_and_share_message();
+  /**
+   *   Joiner call this after receiving the participant info to
+   *    authenticate to everybody in the room
+   */
+  bool joiner_send_auth_and_share();
+  /**
+     Preparinig PARTICIPANT_INFO Message
+
+     current user calls this to send participant info to joiner
+     and others
+     sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), kc, z_joiner
+  */
+  bool send_view_auth_and_share(std::string joiner_id);
+
 
   /**
    * (n+1)sec sessions are implemented as finite state machines.
@@ -471,7 +506,7 @@ class np1secSession {
      otherwise no change to the status
 
    */
-  StateAndAction chcek_transcript_consistancy_update_share_repo(np1secMessage received_message);
+  StateAndAction check_transcript_consistancy_update_share_repo(np1secMessage received_message);
 
   /**
      This pointer represent an edge in the transition
@@ -518,9 +553,9 @@ class np1secSession {
     //LEAVE Request is indicated in the meta message of user message
     //np1secFSMGraphTransitionMatrix[IN_SESSION][np1secMessage::LEAVE_REQUEST] = &np1secSession::send_farewell_and_reshare;
 
-    np1secFSMGraphTransitionMatrix[RE_SHARED][np1secMessage::FAREWELL] = &np1secSession::chcek_transcript_consistancy_update_share_repo;
+    np1secFSMGraphTransitionMatrix[RE_SHARED][np1secMessage::FAREWELL] = &np1secSession::check_transcript_consistancy_update_share_repo;
 
-    np1secFSMGraphTransitionMatrix[LEAVE_REQUESTED][np1secMessage::FAREWELL] = &np1secSession::chcek_transcript_consistancy_update_share_repo;
+    np1secFSMGraphTransitionMatrix[LEAVE_REQUESTED][np1secMessage::FAREWELL] = &np1secSession::check_transcript_consistancy_update_share_repo;
 
     //We don't accept join request while in farewelled state (for now at least)
     //TODO: we should forward it with the session with reduced plist.
@@ -571,13 +606,15 @@ class np1secSession {
    */
   bool send(std::string message, np1secMessage::np1secMessageType message_type);
 
-  /**
-     constructor
-     You can't have a session without a user
+  //List of constructors
+  /* /\** */
+  /*    constructor */
+  /*    You can't have a session without a user */
 
-     TODO:What about a session without a room?
-   */
-  np1secSession(np1secUserState *us);
+  /*    TODO:What about a session without a room? */
+  /*    why such a room should exists?  */
+  /*  *\/ */
+  //np1secSession(np1secUserState *us);
 
   /**
    * Constructor, initiate by joining.
@@ -586,6 +623,26 @@ class np1secSession {
                std::string room_name,
                UnauthenticatedParticipantList participants_in_the_room);
 
+  /**
+     Constructor being called by current participant receiving leave request
+     
+     - in new session constructor these will happen
+     - drop leaver
+     - computes session_id
+     - compute z_sender (self)
+     - set new session status to RE_SHARED
+     
+  */
+  np1secSession(np1secUserState* us, std::string room_name, std::string leaver_id, ParticipantMap current_authed_participants);
+    
+  /**
+   * Almost copy constructor, we only alter the plist
+   */
+  /*np1secSession(np1secSession& breeding_session, 
+    ParticipantMap participants_in_the_room);*/
+
+  //TODO really one of these two are needed;
+  np1secSession(np1secUserState *us, std::string room_name, np1secMessage join_message, ParticipantMap current_authed_participants);
   /**
    * access function for session_id;
    */
@@ -609,6 +666,5 @@ class np1secSession {
   friend /*static*/ void cb_ack_not_received(evutil_socket_t fd, short what, void *arg);
 
 };
-
 
 #endif  // SRC_SESSION_H_
