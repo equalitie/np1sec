@@ -209,6 +209,7 @@ np1secSession np1secSession::operator-(np1secSession a) {
   return new_session;
 }
 
+
 /**
  * it should be invoked only once to compute the session id
  * if one need session id then they need a new session
@@ -264,6 +265,26 @@ bool np1secSession::setup_session_view(np1secMessage session_view_message) {
 
   compute_session_id();
 
+}
+
+void np1secSession::group_enc() {
+  unsigned int my_right = (my_index + 1 == peers.size()) ? 0 : my_index+1;
+  unsigned int my_left = (my_index == 0) ? peers.size() - 1 : my_index-1;
+  std::string to_hash_right = participants[peers[my_right]].p2p_key + sid;
+  std::string to_hash_left = participants[peers[my_left]].p2p_key + sid;
+
+  HashBlock hbr;
+  Cryptic::hash(to_hash_right.c_str(), to_hash_right.size(), hbr, true);
+
+  HashBlock hbl;
+  Cryptic::hash(to_hash_left.c_str(), to_hash_left.size(), hbl, true);
+
+  for (unsigned i=0; i < sizeof(HashBlock); i++) {
+      hbr[i] ^= hbl[i];
+  }
+
+  z_share = hbr;
+  
 }
 
 bool np1secSessionState::everybody_authenticated_and_contributed()

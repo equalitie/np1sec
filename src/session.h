@@ -282,6 +282,7 @@ class np1secSession {
     my_index = std::distance(vec.begin(), my_entry);
     
   }
+  
   /**
    * it should be invoked only once to compute the session id
    * if one need session id then they need a new session
@@ -290,6 +291,7 @@ class np1secSession {
    */
   bool compute_session_id();
 
+  HashBlock group_enc();
   //Messaging functions
   bool send_auth_and_share_message();
   /**
