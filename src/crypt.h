@@ -20,18 +20,20 @@
 #define SRC_CRYPT_H_
 
 #include <string>
+#include <cstring>
 
 #include "src/common.h"
+#include "src/crypt.h"
 
 extern "C" {
   #include "gcrypt.h"
 }
 
-typedef std::pair<gcry_sexp_t,gcry_sexp_t> KeyPair;
 typedef gcry_sexp_t LongTermPublicKey;
 typedef gcry_sexp_t LongTermPrivateKey;
 typedef gcry_sexp_t np1secPublicKey;
 typedef gcry_sexp_t np1secAsymmetricKey;
+typedef std::pair<LongTermPrivateKey ,np1secPublicKey> KeyPair;
 
 typedef HashBlock np1secKeyShare;
 
@@ -50,7 +52,11 @@ class  LongTermIDKey {
   int is_initiated() {return initiated;}
 
   KeyPair get_key_pair(){return key_pair;}
-  
+
+  np1secPublicKey get_public_key() {
+      return key_pair.second;
+  }
+
   /**
    * @return false if key generation goes wrong (for example due to 
    *         lack of entropy
@@ -68,6 +74,7 @@ class  LongTermIDKey {
     initiated = true;
     key_pair = user_key_pair;
   }
+
   
 };
 
@@ -145,6 +152,12 @@ teddh   *
 
   static gcry_error_t hash(const void *buffer, size_t buffer_len, HashBlock hb,
                   bool secure = true);
+
+  static int compare_hash(HashBlock rhs, HashBlock lhs)
+  {
+    return memcmp(rhs, lhs, sizeof(HashBlock));
+  }
+
   
   /**
    * Convert a given std:string to a valid gcrypt s-expression

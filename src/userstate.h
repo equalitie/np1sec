@@ -41,7 +41,7 @@ typedef std::map<std::string, np1secRoom> RoomMap;
 class np1secUserState {
  protected:
   std::string name;
-  LongTermIDKey long_term_key_pair;
+  np1secAsymmetricKey long_term_key;
   RoomMap chatrooms;
 
  public:
@@ -70,8 +70,8 @@ class np1secUserState {
   /**
    * access function for for long term id key
    */
-  LongTermIDKey user_id_key_pair() {
-    return long_term_key_pair;
+  np1secAsymmetricKey user_id_key() {
+    return long_term_key;
   }
 
   /**
@@ -126,7 +126,7 @@ class np1secUserState {
    * @return a RoomAction object informing the client how to update the
    *         interface (add, remove user or display a message
    */
-  RoomAction receive_handler(std::string room_name,
+  void receive_handler(std::string room_name,
                              std::string np1sec_message,
                              uint32_t message_id);
 

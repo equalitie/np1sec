@@ -27,27 +27,29 @@ np1secMessage::np1secMessage(SessionID session_id,
                             std::string sender_id,
                             std::string user_message,
                             np1secMessageType message_type,
-                            HashBlock* transcript_chain_hash,
+                            HashBlock transcript_chain_hash,
                             np1secLoadFlag meta_load_flag,
                             std::string meta_load,
                             std::vector<std::string> pstates,
                             Cryptic* cryptic, 
                             np1secUserState* us,
-                            std::string room_name) {
-  session_id = session_id;
-  sender_id = sender_id;
-  user_message = user_message;
-  message_type = message_type;
-  transcript_chain_hash = transcript_chain_hash;
+                             std::string room_name)
+: session_id(session_id),
+  sender_id(sender_id),
+  user_message(user_message),
+  message_type(message_type),
+  transcript_chain_hash(transcript_chain_hash),
+  meta_load_flag(meta_load_flag),
+  meta_load(meta_load),
+  cryptic(cryptic),
+  pstates(pstates),
+  us(us),
+  room_name(room_name)
+  
+{
   if (message_type == PURE_META_MESSAGE) {
-    meta_only = 1;
+    this->meta_only = 1;
   }
-  meta_load_flag = meta_load_flag;
-  meta_load = meta_load;
-  cryptic = cryptic;
-  pstates = pstates;
-  us = us;
-  room_name = room_name;
 }
 
 np1secMessage::np1secMessage(SessionID session_id,
@@ -118,9 +120,11 @@ void np1secMessage::string_to_session_view(std::string sv_string) {
   //Why aren't we using string::find?
   while (!token.empty()) {
     std::string nickname = token.substr(0, token.find(c_subfield_delim.c_str()));
-    std::string fingerprint = token.substr(nickname.length(), nickname.length() + c_fingerprint_length);
-    UnauthenticatedParticipant uap(nickname, fingerprint);
-    token = token.substr(nickname.length() + c_fingerprint_length);
+    std::string fingerprint = token.substr(nickname.length(), nickname.length() + ParticipantId::c_fingerprint_length);
+    std::string ephemeral_key = token.substr(nickname.length() + ParticipantId::c_fingerprint_length, nickname.length() + ParticipantId::c_fingerprint_length + c_ephemeral_key_length);
+    ParticipantId pid(nickname, fingerprint);
+    UnauthenticatedParticipant uap(pid, ephemeral_key);
+    token = token.substr(nickname.length() + ParticipantId::c_fingerprint_length + c_ephemeral_key_length);
     /*uap.participant = token;
     token = strtok(NULL, c_subfield_delim.c_str());
     uap.long_term_pub_key_hex = token;
@@ -160,7 +164,7 @@ void np1secMessage::format_generic_message() {
       format_meta_message();
       sys_message += c_np1sec_delim.c_str() + meta_message;
       break;
-   } 
+   }
 
   signature = sign_message(sys_message);
   sys_message += signature + c_np1sec_delim.c_str();
@@ -310,8 +314,8 @@ uint32_t np1secMessage::compute_message_id(std::string cur_message) {
   return 0;
 }
 
-void send() {
-  us.ops.send_bare(room_name, sys_message, &us);
+void np1secMessage::send() {
+  us->ops->send_bare(room_name, sys_message, &us);
 }
 
 void np1secMessage::generate_nonce(unsigned char* buffer) {
@@ -336,7 +340,7 @@ std::string np1secMessage::sign_message(std::string message) {
   unsigned char *sigbuf = NULL;
   size_t siglen;
 
-  err = cryptic.Sign(&sigbuf, &siglen, message);
+  err = cryptic->Sign(&sigbuf, &siglen, message);
 
   std::string signature(reinterpret_cast<char*>(sigbuf));
 
@@ -346,7 +350,7 @@ std::string np1secMessage::sign_message(std::string message) {
 
 bool np1secMessage::verify_message(std::string signed_message,
                                    std::string signature) {
-  if ( cryptic.Verify(signed_message, (unsigned char*)signature.c_str())
+  if ( cryptic->Verify(signed_message, (unsigned char*)signature.c_str())
        == gcry_error(GPG_ERR_NO_ERROR)) {
     return true;
   }
@@ -355,17 +359,17 @@ bool np1secMessage::verify_message(std::string signed_message,
 }
 
 std::string np1secMessage::encrypt_message(std::string signed_message) {
-  return cryptic.Encrypt(signed_message);
+  return cryptic->Encrypt(signed_message);
 }
 
 
 std::string np1secMessage::decrypt_message(std::string encrypted_message) {
-  return cryptic.Decrypt(encrypted_message);
+  return cryptic->Decrypt(encrypted_message);
 }
 
 gcry_error_t np1secMessage::compute_hash(HashBlock transcript_chain,
                                      std::string message) {
-  return cryptic.hash(message.c_str(), message.size(), transcript_chain, true);
+  return cryptic->hash(message.c_str(), message.size(), transcript_chain, true);
 }
 
 np1secMessage::~np1secMessage() {

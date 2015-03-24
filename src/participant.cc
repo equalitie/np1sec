@@ -24,7 +24,8 @@
  */
 bool sort_by_long_term_pub_key(Participant& lhs, Participant& rhs)
 {
-  return Cryptic::retrieveResult(lhs.long_term_pub_key) < Cryptic::retrieveResult(rhs.long_term_pub_key);
+
+  return Cryptic::retrieve_result(lhs.long_term_pub_key) < Cryptic::retrieve_result(rhs.long_term_pub_key);
 
 }
 
@@ -33,20 +34,24 @@ bool sort_by_long_term_pub_key(Participant& lhs, Participant& rhs)
  * to authenticate the alleged participant
  *
  * @param auth_token authentication token received as a message
+ * @param authenicator_id running thread user id  //TODO 
+ *  can give it to youget rid of this as thread_user_as_partcipant 
+ * @param thread_user_id_key the key (pub & prive) of the user running the 
+ *        thread
  * 
  * @return true if peer's authenticity could be established
  */
-bool participant::be_authenticated(std::string authenicator_id, HashBlock auth_token) {
-  if (!compute_p2p())
+bool Participant::be_authenticated(std::string authenticator_id, HashBlock auth_token, np1secAsymmetricKey thread_user_id_key) {
+  if (!compute_p2p_private(thread_user_id_key))
     return false;
-
-  std::string to_be_hashed(p2p_key, sizeof(HashBlock));
+  
+  std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
   to_be_hashed+= authenticator_id;
   HashBlock regenerated_auth_token;
 
   Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), regenerated_auth_token);
 
-  return (!cryptic.compare_hash(regenerated_auth_token, auth_token));
+  return (!Cryptic::compare_hash(regenerated_auth_token, auth_token));
 
 }
 
@@ -55,18 +60,31 @@ bool participant::be_authenticated(std::string authenicator_id, HashBlock auth_t
  * to authenticate the alleged participant
  *
  * @param auth_token authentication token received as a message
+ * @param thread_user_id_key the key (pub & prive) of the user running the 
+ *        thread
  * 
  * @return true if peer's authenticity could be established
  */
-bool participant::authenticate_to(HashBlock auth_token) {
+bool Participant::authenticate_to(HashBlock auth_token, np1secAsymmetricKey thread_user_id_key) {
 
-  if (!compute_p2p_private())
+  if (!compute_p2p_private(thread_user_id_key))
     return false;
 
-  std::string to_be_hashed(p2p_key, sizeof(HashBlock));
+  std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
   to_be_hashed+= id;
   Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), auth_token);
 
   return true;
 
+}
+
+/**
+ * computes the p2p triple dh secret between participants
+ *
+ * @return true on success
+ */
+bool Participant::compute_p2p_private(np1secAsymmetricKey thread_user_id_key)
+{
+  thread_user_crypto->triple_ed_dh(ephemeral_key, long_term_pub_key, thread_user_id_key, sort_by_long_term_pub_key(*this, *thread_user_as_participant), &p2p_key);
+                      
 }

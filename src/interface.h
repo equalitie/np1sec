@@ -28,6 +28,8 @@
 #include <list>
 #include <string>
 
+#include "src/crypt.h"
+
 /**
    Participant id
    
@@ -37,9 +39,9 @@
  */
 struct ParticipantId
 {
-  static const unsigned int c_finger_print_length = 32;
+  static const unsigned int c_fingerprint_length = 32;
   std::string nickname;
-  uint8_t fingerprint[c_finger_print_length]; //Finger print is actually the long term public point of participant that
+  uint8_t fingerprint[c_fingerprint_length]; //Finger print is actually the long term public point of participant that
   //is x coordinate and one bit for distinguishing the corresponding y
 
   /**
@@ -48,7 +50,7 @@ struct ParticipantId
   std::string id_to_stringbuffer() {
     std::string string_id(nickname);
     string_id += c_subfield_delim; 
-    string_id.append(reinterpret_cast<char*>(fingerprint, c_finger_print_length));
+    string_id.append(reinterpret_cast<char*>(fingerprint, c_fingerprint_length));
 
     return string_id;
   }
@@ -61,6 +63,15 @@ struct ParticipantId
   :nickname(nickname)
   {
     memcpy(fingerprint, fingerprint_strbuff.c_str(), fingerprint_strbuff.size());
+  }
+
+  /**
+   * copy constructor
+   */
+  ParticipantId(ParticipantId& lhs)
+  {
+    nickname = lhs.nickname;
+    memcpy(fingerprint, lhs.fingerprint, c_fingerprint_length);
   }
   
 };
@@ -75,6 +86,26 @@ struct UnauthenticatedParticipant {
   ParticipantId participant_id;
   HashBlock ephemeral_pub_key;  // This should be in some convienient 
   // Format
+
+  /**
+   * constructor 
+   */
+  UnauthenticatedParticipant(ParticipantId participant_id, std::string ephemeral_pub_key)
+  {
+    this->participant_id = participant_id;
+    memcpy(this->ephemeral_pub_key, ephemeral_pub_key.c_str(), ephemeral_pub_key.size());
+  }
+
+  /**
+   * Default copy constructor
+   */
+  UnauthenticatedParticipant(const UnauthenticatedParticipant& rhs)
+  {
+    participant_id = rhs.participant_id;
+    memcpy(this->ephemeral_pub_key, rhs.ephemeral_pub_key, c_ephemeral_key_length);
+  }
+  
+  
 };
 
 typedef std::list<UnauthenticatedParticipant> UnauthenticatedParticipantList;

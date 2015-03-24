@@ -28,10 +28,21 @@
  * user themselves.
  */
 class Participant {
+ protected:
+  /**
+   * computes the p2p triple dh secret between participants
+   *
+   * @return true on success
+   */
+  bool compute_p2p_private(np1secAsymmetricKey thread_user_id_key);
+
+  Cryptic* thread_user_crypto;
+  Participant* thread_user_as_participant;
+  
  public:
   std::string id; //nickname;
   std::string nickname;
-  LongTermPublicKey long_term_pub_key;
+  np1secPublicKey long_term_pub_key;
   np1secPublicKey ephemeral_key;
   event* receive_ack_timer;
   event* send_ack_timer;
@@ -61,6 +72,14 @@ class Participant {
   ForwardSecracyContribution ForwardSecracyStatus = NONE;
 
   /**
+   * running thread user crypto access function
+   */
+  void set_thread_user_crypto(Cryptic* cryptic)
+  {
+    thread_user_crypto = cryptic;
+  }
+    
+  /**
    * crypto material access functions
    *
    * @return true if successfully updated to the new key
@@ -75,6 +94,17 @@ class Participant {
     return (ephemeral_key != nullptr);
   }
   
+  /**
+   * Generate the approperiate authentication token check its equality
+   * to authenticate the alleged participant
+   *
+   * @param auth_token authentication token received as a message
+   * 
+   * @return true if peer's authenticity could be established
+   */
+  bool authenticate_to(HashBlock auth_token, np1secAsymmetricKey thread_user_id_key);
+  bool be_authenticated(std::string authenicator_id, HashBlock auth_token, np1secAsymmetricKey thread_user_id_key);
+
   /**
    * default constructoro
    */
