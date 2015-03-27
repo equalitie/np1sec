@@ -320,7 +320,7 @@ void np1secSession::group_dec() {
   Cryptic::hash(to_hash.c_str(), to_hash.size(), group_share, true);
 }
 
-bool np1secSessionState::everybody_authenticated_and_contributed()
+bool np1secSessioneverybody_authenticated_and_contributed()
 {
   for(ParticipantMap::iterator it = participants.begin(); it != participants.end(); it++)
     if (!it->authenticated or !it->cur_keyshare)
@@ -330,7 +330,7 @@ bool np1secSessionState::everybody_authenticated_and_contributed()
   
 }
 
-bool np1secSessionState::everybody_confirmed()
+bool np1secSession::everybody_confirmed()
 {
   for(ParticipantMap::iterator it = confirmed.begin(); it != participants.end(); it++)
     if (!(*it))
@@ -344,7 +344,7 @@ bool np1secSessionState::everybody_confirmed()
  *   Joiner call this after receiving the participant info to
  *    authenticate to everybody in the room
  */
-bool np1secSessionState::joiner_send_auth_and_share() {
+bool np1secSession::joiner_send_auth_and_share() {
   assert(session_id_is_set);
   if (!group_enc()) //compute my share for group key
     return false;
@@ -362,11 +362,7 @@ bool np1secSessionState::joiner_send_auth_and_share() {
   }
 
   np1secMessage outboundmessage.create_participant_info(JOINER_AUTH,
-                                                        sid,
-                                                        "", //no unauthenticated_participant                                                                                  auth_batch,
-                                                        session_key_share);
-  outboundmessage.send();
-  return true;
+    
 
 }
 
@@ -397,7 +393,7 @@ bool np1secSessionState::send_auth_and_share_message() {
     sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), kc, z_joiner
 */
 
-bool np1secSessionState::send_view_auth_and_share(string joiner_id) {
+bool np1secSession::send_view_auth_and_share(string joiner_id) {
   assert(session_id_is_set);
   if (!group_enc()) //compute my share for group key
     return false;
@@ -420,7 +416,7 @@ bool np1secSessionState::send_view_auth_and_share(string joiner_id) {
    about their share and also the session plist klist
 
 */
-bool np1secSessionState::send_share_message() {
+bool np1secSession::send_share_message() {
   assert(session_id_is_set);
   if (!group_enc()) //compute my share for group key
     return false;

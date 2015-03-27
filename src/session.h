@@ -262,7 +262,7 @@ class np1secSession {
   /*  * When someone join and authenticated, we should */
   /*  * tell all other joining users to stop joining the */
   /*  * other sessions, the request for killing session */
-  /*  * rival session coming from the authenticated */
+  /*  * rival session coming from the nticated */
   /*  * child session */
   /*  *\/ */
   /* void kill_rival_children(); */
@@ -301,6 +301,11 @@ class np1secSession {
 
   void group_enc();
   void group_dec();
+
+  /**
+   * Simply checks the confirmed array for every element be true
+   * /
+  bool everybody_confirmed();
   //Messaging functions
   bool send_auth_and_share_message();
   /**
