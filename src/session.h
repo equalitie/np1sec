@@ -242,6 +242,7 @@ class np1secSession {
 
  protected:
   SessionId session_id;
+  HashBlock group_share;
   //Depricated in favor of raison detr.
   //tree structure seems to be insufficient. because
   //sid only encode the session structure but not

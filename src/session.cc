@@ -283,40 +283,44 @@ void np1secSession::group_enc() {
       hbr[i] ^= hbl[i];
   }
 
-  participants[myself.nickname].cur_keyshare = hbr;
+  memcpy(participants[myself.nickname].cur_keyshare, hbr, sizeof(HashBlock));
   
 }
 
 void np1secSession::group_dec() {
   unsigned int my_right = (my_index + 1 == peers.size()) ? 0 : my_index+1;
-  std::vector<HashBlock> all_r;
-  HashBlock all;
+  std::vector<HashBlock> all_r(peers.size());
+  HashBlock last_hbr;
 
   //We assume that user has computed his share
   // std::string to_hash_right = Cryptic::hash_to_string_buff(participants[peers[my_right]].p2p_key) + session_id.get_as_stringbuff();
   //   HashBlock hbr;
   //Cryptic::hash(to_hash_right.c_str(), to_hash_right.size(), hbr, true);
   HashBlock hbr;
-  unsigned int decrypted_peer = my_index;
   
+  memcpy(hbr, participants[peers[my_index]].cur_keyshare, sizeof(HashBlock));
+  memcpy(all_r[my_index], hbr, sizeof(HashBlock));
+  for (unsigned i=0; i < sizeof(HashBlock); i++) {
+    hbr[i] ^= participants[peers[my_right]].cur_keyshare[i];
+  }
+  memcpy(all_r[my_right], hbr, sizeof(HashBlock));
+  memcpy(last_hbr, hbr, sizeof(HashBlock));
+
   for (unsigned counter = 0; counter < peers.size(); counter++) {
-    unsigned int cur_peer = (counter + my_right) % peers.size();
-     
+       
     for (unsigned i=0; i < sizeof(HashBlock); i++) {
-        hbr[i] ^= participants[peers[decrypted_peer]].cur_keyshare;
+        last_hbr[i] ^= participants[peers[my_right]].cur_keyshare[i];
     }
-    all_r.push_back(hbr);
+    memcpy(all_r[my_right], last_hbr, sizeof(HashBlock));
     my_right = (my_right + 1 == peers.size()) ? 0 : my_right+1;
   } 
 
+  std::string to_hash;
   for (std::vector<HashBlock>::iterator it = all_r.begin(); it != all_r.end(); ++it) {
-    for (unsigned i=0; i < sizeof(HashBlock); i++) {
-        all[i] ^= *it[i];
-    }
+    to_hash += reinterpret_cast<char const*>(*it);
   }
 
-  std::string to_hash(reinterpret_cast<char const*>(transcript_chain_hash));
-  to_hash += sid;
+  to_hash += session_id;
   Cryptic::hash(to_hash.c_str(), to_hash.size(), group_share, true);
 }
 
