@@ -71,7 +71,7 @@ bool Participant::authenticate_to(HashBlock auth_token, np1secAsymmetricKey thre
     return false;
 
   std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
-  to_be_hashed += nickname;
+  to_be_hashed += id.nickname;
   Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), auth_token);
 
   return true;

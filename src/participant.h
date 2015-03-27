@@ -132,7 +132,6 @@ UnauthenticatedParticipant(std::string participant_id_and_ephmeralkey)
     memcpy(this->ephemeral_pub_key, ephemeral_pub_key.c_str(), c_ephemeral_key_length);
     
   }
-
   
 };
 
@@ -155,7 +154,6 @@ class Participant {
   
  public:
   ParticipantId id;
-  std::string nickname;
   np1secPublicKey long_term_pub_key;
   np1secPublicKey ephemeral_key;
   event* receive_ack_timer;
@@ -229,9 +227,7 @@ class Participant {
     authed_to(false),
     long_term_pub_key(Cryptic::convert_to_sexp(reinterpret_cast<char*>(participant_id.fingerprint))) 
       {
-
-    
-  }
+      }
 
 };
 

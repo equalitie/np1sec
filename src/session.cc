@@ -49,20 +49,22 @@ static void cb_send_ack(evutil_socket_t fd, short what, void *arg) {
 }
 
 
+// TODO: Who is calling this? Answer: compute_session_id
+// TODO: This should move to crypto really and called hash with
+// overloaded parameters
+gcry_error_t np1secSession::compute_hash(HashBlock transcript_chain,
+                                     std::string message) {
+  assert(message.size() % 2 == 0);
+
+  unsigned char *bin;
+  const char *p = message.c_str();
+  for (int i=0; i < message.size(); i++, p+=2) {
+    sscanf(p, "%2hhx", &bin);
+  }
+  return cryptic.hash(bin, message.size()/2, transcript_chain, true);
+}
+
 //All constructors
-// TODO: Who is calling this?
-// gcry_error_t np1secSession::compute_hash(HashBlock transcript_chain,
-//                                      std::string message) {
-//   assert(message.size() % 2 == 0);
-
-//   unsigned char *bin;
-//   const char *p = message.c_str();
-//   for (int i=0; i < message.size(); i++, p+=2) {
-//     sscanf(p, "%2hhx", &bin);
-//   }
-//   return cryptic.hash(bin, message.size()/2, transcript_chain, true);
-// }
-
 // np1secSession::np1secSession(np1secUserState *us)
 //   :myself(us->user_id())
 // {
@@ -126,7 +128,7 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name, np1secM
   // if (!participants[received_message.sender_id].authenticate(my_id, received_message.kc)) {
   //   return;
   // }
-  populate_peers_discover_myself();
+  populate_peers_and_spot_myself();
 
   compute_session_id();
 }
@@ -171,7 +173,7 @@ np1secSession::np1secSession(np1secUserState* us, std::string room_name, string 
        - set new session status to RE_SHARED
 
 */
-np1secSession::np1secSession(np1secUserState* us, std::string room_name, string leaver_id, ParticipantMap current_authed_participants)
+np1secSession::np1secSession(np1secUserState* us, std::string room_name, ParticipantMap current_authed_participants)
   :room_name(room_name),
    myself(ParticipantId(us->name, us->long_term_key))
    //TODO: not sure the session needs to know the room name
@@ -202,13 +204,12 @@ np1secSession np1secSession::operator-(np1secSession a) {
   std::map<std::string, Participant> difference;
   std::set_difference(
     participants.begin(), participants.end(),
-    a.begin(), a.end(),
+    a.participants.begin(), a.participants.end(),
     std::back_inserter(difference) );
   np1secSession new_session(us, room_name, difference);
 
   return new_session;
 }
-
 
 /**
  * it should be invoked only once to compute the session id
@@ -216,10 +217,9 @@ np1secSession np1secSession::operator-(np1secSession a) {
  *
  * @return return true upon successful computation
  */
+//TODO::move this to SessionId Class
 bool np1secSession::compute_session_id() {
   std::string cat_string = "";
-  //sanity check: You can only compute session id once
-  assert(!session_id_set);
 
   if (peers.size() == 0) //nothing to compute
     return false;
@@ -228,16 +228,18 @@ bool np1secSession::compute_session_id() {
    * Generate Session ID
    */
 
-  //TODO:: Bill
   //session_id = Hash of (U1,ehpmeral1, U2);
   for (std::vector<std::string>::iterator it = peers.begin(); it != peers.end(); ++it) {
     Participant p = participants[*it];
-    cat_string += p.id;
+    cat_string += p.id.id_to_stringbuffer();
     cat_string += cryptic.retrieve_result(p.ephemeral_key);
   }
 
-  compute_session_hash(session_id, cat_string);
-  session_id_is_set = true;
+  HashBlock sid;
+  compute_hash(sid, cat_string); //why just not having  simple function which
+  //compute the hash of an string
+  assert(!session_id.get()); //if session id isn't set we have to set it
+  session_id.set(sid);
   return true;
 
 }
@@ -249,17 +251,15 @@ bool np1secSession::compute_session_id() {
  */
 bool np1secSession::setup_session_view(np1secMessage session_view_message) {
 
-  //First get a list of user identities
-  UnauthenticatedParticipantList plist =  received_message.participants_in_the_room();
+    //First get a list of user identities
+  UnauthenticatedParticipantList plist =  session_view_message.participants_in_the_room();
   //update participant info or let it be there if they are consistent with
-
-  assert(!session_id); //if session id isn't set we have to set it
 
   for(UnauthenticatedParticipantList::iterator it = plist.begin(); it != plist.begin(); it++) {
       //new participant we need to recompute the session id
-    participants.insert(Participant(it->participant_id)); //the participant is added unauthenticated
-    if (!participants[participant_id].set_ephemeral_key(it->ephemeral_key))
-        throw np1secMessage::MessageFormatException;
+    participants.insert(pair<string, Participant>(it->participant_id.nickname,Participant(it->participant_id))); //the participant is added unauthenticated
+    if (!participants[it->participant_id.nickname].set_ephemeral_key(it->ephemeral_pub_key))
+      throw np1secMessageFormatException();
 
   }
 
@@ -270,8 +270,8 @@ bool np1secSession::setup_session_view(np1secMessage session_view_message) {
 void np1secSession::group_enc() {
   unsigned int my_right = (my_index + 1 == peers.size()) ? 0 : my_index+1;
   unsigned int my_left = (my_index == 0) ? peers.size() - 1 : my_index-1;
-  std::string to_hash_right = participants[peers[my_right]].p2p_key + sid;
-  std::string to_hash_left = participants[peers[my_left]].p2p_key + sid;
+  std::string to_hash_right = Cryptic::hash_to_string_buff(participants[peers[my_right]].p2p_key) + session_id.get_as_stringbuff();
+  std::string to_hash_left = Cryptic::hash_to_string_buff(participants[peers[my_left]].p2p_key) + session_id.get_as_stringbuff();
 
   HashBlock hbr;
   Cryptic::hash(to_hash_right.c_str(), to_hash_right.size(), hbr, true);
@@ -283,7 +283,7 @@ void np1secSession::group_enc() {
       hbr[i] ^= hbl[i];
   }
 
-  z_share = hbr;
+  participants[myself.nickname].cur_keyshare = hbr;
   
 }
 
@@ -292,13 +292,18 @@ void np1secSession::group_dec() {
   std::vector<HashBlock> all_r;
   HashBlock all;
 
+  //We assume that user has computed his share
+  // std::string to_hash_right = Cryptic::hash_to_string_buff(participants[peers[my_right]].p2p_key) + session_id.get_as_stringbuff();
+  //   HashBlock hbr;
+  //Cryptic::hash(to_hash_right.c_str(), to_hash_right.size(), hbr, true);
+  HashBlock hbr;
+  unsigned int decrypted_peer = my_index;
+  
   for (unsigned counter = 0; counter < peers.size(); counter++) {
-    std::string to_hash_right = participants[peers[my_right]].p2p_key + sid;
-    HashBlock hbr;
-    Cryptic::hash(to_hash_right.c_str(), to_hash_right.size(), hbr, true);
+    unsigned int cur_peer = (counter + my_right) % peers.size();
      
     for (unsigned i=0; i < sizeof(HashBlock); i++) {
-        hbr[i] ^= participants[peer[my_right]].cur_keyshare;
+        hbr[i] ^= participants[peers[decrypted_peer]].cur_keyshare;
     }
     all_r.push_back(hbr);
     my_right = (my_right + 1 == peers.size()) ? 0 : my_right+1;
@@ -309,6 +314,7 @@ void np1secSession::group_dec() {
         all[i] ^= *it[i];
     }
   }
+
   std::string to_hash(reinterpret_cast<char const*>(transcript_chain_hash));
   to_hash += sid;
   Cryptic::hash(to_hash.c_str(), to_hash.size(), group_share, true);
@@ -952,5 +958,6 @@ np1secMessage np1secSession::receive(std::string raw_message) {
 }
 
 np1secSession::~np1secSession() {
+  delete session_id;
   return;
 }

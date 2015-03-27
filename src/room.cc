@@ -161,7 +161,7 @@ void np1secRoom::receive_handler(np1secMessage received_message)
  *        from all particpants and is ready to be the default session of
  *        the room
  */
-void np1secRoom::activated_session(SessionID newly_activated_session)
+void np1secRoom::activated_session(SessionId newly_activated_session)
 {
   for(SessionMap::iterator session_it = session_universe.begin(); session_it != session_universe.end(); session_it()) {
     //first we need to check if such a session in limbo currently exists

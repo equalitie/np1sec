@@ -149,6 +149,11 @@ teddh   *
     return memcmp(rhs, lhs, sizeof(HashBlock));
   }
 
+  static std::string hash_to_string_buff(HashBlock hash_block)
+  {
+    return std::string(reinterpret_cast<const char*>(hash_block), sizeof(HashBlock));
+  }
+
   
   /**
    * Convert a given std:string to a valid gcrypt s-expression
@@ -163,7 +168,7 @@ teddh   *
    * Given the peer's long term and ephemeral public key AP and ap, and ours 
    * BP, bP, all points on ed25519 curve, this 
    * compute the triple dh value.
-   *
+   *n
    * @param peer_ephemeral_key the ephemeral public key of peer i.e. aP 
    *                           in grcypt eddsa public key format
    * @param peer_long_term_key the long term public key of the peer i.e AP 

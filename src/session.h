@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 #include <utility>
+#include <algorithm>
 
 #include "src/common.h"
 #include "src/interface.h"
@@ -143,7 +144,8 @@ class np1secSession {
   //still relevant
   std::list<RaisonDEtre> raisons_detre;
 
-  Participant myself;
+  ParticipantId myself; //to keep the nickname and the long term id key
+  //these are necessary to send join request 
   size_t my_index;
   /**
    * Keeps the list of the unauthenticated participants in the room before the
@@ -239,7 +241,7 @@ class np1secSession {
   void stop_timer_send();
 
  protected:
-  SessionID* session_id = nullptr;
+  SessionId session_id;
   //Depricated in favor of raison detr.
   //tree structure seems to be insufficient. because
   //sid only encode the session structure but not
@@ -271,17 +273,21 @@ class np1secSession {
    */
   void populate_peers_and_spot_myself()
   {
-    for(ParticipantMap::iterator it = participants.begin(); it != participants.end(); peers.append(it->first), it++);
+    for(ParticipantMap::iterator it = participants.begin(); it != participants.end(); peers.push_back(it->first), it++);
 
-    peers.sort();
+    std::sort(peers.begin(), peers.end());
     
-    std::vector<std::string>::iterator my_entry = std::find(peers.begin(), peers.end(), my_self.nickname);
-    if (my_entry == vector.end())
+    std::vector<std::string>::iterator my_entry = std::find(peers.begin(), peers.end(), myself.nickname);
+    if (my_entry == peers.end())
       assert(0); //throw up
 
-    my_index = std::distance(vec.begin(), my_entry);
+    my_index = std::distance(peers.begin(), my_entry);
     
   }
+
+// TODO: This should move to crypto really and called hash with
+// overloaded parameters
+  gcry_error_t compute_hash(uint8_t*, std::string);
   
   /**
    * it should be invoked only once to compute the session id
@@ -290,6 +296,8 @@ class np1secSession {
    * @return return true upon successful computation
    */
   bool compute_session_id();
+
+  bool setup_session_view(np1secMessage session_view_message);
 
   void group_enc();
   void group_dec();
@@ -639,6 +647,17 @@ class np1secSession {
   np1secSession(np1secUserState* us, std::string room_name, std::string leaver_id, ParticipantMap current_authed_participants);
     
   /**
+     Constructor being called by operator+ and operator- to breed 
+     new (unestablished) session
+   
+     - in new session constructor these will happen
+       - computes session_id
+       - compute z_sender (self)
+       - set new session status to RE_SHARED
+
+  */
+  np1secSession(np1secUserState* us, std::string room_name, ParticipantMap current_authed_participants);
+  /**
    * Almost copy constructor, we only alter the plist
    */
   /*np1secSession(np1secSession& breeding_session, 
@@ -649,7 +668,7 @@ class np1secSession {
   /**
    * access function for session_id;
    */
-  SessionID* my_session_id() { return session_id;}
+  SessionId my_session_id() { return session_id;}
 
   /**
    * When a message is received from a session the receive function needs to be

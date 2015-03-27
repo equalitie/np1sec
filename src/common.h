@@ -29,6 +29,7 @@ extern "C" {
 #include <stdexcept>
 #include <vector>
 #include <string>
+#include <cstring>
 
 #include "src/base64.h"
 
@@ -47,7 +48,48 @@ const size_t c_hash_length = 32;
 
 typedef uint8_t HashBlock[c_hash_length];
 //typedef std::vector<uint8_t> SessionID;
-typedef HashBlock SessionID;
+class SessionId
+{
+ protected:
+  HashBlock session_id_raw;
+  bool is_set;
+
+ public:
+  SessionId(HashBlock sid)
+    :is_set(true)
+    {
+      memcpy(session_id_raw, sid, sizeof(HashBlock));
+    }
+
+  SessionId()
+   :is_set(false) {
+  }
+
+  // copy constructor: do we need one?
+  /* SessionId(SessionId& lhs) { */
+  /*   std::memcpy(session_id_raw, lhs.session_id_raw, sizeof(HashBlock)); */
+  /*   is_set = lhs.is_set; */
+  /* } */
+
+  void set(HashBlock sid)
+  {
+    //only one time is possible
+    //sanity check: You can only compute session id once
+    assert(!is_set);
+    memcpy(session_id_raw, sid, sizeof(HashBlock));
+    is_set = true;
+    
+  }
+
+  uint8_t* get() {
+    if (is_set) return session_id_raw; else return nullptr;
+  }
+
+  std::string get_as_stringbuff() {
+    return std::string(reinterpret_cast<const char*>(session_id_raw), sizeof(HashBlock));
+  }
+  
+};
 
 const std::string c_np1sec_protocol_name("np1sec");
 const std::string c_np1sec_delim(":o)"); //because http://en.wikipedia.org/wiki/Man%27s_best_friend_(phrase)

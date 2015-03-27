@@ -23,7 +23,7 @@
 #include "src/message.h"
 #include "src/exceptions.h"
 
-np1secMessage::np1secMessage(SessionID session_id,
+np1secMessage::np1secMessage(SessionId session_id,
                             std::string sender_id,
                             std::string user_message,
                             np1secMessageType message_type,
@@ -34,7 +34,7 @@ np1secMessage::np1secMessage(SessionID session_id,
                             Cryptic* cryptic, 
                             np1secUserState* us,
                              std::string room_name)
-: session_id(session_id),
+: session_id(session_id.get()),
   sender_id(sender_id),
   user_message(user_message),
   message_type(message_type),
@@ -52,7 +52,7 @@ np1secMessage::np1secMessage(SessionID session_id,
   }
 }
 
-np1secMessage::np1secMessage(SessionID session_id,
+np1secMessage::np1secMessage(SessionId session_id,
                              np1secMessageType message_type,
                              std::string session_view,
                              std::string key_confirmation,
@@ -89,13 +89,14 @@ np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic, np1secUse
  *         the list of participants with their ephemerals otherwise
  *         throw an exception
  */
-std::vector<UnauthenticatedParticipant> np1secMessage::participants_in_the_room()
+UnauthenticatedParticipantList np1secMessage::participants_in_the_room()
 {
   if (message_type != PARTICIPANTS_INFO)
     
     throw np1secMessageFormatException();
 
-  std::vector<UnauthenticatedParticipant> disceted_participants;
+  UnauthenticatedParticipantList disceted_participants;
+  //TODO fill up the list
   
   return disceted_participants;
 

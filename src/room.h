@@ -37,7 +37,7 @@ class np1secMessage;
 //create by other sessions and handed to the room.
 
 //Should we point to a session or store the session itself?
-typedef std::map<SessionID, np1secSession> SessionMap;
+typedef std::map<SessionId, np1secSession> SessionMap;
 
 /**
  * Manage all sessions associated to a room, this is follow the concurrent 
@@ -82,7 +82,7 @@ class np1secRoom {
   //std::list<np1secSession*> limbo; //no need for this limbo every
   //session beside current session.
   
-  SessionID active_session;
+  SessionId active_session;
 
  public:
   /**
@@ -137,7 +137,7 @@ class np1secRoom {
    *        from all particpants and is ready to be the default session of
    *        the room
    */
-  void activated_session(SessionID newly_activated_session);
+  void activated_session(SessionId newly_activated_session);
 
 };    
 
