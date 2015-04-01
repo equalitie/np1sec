@@ -35,6 +35,13 @@ extern "C" {
 
 #define UNUSED(expr) (void)(expr)
 
+extern "C" {
+  #include "gcrypt.h"
+}
+
+typedef gcry_sexp_t np1secPrivateKey;
+typedef gcry_sexp_t np1secPublicKey;
+typedef std::pair<np1secPrivateKey,np1secPublicKey> KeyPair;
 
 enum np1secLoadFlag {
   NO_LOAD,
@@ -55,7 +62,7 @@ class SessionId
   bool is_set;
 
  public:
-  SessionId(HashBlock sid)
+  SessionId(const HashBlock sid)
     :is_set(true)
     {
       memcpy(session_id_raw, sid, sizeof(HashBlock));

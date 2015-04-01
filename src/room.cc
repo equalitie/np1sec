@@ -16,18 +16,57 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "room.h"
+#include "src/message.h"
+#include "userstate.h"
+#include "src/room.h"
 
 using namespace std;
 
 /**
- * called by UserState, everytime the user trys to join a room
- * it just simply send a join message to the room.
+ * called by room constructor, everytime the user is the first joiner
+ * of an empty room and hence does not need to convince anybody about
+ * their identity, etc.
  */
-np1secRoom::join() {
+void np1secRoom::solitary_join() {
+  //simply faking the particpant inf message
+  assert(user_in_room_state == JOINING); 
+  
+  UnauthenticatedParticipantList session_view;
+  session_view.push_back(UnauthenticatedParticipant((ParticipantId(user_state->user_id(), Cryptic::retrieve_result(user_state->long_term_key_pair.get_public_key()))), Cryptic::retrieve_result(np1sec_ephemeral_crypto.get_ephemeral_pub_key()),true));
+
+  SessionId empty_session_id;
+  np1secMessage solitary_joiner_info(empty_session_id,
+                                     np1secMessage::PARTICIPANTS_INFO,
+                                     session_view,
+                                     "",
+                                     "", //session conf
+                                     "", //joiner info
+                                     "",
+                                     user_state,
+                                     name);
+
+  np1secSession sole_joiner_session(user_state,
+                name,
+                &np1sec_ephemeral_crypto,
+                solitary_joiner_info);
+
+  session_universe.insert(pair<string, np1secSession>(sole_joiner_session.my_session_id().get_as_stringbuff(), sole_joiner_session));
+  
+}
+
+/**
+ * called by room constructor, everytime the user trys to join a room
+ * occupied by others. it just simply send a join message to the room.
+ */
+void np1secRoom::join() {
   assert(user_in_room_state == JOINING); //no double join but we need a
   //more humane way of doing this
-  np1secMessage join_message(np1secMessage::JOIN, user_state, np1sec_ephemeral_crypto);
+  //turening sexp to stirng buffer.
+  UnauthenticatedParticipant me(ParticipantId(user_state->user_id(), user_state->long_term_key_pair.get_public_key()), Cryptic::retrieve_result(np1sec_ephemeral_crypto.get_ephemeral_pub_key()));
+  np1secMessage join_message(np1secMessage::JOIN_REQUEST,
+                             me,
+                             user_state,
+                             name);
   join_message.send();
   
 }
@@ -37,11 +76,13 @@ np1secRoom::join() {
  * by default.
  *
  */
-np1secRoom::np1secRoom(std::string room_name, np1secUserState* user_state)
-  : name(room_name), user_state(user_state), user_in_room_state(JOINING)
-                                 
+np1secRoom::np1secRoom(std::string room_name, np1secUserState* user_state, std::vector<std::string> participants_in_the_room)
+  : name(room_name), user_state(user_state), user_in_room_state(JOINING)                                 
 {
-  join();
+  if (participants_in_the_room.size() <= 1)
+    solitary_join();
+  else
+    join();
 }
 
 /**
@@ -84,27 +125,30 @@ void np1secRoom::receive_handler(np1secMessage received_message)
   //session less messages, we are joining and we need info
   //about the room
   if (user_in_room_state == JOINING) {
-    if (received_message.has_sid())
-      if (session_universe.find(received_message.sid()))
-        session_universe[received_message.sid()].receive_handler(received_message);
-      else
-        session_universe.insert(np1secSession(user_state, received_message));
+    if (received_message.has_sid()) {
+      if (session_universe.find(Cryptic::hash_to_string_buff(received_message.session_id)) != session_universe.end())
+        RoomAction resulting_action = session_universe[Cryptic::hash_to_string_buff(received_message.session_id)].state_handler(received_message);
+      else {
+        session_universe.insert(pair<string, np1secSession>(Cryptic::hash_to_string_buff(received_message.session_id), np1secSession(user_state, name, &np1sec_ephemeral_crypto, received_message)));
+      }
+    }
     //else just ignore it, it is probably another user's join that we don't
     //care.
   } else if (user_in_room_state == CURRENT_USER) {
     if (received_message.has_sid()) {
-      if (session_universe.find(received_message.sid())) {
-        session_universe[received_message.sid()].receive_handler(received_message);
+      if (session_universe.find(Cryptic::hash_to_string_buff(received_message.session_id)) != session_universe.end()) {
+        RoomAction resulting_action = session_universe[Cryptic::hash_to_string_buff(received_message.session_id)].state_handler(received_message);
         //we need to check in case the session was activated
-        if (active_session != received_message.sid() and session_universe[received_message.sid()].status = np1secSession::IN_SESSION)
-          propagate_activation(received_message.sid());
+        if (active_session.get_as_stringbuff() == Cryptic::hash_to_string_buff(received_message.session_id) && session_universe[Cryptic::hash_to_string_buff(received_message.session_id)].get_state() == np1secSession::IN_SESSION)
+          activate_session(received_message.session_id);
+        
       }
-      // else //ignon
+      // else //ignone
     } else  //no sid, it should be a join message, verify and send to active session
-      if (received_message.type == np1secMessage::JOIN_REQUEST) {
-        RoomAction action_to_take = session_universe[active_session].receive_handler(received_message);
-        if (action_to_take == RoomAction::NEW_SESSION) {
-          session_universe.insert(*(action_to_take.bred_session));
+      if (received_message.message_type == np1secMessage::JOIN_REQUEST) {
+        RoomAction action_to_take = session_universe[active_session.get_as_stringbuff()].state_handler(received_message);
+        if (action_to_take.action_type == RoomAction::NEW_SESSION) {
+          session_universe.insert(pair<string, np1secSession>(action_to_take.bred_session->my_session_id().get_as_stringbuff(),*(action_to_take.bred_session)));
           delete action_to_take.bred_session; //:(
         }
       }
@@ -143,7 +187,6 @@ void np1secRoom::receive_handler(np1secMessage received_message)
   //     // we don't care really about sender
   //     string pure_message = sender_and_message.substr(message_pos + strlen(":o?"));
   //   }
-    
   // }
   
   // np1secMessage received_message = cur_session->receive(np1sec_message);
@@ -161,9 +204,15 @@ void np1secRoom::receive_handler(np1secMessage received_message)
  *        from all particpants and is ready to be the default session of
  *        the room
  */
-void np1secRoom::activated_session(SessionId newly_activated_session)
+void np1secRoom::activate_session(SessionId newly_activated_session)
 {
-  for(SessionMap::iterator session_it = session_universe.begin(); session_it != session_universe.end(); session_it()) {
+  SessionId dying_session = active_session;
+  if (dying_session.get())
+    session_universe[active_session.get_as_stringbuff()].commit_suicide();
+
+  active_session = newly_activated_session;
+  
+  for(SessionMap::iterator session_it = session_universe.begin(); session_it != session_universe.end(); session_it++) {
     //first we need to check if such a session in limbo currently exists
     //if it exists, that mean the joining user has already started the
     //negotiotion with the sesssion and there is no need to update the
@@ -180,9 +229,20 @@ void np1secRoom::activated_session(SessionId newly_activated_session)
     
     //update: in favor of simplicity we are having a nonbroadcasting creation
     //so we can create and kill sessions with not so much problem
-    np1secSession born_session = (*session_it) + session_universe[active_session] - session_universe[active_session];
-    if (!session_universe.find(born_session.get_sid())) //we already had the session,
-      session_universe.insert(born_session);
+    if ((session_it->second.get_state() != np1secSession::DEAD) && (session_it->second.get_state() != np1secSession::IN_SESSION)) {
+      session_it->second.commit_suicide();
+      np1secSession *born_session = nullptr;
+      if (dying_session.get())
+        *born_session  = session_it->second + session_universe[active_session.get_as_stringbuff()] - session_universe[dying_session.get_as_stringbuff()];
+      else
+        *born_session  = session_it->second + session_universe[active_session.get_as_stringbuff()];
+                            
+      if (session_universe.find(born_session->my_session_id().get_as_stringbuff()) == session_universe.end()) //we don't had the session,
+        session_universe.insert(pair<string, np1secSession>(born_session->my_session_id().get_as_stringbuff(), *born_session));
+
+      delete born_session;
+      
+    }
   }
 }
 
@@ -195,27 +255,27 @@ void np1secRoom::activated_session(SessionId newly_activated_session)
  *  @return false if no active session is established for the current 
  *  room
  */
-bool np1secRoom::send_user_message()
+bool np1secRoom::send_user_message(std::string plain_message)
 {
-  np1secSession *cur_session = retrieve_session(room_name);
-  if (!cur_session) {
-    return false; //you can't send message now
-    //TODO: We should queue the messages and send them
-    //when the session is established
-  }
-  
-  return true;
-
-}
-
-np1secSession* np1secRoom::retrieve_session(std::string room_name) {
-  np1secSession *cur_session = nullptr;
-  session_room_map::iterator it = session_in_a_room.find(room_name);
-
-  if ( it != session_in_a_room.end() ) {
-    cur_session = it->second;
+  if (active_session.get()) {
+    session_universe[active_session.get_as_stringbuff()].send(plain_message, np1secMessage::USER_MESSAGE);
+    return true;
   }
 
-  return cur_session;
-
+  return false; //you can't send message now
+  //TODO: We should queue the messages and send them
+  //when the session is established
+ 
 }
+
+// np1secSession* np1secRoom::retrieve_session(std::string room_name) {
+//   np1secSession *cur_session = nullptr;
+//   session_room_map::iterator it = session_in_a_room.find(room_name);
+
+//   if ( it != session_in_a_room.end() ) {
+//     cur_session = it->second;
+//   }
+
+//   return cur_session;
+
+// }

@@ -23,7 +23,10 @@
 #include "src/interface.h"
 #include "src/crypt.h"
 #include "src/base64.h"
-#include "src/userstate.h"
+#include "src/participant.h"
+//#include "src/userstate.h"
+
+class np1secUserState;
 
 class np1secMessage {
  protected:
@@ -41,7 +44,6 @@ class np1secMessage {
     return elems;
   }
 
-
   std::vector<std::string> split(const std::string &s, char delim) {
     std::vector<std::string> elems;
     split(s, delim, elems);
@@ -51,8 +53,8 @@ class np1secMessage {
  public:
   enum np1secMessageType {
     UNKNOWN,
-    JOINER_AUTH,
     JOIN_REQUEST,
+    JOINER_AUTH,
     PARTICIPANTS_INFO,
     SESSION_CONFIRMATION,
     SESSION_HALT,
@@ -79,7 +81,7 @@ class np1secMessage {
   uint8_t* transcript_chain_hash;
   std::string nonce;
   std::string z_sender;
-  std::vector<UnauthenticatedParticipant> session_view;
+  UnauthenticatedParticipantList session_view;
   std::string session_key_confirmation;
   std::string key_confirmation;
   std::string joiner_info;
@@ -100,21 +102,30 @@ class np1secMessage {
    * Construct a new np1secMessage based on a set of message components
    * based on an encrypted message as input
    */
-  np1secMessage(std::string raw_message, Cryptic cryptic, np1secUserState us, std::string room_name);
+  np1secMessage(std::string raw_message, Cryptic* cryptic, np1secUserState* us, std::string room_name);
 
   /*
    * Construct a new np1secMessage for p_infotem messages
    * based on a set of input components 
    **/
   np1secMessage(SessionId session_id,
-                             np1secMessageType message_type,
-                             std::string session_view,
-                             std::string key_confirmation,
-                             std::string session_key_confirmation,
-                             std::string joiner_info,
-                             std::string z_sender,
-                             np1secUserState* us,
-                             std::string room_name);
+                np1secMessageType message_type,
+                UnauthenticatedParticipantList session_view,
+                std::string key_confirmation,
+                std::string session_key_confirmation,
+                std::string joiner_info,
+                std::string z_sender,
+                np1secUserState* us,
+                std::string room_name);
+
+  /*
+   * We need to Construct a new np1secMessage without session_id
+   * for JOIN_REQUEST
+   **/
+  np1secMessage(np1secMessageType message_type,
+                UnauthenticatedParticipant joiner_info,
+                np1secUserState* us,
+                std::string room_name);
 
   /**
    * @return if the message is of type PARTICIPANTS_INFO it returns 
@@ -127,6 +138,10 @@ class np1secMessage {
 
   void string_to_session_view(std::string sv_string);
 
+  /**
+   * returns true if session_id is set
+   */
+  bool has_sid() { return (session_id != nullptr);}
   /**
    * Compute a unique globally ordered id from the time stamped message,
    * ultimately this function should be overridable by the client.
@@ -222,8 +237,6 @@ class np1secMessage {
    */
   void generate_nonce(unsigned char* buffer);
 
-  gcry_error_t compute_hash(HashBlock transcript_chain,
-                                  std::string message);
   /**
    * Destructor
    *

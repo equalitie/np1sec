@@ -139,7 +139,9 @@ static void process_chat_join_failed(PurpleConnection *gc,
 
 static void process_chat_joined(PurpleConversation *conv, void *m) {
   np1secUserState* user_state = reinterpret_cast<np1secUserState*>(m);
-  bool joined = user_state->join_room(conv->name, std::vector<UnauthenticatedParticipant>());
+  //todo: Arlo could you convert conv->chat to vector<string>
+  std::vector<std::string> current_occupants;
+  bool joined = user_state->join_room(conv->name, current_occupants);
   printf("Joining %s: %s\n", conv->name, joined ? "succeeded" : "failed");
 }
 

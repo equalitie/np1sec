@@ -80,7 +80,16 @@ struct np1secAppOps {
   void (*display_message)(std::string room_name,
                           std::string message,
                           void* aux_data);
-               
+
+
+  /**
+   * confirm the association of nickname and public key
+   */
+  void (*validate_long_term_key)(std::string nickname,
+                          np1secPublicKey fingerprint,
+                          void* aux_data);
+
+  
 };
 
 #endif  // SRC_INTERFACE_H_

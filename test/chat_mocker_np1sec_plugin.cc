@@ -26,6 +26,7 @@
 #include <utility>
 #include <vector>
 #include <string>
+#include <iostream>
 
 #include "test/chat_mocker.h"
 
@@ -36,18 +37,17 @@
 using namespace std;
 
 void chat_mocker_np1sec_plugin_join(std::string room_name,
-                                        std::string message,
                                         void* aux_data)
 {
   pair<np1secUserState*, ChatMocker*>* user_server_state = reinterpret_cast<pair<np1secUserState*, ChatMocker*>*>(aux_data);
   //It is chat client duty to provide the userstate class with
-  //the list of participants
+  //the list of participants not really other participants are going to do it.
   vector<string> current_occupants = user_server_state->second->participant_list(room_name);
-  UnauthenticatedParticipantList current_occupants_with_key;
-  for(uint32_t cur_participant = 0; cur_participant < current_occupants.size(); cur_participant++)
-    current_occupants_with_key.push_back((UnauthenticatedParticipant){current_occupants[cur_participant], ""});
+  //UnauthenticatedParticipantList current_occupants_with_key;
+  //for(uint32_t cur_participant = 0; cur_participant < current_occupants.size(); cur_participant++)
+  //  current_occupants_with_key.push_back((UnauthenticatedParticipant){current_occupants[cur_participant], ""});
 
-  user_server_state->first->join_room(room_name, current_occupants_with_key);
+  user_server_state->first->join_room(room_name, current_occupants);
 
 }
 
@@ -70,7 +70,8 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
     if (user_server_state->first->user_id() == joining_nick) {
       ;//ignore. why?
     } else {
-      user_server_state->first->accept_new_user(room_name, joining_nick);
+      //user_server_state->first->accept_new_user(room_name, joining_nick);
+      //ignore
     }
   } else if (np1sec_message.find("@<o>@LEAVE@<o>@") == 0) {
     string leaving_nick = np1sec_message.substr(strlen("@<o>@LEAVE@<o>@"));
@@ -78,6 +79,7 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
       user_server_state->first->leave_room(room_name);
     } else {
       user_server_state->first->shrink_on_leave(room_name, leaving_nick);
+      //kick out in case haven't left cleanly.
     }
   } else if (np1sec_message.find("@<o>@SEND@<o>@") == 0) {
     string message_with_id = np1sec_message.substr(strlen("@<o>@SEND@<o>@"));
@@ -94,16 +96,29 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
                                     message_pos + strlen("@<o>@"));
   //RoomActoin will tell you to 1)show message, 2)add participant 3) remove participant etc
  //not sure yet
-  RoomAction the_action = user_server_state->first->receive_handler(room_name,
-                                                             np1sec_message,
-                                                                    message_id);
+    user_server_state->first->receive_handler(room_name,
+                                              np1sec_message,
+                                              message_id);
   }
   
 };
 
 // Just a wrapper to call the mocker send function
-void send_bare(std::string room_name, std::string sender_nickname, std::string message, void* data)
+void send_bare(std::string room_name, std::string message, void* data)
 {
-  static_cast<ChatMocker*>(data)->send(room_name, sender_nickname, message);
+  static_cast<ChatMocker*>(data)->send(room_name, "someone", message);
   
 }
+
+// informing join and leave
+void new_session_announce(std::string room_name, std::string sender_nickname, void* aux_data)
+{
+  cout << "new session established" << endl;
+  
+}
+
+/*void join(std::string room_name, std::string sender_nickname, void* data)
+{
+  cout << sender_nickname << "Securely joined: " << endl;
+  
+  }*/

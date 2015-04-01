@@ -33,17 +33,16 @@ class np1secUserState;
 
 typedef std::map<std::string, np1secRoom> RoomMap;
 
-
 /**
  * Manages a user with long term identity for participating in a multiparty
  * chat sessions. It keeps track of sessions that user is participating in.
  */
 class np1secUserState {
-
  public:
   //TOOD: protoct these guys
   std::string name;
-  np1secAsymmetricKey long_term_key;
+  LongTermIDKey long_term_key_pair; //private and public key
+  //np1secAsymmetricKey long_term_pub_key;
   RoomMap chatrooms;
   np1secAppOps *ops;
 
@@ -70,8 +69,9 @@ class np1secUserState {
   /**
    * access function for for long term id key
    */
-  np1secAsymmetricKey user_id_key() {
-    return long_term_key;
+  KeyPair user_id_key()
+  {
+    return long_term_key_pair.get_key_pair();
   }
 
   /**
@@ -86,9 +86,8 @@ class np1secUserState {
   //TODO it is not clear that return value is useful at all. drop it if it
   //has no use
   bool join_room(std::string room_name
-                 /*, UnauthenticatedParticipantList participants_in_the_room
-                 Participant list is sent by other participants in the room
-                 */);
+                 , std::vector<std::string> participants_in_the_room
+                 );
 
   //Depricate, join request is triggered through join message
   /* /\** */

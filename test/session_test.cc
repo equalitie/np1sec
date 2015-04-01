@@ -44,6 +44,8 @@ protected: //gtest needs the elements to be protocted
   virtual void SetUp() {
     //bare_sender_data = static_cast<void*>(&mock_server);
     mockops.send_bare = send_bare;
+    mockops.join = new_session_announce;
+    mockops.leave = new_session_announce;
     
   };
   
@@ -140,14 +142,21 @@ TEST_F(SessionTest, test_init) {
   string username = "sole-tester";
   np1secUserState* user_state = new np1secUserState(username, &mockops);
 
+  pair<np1secUserState*, ChatMocker*> user_server_state(user_state, &mock_server);
+
+  //client login and join
   mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(user_state));
   mock_server.join(mock_room_name, user_state->user_id());
 
-  UnauthenticatedParticipantList participants_in_the_room;
-  participants_in_the_room.push_back((UnauthenticatedParticipant){user_state->user_id(), ""});
+  /*UnauthenticatedParticipantList participants_in_the_room;
+    participants_in_the_room.push_back((UnauthenticatedParticipant){user_state->user_id(), ""});*/
 
-  np1secSession new_session(user_state, mock_room_name, participants_in_the_room);
-  ASSERT_TRUE(new_session.join(user_state->user_id_key_pair()));
+  //user_state->join(mock_room_name, mock_server.participant_list(mock_room_name));
+
+  //tell np1sec to go through join
+  chat_mocker_np1sec_plugin_join(mock_room_name, &user_server_state);
+
+  //np1secSession new_session(user_state, mock_room_name, participants_in_the_room);
+  //ASSERT_TRUE(new_session.join(user_state->user_id_key_pair()));
   
 }
-

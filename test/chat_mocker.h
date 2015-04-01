@@ -137,6 +137,7 @@ class ChatMocker {
   void send(std::string room, std::string nick, std::string message) {
     rooms[room].send(nick, message);
   }
+  
 };
 
 #endif  // TEST_CHAT_MOCKER_H_

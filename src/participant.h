@@ -99,12 +99,15 @@ struct UnauthenticatedParticipant {
   ParticipantId participant_id;
   HashBlock ephemeral_pub_key;  // This should be in some convienient 
   // Format
+  bool authenticated;
 
   /**
   * constructor 
   */
-  UnauthenticatedParticipant(ParticipantId participant_id, std::string ephemeral_pub_key)
-   :participant_id (participant_id)
+UnauthenticatedParticipant(ParticipantId participant_id, std::string ephemeral_pub_key, bool authenticated = false)
+:participant_id (participant_id),
+    authenticated(authenticated)
+     
   {
     memcpy(this->ephemeral_pub_key, ephemeral_pub_key.c_str(), c_ephemeral_key_length);
   }
@@ -132,10 +135,22 @@ UnauthenticatedParticipant(std::string participant_id_and_ephmeralkey)
     memcpy(this->ephemeral_pub_key, ephemeral_pub_key.c_str(), c_ephemeral_key_length);
     
   }
+
+  std::string unauthed_participant_to_stringbuffer() {
+    std::string string_id(participant_id.id_to_stringbuffer());
+    string_id += std::string(reinterpret_cast<char*>(ephemeral_pub_key, sizeof(HashBlock)));
+    return string_id;
+  }
   
 };
 
 typedef std::list<UnauthenticatedParticipant> UnauthenticatedParticipantList;
+
+class ParticipantInSessionProperties {
+  //TOOD move all session related values here
+
+};
+
 /** 
  * This class keeps the state of each participant in the room, including the
  * user themselves.
@@ -165,6 +180,8 @@ class Participant {
   HashBlock p2p_key = {};
   bool authenticated;
   bool authed_to;
+  bool key_share_contributed;
+  unsigned int index; //keep the place of the partcipant in sorted peers array
   // np1secKeySHare future_key_share;
 
   uint32_t in_session_index; /* this is the i in U_i and we have
@@ -205,7 +222,28 @@ class Participant {
 
     return (ephemeral_key != nullptr);
   }
-  
+
+  /**
+   * store the encrypted keyshare and set the contributed flag true
+   *
+   */
+  void set_key_share(const HashBlock new_key_share)
+  {
+    memcpy(this->cur_keyshare, new_key_share, sizeof(HashBlock));
+    key_share_contributed = true;
+
+  }
+
+  /**
+   * Generate the approperiate authentication token to send to the
+   * to the participant so they trust (authenticate us)
+   *
+   * @param auth_token authentication token received as a message
+   * 
+   * @return true if peer's authenticity could be established
+   */
+  bool authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key);
+
   /**
    * Generate the approperiate authentication token check its equality
    * to authenticate the alleged participant
@@ -214,19 +252,28 @@ class Participant {
    * 
    * @return true if peer's authenticity could be established
    */
-  bool authenticate_to(HashBlock auth_token, np1secAsymmetricKey thread_user_id_key);
-  bool be_authenticated(std::string authenicator_id, HashBlock auth_token, np1secAsymmetricKey thread_user_id_key);
+  bool be_authenticated(std::string authenicator_id, const HashBlock auth_token, np1secAsymmetricKey thread_user_id_key);
 
   /**
    * default constructor
+   * TODO: This only exists because stl asks for it
+   * don't use it
    */
- Participant(ParticipantId participant_id)
-   :id(participant_id),
+  Participant()
+    : id(""),
     ephemeral_key(nullptr),
     authenticated(false),
+    authed_to(false)
+      {}
+    
+ Participant(UnauthenticatedParticipant unauth_participant, Cryptic* thread_crypto)
+   :id(unauth_participant.participant_id),
+    authenticated(false),
     authed_to(false),
-    long_term_pub_key(Cryptic::convert_to_sexp(reinterpret_cast<char*>(participant_id.fingerprint))) 
+    long_term_pub_key(Cryptic::convert_to_sexp(reinterpret_cast<char*>(unauth_participant.participant_id.fingerprint))) ,
+    thread_user_crypto(thread_crypto)
       {
+        set_ephemeral_key(unauth_participant.ephemeral_pub_key);
       }
 
 };
@@ -235,6 +282,15 @@ class Participant {
  * To be used in std::sort to sort the particpant list
  * in a way that is consistent way between all participants
  */
-bool sort_by_long_term_pub_key(Participant& lhs, Participant& rhs);
+bool sort_by_long_term_pub_key(const Participant& lhs, const Participant& rhs);
+
+/**
+ * operator < needed by map class not clear why but it doesn't compile
+ * It first does nick name check then public key check. in reality
+ * public key check is not needed as the nickname are supposed to be 
+ * unique (that is why nickname is more approperiate for sorting than
+ * public key)
+ */
+bool operator<(const Participant& rhs, const Participant& lhs);
 
 #endif  // SRC_PARTICIPANT_H_

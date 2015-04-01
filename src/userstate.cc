@@ -48,14 +48,14 @@ bool np1secUserState::init() {
   return long_term_key_pair.generate();
 }
 
-bool np1secUserState::join_room(std::string room_name/*,
-                                                       UnauthenticatedParticipantList participants_in_the_room*/) {
+bool np1secUserState::join_room(std::string room_name,
+                                std::vector<std::string> participants_in_the_room) {
   //we join the room, the room make a join session
 
   //if the room is not made, we make it.
-  if (chatrooms.find(room_name)) {
+  if (chatrooms.find(room_name) == chatrooms.end()) {
     //room creation triger joining
-    chatroom.insert(room_name, np1secRoom(room_name, this));
+    chatrooms.insert(pair<string, np1secRoom>(room_name, np1secRoom(room_name, this, participants_in_the_room)));
   } else {
     //we asks the room to re-join.
     //it is not clear if it is a good idea
@@ -80,21 +80,21 @@ bool np1secUserState::join_room(std::string room_name/*,
        - decide which room should handle the message using the room name
  */
 void np1secUserState::receive_handler(std::string room_name,
-                                            std::string np1sec_message,
+                                            std::string received_message,
                                             uint32_t message_id) {
-  np1secMessage recieved.receive(received_message); //so no decryption key here
+  np1secMessage received(received_message, nullptr, this, room_name); //so no decryption key here
 
   //if there is no room, it was a mistake to give us the message
-  assert(chatrooms.find(room_name));
+  assert(chatrooms.find(room_name) != chatrooms.end());
 
-  chatrooms[room_name].receive_handler(received_message);
+  chatrooms[room_name].receive_handler(received);
   
 }
 
 bool np1secUserState::send_handler(std::string room_name,
                                    std::string plain_message) {
   assert(chatrooms.find(room_name) != chatrooms.end());    // uh oh 
-  return chatrooms[room_name].send(plain_message);
+  return chatrooms[room_name].send_user_message(plain_message);
   
 }
 

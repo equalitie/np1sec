@@ -19,6 +19,8 @@
 #ifndef SRC_ROOM_H_
 #define SRC_ROOM_H_
 
+//#error I am here
+
 #include <string>
 #include <map>
 
@@ -28,16 +30,12 @@
 #include "src/session.h"
 #include "src/message.h"
 
-class np1secUserState;
-class np1secSession;
-class np1secMessage;
-
 //The type that keep the set of all sessions associated with this room
 //It really need to be a pointer, because the sessions are mostly
 //create by other sessions and handed to the room.
 
 //Should we point to a session or store the session itself?
-typedef std::map<SessionId, np1secSession> SessionMap;
+typedef std::map<std::string, np1secSession> SessionMap;
 
 /**
  * Manage all sessions associated to a room, this is follow the concurrent 
@@ -84,14 +82,34 @@ class np1secRoom {
   
   SessionId active_session;
 
+  /**
+   * manages activating a session which concerns an additional
+   * person joining or an person leaving. it inform all sessions
+   * in limbo to add or drop the person.
+   * 
+   * @param newl_activated_session the session that just got confirmation
+   *        from all particpants and is ready to be the default session of
+   *        the room
+   */
+  void activate_session(SessionId newly_activated_session);
+
  public:
   /**
    * constructor: sets room name, make the user status joing 
    * by default.
    *
    */
-  np1secRoom(std::string room_name, np1secUserState* user_state);
-  
+  np1secRoom(std::string room_name, np1secUserState* user_state, std::vector<std::string> participants_in_the_room);
+
+  /**
+   * bad constructor just for the sake of operator[] of chatrooms
+   *
+   */
+  np1secRoom()
+    {
+      assert(0);
+    }
+
   //Depricated: the approach of session factor is not working
   //as some of request for new session (specifically leave)
   //might come in encrypted format and as such the room
@@ -108,7 +126,14 @@ class np1secRoom {
    * it just simply send a join message to the room.
    */
   void join();
-    
+
+  /**
+   * called by room constructor, everytime the user is the first joiner
+   * of an empty room and hence does not need to convince anybody about
+   * their identity, etc.
+   */
+  void solitary_join();
+
   /**
    * manages the finite state machine of the sid part of the message
    * based on sid (or absence of it), it decides what to do with the 
@@ -129,15 +154,15 @@ class np1secRoom {
   void receive_handler(np1secMessage received_message);
 
   /**
-   * manages activating a session which concerns an additional
-   * person joining or an person leaving. it inform all sessions
-   * in limbo to add or drop the person.
-   * 
-   * @param newl_activated_session the session that just got confirmation
-   *        from all particpants and is ready to be the default session of
-   *        the room
+   *  sends user message given in plain text by the client to the 
+   *  active session of the room
+   *
+   *  @param plain_message user text message
+   *
+   *  @return false if no active session is established for the current 
+   *  room
    */
-  void activated_session(SessionId newly_activated_session);
+  bool send_user_message(std::string plain_message);
 
 };    
 

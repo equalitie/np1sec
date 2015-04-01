@@ -22,11 +22,13 @@
  * a room 
  */
 void chat_mocker_np1sec_plugin_join(std::string room_name,
-                                        std::string message,
                                     void* aux_data);
 
 // Just a wrapper to call the mocker send function
-void send_bare(std::string room_name, std::string sender_nickname, std::string message, void* data);
+void send_bare(std::string room_name, std::string message, void* data);
+
+void new_session_announce(std::string room_name, std::string sender_nickname, void* aux_data);
+
 
 /**
  * Receive the messages from chat mocker, interpret the message and

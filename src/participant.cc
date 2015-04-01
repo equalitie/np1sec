@@ -22,13 +22,27 @@
  * To be used in std::sort to sort the particpant list
  * in a way that is consistent way between all participants
  */
-bool sort_by_long_term_pub_key(Participant& lhs, Participant& rhs)
+bool sort_by_long_term_pub_key(const Participant& lhs, const Participant& rhs)
 {
-
   return Cryptic::retrieve_result(lhs.long_term_pub_key) < Cryptic::retrieve_result(rhs.long_term_pub_key);
 
 }
 
+/**
+ * operator < needed by map class not clear why but it doesn't compile
+ * It first does nick name check then public key check. in reality
+ * public key check is not needed as the nickname are supposed to be 
+ * unique (that is why nickname is more approperiate for sorting than
+ * public key)
+ */
+bool operator<(const Participant& lhs, const Participant& rhs)
+{
+  if (lhs.id.nickname < rhs.id.nickname) return true;
+
+  return sort_by_long_term_pub_key(lhs, rhs);
+  
+}
+ 
 /**
  * Generate the approperiate authentication token check its equality
  * to authenticate the alleged participant
@@ -41,7 +55,7 @@ bool sort_by_long_term_pub_key(Participant& lhs, Participant& rhs)
  * 
  * @return true if peer's authenticity could be established
  */
-bool Participant::be_authenticated(std::string authenticator_id, HashBlock auth_token, np1secAsymmetricKey thread_user_id_key) {
+bool Participant::be_authenticated(const std::string authenticator_id, const HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key) {
   if (!compute_p2p_private(thread_user_id_key))
     return false;
   
@@ -65,7 +79,7 @@ bool Participant::be_authenticated(std::string authenticator_id, HashBlock auth_
  * 
  * @return true if peer's authenticity could be established
  */
-bool Participant::authenticate_to(HashBlock auth_token, np1secAsymmetricKey thread_user_id_key) {
+bool Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key) {
 
   if (!compute_p2p_private(thread_user_id_key))
     return false;

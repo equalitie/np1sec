@@ -19,8 +19,8 @@
 
 #ifndef SRC_MESSAGE_CC_
 #define SRC_MESSAGE_CC_
-#include "src/userstate.h"
 #include "src/message.h"
+#include "src/userstate.h"
 #include "src/exceptions.h"
 
 np1secMessage::np1secMessage(SessionId session_id,
@@ -54,27 +54,30 @@ np1secMessage::np1secMessage(SessionId session_id,
 
 np1secMessage::np1secMessage(SessionId session_id,
                              np1secMessageType message_type,
-                             std::string session_view,
+                             UnauthenticatedParticipantList session_view,
                              std::string key_confirmation,
                              std::string session_key_confirmation,
                              std::string joiner_info,
                              std::string z_sender,
                              np1secUserState* us,
-                             std::string room_name){
-  session_id = session_id;
-  message_type = message_type;
-  session_view = session_view;
-  key_confirmation = key_confirmation;
-  session_key_confirmation = session_key_confirmation;
-  joiner_info = joiner_info;
-  z_sender = z_sender;
-  us = us;
-  room_name = room_name;
-}
+                             std::string room_name)
+  :
+  session_id(session_id.get()),
+  message_type(message_type),
+  session_view(session_view),
+  key_confirmation(key_confirmation),
+  session_key_confirmation(session_key_confirmation),
+  joiner_info(joiner_info),
+  z_sender(z_sender),
+  us(us),
+  room_name(room_name)
+  {
+    format_generic_message();
+  }
 
 
-np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic, np1secUserState usi, std::string room_name) {
-  cryptic = cryptic;
+np1secMessage::np1secMessage(std::string raw_message, Cryptic* cryptic, np1secUserState* usi, std::string room_name) {
+  this->cryptic = cryptic;
   char* buf = strdup(raw_message.c_str());
   std::string np1sec = strtok(buf, c_np1sec_delim.c_str());
   us = us;
@@ -83,6 +86,15 @@ np1secMessage::np1secMessage(std::string raw_message, Cryptic cryptic, np1secUse
     unwrap_generic_message();  
   }
 }
+
+np1secMessage::np1secMessage(np1secMessageType message_type,
+                             UnauthenticatedParticipant joiner,
+                             np1secUserState* us,
+                             std::string room_name)
+  :us(us), room_name(room_name), joiner_info(joiner.unauthed_participant_to_stringbuffer())
+{
+}
+
 
 /**
  * @return if the message is of type PARTICIPANTS_INFO it returns 
@@ -104,7 +116,7 @@ UnauthenticatedParticipantList np1secMessage::participants_in_the_room()
 
 std::string np1secMessage::session_view_as_string(){
   std::string output = c_np1sec_delim.c_str();
-  for (std::vector<UnauthenticatedParticipant>::iterator it = session_view.begin(); it != session_view.end(); ++it){
+  for (UnauthenticatedParticipantList::iterator it = session_view.begin(); it != session_view.end(); ++it){
     output += (*it).participant_id.id_to_stringbuffer(); // + _subfield_delim; //TODO::we don't need delim public key has static
     //length 
     //output += (*it).long_term_pub_key_hex + c_np1sec_delim.c_str(); 
@@ -367,11 +379,6 @@ std::string np1secMessage::encrypt_message(std::string signed_message) {
 
 std::string np1secMessage::decrypt_message(std::string encrypted_message) {
   return cryptic->Decrypt(encrypted_message);
-}
-
-gcry_error_t np1secMessage::compute_hash(HashBlock transcript_chain,
-                                     std::string message) {
-  return cryptic->hash(message.c_str(), message.size(), transcript_chain, true);
 }
 
 np1secMessage::~np1secMessage() {

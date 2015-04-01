@@ -107,6 +107,11 @@ err:
   return false;
 }
 
+gcry_sexp_t Cryptic::get_public_key(np1secAsymmetricKey key_pair)
+{
+  return gcry_sexp_find_token(key_pair, "public-key", 0);
+}
+
 std::string Cryptic::retrieve_result(gcry_sexp_t text_sexp) {
   //  size_t buffer_size = gcry_sexp_sprint(text_sexp, GCRYSEXP_FMT_ADVANCED, 	
   //                                      NULL, 0);
@@ -158,9 +163,8 @@ gcry_sexp_t Cryptic::convert_to_sexp(std::string text) {
  *
  * @return true if succeeds otherwise false
  */
-bool Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, LongTermPublicKey peer_long_term_key, np1secAsymmetricKey my_long_term_key, bool peer_is_first, HashBlock* teddh_token)
+bool Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey peer_long_term_key, np1secAsymmetricKey my_long_term_key, bool peer_is_first, HashBlock* teddh_token)
 {
-
   gcry_error_t err = 0;
   bool failed = true;
   //we need to call 
@@ -478,10 +482,11 @@ gcry_cipher_hd_t Cryptic::OpenCipher() {
   if ( err ) {
     std::printf("ed25519Key: Cipher creation failed");
   }
-  err = gcry_cipher_setkey(hd, SESSION_KEY, 32);
+  err = gcry_cipher_setkey(hd, session_key, sizeof(np1secSymmetricKey));
   err = gcry_cipher_setiv(hd, SESSION_IV, 16);
 
   return hd;
+                           
 }
 
 std::string Cryptic::Encrypt(std::string plain_text) {
