@@ -141,11 +141,12 @@ TEST_F(SessionTest, test_init) {
   //to sign in the room
   string username = "sole-tester";
   np1secUserState* user_state = new np1secUserState(username, &mockops);
+  user_state->init();
 
   pair<np1secUserState*, ChatMocker*> user_server_state(user_state, &mock_server);
 
   //client login and join
-  mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(user_state));
+  mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));
   mock_server.join(mock_room_name, user_state->user_id());
 
   /*UnauthenticatedParticipantList participants_in_the_room;

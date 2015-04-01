@@ -101,13 +101,18 @@ class RoomAction {
    }; 
 
    ActionType action_type;
-   UnauthenticatedParticipant acting_user;  // The user which joined, left or sent a message. */
+   // The user which joined, left or sent a message. 
+   //UnauthenticatedParticipant acting_user; //it is enough to be just a nick
+   std::string acting_user_nick;
    np1secSession* bred_session = nullptr;
-
+   /**
+    * construtor. given no arugement it results in NO_ACTION 
+    */
  RoomAction(ActionType action = NO_ACTION, std::string  acting_user_nick = "")
    : action_type(action),
-     acting_user(acting_user_nick)
-   {}
+     acting_user_nick(acting_user_nick)
+   {
+   }
    
 };
 

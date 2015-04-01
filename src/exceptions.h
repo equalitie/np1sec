@@ -37,5 +37,21 @@ class np1secMessageFormatException : public std::exception
    }                                                               
  };                                   
 
+class np1secCryptoException : public std::exception                               
+{                                                                 
+   virtual const char* what() const throw()                        
+   {                                                               
+     return "Crypto error";                               
+   }                                                               
+ };                                   
+
+class np1secInsufficientCredentialException : public std::exception                               
+{                                                                 
+   virtual const char* what() const throw()                        
+   {                                                               
+     return "Crypto error";                               
+   }                                                               
+ };                                   
+
 
 #endif  // SRC_EXCEPTIONS_H_

@@ -126,8 +126,8 @@ class np1secUserState {
    *         interface (add, remove user or display a message
    */
   void receive_handler(std::string room_name,
-                             std::string np1sec_message,
-                             uint32_t message_id);
+                       std::string np1sec_message,
+                       uint32_t message_id = 0);
 
   /**
    * The client informs the user state about leaving the room by calling this

@@ -50,9 +50,10 @@ class MockRoom {
   void join(std::string nick,
             void (*receive_handler)(std::string room_name,
                                     std::string message,
-                                    void* user_data)) {
+                                    void* user_data), void* user_data) {
       _participant_list[nick].nick = nick;
       _participant_list[nick].receive_handler = chat_mocker_np1sec_plugin_receive_handler;
+      _participant_list[nick].aux_data = user_data;
       
         //receive_handler; in real life, its re doesn't happen here
       // _participant_list[nick].aux_data = user_data;
@@ -113,7 +114,7 @@ class ChatMocker {
    * join the room by adding the name of the participant to the room list
    */
   void join(std::string room, std::string nick) {
-    rooms[room].join(nick, signed_in_participant[nick].receive_handler);
+    rooms[room].join(nick, signed_in_participant[nick].receive_handler, signed_in_participant[nick].aux_data);
   }
 
   /**

@@ -66,13 +66,21 @@ struct ParticipantId
   }
 
   /**
+   * Just a default constructor for when we don't want to initiate the
+   * participant name and key
+   */
+  ParticipantId()
+  {
+  }
+  
+  /**
    *  constructor using one string buff which has both nick 
    *  and fingerprint
    *
    */
   ParticipantId(std::string nick_clone_fingerprint_strbuff)
   {
-    //TODO:: We need to throw up if the format isn't correct
+    //TODO:: We need to throw up if the participant format isn't correct
     std::string nickname = nick_clone_fingerprint_strbuff.substr(0, nick_clone_fingerprint_strbuff.find(c_subfield_delim.c_str()));
     std::string fingerprint_strbuff = nick_clone_fingerprint_strbuff.substr(nickname.length() + c_subfield_delim.length() , ParticipantId::c_fingerprint_length);
     memcpy(fingerprint, fingerprint_strbuff.c_str(), fingerprint_strbuff.size());
@@ -113,6 +121,13 @@ UnauthenticatedParticipant(ParticipantId participant_id, std::string ephemeral_p
   }
 
   /**
+   * default constructor when we don't want to setup a participant
+   */
+  UnauthenticatedParticipant()
+  {
+  }
+  
+  /**
    * Default copy constructor
    */
   UnauthenticatedParticipant(const UnauthenticatedParticipant& rhs)
@@ -131,9 +146,16 @@ UnauthenticatedParticipant(ParticipantId participant_id, std::string ephemeral_p
 UnauthenticatedParticipant(std::string participant_id_and_ephmeralkey)
 :participant_id(participant_id_and_ephmeralkey)
   {
-    std::string ephemeral_pub_key = participant_id_and_ephmeralkey.substr(participant_id.nickname.length() + c_subfield_delim.length() + ParticipantId::c_fingerprint_length, c_ephemeral_key_length);
-    memcpy(this->ephemeral_pub_key, ephemeral_pub_key.c_str(), c_ephemeral_key_length);
+    //TODO:: We need to throw up if the participant format isn't correct
+    std::string ephemeral_pub_key =
+      participant_id_and_ephmeralkey.substr(
+                                            participant_id.nickname.length() +
+                                            c_subfield_delim.length() +
+                                            ParticipantId::c_fingerprint_length,
+                                            c_ephemeral_key_length);
     
+    memcpy(this->ephemeral_pub_key, ephemeral_pub_key.c_str(), c_ephemeral_key_length);
+
   }
 
   std::string unauthed_participant_to_stringbuffer() {

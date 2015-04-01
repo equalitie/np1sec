@@ -68,8 +68,11 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
     string joining_nick = np1sec_message.substr(strlen("@<o>@JOIN@<o>@"));
 
     if (user_server_state->first->user_id() == joining_nick) {
-      ;//ignore. why?
+      user_server_state->first->join_room(room_name, user_server_state->second->participant_list(room_name));
     } else {
+      user_server_state->first->receive_handler(room_name,
+                                                np1sec_message);
+                                                
       //user_server_state->first->accept_new_user(room_name, joining_nick);
       //ignore
     }

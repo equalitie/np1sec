@@ -41,7 +41,10 @@ extern "C" {
 
 typedef gcry_sexp_t np1secPrivateKey;
 typedef gcry_sexp_t np1secPublicKey;
-typedef std::pair<np1secPrivateKey,np1secPublicKey> KeyPair;
+typedef std::pair<np1secPrivateKey, np1secPublicKey> KeyPair;
+//TODO: it really makes sense that the public key is already stored in HashBlock 
+//Format as we never use public key directly when we have the main
+//key and only use this to transmit it to others
 
 enum np1secLoadFlag {
   NO_LOAD,

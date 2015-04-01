@@ -23,6 +23,7 @@
 #include <cstring>
 
 #include "src/common.h"
+#include "src/exceptions.h"
 #include "src/crypt.h"
 
 extern "C" {
@@ -36,43 +37,6 @@ typedef HashBlock np1secSymmetricKey;
 
 const unsigned int c_ephemeral_key_length = 32;
 const unsigned int c_key_share = c_hash_length;
-
-class  LongTermIDKey {
- protected:
-  KeyPair key_pair;
-  bool initiated = false;
-
- public:
-  /**
-   * Access
-   */
-  int is_initiated() {return initiated;}
-
-  KeyPair get_key_pair(){return key_pair;}
-
-  np1secPublicKey get_public_key() {
-      return key_pair.second;
-  }
-
-  /**
-   * @return false if key generation goes wrong (for example due to 
-   *         lack of entropy
-   */
-  bool generate() {
-    initiated = true;
-    //Use Crypt class to generate
-    //TODO::Bill
-    
-    return true;
-      
-  }
-
-  void set_key_pair(KeyPair user_key_pair) {
-    initiated = true;
-    key_pair = user_key_pair;
-  }
-  
-};
 
 /**
  * Encryption primitives and related definitions.
@@ -172,7 +136,11 @@ teddh   *
     assert(hash_block_buffer.size() == sizeof(HashBlock));
     return reinterpret_cast<const uint8_t *>(hash_block_buffer.c_str());
   }
-      
+
+  static np1secPublicKey extract_public_key(const np1secAsymmetricKey complete_key)
+  {
+    return gcry_sexp_find_token(complete_key, "public-key", 0);
+  }
 
   
   /**
@@ -236,6 +204,75 @@ teddh   *
    */
   gcry_cipher_hd_t OpenCipher();
 
+
+};
+
+class  LongTermIDKey {
+ protected:
+  KeyPair key_pair;
+  bool initiated = false;
+
+ public:
+  /**
+   * Access
+   */
+  int is_initiated() {return initiated;}
+
+  KeyPair get_key_pair(){return key_pair;}
+
+  np1secPublicKey get_public_key() {
+    return key_pair.second;
+  }
+
+  np1secPublicKey get_private_key() {
+    return key_pair.first;
+  }
+
+  /**
+   * Initiation
+   */
+  /**
+   * @return false if key generation goes wrong (for example due to 
+   *         lack of entropy
+   */
+  void generate() {
+    try {
+      Cryptic::generate_key_pair(&key_pair.first);
+      key_pair.second = Cryptic::extract_public_key(key_pair.first);
+      initiated = true;
+    } catch(np1secCryptoException& crypto_exception) {
+      throw crypto_exception;
+    }      
+      
+  }
+
+  void set_key_pair(KeyPair user_key_pair) {
+    initiated = true;
+    key_pair = user_key_pair;
+  }
+
+  /**
+   * treat the raw_key_pair as gcrypt_sexp turned 
+   * int string buffer 
+   * 
+   * @param raw_key_pair is not a pair but the sexp converted
+   *        string of the ed25519 key 
+   */
+  void set_key_pair(uint8_t* raw_key_pair) {
+    try {
+      key_pair.first = Cryptic::convert_to_sexp(Cryptic::hash_to_string_buff(raw_key_pair));
+      //because we never transmit the
+      //private key, it doesn't matter what is the thingi that we
+      //call private key. 
+      key_pair.second = Cryptic::extract_public_key(key_pair.first);
+      
+    } catch(np1secCryptoException& crypto_exception) {
+      throw crypto_exception; //the raw key is given by the client and we
+      //should tell them that their key is corrupted
+    }
+
+    initiated = true;
+  }
 
 };
 

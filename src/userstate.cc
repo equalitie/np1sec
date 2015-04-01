@@ -29,8 +29,12 @@ using namespace std;
 np1secUserState::np1secUserState(std::string name, np1secAppOps *ops,
                                  uint8_t* key_pair) : name(name), ops(ops) {
   if (key_pair) {
-    // FIXME: populate long_term_private_key from key_pair
+    long_term_key_pair.set_key_pair(key_pair);
+    //if the client doesn't initiate the public
+    //key now it needs to call init sometimes before
+    //join or join fails due to lack of crypto material
   }
+    
 }
 
 np1secUserState::~np1secUserState() {
@@ -45,11 +49,16 @@ bool np1secUserState::init() {
   if (long_term_key_pair.is_initiated()) {
     return true;
   }
-  return long_term_key_pair.generate();
+  long_term_key_pair.generate();
+  return true;
 }
 
 bool np1secUserState::join_room(std::string room_name,
                                 std::vector<std::string> participants_in_the_room) {
+  //we can't join without id key
+  if (!long_term_key_pair.is_initiated())
+    throw np1secInsufficientCredentialException();
+  
   //we join the room, the room make a join session
 
   //if the room is not made, we make it.
