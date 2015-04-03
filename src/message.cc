@@ -52,9 +52,9 @@ np1secMessage::np1secMessage(SessionId session_id,
   }
 }
 
-np1secMessage::np1secMessage(SessionId session_id,
+np1secMessage::np1secMessage(SessionId& session_id,
                              np1secMessageType message_type,
-                             UnauthenticatedParticipantList session_view,
+                             UnauthenticatedParticipantList& session_view,
                              std::string key_confirmation,
                              std::string session_key_confirmation,
                              std::string joiner_info,
@@ -150,7 +150,7 @@ void np1secMessage::string_to_session_view(std::string sv_string) {
 void np1secMessage::format_generic_message() {
   std::string signature;
   sys_message = "" + std::to_string(message_type) + c_np1sec_delim.c_str();
-  std::string sid_string(reinterpret_cast<char const*>(session_id));
+  std::string sid_string(session_id ? reinterpret_cast<char const*>(session_id) : "");
   
   switch (message_type) {
     case PARTICIPANTS_INFO:
@@ -180,8 +180,9 @@ void np1secMessage::format_generic_message() {
       break;
    }
 
-  signature = sign_message(sys_message);
-  sys_message += signature + c_np1sec_delim.c_str();
+  //we shouldn't sign these messages, no point
+  //signature = sign_message(sys_message);
+  //sys_message += signature + c_np1sec_delim.c_str();
   sys_message = c_np1sec_delim.c_str() + sid_string + c_np1sec_delim.c_str() + sys_message;
   sys_message = base64_encode(sys_message);
   sys_message = c_np1sec_protocol_name + c_np1sec_delim.c_str() + sys_message;

@@ -62,7 +62,7 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
   //actully it is not. In libpurple, it might be that libpurple calls different
   //functions for different actions, but the chat mocker put everything
   //in a message
-    //only possible operation should be join and leave 
+  //only possible operation should be join and leave 
   if (np1sec_message.find("@<o>@JOIN@<o>@") == 0) {
     // check if it is ourselves or somebody else who is joining
     string joining_nick = np1sec_message.substr(strlen("@<o>@JOIN@<o>@"));

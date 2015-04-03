@@ -71,6 +71,8 @@ class Cryptic {
     return ephemeral_pub_key;
   }
   
+  static std::string public_key_to_stringbuff(np1secAsymmetricKey public_key);
+  
   bool init();
 
   /**

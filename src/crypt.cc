@@ -16,6 +16,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+/*
+ * For debug reason use
+ * gcryp_sexp_dump and gcry_mpi_dump
+ */
 #ifndef SRC_CRYPT_CC_
 #define SRC_CRYPT_CC_
 
@@ -110,6 +114,11 @@ err:
 gcry_sexp_t Cryptic::get_public_key(np1secAsymmetricKey key_pair)
 {
   return gcry_sexp_find_token(key_pair, "public-key", 0);
+}
+
+std::string Cryptic::public_key_to_stringbuff(np1secAsymmetricKey public_key) {
+  return retrieve_result(gcry_sexp_find_token(public_key
+                                              , "q", 0));
 }
 
 std::string Cryptic::retrieve_result(gcry_sexp_t text_sexp) {

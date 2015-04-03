@@ -424,9 +424,10 @@ bool np1secSession::joiner_send_auth_and_share() {
     }
   }
 
+  UnauthenticatedParticipantList temp_view = session_view();
   np1secMessage outboundmessage(session_id,
                                 np1secMessage::JOINER_AUTH,
-                                session_view(), //this is empty and shouldn't be sent
+                                temp_view, //this is empty and shouldn't be sent
                                 auth_batch,
                                 "",
                                 "",
@@ -451,9 +452,10 @@ bool np1secSession::send_auth_and_share_message() {
   //if (!participants[joiner_id].authed_to) {
   //participants[joiner_id].authenticate_to(cur_auth_token);
 
+  UnauthenticatedParticipantList session_view_list = session_view();
   np1secMessage outboundmessage(session_id,
                                 np1secMessage::GROUP_SHARE,
-                                session_view(),//unauthenticated_participants,
+                                session_view_list,
                                 "",//auth_token,
                                 "",//session conf
                                 "",//joiner info
@@ -483,9 +485,10 @@ bool np1secSession::send_view_auth_and_share(string joiner_id) {
     if (!participants[joiner_id].authed_to)
       participants[joiner_id].authenticate_to(cur_auth_token, us->long_term_key_pair.get_key_pair().first);
 
+  UnauthenticatedParticipantList session_view_list = session_view();
   np1secMessage outboundmessage(session_id,
                                 np1secMessage::PARTICIPANTS_INFO,
-                                session_view(),
+                                session_view_list,
                                 string(reinterpret_cast<char*>(cur_auth_token), sizeof(HashBlock)),
                                 "", //session conf
                                 "", //joiner info
@@ -758,12 +761,12 @@ np1secSession::StateAndAction np1secSession::confirm_auth_add_update_share_repo(
     //session people
     
   //}
-
+  UnauthenticatedParticipantList session_view_list = session_view();
   if (everybody_authenticated_and_contributed()) {
     if (group_dec()) {
       np1secMessage outboundmessage(session_id,
                                     np1secMessage::SESSION_CONFIRMATION,
-                                    session_view(),
+                                    session_view_list,
                                     "", //auth
                                     Cryptic::hash_to_string_buff(session_confirmation),
                                     "", //joiner_info
