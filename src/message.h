@@ -34,17 +34,19 @@ class np1secMessage {
   Cryptic* cryptic; //message class is never responsible to delete the cryptic object
 
   std::vector<std::string> &split(const std::string &s,
-                                  char delim,
+                                  std::string delim,
                                   std::vector<std::string> &elems) {
-    std::stringstream ss(s);
-    std::string item;
-    while (std::getline(ss, item, delim)) {
-        elems.push_back(item);
+    std::string token;
+    size_t npos;
+    while ((npos = s.find(delim)) != std::string::npos) {
+      token = s.substr(0,pos);
+      elems.push_back(token);
+      s.erase(0, pos + delim.length());
     }
     return elems;
   }
 
-  std::vector<std::string> split(const std::string &s, char delim) {
+  std::vector<std::string> split(const std::string &s, std::string delim) {
     std::vector<std::string> elems;
     split(s, delim, elems);
     return elems;
@@ -207,9 +209,9 @@ class np1secMessage {
    * Unwrap p_info message into its constituent components
    *
    */
-  void unwrap_generic_message();
+  void unwrap_generic_message(std::vector<std::string> m_tokens);
 
-  void unwrap_user_message();
+  void unwrap_user_message(std::string u_message);
 
   /**
    * Format Meta message for inclusion with standard message or for

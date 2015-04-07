@@ -78,12 +78,11 @@ np1secMessage::np1secMessage(SessionId session_id,
 
 np1secMessage::np1secMessage(std::string raw_message, Cryptic* cryptic, np1secUserState* usi, std::string room_name) {
   this->cryptic = cryptic;
-  char* buf = strdup(raw_message.c_str());
-  std::string np1sec = strtok(buf, c_np1sec_delim.c_str());
+  std::vector<std::string> message_tokens = split(raw_message,c_np1sec_delim); 
   us = us;
   room_name = room_name;
-  if (np1sec.compare("np1sec")) {
-    unwrap_generic_message();  
+  if (message_tokens[0].compare("np1sec")) {
+    unwrap_generic_message(message_tokens);  
   }
 }
 
@@ -187,81 +186,88 @@ void np1secMessage::format_generic_message() {
   sys_message = c_np1sec_protocol_name + c_np1sec_delim.c_str() + sys_message;
 }
 
-void np1secMessage::unwrap_generic_message() {
+void np1secMessage::unwrap_generic_message(std::vector<std::strings> m_tokens) {
 
-  std::string message = base64_decode(strtok(NULL, c_np1sec_delim.c_str()));
-  message_type = (np1secMessageType)atoi(strtok(&message[0], c_np1sec_delim.c_str()));
-  std::string temp = strtok(NULL, c_np1sec_delim.c_str());
+  std::string message = base64_decode(m_tokens[1]);
+  std::vector<std::string> sub_tokens = split(message, c_np1sec_delim));
+  message_type = (np1secMessageType)atoi(sub_tokens[0]);
+  std::string temp = sub_tokens[1];
   std::string signature, sv_string;
   if (!temp.empty()) {
     memcpy(session_id, temp.c_str(), temp.size());
   
     switch (message_type) {
       case PARTICIPANTS_INFO:
-        sv_string = strtok(NULL, c_np1sec_delim.c_str());
-        key_confirmation = strtok(NULL, c_np1sec_delim.c_str());
-        z_sender = strtok(NULL, c_np1sec_delim.c_str());
-        signature = strtok(NULL, c_np1sec_delim.c_str());
+        sv_string = sub_tokens[2];
+        key_confirmation = sub_tokens[3];
+        z_sender = sub_tokens[4];
+        signature = sub_tokens[5];
         string_to_session_view(sv_string);
         break;
       case SESSION_CONFIRMATION:
-        sv_string = strtok(NULL, c_np1sec_delim.c_str());
-        session_key_confirmation = strtok(NULL, c_np1sec_delim.c_str());
-        signature = strtok(NULL, c_np1sec_delim.c_str());
+        sv_string = sub_tokens[2];
+        session_key_confirmation = sub_tokens[3];
+        signature = sub_tokens[4];
         string_to_session_view(sv_string);
         break;
       case JOIN_REQUEST:
-        joiner_info = strtok(NULL, c_np1sec_delim.c_str());
-        signature = strtok(NULL, c_np1sec_delim.c_str());
+        joiner_info = sub_tokens[2];
+        signature = sub_tokens[3];
         break;
       case JOINER_AUTH:
-        key_confirmation = strtok(NULL, c_np1sec_delim.c_str());
-        z_sender = strtok(NULL, c_np1sec_delim.c_str());
-        signature = strtok(NULL, c_np1sec_delim.c_str());
+        key_confirmation = sub_tokens[2];
+        z_sender = sub_tokens[3];
+        signature = sub_tokens[4];
         break;
       case FAREWELL:
-        sv_string = strtok(NULL, c_np1sec_delim.c_str());
-        z_sender = strtok(NULL, c_np1sec_delim.c_str());
-        meta_message = strtok(NULL, c_np1sec_delim.c_str());
-        signature = strtok(NULL, c_np1sec_delim.c_str());
+        sv_string = sub_tokens[2];
+        z_sender = sub_token[3];
+        meta_message = sub_tokens[4];
+        signature = sub_tokens[5];
         string_to_session_view(sv_string);
         break;
       case USER_MESSAGE:
-        unwrap_user_message();
+        unwrap_user_message(sub_token[2]);
         break;
     }
   }
 }
 
-void np1secMessage::unwrap_user_message() {
+void np1secMessage::unwrap_user_message(std::string u_message) {
   std::string np1sec, encrypted_message, phased_message,
               signed_message, signature;
-
-  encrypted_message = strtok(NULL, c_np1sec_delim.c_str());
+  std::vector<std::string> m_tokens = split(u_message, c_np1sec_delim)
+  encrypted_message = m_tokens[0];
 
   phased_message = base64_decode(encrypted_message);
-  std::string temp = strtok(&phased_message[0], c_np1sec_delim.c_str());
+  m_tokens = split(phased_message, c_np1sec_delim);
+
+  std::string temp = m_tokens[0];
   memcpy(session_id, temp.c_str(), temp.size());
-  encrypted_message = strtok(NULL, c_np1sec_delim.c_str());
+
+  encrypted_message = m_tokens[1];
 
   phased_message = decrypt_message(base64_decode(encrypted_message));
-  signed_message = strtok(&phased_message[0], c_np1sec_delim.c_str());
-  signature = strtok(NULL, c_np1sec_delim.c_str());
+  m_tokens = split(phased_message, c_np1sec_delim);
+
+  signed_message = m_tokens[0];
+  signature = m_tokens[1];
 
   if (verify_message(signed_message, signature)) {
     signed_message = base64_decode(signed_message);
     std::string temp;
-    temp = strtok(&signed_message[0], c_np1sec_delim.c_str());
+    m_tokens = split(signed_message, c_np1sec_delim);
     // TODO(bill): clarify session id check
 //      if(session_id.compare(temp)) {
-      sender_id = strtok(NULL, c_np1sec_delim.c_str());
-      user_message = strtok(NULL, c_np1sec_delim.c_str());
+      sender_id = m_tokens[1];
+      user_message = m_tokens[2];
 
-      meta_message = strtok(NULL, c_np1sec_delim.c_str());
+      meta_message = m_tokens[3];
       unwrap_meta_message();
-      std::string hash_string = strtok(NULL, c_np1sec_delim.c_str());
+
+      std::string hash_string = m_tokens[4];
       memcpy(transcript_chain_hash, hash_string.c_str(), hash_string.size());
-      nonce = strtok(NULL, c_np1sec_delim.c_str());
+      nonce = m_tokens[5];
       message_id = compute_message_id(user_message);
 //      }
 
@@ -279,10 +285,11 @@ void np1secMessage::format_meta_message() {
 
 void np1secMessage::unwrap_meta_message() {
   meta_message = base64_decode(meta_message);
-  meta_only = atoi(strtok(&meta_message[0], c_np1sec_delim.c_str()));
-  std::string ustates = strtok(NULL, c_np1sec_delim.c_str());
-  meta_load_flag = static_cast<np1secLoadFlag>(atoi(strtok(NULL, c_np1sec_delim.c_str())));
-  meta_load = strtok(NULL, c_np1sec_delim.c_str());
+  std::vector<std::string> m_tokens = split(meta_message, c_np1sec_delim);
+  meta_only = atoi(m_tokens[0]);
+  std::string ustates = m_tokens[1];
+  meta_load_flag = static_cast<np1secLoadFlag>(atoi(m_tokens[2]));
+  meta_load = m_tokens[3];
 }
 
 std::string np1secMessage::ustate_values() {
