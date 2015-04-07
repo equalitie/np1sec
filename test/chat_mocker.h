@@ -4,6 +4,9 @@
 
    Authors: Vmon, 2015-01: initial version
  */
+extern "C" {
+  #include <assert.h>
+}
 
 #include <map>
 #include <list>
@@ -47,6 +50,15 @@ class MockRoom {
   }
 
  public:
+  MockRoom()
+  {
+    assert(0);
+  }
+
+ MockRoom(std::string room_name)
+    : name(room_name)
+  {
+  }
   void join(std::string nick,
             void (*receive_handler)(std::string room_name,
                                     std::string message,
@@ -84,6 +96,7 @@ class MockRoom {
                std::to_string(global_message_id)+
                "@<o>@"+sender_nick+"@<o>@"+message);
     }
+
 };
 
 /**
@@ -114,6 +127,9 @@ class ChatMocker {
    * join the room by adding the name of the participant to the room list
    */
   void join(std::string room, std::string nick) {
+    if (rooms.find(room) == rooms.end())
+      rooms.insert(std::pair<std::string, MockRoom>(room, MockRoom(room)));
+    
     rooms[room].join(nick, signed_in_participant[nick].receive_handler, signed_in_participant[nick].aux_data);
   }
 

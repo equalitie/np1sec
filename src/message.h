@@ -110,9 +110,9 @@ class np1secMessage {
    * Construct a new np1secMessage for p_infotem messages
    * based on a set of input components 
    **/
-  np1secMessage(SessionId session_id,
+  np1secMessage(SessionId& session_id,
                 np1secMessageType message_type,
-                UnauthenticatedParticipantList session_view,
+                UnauthenticatedParticipantList& session_view,
                 std::string key_confirmation,
                 std::string session_key_confirmation,
                 std::string joiner_info,

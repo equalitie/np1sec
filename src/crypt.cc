@@ -16,13 +16,19 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+/*
+ * For debug reason use
+ * gcryp_sexp_dump and gcry_mpi_dump
+ */
 #ifndef SRC_CRYPT_CC_
 #define SRC_CRYPT_CC_
 
 #include <cstdio>
 #include <string>
 
+
 #include "src/crypt.h"
+#include "src/exceptions.h"
 
 using namespace std;
 
@@ -70,7 +76,8 @@ bool Cryptic::generate_key_pair(np1secAsymmetricKey* generated_key) {
   return true;
 
 err:
-  std::printf("Key failure: %s/%s\n", gcry_strsource(err), gcry_strerror(err));
+  std::fprintf(stderr, "Key failure: %s/%s\n", gcry_strsource(err), gcry_strerror(err));
+  throw np1secCryptoException();
   return false;
 }
 
@@ -91,12 +98,14 @@ bool Cryptic::init() {
   ephemeral_pub_key = gcry_sexp_find_token(ephemeral_key, "public-key", 0);
   if (!ephemeral_pub_key) {
     std::printf("ed25519Key: failed to retrieve public key");
+    throw np1secCryptoException();
     return false;
   }
 
   ephemeral_prv_key = gcry_sexp_find_token(ephemeral_key, "private-key", 0);
   if (!ephemeral_prv_key) {
     std::printf("ed25519Key: failed to retrieve private key");
+    throw np1secCryptoException();
     return false;
   }
 
@@ -110,6 +119,11 @@ err:
 gcry_sexp_t Cryptic::get_public_key(np1secAsymmetricKey key_pair)
 {
   return gcry_sexp_find_token(key_pair, "public-key", 0);
+}
+
+std::string Cryptic::public_key_to_stringbuff(np1secAsymmetricKey public_key) {
+  return retrieve_result(gcry_sexp_find_token(public_key
+                                              , "q", 0));
 }
 
 std::string Cryptic::retrieve_result(gcry_sexp_t text_sexp) {
@@ -145,6 +159,10 @@ gcry_sexp_t Cryptic::convert_to_sexp(std::string text) {
 
 }
 
+void Cryptic::release_crypto_resource(gcry_sexp_t crypto_resource)
+{
+  gcry_sexp_release(crypto_resource);
+}
 /**
  * Given the peer's long term and ephemeral public key AP and ap, and ours 
  * BP, bP, all points on ed25519 curve, this 

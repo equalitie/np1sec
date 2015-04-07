@@ -22,6 +22,8 @@
 #include <string>
 #include <list>
 #include <event2/event.h>
+
+#include "exceptions.h"
 #include "src/crypt.h"
 
 /**
@@ -82,6 +84,9 @@ struct ParticipantId
   {
     //TODO:: We need to throw up if the participant format isn't correct
     std::string nickname = nick_clone_fingerprint_strbuff.substr(0, nick_clone_fingerprint_strbuff.find(c_subfield_delim.c_str()));
+    if ((nick_clone_fingerprint_strbuff.size() - nickname.size()) != ParticipantId::c_fingerprint_length)
+      throw np1secMessageFormatException();
+    
     std::string fingerprint_strbuff = nick_clone_fingerprint_strbuff.substr(nickname.length() + c_subfield_delim.length() , ParticipantId::c_fingerprint_length);
     memcpy(fingerprint, fingerprint_strbuff.c_str(), fingerprint_strbuff.size());
   }
@@ -90,11 +95,21 @@ struct ParticipantId
    * copy constructor
    */
   ParticipantId(const ParticipantId& lhs)
+  :nickname(lhs.nickname)
   {
-    nickname = lhs.nickname;
     memcpy(fingerprint, lhs.fingerprint, c_fingerprint_length);
   }
+
+  /**
+   * Access function when the finger print is added later
+   */
+  void set_fingerprint(std::string fingerprint_strbuff) 
+  {
+    memcpy(fingerprint, fingerprint_strbuff.c_str(), fingerprint_strbuff.size());
+  }
   
+  
+
 };
 
 /**
@@ -105,7 +120,7 @@ struct ParticipantId
  */
 struct UnauthenticatedParticipant {
   ParticipantId participant_id;
-  HashBlock ephemeral_pub_key;  // This should be in some convienient 
+  uint8_t ephemeral_pub_key[c_ephemeral_key_length];  // This should be in some convienient 
   // Format
   bool authenticated;
 
@@ -131,7 +146,7 @@ UnauthenticatedParticipant(ParticipantId participant_id, std::string ephemeral_p
    * Default copy constructor
    */
   UnauthenticatedParticipant(const UnauthenticatedParticipant& rhs)
-  :participant_id(rhs.participant_id)
+  :participant_id(rhs.participant_id), authenticated(rhs.authenticated)
   {
     memcpy(this->ephemeral_pub_key, rhs.ephemeral_pub_key, c_ephemeral_key_length);
   }
@@ -191,8 +206,8 @@ class Participant {
   
  public:
   ParticipantId id;
-  np1secPublicKey long_term_pub_key;
-  np1secPublicKey ephemeral_key;
+  np1secPublicKey long_term_pub_key = nullptr;
+  np1secPublicKey ephemeral_key = nullptr;
   event* receive_ack_timer;
   event* send_ack_timer;
   HashBlock raw_ephemeral_key = {};
@@ -235,12 +250,12 @@ class Participant {
    *
    * @return true if successfully updated to the new key
    */
-  bool set_ephemeral_key(HashBlock raw_ephemeral_key)
+  bool set_ephemeral_key(const HashBlock raw_ephemeral_key)
   {
-    gcry_sexp_release(ephemeral_key);
-    delete [] raw_ephemeral_key;
+    gcry_sexp_release(this->ephemeral_key);
+    //delete [] this->raw_ephemeral_key; doesn't make sense to delete const length array
     memcpy(this->raw_ephemeral_key, raw_ephemeral_key, sizeof(HashBlock));
-    ephemeral_key = Cryptic::convert_to_sexp(std::string(reinterpret_cast<char*>(raw_ephemeral_key), c_ephemeral_key_length));
+    ephemeral_key = Cryptic::convert_to_sexp(std::string(reinterpret_cast<const char*>(raw_ephemeral_key), c_ephemeral_key_length));
 
     return (ephemeral_key != nullptr);
   }
@@ -288,11 +303,11 @@ class Participant {
     authed_to(false)
       {}
     
- Participant(UnauthenticatedParticipant unauth_participant, Cryptic* thread_crypto)
+ Participant(const UnauthenticatedParticipant& unauth_participant, Cryptic* thread_crypto)
    :id(unauth_participant.participant_id),
     authenticated(false),
     authed_to(false),
-    long_term_pub_key(Cryptic::convert_to_sexp(reinterpret_cast<char*>(unauth_participant.participant_id.fingerprint))) ,
+    long_term_pub_key(Cryptic::convert_to_sexp(reinterpret_cast<const char*>(unauth_participant.participant_id.fingerprint))) ,
     thread_user_crypto(thread_crypto)
       {
         set_ephemeral_key(unauth_participant.ephemeral_pub_key);

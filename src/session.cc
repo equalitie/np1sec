@@ -74,12 +74,32 @@ gcry_error_t np1secSession::compute_hash(HashBlock transcript_chain,
 // }
 
 /**
+   sole joiner constructor
+ */
+np1secSession::np1secSession(np1secUserState *us, std::string room_name,
+                             Cryptic* current_ephemeral_crypto,
+                             const UnauthenticatedParticipantList& sole_participant_view) : us(us), room_name(room_name),  cryptic(*current_ephemeral_crypto), myself(*us->myself)
+
+{
+  my_state = DEAD; //in case anything fails
+
+  populate_participants_and_peers(sole_participant_view);
+
+  //if participant[myself].ephemeral is not crytpic ephemeral, halt
+  compute_session_id();
+
+  if (send_view_auth_and_share())
+    my_state = RE_SHARED;
+
+}
+
+/**
  * This constructor should be only called when the session is generated
  * to join. That's why all participant are not authenticated.
  */
 np1secSession::np1secSession(np1secUserState *us, std::string room_name,
                              Cryptic* current_ephemeral_crypto,
-                             np1secMessage participants_info_message) : us(us), room_name(room_name), myself(us->user_id()), cryptic(*current_ephemeral_crypto)
+                             np1secMessage participants_info_message) : us(us), room_name(room_name),  cryptic(*current_ephemeral_crypto)
 {
   my_state = DEAD; //in case anything fails
 
@@ -126,7 +146,7 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name,
  */
 np1secSession::np1secSession(np1secUserState *us, std::string room_name, np1secMessage join_message, ParticipantMap current_authed_participants)
   :room_name(room_name),
-   myself(ParticipantId(us->name, us->long_term_key_pair.get_public_key()))
+   myself(*us->myself)
    //TODO: not sure the session needs to know the room name: It needs because message class
           //need  to know to send the message to :-/
           //send should be the function of np1secRoom maybe :-?
@@ -164,7 +184,7 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name, np1secM
 */
 np1secSession::np1secSession(np1secUserState* us, std::string room_name, string leaver_id, ParticipantMap current_authed_participants)
   :room_name(room_name),
-   myself(ParticipantId(us->name, us->long_term_key_pair.get_public_key()))
+   myself(*us->myself)
    //TODO: not sure the session needs to know the room name
 {
   my_state = DEAD; //in case anything fails
@@ -199,7 +219,7 @@ np1secSession::np1secSession(np1secUserState* us, std::string room_name, string 
 */
 np1secSession::np1secSession(np1secUserState* us, std::string room_name, ParticipantMap current_authed_participants)
   :room_name(room_name),
-   myself(ParticipantId(us->name, us->long_term_key_pair.get_public_key()))
+   myself(*us->myself)
    //TODO: not sure the session needs to know the room name
 {
   my_state = DEAD; //in case anything fails
@@ -254,9 +274,9 @@ bool np1secSession::compute_session_id() {
 
   //session_id = Hash of (U1,ehpmeral1, U2);
   for (std::vector<std::string>::iterator it = peers.begin(); it != peers.end(); ++it) {
-    Participant p = participants[*it];
+    Participant& p = participants[*it];
     cat_string += p.id.id_to_stringbuffer();
-    cat_string += cryptic.retrieve_result(p.ephemeral_key);
+    cat_string += cryptic.hash_to_string_buff(p.raw_ephemeral_key);
   }
 
   HashBlock sid;
@@ -424,9 +444,10 @@ bool np1secSession::joiner_send_auth_and_share() {
     }
   }
 
+  UnauthenticatedParticipantList temp_view = session_view();
   np1secMessage outboundmessage(session_id,
                                 np1secMessage::JOINER_AUTH,
-                                session_view(), //this is empty and shouldn't be sent
+                                temp_view, //this is empty and shouldn't be sent
                                 auth_batch,
                                 "",
                                 "",
@@ -451,9 +472,10 @@ bool np1secSession::send_auth_and_share_message() {
   //if (!participants[joiner_id].authed_to) {
   //participants[joiner_id].authenticate_to(cur_auth_token);
 
+  UnauthenticatedParticipantList session_view_list = session_view();
   np1secMessage outboundmessage(session_id,
                                 np1secMessage::GROUP_SHARE,
-                                session_view(),//unauthenticated_participants,
+                                session_view_list,
                                 "",//auth_token,
                                 "",//session conf
                                 "",//joiner info
@@ -472,7 +494,6 @@ bool np1secSession::send_auth_and_share_message() {
     and others
     sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), kc, z_joiner
 */
-
 bool np1secSession::send_view_auth_and_share(string joiner_id) {
   assert(session_id.get());
   if (!group_enc()) //compute my share for group key
@@ -483,9 +504,10 @@ bool np1secSession::send_view_auth_and_share(string joiner_id) {
     if (!participants[joiner_id].authed_to)
       participants[joiner_id].authenticate_to(cur_auth_token, us->long_term_key_pair.get_key_pair().first);
 
+  UnauthenticatedParticipantList session_view_list = session_view();
   np1secMessage outboundmessage(session_id,
                                 np1secMessage::PARTICIPANTS_INFO,
-                                session_view(),
+                                session_view_list,
                                 string(reinterpret_cast<char*>(cur_auth_token), sizeof(HashBlock)),
                                 "", //session conf
                                 "", //joiner info
@@ -758,12 +780,12 @@ np1secSession::StateAndAction np1secSession::confirm_auth_add_update_share_repo(
     //session people
     
   //}
-
+  UnauthenticatedParticipantList session_view_list = session_view();
   if (everybody_authenticated_and_contributed()) {
     if (group_dec()) {
       np1secMessage outboundmessage(session_id,
                                     np1secMessage::SESSION_CONFIRMATION,
-                                    session_view(),
+                                    session_view_list,
                                     "", //auth
                                     Cryptic::hash_to_string_buff(session_confirmation),
                                     "", //joiner_info

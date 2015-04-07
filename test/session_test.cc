@@ -42,7 +42,7 @@ protected: //gtest needs the elements to be protocted
   string mock_room_name = "testroom";
   
   virtual void SetUp() {
-    //bare_sender_data = static_cast<void*>(&mock_server);
+    mockops.bare_sender_data = static_cast<void*>(&mock_server);
     mockops.send_bare = send_bare;
     mockops.join = new_session_announce;
     mockops.leave = new_session_announce;
