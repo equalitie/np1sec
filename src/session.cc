@@ -363,7 +363,7 @@ bool np1secSession::group_enc() {
 
 bool np1secSession::group_dec() {
   unsigned int my_right = (my_index + 1 == peers.size()) ? 0 : my_index+1;
-  std::vector<HashBlock> all_r(peers.size());
+  std::vector<std::string> all_r(peers.size());
   HashBlock last_hbr;
 
   //We assume that user has computed his share
@@ -373,11 +373,13 @@ bool np1secSession::group_dec() {
   HashBlock hbr;
   
   memcpy(hbr, participants[peers[my_index]].cur_keyshare, sizeof(HashBlock));
-  memcpy(all_r[my_index], hbr, sizeof(HashBlock));
+  //memcpy(all_r[my_index], hbr, sizeof(HashBlock));
+  all_r[my_index] = Cryptic::hash_to_string_buff(hbr);
   for (unsigned i=0; i < sizeof(HashBlock); i++) {
     hbr[i] ^= participants[peers[my_right]].cur_keyshare[i];
   }
-  memcpy(all_r[my_right], hbr, sizeof(HashBlock));
+  //memcpy(all_r[my_right], hbr, sizeof(HashBlock));
+  all_r[my_right] = Cryptic::hash_to_string_buff(hbr);
   memcpy(last_hbr, hbr, sizeof(HashBlock));
 
   for (unsigned counter = 0; counter < peers.size(); counter++) {
@@ -385,13 +387,14 @@ bool np1secSession::group_dec() {
     for (unsigned i=0; i < sizeof(HashBlock); i++) {
         last_hbr[i] ^= participants[peers[my_right]].cur_keyshare[i];
    }
-    memcpy(all_r[my_right], last_hbr, sizeof(HashBlock));
+    //memcpy(all_r[my_right], last_hbr, sizeof(HashBlock));
+    all_r[my_right] = Cryptic::hash_to_string_buff(last_hbr);
     my_right = (my_right + 1 == peers.size()) ? 0 : my_right+1;
   } 
 
   std::string to_hash;
-  for (std::vector<HashBlock>::iterator it = all_r.begin(); it != all_r.end(); ++it) {
-    to_hash += reinterpret_cast<char const*>(*it);
+  for (std::vector<std::string>::iterator it = all_r.begin(); it != all_r.end(); ++it) {
+    to_hash += (*it).c_str();
   }
 
   to_hash += session_id.get_as_stringbuff();
@@ -944,7 +947,7 @@ bool np1secSession::received_p_list(std::string participant_list) {
     tmp = strdup((*it).c_str());
     std::string id = strtok(tmp, c_np1sec_delim.c_str());
     std::string key = strtok(NULL, c_np1sec_delim.c_str());
-    gcry_sexp_t sexp_key = cryptic.convert_to_sexp(key); 
+    gcry_sexp_t sexp_key = Cryptic::convert_to_sexp(key); 
     Participant p();//id, crypto);
     //p.ephemeral_key = sexp_key;
     //session_view().push_back(UnauthenticatedParticipant(ParticipantId(id, p)));

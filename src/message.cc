@@ -196,9 +196,14 @@ void np1secMessage::unwrap_generic_message(std::vector<std::string> m_tokens) {
 
   std::string message = base64_decode(m_tokens[1]);
   std::vector<std::string> sub_tokens = split(message, c_np1sec_delim);
+  if(sub_tokens.size() <=0 ){
+    throw "np1secMessage::unwrap_generic_message: message no tokenisable";
+  }  	
   message_type = (np1secMessageType)atoi(sub_tokens[0].c_str());
   std::string temp = sub_tokens[1];
   std::string signature, sv_string;
+
+
   if (!temp.empty()) {
     memcpy(session_id, temp.c_str(), temp.size());
   
