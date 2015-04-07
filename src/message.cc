@@ -192,11 +192,11 @@ void np1secMessage::format_generic_message() {
   sys_message = c_np1sec_protocol_name + c_np1sec_delim + sys_message;
 }
 
-void np1secMessage::unwrap_generic_message(std::vector<std::strings> m_tokens) {
+void np1secMessage::unwrap_generic_message(std::vector<std::string> m_tokens) {
 
   std::string message = base64_decode(m_tokens[1]);
-  std::vector<std::string> sub_tokens = split(message, c_np1sec_delim));
-  message_type = (np1secMessageType)atoi(sub_tokens[0]);
+  std::vector<std::string> sub_tokens = split(message, c_np1sec_delim);
+  message_type = (np1secMessageType)atoi(sub_tokens[0].c_str());
   std::string temp = sub_tokens[1];
   std::string signature, sv_string;
   if (!temp.empty()) {
@@ -227,13 +227,13 @@ void np1secMessage::unwrap_generic_message(std::vector<std::strings> m_tokens) {
         break;
       case FAREWELL:
         sv_string = sub_tokens[2];
-        z_sender = sub_token[3];
+        z_sender = sub_tokens[3];
         meta_message = sub_tokens[4];
         signature = sub_tokens[5];
         string_to_session_view(sv_string);
         break;
       case USER_MESSAGE:
-        unwrap_user_message(sub_token[2]);
+        unwrap_user_message(sub_tokens[2]);
         break;
     }
   }
@@ -242,7 +242,7 @@ void np1secMessage::unwrap_generic_message(std::vector<std::strings> m_tokens) {
 void np1secMessage::unwrap_user_message(std::string u_message) {
   std::string np1sec, encrypted_message, phased_message,
               signed_message, signature;
-  std::vector<std::string> m_tokens = split(u_message, c_np1sec_delim)
+  std::vector<std::string> m_tokens = split(u_message, c_np1sec_delim);
   encrypted_message = m_tokens[0];
 
   phased_message = base64_decode(encrypted_message);
@@ -292,9 +292,9 @@ void np1secMessage::format_meta_message() {
 void np1secMessage::unwrap_meta_message() {
   meta_message = base64_decode(meta_message);
   std::vector<std::string> m_tokens = split(meta_message, c_np1sec_delim);
-  meta_only = atoi(m_tokens[0]);
+  meta_only = atoi(m_tokens[0].c_str());
   std::string ustates = m_tokens[1];
-  meta_load_flag = static_cast<np1secLoadFlag>(atoi(m_tokens[2]));
+  meta_load_flag = static_cast<np1secLoadFlag>(atoi(m_tokens[2].c_str()));
   meta_load = m_tokens[3];
 }
 
