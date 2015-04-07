@@ -115,6 +115,7 @@ teddh   *
    */
   static std::string retrieve_result(gcry_sexp_t text_sexp);
 
+  static void release_crypto_resource(gcry_sexp_t crypto_resource);
   static gcry_error_t hash(const void *buffer, size_t buffer_len, HashBlock hb,
                   bool secure = true);
 
@@ -143,7 +144,6 @@ teddh   *
   {
     return gcry_sexp_find_token(complete_key, "public-key", 0);
   }
-
   
   /**
    * Convert a given std:string to a valid gcrypt s-expression
@@ -215,6 +215,20 @@ class  LongTermIDKey {
   bool initiated = false;
 
  public:
+  /**
+   * constructor
+   */
+  LongTermIDKey()
+    :key_pair(nullptr, nullptr) {}
+
+  /**
+   * destructor
+   */
+  ~LongTermIDKey() {
+    Cryptic::release_crypto_resource(key_pair.first);
+    Cryptic::release_crypto_resource(key_pair.first);
+  }
+
   /**
    * Access
    */

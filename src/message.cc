@@ -76,12 +76,13 @@ np1secMessage::np1secMessage(SessionId& session_id,
   }
 
 
-np1secMessage::np1secMessage(std::string raw_message, Cryptic* cryptic, np1secUserState* usi, std::string room_name) {
+np1secMessage::np1secMessage(std::string raw_message, Cryptic* cryptic, np1secUserState* usi, std::string room_name):
+  us(us),
+  room_name(room_name)
+{
   this->cryptic = cryptic;
   char* buf = strdup(raw_message.c_str());
   std::string np1sec = strtok(buf, c_np1sec_delim.c_str());
-  us = us;
-  room_name = room_name;
   if (np1sec.compare("np1sec")) {
     unwrap_generic_message();  
   }
@@ -150,42 +151,44 @@ void np1secMessage::string_to_session_view(std::string sv_string) {
 void np1secMessage::format_generic_message() {
   std::string signature;
   sys_message = "" + std::to_string(message_type) + c_np1sec_delim.c_str();
-  std::string sid_string(session_id ? reinterpret_cast<char const*>(session_id) : "");
+  std::string sid_string;
+  if (session_id)
+    sid_string.assign(reinterpret_cast<char const*>(session_id), sizeof(HashBlock));
   
   switch (message_type) {
     case PARTICIPANTS_INFO:
-      sys_message += c_np1sec_delim.c_str() + session_view_as_string();
-      sys_message += c_np1sec_delim.c_str() + key_confirmation;
-      sys_message += c_np1sec_delim.c_str() + z_sender;
+      sys_message += c_np1sec_delim + session_view_as_string();
+      sys_message += c_np1sec_delim + key_confirmation;
+      sys_message += c_np1sec_delim + z_sender;
       break;
     case SESSION_CONFIRMATION:
       sys_message += c_np1sec_delim.c_str() + session_view_as_string();
-      sys_message += c_np1sec_delim.c_str() + session_key_confirmation;
+      sys_message += c_np1sec_delim + session_key_confirmation;
       break;
     case JOIN_REQUEST:
-      sys_message += c_np1sec_delim.c_str() + joiner_info;
+      sys_message += c_np1sec_delim + joiner_info;
       break;
     case JOINER_AUTH:
-      sys_message += c_np1sec_delim.c_str() + key_confirmation;
-      sys_message += c_np1sec_delim.c_str() + z_sender;
+      sys_message += c_np1sec_delim + key_confirmation;
+      sys_message += c_np1sec_delim + z_sender;
       break;
     case FAREWELL:
-      sys_message += c_np1sec_delim.c_str() + session_view_as_string();
-      sys_message += c_np1sec_delim.c_str() + z_sender;
+      sys_message += c_np1sec_delim + session_view_as_string();
+      sys_message += c_np1sec_delim + z_sender;
       meta_load = "";
       meta_load_flag = NO_LOAD;
       
       format_meta_message();
-      sys_message += c_np1sec_delim.c_str() + meta_message;
+      sys_message += c_np1sec_delim + meta_message;
       break;
    }
 
   //we shouldn't sign these messages, no point
   //signature = sign_message(sys_message);
   //sys_message += signature + c_np1sec_delim.c_str();
-  sys_message = c_np1sec_delim.c_str() + sid_string + c_np1sec_delim.c_str() + sys_message;
+  sys_message = c_np1sec_delim + sid_string + c_np1sec_delim + sys_message;
   sys_message = base64_encode(sys_message);
-  sys_message = c_np1sec_protocol_name + c_np1sec_delim.c_str() + sys_message;
+  sys_message = c_np1sec_protocol_name + c_np1sec_delim + sys_message;
 }
 
 void np1secMessage::unwrap_generic_message() {
@@ -272,9 +275,9 @@ void np1secMessage::unwrap_user_message() {
 
 void np1secMessage::format_meta_message() {
   meta_message = "" + std::to_string(meta_only) + c_np1sec_delim.c_str();
-  meta_message += c_np1sec_delim.c_str() + ustate_values();
-  meta_message += c_np1sec_delim.c_str() + std::to_string(meta_load_flag);
-  meta_message += c_np1sec_delim.c_str() + meta_load;
+  meta_message += c_np1sec_delim + ustate_values();
+  meta_message += c_np1sec_delim + std::to_string(meta_load_flag);
+  meta_message += c_np1sec_delim + meta_load;
   meta_message = base64_encode(meta_message);
 }
 
@@ -317,7 +320,7 @@ std::string np1secMessage::format_sendable_message() {
   base_message = base64_encode(base_message);
 
   phased_message = encrypt_message(base_message);
-  phased_message = sid_string + c_np1sec_delim.c_str() + phased_message;
+  phased_message = sid_string + c_np1sec_delim + phased_message;
 
   phased_message = base64_encode(phased_message);
   phased_message = "np1sec:O3" + phased_message + c_np1sec_delim.c_str();
@@ -330,7 +333,10 @@ uint32_t np1secMessage::compute_message_id(std::string cur_message) {
 }
 
 void np1secMessage::send() {
-  us->ops->send_bare(room_name, sys_message, &us);
+  us->ops->send_bare(room_name, sys_message, us->ops->bare_sender_data); //This is not cool
+  //message just should ask us to send and then us is the only one which has
+  //access to ops internals
+  
 }
 
 void np1secMessage::generate_nonce(unsigned char* buffer) {

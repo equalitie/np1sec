@@ -27,17 +27,28 @@
 using namespace std;
 
 np1secUserState::np1secUserState(std::string name, np1secAppOps *ops,
-                                 uint8_t* key_pair) : name(name), ops(ops) {
+                                 uint8_t* key_pair)
+  : ops(ops),
+    myself(nullptr)
+{
   if (key_pair) {
     long_term_key_pair.set_key_pair(key_pair);
+    //we also populate our id key to send it to other
+    //during join.
+    myself = new ParticipantId(name, Cryptic::public_key_to_stringbuff(long_term_key_pair.get_public_key()));
+    
     //if the client doesn't initiate the public
     //key now it needs to call init sometimes before
     //join or join fails due to lack of crypto material
+  } else {
+    myself = new ParticipantId(name, "");
   }
     
 }
 
 np1secUserState::~np1secUserState() {
+  delete myself;
+
   //TODO:Maybe for security reason we have
   //to turn long_term_key_pair into
   //pointer and fill-up mem before
@@ -50,6 +61,7 @@ bool np1secUserState::init() {
     return true;
   }
   long_term_key_pair.generate();
+  myself->set_fingerprint(Cryptic::public_key_to_stringbuff(long_term_key_pair.get_public_key()));
   return true;
 }
 

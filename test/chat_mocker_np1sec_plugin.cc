@@ -93,7 +93,7 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
     string sender_and_message = message_with_id.substr(
                                   sender_pos + strlen("@<o>@"));
     size_t message_pos = sender_and_message.find("@<o>@");
-    string sender = message_with_id.substr(0, message_pos);
+    string sender = sender_and_message.substr(0, message_pos);
     // we don't care really about sender
     string pure_message = sender_and_message.substr(
                                     message_pos + strlen("@<o>@"));
@@ -109,7 +109,9 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
 // Just a wrapper to call the mocker send function
 void send_bare(std::string room_name, std::string message, void* data)
 {
-  static_cast<ChatMocker*>(data)->send(room_name, "someone", message);
+  //pair<np1secUserState*, ChatMocker*>* user_server_state = reinterpret_cast<pair<np1secUserState*, ChatMocker*>*>(data);
+  ChatMocker* chat_server = static_cast<ChatMocker*>(data);
+  chat_server->send(room_name, "someone", message);
   
 }
 

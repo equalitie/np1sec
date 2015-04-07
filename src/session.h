@@ -21,6 +21,7 @@
 
 #include <event2/event.h>
 
+#include <iostream>
 #include <map>
 #include <string>
 #include <vector>
@@ -157,8 +158,10 @@ class np1secSession {
   //still relevant
   std::list<RaisonDEtre> raisons_detre;
 
+  //TODO:: we should probably delete this and just directly use UserState->myself
+  //no reason to copy the same thing for every session.
   ParticipantId myself; //to keep the nickname and the long term id key
-  //these are necessary to send join request 
+  //these are necessary to send join request
   size_t my_index;
   /**
    * Keeps the list of the unauthenticated participants in the room before the
@@ -277,9 +280,9 @@ class np1secSession {
    * reading the particpant map, it populate the 
    * peers vector then find the index of thread runner
    */
-  void populate_participants_and_peers(UnauthenticatedParticipantList session_view)
-  {
-    for(UnauthenticatedParticipantList::iterator view_it = session_view.begin(); view_it != session_view.end();  view_it++) {
+  void populate_participants_and_peers(const UnauthenticatedParticipantList& session_view)
+  {    
+    for(UnauthenticatedParticipantList::const_iterator view_it = session_view.begin(); view_it != session_view.end();  view_it++) {
       participants.insert(std::pair<std::string, Participant>(view_it->participant_id.nickname, Participant(*view_it, &cryptic)));
       peers.push_back(view_it->participant_id.nickname);
     
@@ -718,7 +721,7 @@ class np1secSession {
    */
   bool send(std::string message, np1secMessage::np1secMessageType message_type);
 
-  //List of constructors
+  //List ofc onstructors
   /* /\** */
   /*    constructor */
   /*    You can't have a session without a user */
@@ -735,6 +738,13 @@ class np1secSession {
     {
       assert(0); //not for calling
     };
+
+  /**
+   sole joiner constructor
+  */
+  np1secSession(np1secUserState *us, std::string room_name,
+                               Cryptic* current_ephemeral_crypto,
+                               const UnauthenticatedParticipantList& sole_participant_view);
 
   /**
    * Constructor, initiate by joining.

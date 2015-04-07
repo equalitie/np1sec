@@ -32,27 +32,24 @@ void np1secRoom::solitary_join() {
   assert(user_in_room_state == JOINING); 
   
   UnauthenticatedParticipantList session_view;
-  string test[3];
-  test[0] = user_state->user_id();
-  test[1] = Cryptic::public_key_to_stringbuff(user_state->long_term_key_pair.get_public_key());
-  ParticipantId test_id(test[0], test[1]);
-  session_view.push_back(UnauthenticatedParticipant(ParticipantId(test[0], test[1]), Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()),true));
+  
+  session_view.push_back(UnauthenticatedParticipant(*(user_state->myself), Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()),true));
 
   SessionId empty_session_id;
-  np1secMessage solitary_joiner_info(empty_session_id,
-                                     np1secMessage::PARTICIPANTS_INFO,
-                                     session_view,
-                                     "",
-                                     "", //session conf
-                                     "", //joiner info
-                                     "",
-                                     user_state,
-                                     name);
-
+  // np1secMessage solitary_joiner_info(empty_session_id,
+  //                                    np1secMessage::PARTICIPANTS_INFO,
+  //                                    session_view,
+  //                                    "",
+  //                                    "", //session conf
+  //                                    "", //joiner info
+  //                                    "",
+  //                                    user_state,
+  //                                    name);
+  
   np1secSession sole_joiner_session(user_state,
-                name,
-                &np1sec_ephemeral_crypto,
-                solitary_joiner_info);
+                                    name,
+                                    &np1sec_ephemeral_crypto,
+                                    session_view);
 
   session_universe.insert(pair<string, np1secSession>(sole_joiner_session.my_session_id().get_as_stringbuff(), sole_joiner_session));
   
@@ -66,7 +63,7 @@ void np1secRoom::join() {
   assert(user_in_room_state == JOINING); //no double join but we need a
   //more humane way of doing this
   //turening sexp to stirng buffer.
-  UnauthenticatedParticipant me(ParticipantId(user_state->user_id(), user_state->long_term_key_pair.get_public_key()), Cryptic::retrieve_result(np1sec_ephemeral_crypto.get_ephemeral_pub_key()));
+  UnauthenticatedParticipant me(*(user_state->myself), Cryptic::retrieve_result(np1sec_ephemeral_crypto.get_ephemeral_pub_key()));
   np1secMessage join_message(np1secMessage::JOIN_REQUEST,
                              me,
                              user_state,
@@ -81,7 +78,7 @@ void np1secRoom::join() {
  *
  */
 np1secRoom::np1secRoom(std::string room_name, np1secUserState* user_state, std::vector<std::string> participants_in_the_room)
-  : name(room_name), user_state(user_state), user_in_room_state(JOINING)                                 
+  : name(room_name), user_state(user_state), user_in_room_state(JOINING)
 {
   np1sec_ephemeral_crypto.init(); //generate intitial ephemeral keys for join
   if (participants_in_the_room.size() <= 1)

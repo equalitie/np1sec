@@ -74,12 +74,32 @@ gcry_error_t np1secSession::compute_hash(HashBlock transcript_chain,
 // }
 
 /**
+   sole joiner constructor
+ */
+np1secSession::np1secSession(np1secUserState *us, std::string room_name,
+                             Cryptic* current_ephemeral_crypto,
+                             const UnauthenticatedParticipantList& sole_participant_view) : us(us), room_name(room_name),  cryptic(*current_ephemeral_crypto), myself(*us->myself)
+
+{
+  my_state = DEAD; //in case anything fails
+
+  populate_participants_and_peers(sole_participant_view);
+
+  //if participant[myself].ephemeral is not crytpic ephemeral, halt
+  compute_session_id();
+
+  if (send_view_auth_and_share())
+    my_state = RE_SHARED;
+
+}
+
+/**
  * This constructor should be only called when the session is generated
  * to join. That's why all participant are not authenticated.
  */
 np1secSession::np1secSession(np1secUserState *us, std::string room_name,
                              Cryptic* current_ephemeral_crypto,
-                             np1secMessage participants_info_message) : us(us), room_name(room_name), myself(us->user_id()), cryptic(*current_ephemeral_crypto)
+                             np1secMessage participants_info_message) : us(us), room_name(room_name),  cryptic(*current_ephemeral_crypto)
 {
   my_state = DEAD; //in case anything fails
 
@@ -126,7 +146,7 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name,
  */
 np1secSession::np1secSession(np1secUserState *us, std::string room_name, np1secMessage join_message, ParticipantMap current_authed_participants)
   :room_name(room_name),
-   myself(ParticipantId(us->name, us->long_term_key_pair.get_public_key()))
+   myself(*us->myself)
    //TODO: not sure the session needs to know the room name: It needs because message class
           //need  to know to send the message to :-/
           //send should be the function of np1secRoom maybe :-?
@@ -164,7 +184,7 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name, np1secM
 */
 np1secSession::np1secSession(np1secUserState* us, std::string room_name, string leaver_id, ParticipantMap current_authed_participants)
   :room_name(room_name),
-   myself(ParticipantId(us->name, us->long_term_key_pair.get_public_key()))
+   myself(*us->myself)
    //TODO: not sure the session needs to know the room name
 {
   my_state = DEAD; //in case anything fails
@@ -199,7 +219,7 @@ np1secSession::np1secSession(np1secUserState* us, std::string room_name, string 
 */
 np1secSession::np1secSession(np1secUserState* us, std::string room_name, ParticipantMap current_authed_participants)
   :room_name(room_name),
-   myself(ParticipantId(us->name, us->long_term_key_pair.get_public_key()))
+   myself(*us->myself)
    //TODO: not sure the session needs to know the room name
 {
   my_state = DEAD; //in case anything fails
@@ -254,9 +274,9 @@ bool np1secSession::compute_session_id() {
 
   //session_id = Hash of (U1,ehpmeral1, U2);
   for (std::vector<std::string>::iterator it = peers.begin(); it != peers.end(); ++it) {
-    Participant p = participants[*it];
+    Participant& p = participants[*it];
     cat_string += p.id.id_to_stringbuffer();
-    cat_string += cryptic.retrieve_result(p.ephemeral_key);
+    cat_string += cryptic.hash_to_string_buff(p.raw_ephemeral_key);
   }
 
   HashBlock sid;
@@ -474,7 +494,6 @@ bool np1secSession::send_auth_and_share_message() {
     and others
     sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), kc, z_joiner
 */
-
 bool np1secSession::send_view_auth_and_share(string joiner_id) {
   assert(session_id.get());
   if (!group_enc()) //compute my share for group key

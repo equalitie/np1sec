@@ -49,7 +49,7 @@ class np1secInsufficientCredentialException : public std::exception
 {                                                                 
    virtual const char* what() const throw()                        
    {                                                               
-     return "Crypto error";                               
+     return "Insufficient credentials";                               
    }                                                               
  };                                   
 

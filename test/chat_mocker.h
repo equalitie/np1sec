@@ -96,6 +96,7 @@ class MockRoom {
                std::to_string(global_message_id)+
                "@<o>@"+sender_nick+"@<o>@"+message);
     }
+
 };
 
 /**

@@ -40,7 +40,7 @@ typedef std::map<std::string, np1secRoom> RoomMap;
 class np1secUserState {
  public:
   //TOOD: protoct these guys
-  std::string name;
+  ParticipantId* myself;
   LongTermIDKey long_term_key_pair; //private and public key
   //np1secAsymmetricKey long_term_pub_key;
   RoomMap chatrooms;
@@ -63,7 +63,7 @@ class np1secUserState {
    * access function for nick
    */
   std::string user_id()  {
-    return name;
+    return myself->nickname;
   }
 
   /**

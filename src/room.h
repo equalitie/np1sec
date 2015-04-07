@@ -62,6 +62,8 @@ class np1secRoom {
  protected:
   std::string name; //room name given in creation by user_state
   np1secUserState* user_state;
+  ParticipantId myself;
+
   //with exception of possibly one session, every
   //session has session id.
   enum UserInRoomState {
