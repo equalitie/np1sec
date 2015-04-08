@@ -86,7 +86,6 @@ np1secMessage::np1secMessage(std::string raw_message, Cryptic* cryptic, np1secUs
   us = us;
   room_name = room_name;
   if (message_tokens[0].compare("np1sec")) {
-    
     unwrap_generic_message(message_tokens);  
   }
 }
@@ -180,7 +179,6 @@ void np1secMessage::format_generic_message() {
       sys_message += c_np1sec_delim + this->z_sender;
       meta_load = "";
       meta_load_flag = NO_LOAD;
-      
       format_meta_message();
       sys_message += c_np1sec_delim + this->meta_message;
       break;
@@ -201,7 +199,6 @@ void np1secMessage::unwrap_generic_message(std::vector<std::string> m_tokens) {
   std::string temp = sub_tokens[0];
   message_type = (np1secMessageType)atoi(sub_tokens[1].c_str());
   std::string signature, sv_string;
-
 
   if (!temp.empty()) {
     this->session_id = reinterpret_cast<uint8_t*>(&temp[0]);
