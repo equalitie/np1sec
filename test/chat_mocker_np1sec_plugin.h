@@ -29,7 +29,6 @@ void send_bare(std::string room_name, std::string message, void* data);
 
 void new_session_announce(std::string room_name, std::string sender_nickname, void* aux_data);
 
-
 /**
  * Receive the messages from chat mocker, interpret the message and
  * call the approperiate function from userstate class  of npsec1 
@@ -39,5 +38,14 @@ void new_session_announce(std::string room_name, std::string sender_nickname, vo
 void chat_mocker_plugin_receive_handler(std::string room_name,
                                         std::string message,
                                         void* aux_data);
+
+/**
+ * This should be called by the client to secure send
+ * user message to a room,using np1sec library
+ */
+void chat_mocker_np1sec_plugin_send(std::string room_name,
+                                    std::string message,
+                                    void* aux_data);
+
 
 #endif  // TEST_CHAT_MOCKER_NP!SEC_PLUGIN_H_
