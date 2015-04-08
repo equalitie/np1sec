@@ -24,6 +24,7 @@
 #include "src/crypt.h"
 #include "src/base64.h"
 #include "src/participant.h"
+#include <iostream>
 //#include "src/userstate.h"
 
 class np1secUserState;

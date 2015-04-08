@@ -58,7 +58,7 @@ VERSION HISTORY:
 /* system headers */
 #include <stdio.h>
 #include <string.h>
-
+#include <iostream>
 /* libotr headers */
 #include "base64.h"
 
@@ -225,11 +225,12 @@ int otrl_base64_otr_decode(const char *msg, unsigned char **bufp,
     size_t msglen, rawlen;
     unsigned char *rawmsg;
 
-    otrtag = (char *)strstr(msg, "?np1sec:");
+    otrtag = (char *)strstr(msg, "?OTR:");
     if (!otrtag) {
 	return -2;
     }
 
+    /* Base64-decode the message */
     endtag = strchr(otrtag, '.');
     if (endtag) {
 	msglen = endtag-otrtag;
@@ -241,7 +242,6 @@ int otrl_base64_otr_decode(const char *msg, unsigned char **bufp,
     otrtag += 5;
     msglen -= 5;
 
-    /* Base64-decode the message */
     rawlen = OTRL_B64_MAX_DECODED_SIZE(msglen);   /* maximum possible */
     rawmsg = (unsigned char*)malloc(rawlen);
     if (!rawmsg && rawlen > 0) {
@@ -249,7 +249,6 @@ int otrl_base64_otr_decode(const char *msg, unsigned char **bufp,
     }
 
     rawlen = otrl_base64_decode(rawmsg, otrtag, msglen);  /* actual size */
-
     *bufp = rawmsg;
     *lenp = rawlen;
 
