@@ -106,6 +106,20 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
   
 };
 
+/**
+ * This should be called by the client to secure send
+ * user message to a room,using np1sec library
+ */
+void chat_mocker_np1sec_plugin_send(std::string room_name,
+                                    std::string message,
+                                    void* aux_data)
+{
+  pair<np1secUserState*, ChatMocker*>* user_server_state = reinterpret_cast<pair<np1secUserState*, ChatMocker*>*>(aux_data);
+
+  user_server_state->first->send_handler(room_name, message);
+
+}
+
 // Just a wrapper to call the mocker send function
 void send_bare(std::string room_name, std::string message, void* data)
 {

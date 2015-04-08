@@ -154,8 +154,11 @@ TEST_F(SessionTest, test_init) {
 
   //user_state->join(mock_room_name, mock_server.participant_list(mock_room_name));
 
-  //tell np1sec to go through join
-  //chat_mocker_np1sec_plugin_join(mock_room_name, &user_server_state);
+  //tell np1sec to go through join: no need to call this, we receive
+  //our own join message in our receive-handler
+  //not really, it is not the case in general and it is the client
+  //duty to call join.
+  chat_mocker_np1sec_plugin_join(mock_room_name, &user_server_state);
 
   //np1secSession new_session(user_state, mock_room_name, participants_in_the_room);
   //ASSERT_TRUE(new_session.join(user_state->user_id_key_pair()));
@@ -185,16 +188,36 @@ TEST_F(SessionTest, test_second_join) {
 
   //creator joins first
   mock_server.join(mock_room_name, creator_state->user_id());
-
+  //tell np1sec to go through join
+  chat_mocker_np1sec_plugin_join(mock_room_name, &creator_server_state);
+  
   //then joiner joins
   mock_server.join(mock_room_name, joiner_state->user_id());
-
-  //tell np1sec to go through join: no need to call this, we receive
-  //our own join message in our receive-handler
-  //chat_mocker_np1sec_plugin_join(mock_room_name, &user_server_state);
-  
+  //tell np1sec to go through join
+  chat_mocker_np1sec_plugin_join(mock_room_name, &joiner_server_state);
 
   //np1secSession new_session(user_state, mock_room_name, participants_in_the_room);
   //ASSERT_TRUE(new_session.join(user_state->user_id_key_pair()));
+  
+}
+
+TEST_F(SessionTest, test_solitary_talk) {
+  //first we need a username and we use it
+  //to sign in the room
+  string username = "sole-tester";
+  np1secUserState* user_state = new np1secUserState(username, &mockops);
+  user_state->init();
+
+  pair<np1secUserState*, ChatMocker*> user_server_state(user_state, &mock_server);
+
+  //client login and join
+  mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));
+  mock_server.join(mock_room_name, user_state->user_id());
+
+  //tell np1sec to go through join
+  chat_mocker_np1sec_plugin_join(mock_room_name, &user_server_state);
+
+  //say something
+  chat_mocker_np1sec_plugin_send(mock_room_name, "Hello, World!", &user_server_state);
   
 }
