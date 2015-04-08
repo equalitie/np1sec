@@ -186,10 +186,7 @@ void np1secMessage::format_generic_message() {
       break;
    }
 
-std::cout<<""<<std::endl;
-std::cout<<sys_message<<std::endl;
   sys_message = sid_string + c_np1sec_delim + sys_message + c_np1sec_delim;
-std::cout<<sys_message<<std::endl;
   sys_message = base64_encode(sys_message);
   sys_message = c_np1sec_protocol_name + c_np1sec_delim + sys_message + c_np1sec_delim;
 }
@@ -197,7 +194,6 @@ std::cout<<sys_message<<std::endl;
 void np1secMessage::unwrap_generic_message(std::vector<std::string> m_tokens) {
 
   std::string message = base64_decode(m_tokens[1]);
-std::cout<<message<<std::endl;
   std::vector<std::string> sub_tokens = split(message, c_np1sec_delim);
   /*if(sub_tokens.size() <=0 ){
     throw "np1secMessage::unwrap_generic_message: message no tokenisable";
