@@ -33,6 +33,12 @@ class MockParticipant {
   void (*receive_handler)(std::string room_name,
                           std::string message,
                           void* aux_data);
+  
+  //void (*join_handler)(std::string room_name,
+  //void* aux_data); //we don't need the join handler
+  //because we receive our own join message and therefore
+  //we can react to that.
+  
 };
 
 class MockRoom {
@@ -67,7 +73,7 @@ class MockRoom {
       _participant_list[nick].receive_handler = chat_mocker_np1sec_plugin_receive_handler;
       _participant_list[nick].aux_data = user_data;
       
-        //receive_handler; in real life, its re doesn't happen here
+      //receive_handler; in real life, its re doesn't happen here
       // _participant_list[nick].aux_data = user_data;
       broadcast("@<o>@JOIN@<o>@"+nick);
     }
@@ -131,6 +137,8 @@ class ChatMocker {
       rooms.insert(std::pair<std::string, MockRoom>(room, MockRoom(room)));
     
     rooms[room].join(nick, signed_in_participant[nick].receive_handler, signed_in_participant[nick].aux_data);
+    //we need to call the join_handler if it exists
+    
   }
 
   /**
