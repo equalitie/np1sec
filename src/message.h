@@ -53,7 +53,7 @@ class np1secMessage {
     return elems;
   }
 
-  std::vector<std::string> split(std::string &s, std::string delim) {
+  std::vector<std::string> split(std::string s, std::string delim) {
     std::vector<std::string> elems;
     split(s, delim, elems);
     return elems;

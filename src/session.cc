@@ -335,61 +335,50 @@ bool np1secSession::validate_session_confirmation(np1secMessage confirmation_mes
 
   Cryptic::hash(to_be_hashed, expected_hash);
 
-  return Cryptic::compare_hash(expected_hash, reinterpret_cast<const uint8_t*>(confirmation_message.session_key_confirmation.c_str()));
+  return !(Cryptic::compare_hash(expected_hash, reinterpret_cast<const uint8_t*>(confirmation_message.session_key_confirmation.c_str())));
   
 }
 
 bool np1secSession::group_enc() {
-  unsigned int my_right = (my_index + 1 == peers.size()) ? 0 : my_index+1;
-  unsigned int my_left = (my_index == 0) ? peers.size() - 1 : my_index-1;
-  std::string to_hash_right = Cryptic::hash_to_string_buff(participants[peers[my_right]].p2p_key) + session_id.get_as_stringbuff();
-  std::string to_hash_left = Cryptic::hash_to_string_buff(participants[peers[my_left]].p2p_key) + session_id.get_as_stringbuff();
 
-  HashBlock hbr;
-  Cryptic::hash(to_hash_right.c_str(), to_hash_right.size(), hbr, true);
-
-  HashBlock hbl;
-  Cryptic::hash(to_hash_left.c_str(), to_hash_left.size(), hbl, true);
+  HashBlock hbr, hbl;
+  memcpy(hbr, Cryptic::strbuff_to_hash(secret_share_on(c_my_right)), sizeof(HashBlock));
+  memcpy(hbl, Cryptic::strbuff_to_hash(secret_share_on(c_my_left)), sizeof(HashBlock));
 
   for (unsigned i=0; i < sizeof(HashBlock); i++) {
       hbr[i] ^= hbl[i];
   }
 
   memcpy(participants[myself.nickname].cur_keyshare, hbr, sizeof(HashBlock));
+  participants[myself.nickname].key_share_contributed = true;
 
   return true;
   
 }
 
 bool np1secSession::group_dec() {
-  unsigned int my_right = (my_index + 1 == peers.size()) ? 0 : my_index+1;
+
   std::vector<std::string> all_r(peers.size());
   HashBlock last_hbr;
 
-  //We assume that user has computed his share
-  // std::string to_hash_right = Cryptic::hash_to_string_buff(participants[peers[my_right]].p2p_key) + session_id.get_as_stringbuff();
-  //   HashBlock hbr;
-  //Cryptic::hash(to_hash_right.c_str(), to_hash_right.size(), hbr, true);
   HashBlock hbr;
-  
-  memcpy(hbr, participants[peers[my_index]].cur_keyshare, sizeof(HashBlock));
-  //memcpy(all_r[my_index], hbr, sizeof(HashBlock));
+  memcpy(hbr, Cryptic::strbuff_to_hash(secret_share_on(c_my_right)), sizeof(HashBlock));
+  size_t my_right = (my_index+c_my_right) % peers.size();
   all_r[my_index] = Cryptic::hash_to_string_buff(hbr);
-  for (unsigned i=0; i < sizeof(HashBlock); i++) {
-    hbr[i] ^= participants[peers[my_right]].cur_keyshare[i];
-  }
-  //memcpy(all_r[my_right], hbr, sizeof(HashBlock));
-  all_r[my_right] = Cryptic::hash_to_string_buff(hbr);
-  memcpy(last_hbr, hbr, sizeof(HashBlock));
+  // for (unsigned i=0; i < sizeof(HashBlock); i++) {
+  //   hbr[i] ^= participants[peers[my_right]].cur_keyshare[i];
+  // }
+  // //memcpy(all_r[my_right], hbr, sizeof(HashBlock));
+  // all_r[(my_index + c_my_right) % peers.size()] = Cryptic::hash_to_string_buff(hbr);
+  // memcpy(last_hbr, hbr, sizeof(HashBlock));
 
-  for (unsigned counter = 0; counter < peers.size(); counter++) {
-       
+  for (unsigned counter = 1; counter < peers.size(); counter++) {
+    size_t current_peer_index = (my_index+counter) % peers.size();
     for (unsigned i=0; i < sizeof(HashBlock); i++) {
-        last_hbr[i] ^= participants[peers[my_right]].cur_keyshare[i];
+        hbr[i] ^= participants[peers[current_peer_index]].cur_keyshare[i];
    }
     //memcpy(all_r[my_right], last_hbr, sizeof(HashBlock));
-    all_r[my_right] = Cryptic::hash_to_string_buff(last_hbr);
-    my_right = (my_right + 1 == peers.size()) ? 0 : my_right+1;
+    all_r[current_peer_index] = Cryptic::hash_to_string_buff(hbr);
   } 
 
   std::string to_hash;
@@ -398,7 +387,6 @@ bool np1secSession::group_dec() {
   }
 
   to_hash += session_id.get_as_stringbuff();
-  HashBlock session_key;
   Cryptic::hash(to_hash.c_str(), to_hash.size(), session_key, true);
   cryptic.set_session_key(session_key);
 
@@ -787,6 +775,9 @@ np1secSession::StateAndAction np1secSession::confirm_auth_add_update_share_repo(
   UnauthenticatedParticipantList session_view_list = session_view();
   if (everybody_authenticated_and_contributed()) {
     if (group_dec()) {
+      //first compute the confirmation
+      compute_session_confirmation();
+      //now send the confirmation message
       np1secMessage outboundmessage(session_id,
                                     np1secMessage::SESSION_CONFIRMATION,
                                     session_view_list,

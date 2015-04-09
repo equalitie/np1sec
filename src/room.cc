@@ -126,10 +126,12 @@ void np1secRoom::receive_handler(np1secMessage received_message)
   //If the user is not in the session, we can do nothing with
   //session less messages, we are joining and we need info
   //about the room
+  //RoomAction resulting_action = c_no_room_action;
   if (user_in_room_state == JOINING) {
     if (received_message.has_sid()) {
       if (session_universe.find(Cryptic::hash_to_string_buff(received_message.session_id)) != session_universe.end())
         RoomAction resulting_action = session_universe[Cryptic::hash_to_string_buff(received_message.session_id)].state_handler(received_message);
+      
       else {
         session_universe.insert(pair<string, np1secSession>(Cryptic::hash_to_string_buff(received_message.session_id), np1secSession(user_state, name, &np1sec_ephemeral_crypto, received_message)));
       }
@@ -140,9 +142,6 @@ void np1secRoom::receive_handler(np1secMessage received_message)
     if (received_message.has_sid()) {
       if (session_universe.find(Cryptic::hash_to_string_buff(received_message.session_id)) != session_universe.end()) {
         RoomAction resulting_action = session_universe[Cryptic::hash_to_string_buff(received_message.session_id)].state_handler(received_message);
-        //we need to check in case the session was activated
-        if (active_session.get_as_stringbuff() == Cryptic::hash_to_string_buff(received_message.session_id) && session_universe[Cryptic::hash_to_string_buff(received_message.session_id)].get_state() == np1secSession::IN_SESSION)
-          activate_session(received_message.session_id);
         
       }
       // else //ignone
@@ -156,7 +155,14 @@ void np1secRoom::receive_handler(np1secMessage received_message)
       }
     //else just ignore it
   }
-    
+
+  //Now we check if the resulting action resulted in new session
+  //we have to activate that session
+  if (received_message.has_sid())
+    if (active_session.get_as_stringbuff() != Cryptic::hash_to_string_buff(received_message.session_id))
+      if (session_universe[Cryptic::hash_to_string_buff(received_message.session_id)].get_state() == np1secSession::IN_SESSION)
+      activate_session(received_message.session_id);
+  
   //np1secSession *cur_session = retrieve_session(room_name);
   // if (!cur_session) {
   //   //only possible operation should be join and leave 
@@ -211,7 +217,9 @@ void np1secRoom::activate_session(SessionId newly_activated_session)
   SessionId dying_session = active_session;
   if (dying_session.get())
     session_universe[active_session.get_as_stringbuff()].commit_suicide();
-
+  else
+    user_in_room_state = CURRENT_USER; //in case it is our first session
+  
   active_session = newly_activated_session;
   
   for(SessionMap::iterator session_it = session_universe.begin(); session_it != session_universe.end(); session_it++) {

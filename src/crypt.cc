@@ -164,6 +164,58 @@ gcry_sexp_t Cryptic::convert_to_sexp(std::string text) {
 
 }
 
+  /**
+   * This function gets the value for q section of public-key and
+   * reconstruct the whole sexp to be used in libgcrypt functions
+   * 
+[open]
+  [data="public-key"]
+  [open]
+    [data="ecc"]
+    [open]
+      [data="curve"]
+      [data="Ed25519"]
+    [close]
+    [open]
+      [data="flags"]
+      [data="eddsa"]
+    [close]
+    [open]
+      [data="q"]
+      [data="\xb83jR\xea\xebtI\xab\\x91E\xda\xff|Y\x94\xe1\xeck\xa8I<d\x804+\x18\x9b\xe5\x7f!"]
+    [close]
+  [close]
+[close]
+   */
+np1secAsymmetricKey Cryptic::reconstruct_public_key_sexp(const std::string pub_key_block)
+{
+  gcry_error_t err = 0; 	
+  np1secAsymmetricKey public_key_sexp = nullptr;
+  gcry_mpi_t public_point_mpi;
+  err = gcry_mpi_scan(&public_point_mpi,
+                      NP1SEC_BLOB_OUT_FORMAT,
+                      strbuff_to_hash(pub_key_block),
+                      ED25519_KEY_SIZE,
+                      NULL);
+  
+  if (err)
+    goto err;
+  
+  err = gcry_sexp_build(&public_key_sexp,
+                        NULL,
+                        "(public-key (ecc (curve Ed25519) (flags eddsa) (q %M)))",
+                        public_point_mpi);
+  if (err)
+    goto err;
+  
+  return public_key_sexp;
+  
+ err:
+  std::fprintf(stderr, "failed to construct public key: %s/%s\n", gcry_strsource(err), gcry_strerror(err));
+  throw np1secCryptoException();
+  return nullptr;
+}
+
 void Cryptic::release_crypto_resource(gcry_sexp_t crypto_resource)
 {
   gcry_sexp_release(crypto_resource);

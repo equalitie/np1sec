@@ -272,7 +272,23 @@ class np1secSession {
   /*  * child session */
   /*  *\/ */
   /* void kill_rival_children(); */
+  static const uint8_t c_my_right = 1;
+  static const uint8_t c_my_left = -1;
+  /**
+   * compute the right secret share
+   * @param side  either c_my_right = 1 or c_my_left = 1
+   */
+  std::string secret_share_on(uint8_t side)
+    {
+      HashBlock hb;
+      
+      assert(side == c_my_left || side == c_my_right);
+      unsigned int my_neighbour = my_index + side % peers.size();
+      Cryptic::hash(Cryptic::hash_to_string_buff(participants[peers[my_neighbour]].p2p_key) + session_id.get_as_stringbuff(), hb, true);
 
+      return Cryptic::hash_to_string_buff(hb);
+      
+    }
 
   /**
    * reading the particpant_in_the_room list, it populate the 
