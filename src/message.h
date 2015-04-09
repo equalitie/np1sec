@@ -45,6 +45,11 @@ class np1secMessage {
       size_t end = npos + delim.length();
       s.erase(0, end);
     }
+    //we need to check to see if anything left and we send it
+    //as the last token
+    if (s.length())
+      elems.push_back(s);
+
     return elems;
   }
 

@@ -10,6 +10,7 @@ extern "C" {
 
 #include <map>
 #include <list>
+#include <queue>
 
 #ifndef TEST_CHAT_MOCKER_H_
 #define TEST_CHAT_MOCKER_H_
@@ -46,15 +47,12 @@ class MockRoom {
   uint64_t global_message_id = 0;
   std::string name;
   std::map<std::string, MockParticipant> _participant_list;
+  std::queue<std::string> message_queue;
 
   void broadcast(std::string message) {
-    for (std::map<std::string, MockParticipant>::iterator
-       cur_participant = _participant_list.begin();
-       cur_participant != _participant_list.end(); cur_participant++)
-      (*(cur_participant->second).receive_handler)(name, message,
-                             (cur_participant->second).aux_data);
+    message_queue.push(message);
   }
-
+  
  public:
   MockRoom()
   {
@@ -65,6 +63,7 @@ class MockRoom {
     : name(room_name)
   {
   }
+  
   void join(std::string nick,
             void (*receive_handler)(std::string room_name,
                                     std::string message,
@@ -76,8 +75,8 @@ class MockRoom {
       //receive_handler; in real life, its re doesn't happen here
       // _participant_list[nick].aux_data = user_data;
       broadcast("@<o>@JOIN@<o>@"+nick);
-    }
-
+  }
+  
   /**
      access function for participants
    */
@@ -102,6 +101,19 @@ class MockRoom {
                std::to_string(global_message_id)+
                "@<o>@"+sender_nick+"@<o>@"+message);
     }
+
+    void receive() {
+    while (!message_queue.empty())
+      {
+        for (std::map<std::string, MockParticipant>::iterator
+               cur_participant = _participant_list.begin();
+             cur_participant != _participant_list.end(); cur_participant++)
+          (*(cur_participant->second).receive_handler)(name, message_queue.front(),
+                                                       (cur_participant->second).aux_data);
+        message_queue.pop();
+      }
+  }
+
 
 };
 
@@ -161,6 +173,15 @@ class ChatMocker {
    */
   void send(std::string room, std::string nick, std::string message) {
     rooms[room].send(nick, message);
+  }
+
+  /**
+   * makes everybody receive all messages from all rooms
+   */
+  void receive()
+  {
+    for(auto it = rooms.begin(); it != rooms.end(); it++)
+      it->second.receive();
   }
   
 };

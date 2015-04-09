@@ -78,15 +78,17 @@ np1secMessage::np1secMessage(SessionId& session_id,
 
 np1secMessage::np1secMessage(std::string raw_message, Cryptic* cryptic, np1secUserState* usi, std::string room_name):
   us(us),
-  room_name(room_name)
+  room_name(room_name),
+  cryptic(cryptic)
 {
-  this->cryptic = cryptic;
   std::vector<std::string> message_tokens = split(raw_message,c_np1sec_delim); 
 
-  us = us;
-  room_name = room_name;
-  if (message_tokens[0].compare("np1sec")) {
+  if (message_tokens[0] == c_np1sec_protocol_name) {
     unwrap_generic_message(message_tokens);  
+  } else {
+    //TODO:: do something intelligent here
+    //should we warn the user about unencrypted message
+    //and then return everything as the plain text?
   }
 }
 
@@ -121,6 +123,7 @@ std::string np1secMessage::session_view_as_string(){
   std::string output = c_np1sec_delim.c_str();
   for (UnauthenticatedParticipantList::iterator it = session_view.begin(); it != session_view.end(); ++it){
     output += (*it).participant_id.id_to_stringbuffer(); // + _subfield_delim; //TODO::we don't need delim public key has static
+    output += Cryptic::hash_to_string_buff((*it).ephemeral_pub_key);
     //length 
     //output += (*it).long_term_pub_key_hex + c_np1sec_delim.c_str(); 
   }
@@ -129,7 +132,12 @@ std::string np1secMessage::session_view_as_string(){
 
 void np1secMessage::string_to_session_view(std::string sv_string) {
   std::string temp = base64_decode(sv_string);
-  std::string token = strtok(&temp[0], c_np1sec_delim.c_str());
+  std::vector<std::string> sub_tokens = split(temp, c_np1sec_delim);
+  if (sub_tokens.size() == 0) //something is wrong
+    throw np1secMessageFormatException();
+
+  std::string token = sub_tokens[1]; //because it starts with c_np1sec_delim
+  //so the first field is empty
   //this is dangerous as it assumes the string is
   //in pairs
   //TOOD::This need to be fixed, also how do we know end

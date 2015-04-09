@@ -284,6 +284,7 @@ class np1secSession {
   {    
     for(UnauthenticatedParticipantList::const_iterator view_it = session_view.begin(); view_it != session_view.end();  view_it++) {
       participants.insert(std::pair<std::string, Participant>(view_it->participant_id.nickname, Participant(*view_it, &cryptic)));
+      participants[view_it->participant_id.nickname].authenticated = view_it->authenticated;
       peers.push_back(view_it->participant_id.nickname);
     
     }
@@ -334,7 +335,10 @@ class np1secSession {
 
     for(size_t i = 0; i <  peers.size(); i++)
       participants[peers[i]].index = i;
-    
+
+    //flush the confirmation
+    confirmed_peers.clear();
+    confirmed_peers.resize(peers.size());
   }
 
 
@@ -620,6 +624,8 @@ class np1secSession {
   */
   void engrave_transition_graph()
   {
+    my_state = DEAD; //intitated as DEAD, in case anything fails
+    
     //joining user
     np1secFSMGraphTransitionMatrix[JOIN_REQUESTED][np1secMessage::PARTICIPANTS_INFO] = &np1secSession::auth_and_reshare;
 
@@ -644,9 +650,10 @@ class np1secSession {
     //LEAVE Request is indicated in the meta message of user message
     //np1secFSMGraphTransitionMatrix[IN_SESSION][np1secMessage::LEAVE_REQUEST] = &np1secSession::send_farewell_and_reshare;
 
-    np1secFSMGraphTransitionMatrix[RE_SHARED][np1secMessage::FAREWELL] = &np1secSession::check_transcript_consistancy_update_share_repo;
+    //I'm not sure either of these occures
+    //np1secFSMGraphTransitionMatrix[RE_SHARED][np1secMessage::FAREWELL] = &np1secSession::check_transcript_consistancy_update_share_repo;
 
-    np1secFSMGraphTransitionMatrix[LEAVE_REQUESTED][np1secMessage::FAREWELL] = &np1secSession::check_transcript_consistancy_update_share_repo;
+    //np1secFSMGraphTransitionMatrix[LEAVE_REQUESTED][np1secMessage::FAREWELL] = &np1secSession::check_transcript_consistancy_update_share_repo;
 
     //We don't accept join request while in farewelled state (for now at least)
     //TODO: we should forward it with the session with reduced plist.

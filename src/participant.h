@@ -255,7 +255,7 @@ class Participant {
     gcry_sexp_release(this->ephemeral_key);
     //delete [] this->raw_ephemeral_key; doesn't make sense to delete const length array
     memcpy(this->raw_ephemeral_key, raw_ephemeral_key, sizeof(HashBlock));
-    ephemeral_key = Cryptic::convert_to_sexp(std::string(reinterpret_cast<const char*>(raw_ephemeral_key), c_ephemeral_key_length));
+    ephemeral_key = Cryptic::reconstruct_public_key_sexp(std::string(reinterpret_cast<const char*>(raw_ephemeral_key), c_ephemeral_key_length));
 
     return (ephemeral_key != nullptr);
   }
@@ -307,7 +307,7 @@ class Participant {
    :id(unauth_participant.participant_id),
     authenticated(false),
     authed_to(false),
-    long_term_pub_key(Cryptic::convert_to_sexp(reinterpret_cast<const char*>(unauth_participant.participant_id.fingerprint))) ,
+    long_term_pub_key(Cryptic::reconstruct_public_key_sexp(Cryptic::hash_to_string_buff(unauth_participant.participant_id.fingerprint))),
     thread_user_crypto(thread_crypto)
       {
         set_ephemeral_key(unauth_participant.ephemeral_pub_key);

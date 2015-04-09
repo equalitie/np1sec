@@ -151,9 +151,14 @@ gcry_sexp_t Cryptic::convert_to_sexp(std::string text) {
   gcry_error_t err = 0; 	
   gcry_sexp_t new_sexp; 	
 
+  //assert(0);
   err = gcry_sexp_new(&new_sexp, text.c_str(), text.size(), 1); 	
   if (err) { 	
-    std::printf("Cryptic::convert_to_sexp failed to convert plain_text to gcry_sexp_t"); 	
+    std::printf("Cryptic::convert_to_sexp failed to convert plain_text to gcry_sexp_t");
+    std::printf("Failure: %s/%s\n",
+                gcry_strsource(err),
+                gcry_strerror(err));
+
   } 	
   return new_sexp; 	
 

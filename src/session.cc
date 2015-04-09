@@ -81,7 +81,7 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name,
                              const UnauthenticatedParticipantList& sole_participant_view) : us(us), room_name(room_name),  cryptic(*current_ephemeral_crypto), myself(*us->myself)
 
 {
-  my_state = DEAD; //in case anything fails
+  engrave_transition_graph();
 
   populate_participants_and_peers(sole_participant_view);
 
@@ -89,7 +89,7 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name,
   compute_session_id();
 
   if (send_view_auth_and_share())
-    my_state = RE_SHARED;
+    my_state = REPLIED_TO_NEW_JOIN;
 
 }
 
@@ -101,7 +101,7 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name,
                              Cryptic* current_ephemeral_crypto,
                              np1secMessage participants_info_message) : us(us), room_name(room_name),  cryptic(*current_ephemeral_crypto)
 {
-  my_state = DEAD; //in case anything fails
+  engrave_transition_graph();
 
   //TODO:: obviously we need an access function to make sure there is joiner info
   //update participant info or let it be there if they are consistent with
@@ -151,7 +151,7 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name, np1secM
           //need  to know to send the message to :-/
           //send should be the function of np1secRoom maybe :-?
 {
-  my_state = DEAD; //in case anything fails
+  engrave_transition_graph();
   
   this->participants = current_authed_participants;
   UnauthenticatedParticipant  joiner(join_message.joiner_info);
@@ -187,7 +187,7 @@ np1secSession::np1secSession(np1secUserState* us, std::string room_name, string 
    myself(*us->myself)
    //TODO: not sure the session needs to know the room name
 {
-  my_state = DEAD; //in case anything fails
+  engrave_transition_graph();
 
   participants = current_authed_participants;
   current_authed_participants.erase(leaver_id);
@@ -222,7 +222,7 @@ np1secSession::np1secSession(np1secUserState* us, std::string room_name, Partici
    myself(*us->myself)
    //TODO: not sure the session needs to know the room name
 {
-  my_state = DEAD; //in case anything fails
+  engrave_transition_graph();
 
   participants = current_authed_participants;
 
@@ -775,12 +775,13 @@ np1secSession::StateAndAction np1secSession::confirm_auth_add_update_share_repo(
     if (!participants[received_message.sender_id].be_authenticated(myself.nickname, Cryptic::strbuff_to_hash(received_message.key_confirmation), us->long_term_key_pair.get_key_pair().first))  {
       return StateAndAction(DEAD, RoomAction());
     }
+  }
 
     //kill_all_my_siblings(); 
-    participants[received_message.sender_id].set_key_share(Cryptic::strbuff_to_hash(received_message.z_sender));
-  }
+  participants[received_message.sender_id].set_key_share(Cryptic::strbuff_to_hash(received_message.z_sender));
+
   //else { //assuming the message is PARTICIPANT_INFO from other in
-    //session people
+  //session people
     
   //}
   UnauthenticatedParticipantList session_view_list = session_view();
@@ -825,9 +826,7 @@ np1secSession::StateAndAction np1secSession::confirm_auth_add_update_share_repo(
 np1secSession::StateAndAction np1secSession::mark_confirmed_and_may_move_session(np1secMessage received_message) {
   //TODO:realistically we don't need to check sid, if sid
   //doesn't match we shouldn't have reached this point
-  if (validate_session_confirmation(received_message))
-    confirmed_peers[participants[received_message.sender_id].index] = true;
-  else
+  if (!validate_session_confirmation(received_message))
     return StateAndAction(DEAD, c_no_room_action);
   
   confirmed_peers[participants[received_message.sender_id].index] = true;

@@ -126,6 +126,7 @@ class np1secUserState {
    *         interface (add, remove user or display a message
    */
   void receive_handler(std::string room_name,
+                       std::string sender_nickname,
                        std::string np1sec_message,
                        uint32_t message_id = 0);
 

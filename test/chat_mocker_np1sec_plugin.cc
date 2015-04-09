@@ -71,6 +71,7 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
       user_server_state->first->join_room(room_name, user_server_state->second->participant_list(room_name));
     } else {
       user_server_state->first->receive_handler(room_name,
+                                                joining_nick,
                                                 np1sec_message);
                                                 
       //user_server_state->first->accept_new_user(room_name, joining_nick);
@@ -100,7 +101,8 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
   //RoomActoin will tell you to 1)show message, 2)add participant 3) remove participant etc
  //not sure yet
     user_server_state->first->receive_handler(room_name,
-                                              np1sec_message,
+                                              sender,
+                                              pure_message,
                                               message_id);
   }
   
@@ -124,8 +126,10 @@ void chat_mocker_np1sec_plugin_send(std::string room_name,
 void send_bare(std::string room_name, std::string message, void* data)
 {
   //pair<np1secUserState*, ChatMocker*>* user_server_state = reinterpret_cast<pair<np1secUserState*, ChatMocker*>*>(data);
-  ChatMocker* chat_server = static_cast<ChatMocker*>(data);
-  chat_server->send(room_name, "someone", message);
+  ChatMocker* chat_server = (static_cast<pair<ChatMocker*, std::string>*>(data))->first;
+  std::string sender = (static_cast<pair<ChatMocker*, std::string>*>(data))->second;
+
+  chat_server->send(room_name, sender, message);
   
 }
 

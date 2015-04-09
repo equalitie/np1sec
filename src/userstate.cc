@@ -101,15 +101,17 @@ bool np1secUserState::join_room(std::string room_name,
        - decide which room should handle the message using the room name
  */
 void np1secUserState::receive_handler(std::string room_name,
-                                            std::string received_message,
-                                            uint32_t message_id) {
+                                      std::string sender_nickname,
+                                      std::string received_message,
+                                      uint32_t message_id) {
   np1secMessage received(received_message, nullptr, this, room_name); //so no decryption key here
+  received.sender_id = sender_nickname;
 
   //if there is no room, it was a mistake to give us the message
   assert(chatrooms.find(room_name) != chatrooms.end());
 
   chatrooms[room_name].receive_handler(received);
-  
+
 }
 
 bool np1secUserState::send_handler(std::string room_name,
