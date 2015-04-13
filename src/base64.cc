@@ -200,14 +200,12 @@ char *otrl_base64_otr_encode(const unsigned char *buf, size_t buflen)
 
     /* Make the base64-encoding. */
     base64len = ((buflen + 2) / 3) * 4;
-    base64buf = (char*)malloc(5 + base64len + 1 + 1);
+    base64buf = (char*)malloc(base64len + 1);
     if (base64buf == NULL) {
 	return NULL;
     }
-    memmove(base64buf, "?OTR:", 5);
-    otrl_base64_encode(base64buf+5, buf, buflen);
-    base64buf[5 + base64len] = '.';
-    base64buf[5 + base64len + 1] = '\0';
+    otrl_base64_encode(base64buf, buf, buflen);
+    base64buf[base64len + 1] = '\0';
 
     return base64buf;
 }
@@ -221,26 +219,10 @@ char *otrl_base64_otr_encode(const unsigned char *buf, size_t buflen)
 int otrl_base64_otr_decode(const char *msg, unsigned char **bufp,
 	size_t *lenp)
 {
-    char *otrtag, *endtag;
     size_t msglen, rawlen;
     unsigned char *rawmsg;
 
-    otrtag = (char *)strstr(msg, "?OTR:");
-    if (!otrtag) {
-	return -2;
-    }
-
-    /* Base64-decode the message */
-    endtag = strchr(otrtag, '.');
-    if (endtag) {
-	msglen = endtag-otrtag;
-    } else {
-	return -2;
-    }
-
-    /* Skip over the "?OTR:" */
-    otrtag += 5;
-    msglen -= 5;
+    msglen = strlen(msg);
 
     rawlen = OTRL_B64_MAX_DECODED_SIZE(msglen);   /* maximum possible */
     rawmsg = (unsigned char*)malloc(rawlen);
@@ -248,7 +230,7 @@ int otrl_base64_otr_decode(const char *msg, unsigned char **bufp,
 	return -1;
     }
 
-    rawlen = otrl_base64_decode(rawmsg, otrtag, msglen);  /* actual size */
+    rawlen = otrl_base64_decode(rawmsg, msg, msglen);  /* actual size */
     *bufp = rawmsg;
     *lenp = rawlen;
 

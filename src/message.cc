@@ -182,9 +182,7 @@ void np1secMessage::format_generic_message() {
   std::string signature;
   sys_message = "" + std::to_string(this->message_type);
   std::string sid_string;
-  if (this->session_id)
-    sid_string.assign(reinterpret_cast<char const*>(this->session_id), sizeof(HashBlock));
-  
+ 
   switch (this->message_type) {
     case PARTICIPANTS_INFO:
       sys_message += c_np1sec_delim + session_view_as_string();
@@ -212,7 +210,12 @@ void np1secMessage::format_generic_message() {
       break;
    }
 
-  sys_message = sid_string + c_np1sec_delim + sys_message + c_np1sec_delim;
+  if (this->session_id) {
+    sid_string.assign(reinterpret_cast<char const*>(this->session_id), sizeof(HashBlock));
+    sys_message = sid_string + c_np1sec_delim + sys_message + c_np1sec_delim;
+  } else {
+    sys_message += c_np1sec_delim;
+  }
   sys_message = base64_encode(sys_message);
   sys_message = c_np1sec_protocol_name + c_np1sec_delim + sys_message + c_np1sec_delim;
 }
