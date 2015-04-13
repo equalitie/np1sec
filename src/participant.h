@@ -175,7 +175,7 @@ UnauthenticatedParticipant(std::string participant_id_and_ephmeralkey)
 
   std::string unauthed_participant_to_stringbuffer() {
     std::string string_id(participant_id.id_to_stringbuffer());
-    string_id += std::string(reinterpret_cast<char*>(ephemeral_pub_key, sizeof(HashBlock)));
+    string_id += std::string(reinterpret_cast<char*>(ephemeral_pub_key), sizeof(c_ephemeral_key_length));
     return string_id;
   }
   
@@ -221,6 +221,20 @@ class Participant {
   unsigned int index; //keep the place of the partcipant in sorted peers array
   // np1secKeySHare future_key_share;
 
+  //default copy constructor
+  Participant(const Participant& rhs)
+    :
+  id(rhs.id),
+    long_term_pub_key(rhs.long_term_pub_key),
+    authenticated(rhs.authenticated),
+    authed_to(rhs.authed_to)
+  {
+    long_term_pub_key = Cryptic::copy_crypto_resource(rhs.long_term_pub_key);
+    set_ephemeral_key(rhs.raw_ephemeral_key);
+    memcpy(p2p_key, rhs.p2p_key, sizeof(HashBlock));
+  }
+    
+
   uint32_t in_session_index; /* this is the i in U_i and we have
                                 participants[peers[i]].index == i
                                 tautology
@@ -252,7 +266,7 @@ class Participant {
    */
   bool set_ephemeral_key(const HashBlock raw_ephemeral_key)
   {
-    gcry_sexp_release(this->ephemeral_key);
+    Cryptic::release_crypto_resource(this->ephemeral_key);
     //delete [] this->raw_ephemeral_key; doesn't make sense to delete const length array
     memcpy(this->raw_ephemeral_key, raw_ephemeral_key, sizeof(HashBlock));
     ephemeral_key = Cryptic::reconstruct_public_key_sexp(std::string(reinterpret_cast<const char*>(raw_ephemeral_key), c_ephemeral_key_length));
@@ -301,7 +315,9 @@ class Participant {
     ephemeral_key(nullptr),
     authenticated(false),
     authed_to(false)
-      {}
+      {
+        assert(0);
+      }
     
  Participant(const UnauthenticatedParticipant& unauth_participant, Cryptic* thread_crypto)
    :id(unauth_participant.participant_id),
@@ -313,6 +329,14 @@ class Participant {
         set_ephemeral_key(unauth_participant.ephemeral_pub_key);
       }
 
+  //destructor
+  ~Participant()
+    {
+      //release gcrypt stuff
+      Cryptic::release_crypto_resource(this->ephemeral_key);
+      Cryptic::release_crypto_resource(this->long_term_pub_key);
+
+    }
 };
 
 /**

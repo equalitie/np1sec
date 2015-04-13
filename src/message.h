@@ -80,7 +80,8 @@ class np1secMessage {
 
   np1secMessageType message_type;
   uint32_t message_id;
-  uint8_t* session_id;
+  uint8_t* session_id = nullptr;
+  HashBlock session_id_buffer;
   std::string sender_id;
   std::string user_message;
   std::string meta_message;
@@ -152,6 +153,10 @@ class np1secMessage {
    * returns true if session_id is set
    */
   bool has_sid() { return (session_id != nullptr);}
+
+  //sessionid needs to be change from HashBlock to std::string buffer
+  void set_session_id(const uint8_t* new_session_id);
+  
   /**
    * Compute a unique globally ordered id from the time stamped message,
    * ultimately this function should be overridable by the client.

@@ -34,8 +34,7 @@ np1secMessage::np1secMessage(SessionId session_id,
                             Cryptic* cryptic, 
                             np1secUserState* us,
                              std::string room_name)
-: session_id(session_id.get()),
-  sender_id(sender_id),
+: sender_id(sender_id),
   user_message(user_message),
   message_type(message_type),
   transcript_chain_hash(transcript_chain_hash),
@@ -47,11 +46,23 @@ np1secMessage::np1secMessage(SessionId session_id,
   room_name(room_name)
   
 {
+  set_session_id(session_id.get());
+  
   if (message_type == PURE_META_MESSAGE) {
     this->meta_only = 1;
   }
 }
 
+void np1secMessage::set_session_id(const uint8_t* new_session_id) {
+
+  if (new_session_id) {
+    session_id = session_id_buffer; //I wanna throw up :( we should use stirng buffer
+    memcpy(session_id_buffer, new_session_id, sizeof(HashBlock));
+  } else {
+    session_id = nullptr;
+  }
+    
+}
 np1secMessage::np1secMessage(SessionId& session_id,
                              np1secMessageType message_type,
                              UnauthenticatedParticipantList& session_view,
@@ -62,7 +73,6 @@ np1secMessage::np1secMessage(SessionId& session_id,
                              np1secUserState* us,
                              std::string room_name)
   :
-  session_id(session_id.get()),
   message_type(message_type),
   session_view(session_view),
   key_confirmation(key_confirmation),
@@ -72,6 +82,7 @@ np1secMessage::np1secMessage(SessionId& session_id,
   us(us),
   room_name(room_name)
   {
+    set_session_id(session_id.get());
     format_generic_message();
   }
 
@@ -86,18 +97,27 @@ np1secMessage::np1secMessage(std::string raw_message, Cryptic* cryptic, np1secUs
   if (message_tokens[0] == c_np1sec_protocol_name) {
     unwrap_generic_message(message_tokens);  
   } else {
+    throw np1secMessageFormatException();
     //TODO:: do something intelligent here
     //should we warn the user about unencrypted message
     //and then return everything as the plain text?
   }
 }
 
+/**
+ * constructor for join message
+ */
 np1secMessage::np1secMessage(np1secMessageType message_type,
                              UnauthenticatedParticipant joiner,
                              np1secUserState* us,
                              std::string room_name)
-  :us(us), room_name(room_name), joiner_info(joiner.unauthed_participant_to_stringbuffer())
+  :message_type(message_type),
+   session_id(nullptr),us(us),
+   room_name(room_name),
+   joiner_info(joiner.unauthed_participant_to_stringbuffer())
 {
+  format_generic_message();
+
 }
 
 
@@ -208,10 +228,10 @@ void np1secMessage::unwrap_generic_message(std::vector<std::string> m_tokens) {
   message_type = (np1secMessageType)atoi(sub_tokens[1].c_str());
   std::string signature, sv_string;
 
-  if (!temp.empty()) {
-    this->session_id = reinterpret_cast<uint8_t*>(&temp[0]);
+  if (!temp.empty())
+    set_session_id(reinterpret_cast<uint8_t*>(&temp[0]));
   
-    switch (message_type) {
+  switch (message_type) {
       case PARTICIPANTS_INFO:
         sv_string = sub_tokens[2];
         this->key_confirmation = sub_tokens[3];
@@ -239,8 +259,8 @@ void np1secMessage::unwrap_generic_message(std::vector<std::string> m_tokens) {
       case USER_MESSAGE:
         unwrap_user_message(sub_tokens[2]);
         break;
-    }
   }
+ 
 }
 
 void np1secMessage::unwrap_user_message(std::string u_message) {
@@ -253,7 +273,7 @@ void np1secMessage::unwrap_user_message(std::string u_message) {
   m_tokens = split(phased_message, c_np1sec_delim);
 
   std::string temp = m_tokens[0];
-  memcpy(session_id, temp.c_str(), temp.size());
+  set_session_id(reinterpret_cast<const uint8_t*>(temp.c_str()));
 
   encrypted_message = m_tokens[1];
 

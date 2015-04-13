@@ -220,6 +220,23 @@ void Cryptic::release_crypto_resource(gcry_sexp_t crypto_resource)
 {
   gcry_sexp_release(crypto_resource);
 }
+
+gcry_sexp_t Cryptic::copy_crypto_resource(gcry_sexp_t crypto_resource)
+{
+  gcry_sexp_t copied_resource;
+  gcry_error_t err = gcry_sexp_build(&copied_resource,
+                        NULL,
+                        "%S",
+                        crypto_resource);
+  if (err) {
+    std::fprintf(stderr, "failed to copy crypto resource: %s/%s\n", gcry_strsource(err), gcry_strerror(err));
+    throw np1secCryptoException();
+    return nullptr;
+  }
+
+  return copied_resource;
+  
+};
 /**
  * Given the peer's long term and ephemeral public key AP and ap, and ours 
  * BP, bP, all points on ed25519 curve, this 

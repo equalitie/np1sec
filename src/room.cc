@@ -63,7 +63,7 @@ void np1secRoom::join() {
   assert(user_in_room_state == JOINING); //no double join but we need a
   //more humane way of doing this
   //turening sexp to stirng buffer.
-  UnauthenticatedParticipant me(*(user_state->myself), Cryptic::retrieve_result(np1sec_ephemeral_crypto.get_ephemeral_pub_key()));
+  UnauthenticatedParticipant me(*(user_state->myself), Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()),true);
   np1secMessage join_message(np1secMessage::JOIN_REQUEST,
                              me,
                              user_state,
@@ -154,6 +154,8 @@ void np1secRoom::receive_handler(np1secMessage received_message)
         }
       }
     //else just ignore it
+    assert(0); //just for test to make sure we don't end up here
+    return;
   }
 
   //Now we check if the resulting action resulted in new session
