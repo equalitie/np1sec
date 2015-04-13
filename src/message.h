@@ -34,26 +34,27 @@ class np1secMessage {
 
   Cryptic* cryptic; //message class is never responsible to delete the cryptic object
 
-  std::vector<std::string> &split(std::string &s,
-                                  std::string delim,
+  std::vector<std::string> &split(const std::string &s,
+                                  const std::string delim,
                                   std::vector<std::string> &elems) {
+    std::string destructable_s(s);
     std::string token;
     size_t npos;
-    while ((npos = s.find(delim)) != std::string::npos) {
-      token = s.substr(0,npos);
+    while ((npos = destructable_s.find(delim)) != std::string::npos) {
+      token = destructable_s.substr(0,npos);
       elems.push_back(token);
       size_t end = npos + delim.length();
-      s.erase(0, end);
+      destructable_s.erase(0, end);
     }
     //we need to check to see if anything left and we send it
     //as the last token
-    if (s.length())
-      elems.push_back(s);
+    if (destructable_s.length())
+      elems.push_back(destructable_s);
 
     return elems;
   }
 
-  std::vector<std::string> split(std::string s, std::string delim) {
+  std::vector<std::string> split(const std::string& s, const std::string delim) {
     std::vector<std::string> elems;
     split(s, delim, elems);
     return elems;
