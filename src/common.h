@@ -39,6 +39,7 @@ extern "C" {
   #include "gcrypt.h"
 }
 
+typedef uint32_t MessageId;
 typedef gcry_sexp_t np1secPrivateKey;
 typedef gcry_sexp_t np1secPublicKey;
 typedef std::pair<np1secPrivateKey, np1secPublicKey> KeyPair;

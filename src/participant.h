@@ -21,10 +21,39 @@
 
 #include <string>
 #include <list>
+#include <map>
 #include <event2/event.h>
 
 #include "exceptions.h"
 #include "src/crypt.h"
+
+class np1secSession;
+class Participant;
+/**
+ * Structure for ops data for waiting timer for receiving ack
+ * from other participants
+ */
+struct AckTimerOps
+{
+  np1secSession* session;
+  Participant* participant;
+  MessageId message_parent_id;
+  void* timer;
+
+  AckTimerOps() {assert(0);}; //This is to make [] of map
+  //working, but soon we'll move to another type
+    
+  AckTimerOps(np1secSession* session,
+              Participant* participant,
+              uint32_t message_parent_id,
+              void* timer)
+  :session(session),
+    participant(participant),
+    message_parent_id(message_parent_id),
+    timer(timer)
+  {}
+  
+};
 
 /**
    Participant id
@@ -208,8 +237,9 @@ class Participant {
   ParticipantId id;
   np1secPublicKey long_term_pub_key = nullptr;
   np1secPublicKey ephemeral_key = nullptr;
-  event* receive_ack_timer;
-  event* send_ack_timer;
+  std::map<MessageId, AckTimerOps> receive_ack_timer_ops;
+  MessageId last_acked_message_id;
+  void* send_ack_timer;
   HashBlock raw_ephemeral_key = {};
   // MessageDigest message_digest;
 
@@ -229,7 +259,6 @@ class Participant {
   authenticated(rhs.authenticated),
   authed_to(rhs.authed_to),
   thread_user_crypto(rhs.thread_user_crypto),
-  receive_ack_timer(nullptr),
   send_ack_timer(nullptr)
   {
     long_term_pub_key = Cryptic::copy_crypto_resource(rhs.long_term_pub_key);
@@ -328,7 +357,6 @@ class Participant {
     authed_to(false),
     long_term_pub_key(Cryptic::reconstruct_public_key_sexp(Cryptic::hash_to_string_buff(unauth_participant.participant_id.fingerprint))),
     thread_user_crypto(thread_crypto),
-    receive_ack_timer(nullptr),
     send_ack_timer(nullptr)
 
       {

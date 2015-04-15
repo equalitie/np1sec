@@ -142,6 +142,18 @@ void new_session_announce(std::string room_name, std::string sender_nickname, vo
   
 }
 
+//ignore timers all together
+
+void* set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval)
+{
+  return nullptr; //do nothing
+}
+
+void axe_timer(void* to_be_defused_timer)
+{
+  return; //do nothing
+}
+
 /*void join(std::string room_name, std::string sender_nickname, void* data)
 {
   cout << sender_nickname << "Securely joined: " << endl;

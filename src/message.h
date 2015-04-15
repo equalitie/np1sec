@@ -79,7 +79,7 @@ class np1secMessage {
   };
 
   np1secMessageType message_type;
-  uint32_t message_id;
+  MessageId message_id;
   uint8_t* session_id = nullptr;
   HashBlock session_id_buffer;
   std::string sender_id;

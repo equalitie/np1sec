@@ -41,21 +41,21 @@ class np1secSession;
  * Callback function to manage sending of heartbeats
  *
  */
-static void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg);
+static void cb_send_heartbeat(void *arg);
 
 /**
  * Callback function to cause automatic sending of ack for 
  * received message
  *
  */
-static void cb_send_ack(evutil_socket_t fd, short what, void *arg);
+static void cb_send_ack(void *arg);
 
 /**
  * Callback function to cause automatic warning if ack not
  * received for previously sent message
  *
  */
-static void cb_ack_not_received(evutil_socket_t fd, short what, void *arg);
+static void cb_ack_not_received(void *arg);
 
 class MessageDigest {
  public:
@@ -225,7 +225,7 @@ class np1secSession {
    * Generate acknowledgement timers for all other participants
    *
    */
-  void start_ack_timers();
+  void start_ack_timers(MessageId message_id);
 
   /**
     * Construct and start timers for acking received messages
@@ -237,7 +237,7 @@ class np1secSession {
    * End ack timer on for given acknowledgeing participants
    *
    */
-  void stop_timer_receive(std::string acknowledger_id);
+  void stop_timer_receive(std::string acknowledger_id, MessageId message_id);
 
   /*
    * Stop ack to send timers when user sends new message before timer expires
@@ -248,6 +248,12 @@ class np1secSession {
   HashBlock session_key_secret_share;
   HashBlock session_key;
   HashBlock session_confirmation;
+
+  void* heartbeat_timer;
+  void* send_ack_timer;
+
+  MessageId last_message_received_id;
+  MessageId own_message_counter; //sent message counter
   //Depricated in favor of raison detr.
   //tree structure seems to be insufficient. because
   //sid only encode the session structure but not
@@ -370,7 +376,7 @@ class np1secSession {
    */
   bool compute_session_id();
   bool compute_session_confirmation();
-  void account_for_session_and_key_consistancy();
+  void account_for_session_and_key_consistency();
   bool validate_session_confirmation(np1secMessage confirmation_message);
 
   bool setup_session_view(np1secMessage session_view_message);
@@ -444,7 +450,7 @@ class np1secSession {
     LEAVE_REQUESTED,  // Leave requested by the thread, waiting
                       // for final transcirpt consitancy check
     FAREWELLED,  // LEAVE is received from another participant and a
-                 // meta message for transcript consistancy and
+                 // meta message for transcript consistency and
                  // new shares has been sent
     DEAD,  // Won't accept receive or sent messages, possibly throw up
     SCHEDULED_TO_DIE, //a new session has been activated,
@@ -618,7 +624,7 @@ class np1secSession {
      otherwise no change to the status
 
    */
-  StateAndAction check_transcript_consistancy_update_share_repo(np1secMessage received_message);
+  StateAndAction check_transcript_consistency_update_share_repo(np1secMessage received_message);
 
   /**
      This pointer represent an edge in the transition
@@ -668,9 +674,9 @@ class np1secSession {
     //np1secFSMGraphTransitionMatrix[IN_SESSION][np1secMessage::LEAVE_REQUEST] = &np1secSession::send_farewell_and_reshare;
 
     //I'm not sure either of these occures
-    //np1secFSMGraphTransitionMatrix[RE_SHARED][np1secMessage::FAREWELL] = &np1secSession::check_transcript_consistancy_update_share_repo;
+    //np1secFSMGraphTransitionMatrix[RE_SHARED][np1secMessage::FAREWELL] = &np1secSession::check_transcript_consistency_update_share_repo;
 
-    //np1secFSMGraphTransitionMatrix[LEAVE_REQUESTED][np1secMessage::FAREWELL] = &np1secSession::check_transcript_consistancy_update_share_repo;
+    //np1secFSMGraphTransitionMatrix[LEAVE_REQUESTED][np1secMessage::FAREWELL] = &np1secSession::check_transcript_consistency_update_share_repo;
 
     //We don't accept join request while in farewelled state (for now at least)
     //TODO: we should forward it with the session with reduced plist.
@@ -681,7 +687,7 @@ class np1secSession {
     * Construct and start timers for sending heartbeat messages
     *
     */
-  void start_heartbeat_timer();
+  void restart_heartbeat_timer();
 
   //This really doesn't make sense because we create a sessien based on
   //join request
@@ -827,9 +833,9 @@ class np1secSession {
   ~np1secSession();
 
   //friend all timer call backs
-  friend /*static*/ void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg);
-  friend /*static*/ void cb_send_ack(evutil_socket_t fd, short what, void *arg);
-  friend /*static*/ void cb_ack_not_received(evutil_socket_t fd, short what, void *arg);
+  friend  void cb_send_heartbeat(void *arg);
+  friend  void cb_send_ack(void *arg);
+  friend  void cb_ack_not_received(void *arg);
 
 };
 
