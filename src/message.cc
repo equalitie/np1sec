@@ -87,13 +87,12 @@ np1secMessage::np1secMessage(SessionId& session_id,
   }
 
 
-np1secMessage::np1secMessage(std::string raw_message, Cryptic* cryptic, np1secUserState* usi, std::string room_name):
+np1secMessage::np1secMessage(std::string raw_message, Cryptic* cryptic, np1secUserState* us, std::string room_name):
   us(us),
   room_name(room_name),
   cryptic(cryptic)
 {
   std::vector<std::string> message_tokens = split(raw_message,c_np1sec_delim); 
-
   if (message_tokens[0] == c_np1sec_protocol_name) {
     unwrap_generic_message(message_tokens);  
   } else {
@@ -117,7 +116,6 @@ np1secMessage::np1secMessage(np1secMessageType message_type,
    joiner_info(joiner.unauthed_participant_to_stringbuffer())
 {
   format_generic_message();
-
 }
 
 
@@ -180,7 +178,7 @@ void np1secMessage::string_to_session_view(std::string sv_string) {
 
 void np1secMessage::format_generic_message() {
   std::string signature;
-  sys_message = "" + std::to_string(this->message_type);
+  sys_message = "";
   std::string sid_string;
  
   switch (this->message_type) {
@@ -212,54 +210,56 @@ void np1secMessage::format_generic_message() {
 
   if (this->session_id) {
     sid_string.assign(reinterpret_cast<char const*>(this->session_id), sizeof(HashBlock));
-    sys_message = sid_string + c_np1sec_delim + sys_message + c_np1sec_delim;
-  } else {
-    sys_message += c_np1sec_delim;
-  }
+    sys_message = c_np1sec_delim + sid_string + sys_message + c_np1sec_delim;
+  } 
+  
+  sys_message = std::to_string(this->message_type) + sys_message + c_np1sec_delim;
+  
   sys_message = base64_encode(sys_message);
   sys_message = c_np1sec_protocol_name + c_np1sec_delim + sys_message + c_np1sec_delim;
 }
 
 void np1secMessage::unwrap_generic_message(std::vector<std::string> m_tokens) {
-
   std::string message = base64_decode(m_tokens[1]);
   std::vector<std::string> sub_tokens = split(message, c_np1sec_delim);
   /*if(sub_tokens.size() <=0 ){
     throw "np1secMessage::unwrap_generic_message: message no tokenisable";
   } */ 	
-  std::string temp = sub_tokens[0];
-  message_type = (np1secMessageType)atoi(sub_tokens[1].c_str());
+  message_type = (np1secMessageType)atoi(sub_tokens[0].c_str());
   std::string signature, sv_string;
 
-  if (!temp.empty())
-    set_session_id(reinterpret_cast<uint8_t*>(&temp[0]));
   
   switch (message_type) {
       case PARTICIPANTS_INFO:
+        set_session_id(reinterpret_cast<uint8_t*>(&sub_tokens[1]));
         sv_string = sub_tokens[2];
         this->key_confirmation = sub_tokens[3];
         this->z_sender = sub_tokens[4];
         string_to_session_view(sv_string);
         break;
       case SESSION_CONFIRMATION:
+        set_session_id(reinterpret_cast<uint8_t*>(&sub_tokens[1]));
         sv_string = sub_tokens[2];
         this->session_key_confirmation = sub_tokens[3];
         string_to_session_view(sv_string);
         break;
       case JOIN_REQUEST:
-        this->joiner_info = sub_tokens[2];
+        this->joiner_info = sub_tokens[1];
         break;
       case JOINER_AUTH:
+        set_session_id(reinterpret_cast<uint8_t*>(&sub_tokens[1]));
         this->key_confirmation = sub_tokens[2];
         this->z_sender = sub_tokens[3];
         break;
       case FAREWELL:
+        set_session_id(reinterpret_cast<uint8_t*>(&sub_tokens[1]));
         sv_string = sub_tokens[2];
         this->z_sender = sub_tokens[3];
         this->meta_message = sub_tokens[4];
         string_to_session_view(sv_string);
         break;
       case USER_MESSAGE:
+        set_session_id(reinterpret_cast<uint8_t*>(&sub_tokens[1]));
         unwrap_user_message(sub_tokens[2]);
         break;
   }
