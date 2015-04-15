@@ -274,6 +274,7 @@ bool np1secRoom::send_user_message(std::string plain_message)
     return true;
   }
 
+  assert(0); //just for test to detect if something gone wrong
   return false; //you can't send message now
   //TODO: We should queue the messages and send them
   //when the session is established

@@ -225,9 +225,12 @@ class Participant {
   Participant(const Participant& rhs)
     :
   id(rhs.id),
-    long_term_pub_key(rhs.long_term_pub_key),
-    authenticated(rhs.authenticated),
-    authed_to(rhs.authed_to)
+  long_term_pub_key(rhs.long_term_pub_key),
+  authenticated(rhs.authenticated),
+  authed_to(rhs.authed_to),
+  thread_user_crypto(rhs.thread_user_crypto),
+  receive_ack_timer(nullptr),
+  send_ack_timer(nullptr)
   {
     long_term_pub_key = Cryptic::copy_crypto_resource(rhs.long_term_pub_key);
     set_ephemeral_key(rhs.raw_ephemeral_key);
@@ -324,7 +327,10 @@ class Participant {
     authenticated(false),
     authed_to(false),
     long_term_pub_key(Cryptic::reconstruct_public_key_sexp(Cryptic::hash_to_string_buff(unauth_participant.participant_id.fingerprint))),
-    thread_user_crypto(thread_crypto)
+    thread_user_crypto(thread_crypto),
+    receive_ack_timer(nullptr),
+    send_ack_timer(nullptr)
+
       {
         set_ephemeral_key(unauth_participant.ephemeral_pub_key);
       }

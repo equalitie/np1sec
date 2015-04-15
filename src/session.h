@@ -370,6 +370,7 @@ class np1secSession {
    */
   bool compute_session_id();
   bool compute_session_confirmation();
+  void account_for_session_and_key_consistancy();
   bool validate_session_confirmation(np1secMessage confirmation_message);
 
   bool setup_session_view(np1secMessage session_view_message);

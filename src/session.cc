@@ -326,6 +326,22 @@ bool np1secSession::compute_session_confirmation()
   
 }
 
+//TODO with having session confirmation it is not clear if 
+//this is necessary at all but I include it for now
+//as it is part of the protocol
+void np1secSession::account_for_session_and_key_consistancy()
+{
+  string to_be_hashed = Cryptic::hash_to_string_buff(session_key);
+  to_be_hashed += session_id.get_as_stringbuff();
+
+  HashBlock key_sid_hash;
+  Cryptic::hash(to_be_hashed, key_sid_hash);
+
+  add_message_to_transcript(Cryptic::hash_to_string_buff(key_sid_hash),
+                            0);
+
+}
+
 bool np1secSession::validate_session_confirmation(np1secMessage confirmation_message)
 {
   HashBlock expected_hash;
@@ -824,6 +840,9 @@ np1secSession::StateAndAction np1secSession::mark_confirmed_and_may_move_session
   
   if (everybody_confirmed()) {
     //activate(); it is matter of changing to IN_SESSION
+    //we also need to initiate the transcript chain with 
+    account_for_session_and_key_consistancy();
+
     return StateAndAction(IN_SESSION, c_no_room_action);
   }
 
@@ -959,7 +978,7 @@ void np1secSession::start_heartbeat_timer() {
   timer_event = event_new(base, -1, EV_TIMEOUT, &cb_send_heartbeat, this);
   event_add(timer_event, &ten_seconds);
 
-  event_base_dispatch(base);
+  //event_base_dispatch(base);
 }
 
 void np1secSession::start_ack_timers() {
@@ -975,7 +994,7 @@ void np1secSession::start_ack_timers() {
     event_add((*it).second.receive_ack_timer, &ten_seconds);
   }
 
-  event_base_dispatch(base);
+  //event_base_dispatch(base);
 }
 
 void np1secSession::start_receive_ack_timer(std::string sender_id) {
@@ -990,7 +1009,7 @@ void np1secSession::start_receive_ack_timer(std::string sender_id) {
   timer_event = event_new(base, -1, EV_TIMEOUT, &cb_send_ack, this);
   participants[sender_id].receive_ack_timer = timer_event;
   event_add(participants[sender_id].receive_ack_timer, &ten_seconds);
-  event_base_dispatch(base);
+  //event_base_dispatch(base);
 }
 
 void np1secSession::stop_timer_send() {
@@ -998,7 +1017,8 @@ void np1secSession::stop_timer_send() {
        it = participants.begin();
        it != participants.end();
        ++it) {
-    event_free((*it).second.send_ack_timer);
+    if ((*it).second.send_ack_timer)
+      event_free((*it).second.send_ack_timer);
   }
 }
 
@@ -1012,9 +1032,15 @@ void np1secSession::add_message_to_transcript(std::string message,
   std::stringstream ss;
   std::string pointlessconversion;
 
-  ss << transcript_chain.rbegin()->second;
-  ss >> pointlessconversion;
-  pointlessconversion += c_np1sec_delim + message;
+  if (transcript_chain.size() > 0) {
+    ss << transcript_chain.rbegin()->second;
+    ss >> pointlessconversion;
+    pointlessconversion += c_np1sec_delim + message;
+
+  } else {
+    pointlessconversion = message;
+
+  }
 
   compute_message_hash(*hb, pointlessconversion);
 
@@ -1027,7 +1053,7 @@ bool np1secSession::send(std::string message, np1secMessage::np1secMessageType m
   // Add code to check message type and get
   // meta load if needed
   np1secLoadFlag meta_load_flag = NO_LOAD;
-  std::string meta_load = NULL;
+  std::string meta_load(""); //TODO why is it always empty?
   np1secMessage outbound(session_id, us->user_id(),
                          message, message_type,
                          *transcript_chain_hash,
@@ -1048,6 +1074,7 @@ bool np1secSession::send(std::string message, np1secMessage::np1secMessageType m
   }
 
   // us->ops->send_bare(room_name, outbound);
+  outbound.send();
   return true;
   
 }
