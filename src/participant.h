@@ -249,25 +249,7 @@ class Participant {
   bool authed_to;
   bool key_share_contributed;
   unsigned int index; //keep the place of the partcipant in sorted peers array
-  // np1secKeySHare future_key_share;
-
-  //default copy constructor
-  Participant(const Participant& rhs)
-    :
-  id(rhs.id),
-  long_term_pub_key(rhs.long_term_pub_key),
-  authenticated(rhs.authenticated),
-  authed_to(rhs.authed_to),
-  thread_user_crypto(rhs.thread_user_crypto),
-  send_ack_timer(nullptr)
-  {
-    long_term_pub_key = Cryptic::copy_crypto_resource(rhs.long_term_pub_key);
-    set_ephemeral_key(rhs.raw_ephemeral_key);
-    memcpy(p2p_key, rhs.p2p_key, sizeof(HashBlock));
-  }
-    
-
-  uint32_t in_session_index; /* this is the i in U_i and we have
+   /* this is the i in U_i and we have
                                 participants[peers[i]].index == i
                                 tautology
                                 
@@ -275,6 +257,26 @@ class Participant {
                                 half of human kind in a room :(
                              */
 
+  // np1secKeySHare future_key_share;
+
+  //default copy constructor
+  Participant(const Participant& rhs)
+    :
+  id(rhs.id),
+    long_term_pub_key(rhs.long_term_pub_key),
+    authenticated(rhs.authenticated),
+    authed_to(rhs.authed_to),
+    thread_user_crypto(rhs.thread_user_crypto),
+    send_ack_timer(nullptr),
+    key_share_contributed(rhs.key_share_contributed),
+    index(rhs.index)
+    
+  {
+    long_term_pub_key = Cryptic::copy_crypto_resource(rhs.long_term_pub_key);
+    set_ephemeral_key(rhs.raw_ephemeral_key);
+    memcpy(p2p_key, rhs.p2p_key, sizeof(HashBlock));
+  }
+  
   enum ForwardSecracyContribution {
     NONE,
     EPHEMERAL,

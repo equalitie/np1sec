@@ -1031,7 +1031,7 @@ void np1secSession::stop_timer_receive(std::string acknowledger_id, MessageId me
 
 void np1secSession::add_message_to_transcript(std::string message,
                                         uint32_t message_id) {
-  HashBlock *hb;
+  HashBlock hb;
   std::stringstream ss;
   std::string pointlessconversion;
 
@@ -1045,9 +1045,10 @@ void np1secSession::add_message_to_transcript(std::string message,
 
   }
 
-  compute_message_hash(*hb, pointlessconversion);
+  compute_message_hash(hb, pointlessconversion);
 
-  transcript_chain[message_id] = hb;
+  transcript_chain[message_id] = &hb;
+
 }
 
 bool np1secSession::send(std::string message, np1secMessage::np1secMessageType message_type) {
