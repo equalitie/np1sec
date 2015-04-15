@@ -120,7 +120,7 @@ TEST_F(MessageTest, test_participant_info){
                                nullptr,
                                joiner_state,
                                room_name);
-  ASSERT_EQ(outbound.message_type, inbound.message_type);
+  ASSERT_EQ((*outbound.session_id), (*inbound.session_id));
 }
 
 TEST_F(MessageTest, test_join_auth){
