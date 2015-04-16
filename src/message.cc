@@ -249,13 +249,18 @@ std::string np1secMessage::create_user_msg(SessionId session_id,
 
   std::string base_message, phased_message, signature;
   std::string length;
+  unsigned char buffer[128];
+  gcry_randomize(buffer, 128, GCRY_STRONG_RANDOM);
 
   std::string ustates = ustate_values(pstates);
 
-  std::string hash_string(reinterpret_cast<char const*>(transcript_chain_hash));
+  std::string hash_string(reinterpret_cast<char const*>(transcript_chain_hash), sizeof(HashBlock));
+  std::string nonce(reinterpret_cast<char const*>(buffer), sizeof(buffer));
+
   base_message = session_id.get_as_stringbuff();
   base_message += hash_string;
   base_message += nonce;
+
   base_message += sender_index;
   
   length = std::to_string(user_message.size());
@@ -380,9 +385,6 @@ void np1secMessage::send(std::string room_name, np1secUserState* us) {
   
 }
 
-void np1secMessage::generate_nonce(unsigned char* buffer) {
-  gcry_randomize(buffer, 128, GCRY_STRONG_RANDOM);
-}
 
 std::string np1secMessage::base64_encode(std::string message) {
   return otrl_base64_otr_encode((unsigned char*)message.c_str(),

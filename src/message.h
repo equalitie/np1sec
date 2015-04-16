@@ -294,13 +294,6 @@ class np1secMessage {
   std::string ustate_values(std::vector<std::string> pstates);
 
   /**
-   * Generate 128 bit nonce value to be placed inside the message 
-   * as random interesting data
-   *
-   */
-  void generate_nonce(unsigned char* buffer);
-
-  /**
    * Destructor
    *
    */
