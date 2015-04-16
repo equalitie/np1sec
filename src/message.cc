@@ -275,10 +275,14 @@ std::string np1secMessage::create_user_msg(SessionId session_id,
   signature = sign_message(base_message);
   base_message += signature + c_np1sec_delim.c_str();
   phased_message = encrypt_message(base_message);
-  phased_message = session_id.get_as_stringbuff() + phased_message;
 
+  if (this->session_id.get() != nullptr) {
+    phased_message = c_np1sec_delim + this->session_id.get_as_stringbuff() + phased_message + c_np1sec_delim;
+  } 
+  
+  phased_message = std::to_string(this->message_type) + sys_message + c_np1sec_delim;
   phased_message = base64_encode(phased_message);
-  phased_message = "np1sec:0)" + phased_message + c_np1sec_delim.c_str();
+  phased_message = c_np1sec_protocol_name + c_np1sec_delim + phased_message + c_np1sec_delim;
 
   final_whole_message = phased_message;
 
