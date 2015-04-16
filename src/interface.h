@@ -39,6 +39,7 @@ struct np1secAppOps {
   uint32_t c_unresponsive_ergo_non_sum_interval;
   uint32_t c_ack_interval;
   uint32_t c_consistency_failure_interval;
+  uint32_t c_send_receive_interval;
 
   np1secAppOps() {};
   
@@ -47,7 +48,10 @@ struct np1secAppOps {
     c_inactive_ergo_non_sum_interval(REKEY_GRACE_INTERVAL + 2*(BROADCAST_LATENCY)),
     c_unresponsive_ergo_non_sum_interval(INTERACTION_GRACE_INTERVAL + 2*(BROADCAST_LATENCY)),
     c_ack_interval(ACK_GRACE_INTERVAL),
-    c_consistency_failure_interval(ACK_GRACE_INTERVAL + 2*(BROADCAST_LATENCY))
+    c_consistency_failure_interval(ACK_GRACE_INTERVAL + 2*(BROADCAST_LATENCY)),
+    c_send_receive_interval(INTERACTION_GRACE_INTERVAL + 2*(BROADCAST_LATENCY))
+
+    
   {
   }
   

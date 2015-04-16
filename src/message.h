@@ -80,6 +80,8 @@ class np1secMessage {
 
   np1secMessageType message_type;
   MessageId message_id;
+  MessageId sender_message_id;
+  MessageId parent_id;
   uint8_t* session_id = nullptr;
   HashBlock session_id_buffer;
   std::string sender_id;
@@ -97,8 +99,15 @@ class np1secMessage {
   std::string key_confirmation;
   std::string joiner_info;
   std::vector<std::string> pstates;
+
+  /** message hash and consistency necessities */
+  HashStdBlock message_hash;
+  std::string final_whole_message;
+
+  /** to make sending by message itself possible*/
   np1secUserState* us;
   std::string room_name;
+ 
   /*
    * Construct a new np1secMessage based on a set of message components
    * as input
@@ -257,6 +266,8 @@ class np1secMessage {
    *
    */
   ~np1secMessage();
+
+  HashStdBlock compute_hash();
 
 };
 

@@ -58,6 +58,9 @@ enum np1secLoadFlag {
 const size_t c_hash_length = 32;
 
 typedef uint8_t HashBlock[c_hash_length];
+typedef std::string HashStdBlock; //This eventually gonna replace HashBlock,
+//mainly because StdHashBlock can be easily checked to see if it is initiated
+//or not (length)
 //typedef std::vector<uint8_t> SessionID;
 class SessionId
 {

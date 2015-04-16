@@ -92,6 +92,7 @@ np1secMessage::np1secMessage(std::string raw_message, Cryptic* cryptic, np1secUs
   room_name(room_name),
   cryptic(cryptic)
 {
+  final_whole_message = raw_message;
   std::vector<std::string> message_tokens = split(raw_message,c_np1sec_delim); 
   if (message_tokens[0] == c_np1sec_protocol_name) {
     unwrap_generic_message(message_tokens);  
@@ -288,19 +289,19 @@ void np1secMessage::unwrap_user_message(std::string u_message) {
     m_tokens = split(signed_message, c_np1sec_delim);
     // TODO(bill): clarify session id check
 //      if(session_id.compare(temp)) {
-      sender_id = m_tokens[1];
-      user_message = m_tokens[2];
+    sender_id = m_tokens[1];
+    user_message = m_tokens[2];
 
-      meta_message = m_tokens[3];
-      unwrap_meta_message();
+    meta_message = m_tokens[3];
+    unwrap_meta_message();
 
-      std::string hash_string = m_tokens[4];
-      memcpy(transcript_chain_hash, hash_string.c_str(), hash_string.size());
-      nonce = m_tokens[5];
-      message_id = compute_message_id(user_message);
+    std::string hash_string = m_tokens[4];
+    memcpy(transcript_chain_hash, hash_string.c_str(), hash_string.size());
+    nonce = m_tokens[5];
+    message_id = compute_message_id(user_message);
 //      }
-
-      message_type = UNKNOWN;
+    
+    message_type = UNKNOWN;
   }
 }
 
@@ -357,7 +358,10 @@ std::string np1secMessage::format_sendable_message() {
   phased_message = base64_encode(phased_message);
   phased_message = "np1sec:O3" + phased_message + c_np1sec_delim.c_str();
 
+  final_whole_message = phased_message;
+
   return phased_message;
+  
 }
 
 uint32_t np1secMessage::compute_message_id(std::string cur_message) {
@@ -410,18 +414,29 @@ bool np1secMessage::verify_message(std::string signed_message,
   }
 
   return false;
+
 }
 
 std::string np1secMessage::encrypt_message(std::string signed_message) {
   return cryptic->Encrypt(signed_message);
 }
 
+HashStdBlock np1secMessage::compute_hash()
+{
+  if (final_whole_message.length()) {
+    HashBlock hb;
+    Cryptic::hash(final_whole_message, hb, true);
+    return Cryptic::hash_to_string_buff(hb);
+  }
+  else
+    return "";
+  
+}
 
 std::string np1secMessage::decrypt_message(std::string encrypted_message) {
   return cryptic->Decrypt(encrypted_message);
 }
 
 np1secMessage::~np1secMessage() {
-  return;
 }
 #endif  // SRC_MESSAGE_CC_

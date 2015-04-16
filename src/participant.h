@@ -27,34 +27,6 @@
 #include "exceptions.h"
 #include "src/crypt.h"
 
-class np1secSession;
-class Participant;
-/**
- * Structure for ops data for waiting timer for receiving ack
- * from other participants
- */
-struct AckTimerOps
-{
-  np1secSession* session;
-  Participant* participant;
-  MessageId message_parent_id;
-  void* timer;
-
-  AckTimerOps() {assert(0);}; //This is to make [] of map
-  //working, but soon we'll move to another type
-    
-  AckTimerOps(np1secSession* session,
-              Participant* participant,
-              uint32_t message_parent_id,
-              void* timer)
-  :session(session),
-    participant(participant),
-    message_parent_id(message_parent_id),
-    timer(timer)
-  {}
-  
-};
-
 /**
    Participant id
    
@@ -237,7 +209,6 @@ class Participant {
   ParticipantId id;
   np1secPublicKey long_term_pub_key = nullptr;
   np1secPublicKey ephemeral_key = nullptr;
-  std::map<MessageId, AckTimerOps> receive_ack_timer_ops;
   MessageId last_acked_message_id;
   void* send_ack_timer;
   HashBlock raw_ephemeral_key = {};

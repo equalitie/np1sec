@@ -34,42 +34,12 @@
 #include "src/message.h"
 #include "src/crypt.h"
 
+#include "src/transcript_consistency.h"
+
 class np1secUserState;
 class np1secSession;
 
-/**
- * Callback function to manage sending of heartbeats
- *
- */
-static void cb_send_heartbeat(void *arg);
 
-/**
- * Callback function to cause automatic sending of ack for 
- * received message
- *
- */
-static void cb_send_ack(void *arg);
-
-/**
- * Callback function to cause automatic warning if ack not
- * received for previously sent message
- *
- */
-static void cb_ack_not_received(void *arg);
-
-class MessageDigest {
- public:
-  HashBlock digest;
-  uint32_t message_id;
-
-  void update(std::string new_message);
-
-  /**
-   * Compute a unique globally ordered id from the time stamped message,
-   * ultimately this function should be overridable by the client.
-   */
-  uint32_t compute_message_id(std::string cur_message);
-};
 
 //This has been removed in favor of np1secSession::operator- function
 //np1secSession::operator+ functions.
@@ -99,7 +69,7 @@ class RoomAction {
 /*     LEAVE, */
 /*     REKEY, */
 /*     NEW_MESSAGE */
-   }; 
+   };
 
    ActionType action_type;
    // The user which joined, left or sent a message. 
@@ -142,6 +112,7 @@ struct RaisonDEtre {
 typedef uint8_t np1secBareMessage[];
 typedef std::map<std::string,Participant> ParticipantMap;
 
+
 /**
  * This class is encapsulating all information and action, a user needs and
  * performs in a session.
@@ -172,10 +143,40 @@ class np1secSession {
   //UnauthenticatedParticipantList participants_in_the_room;
 
   /**
-   * Stores Transcritp chain hashes indexed by message id
+   * Stores Transcritp chain hashes indexed by received message id
    */
-  std::map<uint32_t, HashBlock*> transcript_chain;
+  std::map<MessageId, ConsistencyBlockVector> received_transcript_chain;
 
+  /**
+   * Stores the Transcript chain of hashes of all sent messages by the 
+   * thread user index by own_message_id
+   *
+   * When a message of our is received we extract the sender_message_id
+   * to index it here and kill the timer and check the consistency. 
+   *
+   * We also update message id, and we check for the consistency for
+   * the orders of own_message_id and the message_id
+   */
+  std::map<MessageId, ParticipantConsistencyBlock> sent_transcript_chain;
+
+  /**
+   * Inserts a block in the send transcript chain and start a 
+   * timer to receive the ack for it
+   */
+  void update_send_transcript_chain(MessageId own_message_id, HashStdBlock message_hash);
+  /**
+   * - kills the send ack timer for the message
+   * - Fill our own transcript chain for the message
+   * - Perform parent consistency check
+   */
+  void perform_received_consisteny_tasks(np1secMessage received_message);
+
+  /**
+   * - check the consistency of the parent message with our own.
+   * - kill all ack receive timers of the sender for the parent backward
+   */
+  void check_parent_message_consistency(np1secMessage message);
+  
   //participants data:
   /**
    * Keeps the list of the updated participants in the room once the
@@ -225,7 +226,7 @@ class np1secSession {
    * Generate acknowledgement timers for all other participants
    *
    */
-  void start_ack_timers(MessageId message_id);
+  void start_ack_timers(np1secMessage received_message);
 
   /**
     * Construct and start timers for acking received messages
@@ -361,8 +362,8 @@ class np1secSession {
     //flush the confirmation
     confirmed_peers.clear();
     confirmed_peers.resize(peers.size());
+    
   }
-
 
 // TODO: This should move to crypto really and called hash with
 // overloaded parameters
@@ -836,6 +837,7 @@ class np1secSession {
   friend  void cb_send_heartbeat(void *arg);
   friend  void cb_send_ack(void *arg);
   friend  void cb_ack_not_received(void *arg);
+  friend void cb_ack_not_sent(void* arg);
 
 };
 
