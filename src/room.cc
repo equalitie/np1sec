@@ -64,11 +64,10 @@ void np1secRoom::join() {
   //more humane way of doing this
   //turening sexp to stirng buffer.
   UnauthenticatedParticipant me(*(user_state->myself), Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()),true);
-  np1secMessage join_message(np1secMessage::JOIN_REQUEST,
-                             me,
-                             user_state,
-                             name);
-  join_message.send();
+  np1secMessage join_message;
+
+  join_message.create_join_request_msg(me);
+  join_message.send(name, user_state);
   
 }
 
@@ -129,19 +128,19 @@ void np1secRoom::receive_handler(np1secMessage received_message)
   //RoomAction resulting_action = c_no_room_action;
   if (user_in_room_state == JOINING) {
     if (received_message.has_sid()) {
-      if (session_universe.find(Cryptic::hash_to_string_buff(received_message.session_id)) != session_universe.end())
-        RoomAction resulting_action = session_universe[Cryptic::hash_to_string_buff(received_message.session_id)].state_handler(received_message);
+      if (session_universe.find(received_message.session_id.get_as_stringbuff()) != session_universe.end())
+        RoomAction resulting_action = session_universe[received_message.session_id.get_as_stringbuff()].state_handler(received_message);
       
       else {
-        session_universe.insert(pair<string, np1secSession>(Cryptic::hash_to_string_buff(received_message.session_id), np1secSession(user_state, name, &np1sec_ephemeral_crypto, received_message)));
+        session_universe.insert(pair<string, np1secSession>(received_message.session_id.get_as_stringbuff(), np1secSession(user_state, name, &np1sec_ephemeral_crypto, received_message)));
       }
     }
     //else just ignore it, it is probably another user's join that we don't
     //care.
   } else if (user_in_room_state == CURRENT_USER) {
     if (received_message.has_sid()) {
-      if (session_universe.find(Cryptic::hash_to_string_buff(received_message.session_id)) != session_universe.end()) {
-        RoomAction resulting_action = session_universe[Cryptic::hash_to_string_buff(received_message.session_id)].state_handler(received_message);
+      if (session_universe.find(Cryptic::hash_to_string_buff(received_message.session_id.get())) != session_universe.end()) {
+        RoomAction resulting_action = session_universe[received_message.session_id.get_as_stringbuff()].state_handler(received_message);
         
       }
       // else //ignone
@@ -161,9 +160,9 @@ void np1secRoom::receive_handler(np1secMessage received_message)
   //Now we check if the resulting action resulted in new session
   //we have to activate that session
   if (received_message.has_sid())
-    if (active_session.get_as_stringbuff() != Cryptic::hash_to_string_buff(received_message.session_id))
-      if (session_universe[Cryptic::hash_to_string_buff(received_message.session_id)].get_state() == np1secSession::IN_SESSION)
-      activate_session(received_message.session_id);
+    if (active_session.get_as_stringbuff() != received_message.session_id.get_as_stringbuff())
+      if (session_universe[received_message.session_id.get_as_stringbuff()].get_state() == np1secSession::IN_SESSION)
+      activate_session(received_message.session_id.get());
   
   //np1secSession *cur_session = retrieve_session(room_name);
   // if (!cur_session) {

@@ -80,9 +80,9 @@ class np1secMessage {
 
   np1secMessageType message_type;
   uint32_t message_id;
-  uint8_t* session_id = nullptr;
+  SessionId session_id;
   HashBlock session_id_buffer;
-  std::string sender_id;
+  std::string sender_index;
   std::string user_message;
   std::string meta_message;
   std::string sys_message;
@@ -97,46 +97,20 @@ class np1secMessage {
   std::string key_confirmation;
   std::string joiner_info;
   std::vector<std::string> pstates;
+  std::string ustates;
   np1secUserState* us;
   std::string room_name;
   /*
    * Construct a new np1secMessage based on a set of message components
    * as input
    */
-  np1secMessage(SessionId session_id, std::string sender_id,
-                std::string user_message, np1secMessageType message_type,
-                HashBlock transcript_chain_hash, np1secLoadFlag meta_load_flag,
-                std::string meta_load, std::vector<std::string> pstates,
-                Cryptic* cryptic, np1secUserState* us, std::string room_name);
+  np1secMessage();
 
   /*
    * Construct a new np1secMessage based on a set of message components
    * based on an encrypted message as input
    */
-  np1secMessage(std::string raw_message, Cryptic* cryptic, np1secUserState* us, std::string room_name);
-
-  /*
-   * Construct a new np1secMessage for p_infotem messages
-   * based on a set of input components 
-   **/
-  np1secMessage(SessionId& session_id,
-                np1secMessageType message_type,
-                UnauthenticatedParticipantList& session_view,
-                std::string key_confirmation,
-                std::string session_key_confirmation,
-                std::string joiner_info,
-                std::string z_sender,
-                np1secUserState* us,
-                std::string room_name);
-
-  /*
-   * We need to Construct a new np1secMessage without session_id
-   * for JOIN_REQUEST
-   **/
-  np1secMessage(np1secMessageType message_type,
-                UnauthenticatedParticipant joiner_info,
-                np1secUserState* us,
-                std::string room_name);
+  np1secMessage(std::string raw_message, Cryptic* cryptic);
 
   /**
    * @return if the message is of type PARTICIPANTS_INFO it returns 
@@ -147,16 +121,81 @@ class np1secMessage {
 
   std::string session_view_as_string();
 
+  /**
+   * Create PARTICIPANT_INFO system message
+   *
+   */
+  void create_participant_info_msg(SessionId session_id, 
+                                 UnauthenticatedParticipantList& session_view_list, 
+                                 std::string key_confirmation,
+                                 std::string z_sender);
+ 
+  /**
+   * create session_confirmation system message
+   *
+   */
+  void create_session_confirmation_msg(SessionId session_id, 
+                                 UnauthenticatedParticipantList& session_view_list, 
+                                 std::string session_key_confirmation);
+
+  /**
+   * create JOIN_REQUEST system message
+   *
+   */
+  void create_join_request_msg(UnauthenticatedParticipant joiner);
+ 
+  /**
+   * create JOINER_AUTH system message
+   *
+   */
+  void create_joiner_auth_msg(SessionId session_id,
+                          std::string key_confirmation,
+                          std::string z_sender);
+
+  /**
+   * create GROUP_SHARE system message
+   *
+   */
+  void create_group_share_msg(SessionId session_id, 
+                                 UnauthenticatedParticipantList& session_view_list, 
+                                 std::string z_sender);
+
+  /**
+   * create FAREWELL system message
+   *
+   */
+  void create_farewell_msg(SessionId session_id,
+                         UnauthenticatedParticipantList& session_view_list, 
+                         std::string z_sender);
+
+  /**
+   * Append standard message end for system messages
+   *
+   */
+  void append_msg_end();
+
+  /**
+   * Create USER_MESSAGE
+   *
+   */
+  std::string create_user_msg(SessionId session_id,
+                                           std::string sender_index,
+                                           std::string user_message,
+                                           np1secMessageType message_type,
+                                           HashBlock transcript_chain_hash,
+                                           np1secLoadFlag meta_load_flag,
+                                           std::string meta_load,
+                                           std::vector<std::string> pstates,
+                                           Cryptic* cryptic);
+
+
   void string_to_session_view(std::string sv_string);
 
   /**
    * returns true if session_id is set
    */
-  bool has_sid() { return (session_id != nullptr);}
+  bool has_sid() { return (session_id.get() != nullptr);}
 
-  //sessionid needs to be change from HashBlock to std::string buffer
-  void set_session_id(const uint8_t* new_session_id);
-  
   /**
    * Compute a unique globally ordered id from the time stamped message,
    * ultimately this function should be overridable by the client.
@@ -167,7 +206,7 @@ class np1secMessage {
    * This function is responsible for sending of bare messages
    *
    */
-  void send();
+  void send(std::string room_name, np1secUserState* us);
 
   /**
    * Base 64 encode encrypted message
@@ -243,7 +282,7 @@ class np1secMessage {
    * Return string containing the current state for all participants
    *
    */
-  std::string ustate_values();
+  std::string ustate_values(std::vector<std::string> pstates);
 
   /**
    * Generate 128 bit nonce value to be placed inside the message 

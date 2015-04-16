@@ -104,8 +104,8 @@ void np1secUserState::receive_handler(std::string room_name,
                                       std::string sender_nickname,
                                       std::string received_message,
                                       uint32_t message_id) {
-  np1secMessage received(received_message, nullptr, this, room_name); //so no decryption key here
-  received.sender_id = sender_nickname;
+  np1secMessage received(received_message, nullptr); //so no decryption key here
+  received.sender_index = sender_nickname;
 
   //if there is no room, it was a mistake to give us the message
   assert(chatrooms.find(room_name) != chatrooms.end());

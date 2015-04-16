@@ -37,6 +37,15 @@ class np1secMessageFormatException : public std::exception
    }                                                               
  };                                   
 
+class np1secMessageSignatureException : public std::exception                               
+{                                                                 
+   virtual const char* what() const throw()                        
+   {                                                               
+     return "Signature failed verification";                               
+   }                                                               
+ };                                   
+
+
 class np1secCryptoException : public std::exception                               
 {                                                                 
    virtual const char* what() const throw()                        

@@ -76,53 +76,43 @@ TEST_F(MessageTest, test_compute_message_id) {
 // TEST_F(MessageTest, test_format_meta_message) {
 // }
 
-TEST_F(MessageTest, test_participant_info){
+TEST_F(MessageTest, test_user_message){
+
   std::string room_name = "test_room_name";
+  std::string sender_id = "nickname_test";
+  std::string user_message = "This is a test message";
   std::string base  = "0xfd, 0xfc, 0xfe, 0xfa";
-  UnauthenticatedParticipantList session_view_list;
-  HashBlock sid;
+  std::string meta_load = "load";
+  HashBlock sid, transcript_chain_hash;
   SessionId session_id;
-  HashBlock cur_auth_token; 
-  np1secKeyShare cur_keyshare;
+  Cryptic* cryptic;
+  np1secAppOps ops;
+
+  std::vector<std::string> pstates = {"test_pstate_1", "test_pstate_2"};
+  np1secUserState* user_state = new np1secUserState("test", &ops);
+
 
 
   memcpy(sid, base.c_str(), sizeof(HashBlock) );
-  memcpy(cur_auth_token, base.c_str(), sizeof(HashBlock) );
-  memcpy(cur_keyshare, base.c_str(), sizeof(HashBlock) );
+  memcpy(transcript_chain_hash, base.c_str(), sizeof(HashBlock) );
   session_id.set(sid);
- 
-  np1secAppOps joiner_mockops = mockops;
-  std::string joiner = "joiner";                                                         
-  std::pair<ChatMocker*, std::string> mock_aux_joiner_data(&mock_server,joiner);         
-  joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);      
-  np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);     
-  //They can use the same mock up as they are using the same mock server            
-  joiner_state->init();
 
-  Cryptic np1sec_ephemeral_crypto;
-  np1sec_ephemeral_crypto.init();
+  np1secMessage outbound;
 
-  UnauthenticatedParticipant test_participant(*(joiner_state->myself),Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()), true); 
+  outbound.create_user_msg(session_id,
+                           sender_id,
+                           user_message,
+                           np1secMessage::USER_MESSAGE,
+                           transcript_chain_hash,
+                           np1secLoadFlag::NO_LOAD,
+                           meta_load,
+                           pstates,
+                           cryptic);
 
-  session_view_list.push_back(test_participant);
 
-  np1secMessage outbound(session_id,
-                                np1secMessage::PARTICIPANTS_INFO,
-                                session_view_list,
-                                std::string(reinterpret_cast<char*>(cur_auth_token), sizeof(HashBlock)),
-                                "", //session conf
-                                "", //joiner info
-                                std::string(reinterpret_cast<char*>(cur_keyshare), sizeof(HashBlock)),
-                                joiner_state,
-                                room_name);  
-
-  np1secMessage inbound(outbound.sys_message,
-                               nullptr,
-                               joiner_state,
-                               room_name);
-  ASSERT_EQ(outbound.message_type, inbound.message_type);
+  ASSERT_EQ(true, false);
 }
-
+/*
 TEST_F(MessageTest, test_join_auth){
   std::string room_name = "test_room_name";
   std::string base  = "0xfd, 0xfc, 0xfe, 0xfa";
@@ -132,7 +122,6 @@ TEST_F(MessageTest, test_join_auth){
   HashBlock cur_auth_token; 
   np1secKeyShare cur_keyshare;
 
-
   memcpy(sid, base.c_str(), sizeof(HashBlock) );
   memcpy(cur_auth_token, base.c_str(), sizeof(HashBlock) );
   memcpy(cur_keyshare, base.c_str(), sizeof(HashBlock) );
@@ -153,15 +142,10 @@ TEST_F(MessageTest, test_join_auth){
 
   session_view_list.push_back(test_participant);
 
-  np1secMessage outbound(session_id,
-                         np1secMessage::JOINER_AUTH,
-                                session_view_list,
-                                std::string(reinterpret_cast<char*>(cur_auth_token), sizeof(HashBlock)),
-                                "", //session conf
-                                "", //joiner info
-                                std::string(reinterpret_cast<char*>(cur_keyshare), sizeof(HashBlock)),
-                                joiner_state,
-                                room_name);  
+  np1secMessage outbound;
+  outbound.create_join_auth_msg(session_id,
+                                std::string(reinterpret_cast<char*>(cur_auth_token), sizeof(HashBlock))dd,
+                               //z_sender?? std::string(reinterpret_cast<char*>(cur_keyshare), sizeof(HashBlock)));
 
   np1secMessage inbound(outbound.sys_message,
                                nullptr,
@@ -169,6 +153,48 @@ TEST_F(MessageTest, test_join_auth){
                                room_name);
   ASSERT_EQ(outbound.message_type, inbound.message_type);
 
+}
+
+
+TEST_F(MessageTest, test_participant_info){
+  std::string room_name = "test_room_name";
+  std::string base  = "0xfd, 0xfc, 0xfe, 0xfa";
+  UnauthenticatedParticipantList session_view_list;
+  HashBlock sid;
+  SessionId session_id;
+  np1secKeyShare cur_keyshare;
+
+
+  memcpy(sid, base.c_str(), sizeof(HashBlock) );
+  memcpy(cur_keyshare, base.c_str(), sizeof(HashBlock) );
+  session_id.set(sid);
+ 
+  np1secAppOps joiner_mockops = mockops;
+  std::string joiner = "joiner";                                                         
+  std::pair<ChatMocker*, std::string> mock_aux_joiner_data(&mock_server,joiner);         
+  joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);      
+  np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);     
+  //They can use the same mock up as they are using the same mock server            
+  joiner_state->init();
+
+  Cryptic np1sec_ephemeral_crypto;
+  np1sec_ephemeral_crypto.init();
+
+  UnauthenticatedParticipant test_participant(*(joiner_state->myself),Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()), true); 
+
+  session_view_list.push_back(test_participant);
+
+  np1secMessage outbound;
+
+  outbound.create_participant_info_msg(session_id,
+                                       session_view_list,
+                                       std::string(reinterpret_cast<char*>(cur_keyshare), sizeof(HashBlock)));
+
+  np1secMessage inbound(outbound.sys_message,
+                               nullptr,
+                               joiner_state,
+                               room_name);
+  ASSERT_EQ(outbound.message_type, inbound.message_type);
 }
 
 TEST_F(MessageTest, test_session_confirmation){
@@ -203,15 +229,10 @@ TEST_F(MessageTest, test_session_confirmation){
   session_view_list.push_back(test_participant);
 
 
-  np1secMessage outbound(session_id,
-                                    np1secMessage::SESSION_CONFIRMATION,
-                                    session_view_list,
-                                    "", //auth
-                                    Cryptic::hash_to_string_buff(sid),
-                                    "", //joiner_info
-                                    "", //z
-                                    joiner_state,
-                                    room_name);
+  np1secMessage outbound;
+  outbound.create_session_confirmation_msg(session_id,
+                                           session_view_list,
+                                           sess_key_conf);
 
   np1secMessage inbound(outbound.sys_message,
                                nullptr,
@@ -239,10 +260,8 @@ TEST_F(MessageTest, test_join_request) {
   UnauthenticatedParticipant test_participant(*(joiner_state->myself),Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()), true); 
 
 
-  np1secMessage join_message(np1secMessage::JOIN_REQUEST,
-                             test_participant,
-                             joiner_state,
-                             room_name);
+  np1secMessage join_message
+  join_message.create_join_request_msg(joiner_state);
   
 
   np1secMessage received_join(join_message.sys_message, 
@@ -254,7 +273,7 @@ TEST_F(MessageTest, test_join_request) {
   ASSERT_EQ(join_message.message_type, received_join.message_type);
 
 }
-
+*/
 // TEST_F(MessageTest, test_format_sendable_message) {
 //   Cryptic cryptic;
 //   SessionID session_id = {1};

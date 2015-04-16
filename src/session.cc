@@ -110,7 +110,7 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name,
   populate_participants_and_peers(participants_info_message.session_view);
 
   //keep the z_share
-  participants[participants_info_message.sender_id].set_key_share(reinterpret_cast<const uint8_t*>(participants_info_message.z_sender.c_str()));
+  participants[participants_info_message.sender_index].set_key_share(reinterpret_cast<const uint8_t*>(participants_info_message.z_sender.c_str()));
 
   //TODO::make sure we are added correctly
   //if participant[myself].ephemeral is not crytpic ephemeral, halt
@@ -347,7 +347,7 @@ bool np1secSession::validate_session_confirmation(np1secMessage confirmation_mes
   HashBlock expected_hash;
 
   string to_be_hashed = Cryptic::hash_to_string_buff(session_key);
-  to_be_hashed += confirmation_message.sender_id;
+  to_be_hashed += confirmation_message.sender_index;
 
   Cryptic::hash(to_be_hashed, expected_hash);
 
@@ -452,15 +452,11 @@ bool np1secSession::joiner_send_auth_and_share() {
   }
 
   UnauthenticatedParticipantList temp_view = session_view();
-  np1secMessage outboundmessage(session_id,
-                                np1secMessage::JOINER_AUTH,
-                                temp_view, //this is empty and shouldn't be sent
+  np1secMessage outbound;
+
+  outbound.create_joiner_auth_msg(session_id,
                                 auth_batch,
-                                "",
-                                "",
-                                string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)),
-                                us,
-                                room_name);
+                                string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)));
 
 }
 
@@ -478,18 +474,15 @@ bool np1secSession::send_auth_and_share_message() {
   HashBlock cur_auth_token;
   //if (!participants[joiner_id].authed_to) {
   //participants[joiner_id].authenticate_to(cur_auth_token);
-
   UnauthenticatedParticipantList session_view_list = session_view();
-  np1secMessage outboundmessage(session_id,
-                                np1secMessage::GROUP_SHARE,
+
+  np1secMessage outboundmessage;
+
+  outboundmessage.create_group_share_msg(session_id,
                                 session_view_list,
-                                "",//auth_token,
-                                "",//session conf
-                                "",//joiner info
-                                string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)),
-                                us,
-                                room_name);
-  outboundmessage.send();
+                                string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)));
+
+  outboundmessage.send(room_name, us);
   return true;
 
 }
@@ -512,17 +505,14 @@ bool np1secSession::send_view_auth_and_share(string joiner_id) {
       participants[joiner_id].authenticate_to(cur_auth_token, us->long_term_key_pair.get_key_pair().first);
 
   UnauthenticatedParticipantList session_view_list = session_view();
-  np1secMessage outboundmessage(session_id,
-                                np1secMessage::PARTICIPANTS_INFO,
-                                session_view_list,
-                                string(reinterpret_cast<char*>(cur_auth_token), sizeof(HashBlock)),
-                                "", //session conf
-                                "", //joiner info
-                                string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)),
-                                us,
-                                room_name);
+  np1secMessage outboundmessage;
 
-  outboundmessage.send();
+  outboundmessage.create_participant_info_msg(session_id,
+                                              session_view_list,
+                                string(reinterpret_cast<char*>(cur_auth_token), sizeof(HashBlock)),
+                                string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)));
+
+  outboundmessage.send(room_name, us);
   return true;
 
 }
@@ -629,13 +619,13 @@ np1secSession::StateAndAction np1secSession::auth_and_reshare(np1secMessage rece
       joiner_send_auth_and_share();
   }
 
-  if (participants.find(received_message.sender_id) != participants.end())
+  if (participants.find(received_message.sender_index) != participants.end())
     return StateAndAction(DEAD, RoomAction(RoomAction::NO_ACTION));
 
-  if (!participants[received_message.sender_id].be_authenticated(myself.id_to_stringbuffer(), reinterpret_cast<const uint8_t*>(received_message.key_confirmation.c_str()), us->long_term_key_pair.get_key_pair().first))
+  if (!participants[received_message.sender_index].be_authenticated(myself.id_to_stringbuffer(), reinterpret_cast<const uint8_t*>(received_message.key_confirmation.c_str()), us->long_term_key_pair.get_key_pair().first))
     return StateAndAction(DEAD, RoomAction(RoomAction::NO_ACTION));
 
-  participants[received_message.sender_id].set_key_share(reinterpret_cast<const uint8_t*>(received_message.z_sender.c_str()));
+  participants[received_message.sender_index].set_key_share(reinterpret_cast<const uint8_t*>(received_message.z_sender.c_str()));
 
   return StateAndAction(my_state, RoomAction(RoomAction::NO_ACTION));
 
@@ -664,9 +654,9 @@ np1secSession::StateAndAction np1secSession::auth_and_reshare(np1secMessage rece
 np1secSession::StateAndAction np1secSession::confirm_or_resession(np1secMessage received_message) {
   //if sid is the same mark the participant as confirmed
   //receiving mismatch sid basically means rejoin
-  if (Cryptic::compare_hash(received_message.session_id, session_id.get())) {
+  if (Cryptic::compare_hash(received_message.session_id.get(), session_id.get())) {
     if (validate_session_confirmation(received_message))
-      confirmed_peers[participants[received_message.sender_id].index] = true;
+      confirmed_peers[participants[received_message.sender_index].index] = true;
     else {
       return StateAndAction(DEAD, RoomAction(RoomAction::NO_ACTION));
     }
@@ -776,13 +766,13 @@ np1secSession::StateAndAction np1secSession::send_auth_share_and_participant_inf
 */
 np1secSession::StateAndAction np1secSession::confirm_auth_add_update_share_repo(np1secMessage received_message) {
   if (received_message.message_type == np1secMessage::JOINER_AUTH) {
-    if (!participants[received_message.sender_id].be_authenticated(myself.nickname, Cryptic::strbuff_to_hash(received_message.key_confirmation), us->long_term_key_pair.get_key_pair().first))  {
+    if (!participants[received_message.sender_index].be_authenticated(myself.nickname, Cryptic::strbuff_to_hash(received_message.key_confirmation), us->long_term_key_pair.get_key_pair().first))  {
       return StateAndAction(DEAD, RoomAction());
     }
   }
 
     //kill_all_my_siblings(); 
-  participants[received_message.sender_id].set_key_share(Cryptic::strbuff_to_hash(received_message.z_sender));
+  participants[received_message.sender_index].set_key_share(Cryptic::strbuff_to_hash(received_message.z_sender));
 
   //else { //assuming the message is PARTICIPANT_INFO from other in
   //session people
@@ -794,17 +784,13 @@ np1secSession::StateAndAction np1secSession::confirm_auth_add_update_share_repo(
       //first compute the confirmation
       compute_session_confirmation();
       //now send the confirmation message
-      np1secMessage outboundmessage(session_id,
-                                    np1secMessage::SESSION_CONFIRMATION,
+      np1secMessage outboundmessage;
+
+      outboundmessage.create_session_confirmation_msg(session_id,
                                     session_view_list,
-                                    "", //auth
-                                    Cryptic::hash_to_string_buff(session_confirmation),
-                                    "", //joiner_info
-                                    "", //z
-                                    us,
-                                    room_name);
+                                    Cryptic::hash_to_string_buff(session_confirmation));
       
-      outboundmessage.send();
+      outboundmessage.send(room_name, us);
 
       return StateAndAction(GROUP_KEY_GENERATED, RoomAction());
     }
@@ -836,7 +822,7 @@ np1secSession::StateAndAction np1secSession::mark_confirmed_and_may_move_session
   if (!validate_session_confirmation(received_message))
     return StateAndAction(DEAD, c_no_room_action);
   
-  confirmed_peers[participants[received_message.sender_id].index] = true;
+  confirmed_peers[participants[received_message.sender_index].index] = true;
   
   if (everybody_confirmed()) {
     //activate(); it is matter of changing to IN_SESSION
@@ -869,22 +855,14 @@ np1secSession::StateAndAction np1secSession::mark_confirmed_and_may_move_session
  */
 np1secSession::StateAndAction np1secSession::send_farewell_and_reshare(np1secMessage received_message) {
 
-  //TODO::chose the requested hash not any hash
-  HashBlock* transcript_chain_hash = transcript_chain.rbegin()->second;
-  
-  np1secLoadFlag meta_load_flag = NO_LOAD;
-  std::string meta_load = NULL;
-  np1secMessage outbound(session_id,
-                         myself.nickname,
-                         "", //no user message
-                         np1secMessage::FAREWELL,
-                         *transcript_chain_hash,
-                         meta_load_flag,
-                         meta_load,
-                         peers,
-                         &cryptic,
-                         us,
-                         room_name);
+  UnauthenticatedParticipantList session_view_list = session_view();
+  np1secMessage outbound;
+
+
+  outbound.create_farewell_msg(session_id,
+                               session_view_list,
+                               string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)));
+
 
 
   np1secSession* new_child_session = new np1secSession(us, room_name, received_message, participants); //TODO::we need a different constructor for leave, for the reason of tracking RaisonDEtre
@@ -1054,14 +1032,17 @@ bool np1secSession::send(std::string message, np1secMessage::np1secMessageType m
   // meta load if needed
   np1secLoadFlag meta_load_flag = NO_LOAD;
   std::string meta_load(""); //TODO why is it always empty?
-  np1secMessage outbound(session_id, us->user_id(),
-                         message, message_type,
-                         *transcript_chain_hash,
-                         meta_load_flag, meta_load,
-                         peers,
-                         &cryptic,
-                         us,
-                         room_name);
+  np1secMessage outbound;
+
+  outbound.create_user_msg(session_id, 
+                               us->user_id(),
+                               message, 
+                               message_type,
+                               *transcript_chain_hash,
+                               meta_load_flag, 
+                               meta_load,
+                               peers,
+                               &cryptic);
 
   // As we're sending a new message we are no longer required to ack
   // any received messages
@@ -1074,24 +1055,24 @@ bool np1secSession::send(std::string message, np1secMessage::np1secMessageType m
   }
 
   // us->ops->send_bare(room_name, outbound);
-  outbound.send();
+  outbound.send(room_name, us);
   return true;
   
 }
 
 np1secMessage np1secSession::receive(std::string raw_message) {
   HashBlock* transcript_chain_hash = transcript_chain.rbegin()->second;
-  np1secMessage received_message(raw_message, &cryptic, us, room_name);
+  np1secMessage received_message(raw_message, &cryptic);
 
   if (*transcript_chain_hash == received_message.transcript_chain_hash) {
     add_message_to_transcript(received_message.user_message,
                         received_message.message_id);
     // Stop awaiting ack timer for the sender
-    stop_timer_receive(received_message.sender_id);
+    stop_timer_receive(received_message.sender_index);
 
     // Start an ack timer for us so we remember to say thank you
     // for the message
-    start_receive_ack_timer(received_message.sender_id);
+    start_receive_ack_timer(received_message.sender_index);
 
   } else {
     // The hash is a lie!
