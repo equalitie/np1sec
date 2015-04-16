@@ -260,11 +260,16 @@ std::string np1secMessage::create_user_msg(SessionId session_id,
   base_message += hash_string;
   base_message += nonce;
 
-  base_message += sender_index;
 
-  size_t size = user_message.size();
+  size_t size = sender_index.size();
   memcpy(length, &size, sizeof(size_t));
   std::string var(length, sizeof(size_t));
+  base_message += var;  
+  base_message += sender_index;
+  
+  size = user_message.size();
+  memcpy(length, &size, sizeof(size_t));
+  var.assign(length, sizeof(size_t));
   base_message += var;  
   base_message += user_message;
 

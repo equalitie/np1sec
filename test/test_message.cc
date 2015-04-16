@@ -47,7 +47,7 @@ TEST_F(MessageTest, test_compute_message_id) {
 TEST_F(MessageTest, test_user_message){
 
   std::string room_name = "test_room_name";
-  std::string sender_id = "nickname_test";
+  std::string sender_id;
   std::string user_message = "This is a test message";
   std::string base  = "0xfd, 0xfc, 0xfe, 0xfa";
   std::string meta_load = "load";
@@ -60,7 +60,7 @@ TEST_F(MessageTest, test_user_message){
   np1secUserState* user_state = new np1secUserState("test", &ops);
 
 
-
+  
   memcpy(sid, base.c_str(), sizeof(HashBlock) );
   memcpy(transcript_chain_hash, base.c_str(), sizeof(HashBlock) );
   session_id.set(sid);
@@ -68,7 +68,7 @@ TEST_F(MessageTest, test_user_message){
   np1secMessage outbound;
 
   outbound.create_user_msg(session_id,
-                           sender_id,
+                           user_state->user_id(),
                            user_message,
                            np1secMessage::USER_MESSAGE,
                            transcript_chain_hash,

@@ -63,7 +63,7 @@ class np1secUserState {
    * access function for nick
    */
   std::string user_id()  {
-    return myself->nickname;
+    return myself->id_to_stringbuffer();
   }
 
   /**
