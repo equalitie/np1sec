@@ -39,6 +39,7 @@ extern "C" {
   #include "gcrypt.h"
 }
 
+typedef uint32_t MessageId;
 typedef gcry_sexp_t np1secPrivateKey;
 typedef gcry_sexp_t np1secPublicKey;
 typedef std::pair<np1secPrivateKey, np1secPublicKey> KeyPair;
@@ -57,6 +58,9 @@ enum np1secLoadFlag {
 const size_t c_hash_length = 32;
 
 typedef uint8_t HashBlock[c_hash_length];
+typedef std::string HashStdBlock; //This eventually gonna replace HashBlock,
+//mainly because StdHashBlock can be easily checked to see if it is initiated
+//or not (length)
 //typedef std::vector<uint8_t> SessionID;
 class SessionId
 {

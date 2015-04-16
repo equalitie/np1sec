@@ -29,6 +29,10 @@ void send_bare(std::string room_name, std::string message, void* data);
 
 void new_session_announce(std::string room_name, std::string sender_nickname, void* aux_data);
 
+void* set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval);
+
+void axe_timer(void* to_be_defused_timer);
+
 /**
  * Receive the messages from chat mocker, interpret the message and
  * call the approperiate function from userstate class  of npsec1 

@@ -24,6 +24,7 @@
 #include "src/crypt.h"
 #include "src/common.h"
 #include "src/message.h"
+#include "src/interface.h"
 
 #include "test/chat_mocker.h"
 #include "test/chat_mocker_np1sec_plugin.h"
@@ -37,14 +38,19 @@ protected: //gtest needs the elements to be protocted
   //First we need to run a chatserver but this is always the case so I'm making
   //class to setup chat server
   ChatMocker mock_server;
-  struct np1secAppOps mockops;
+  np1secAppOps* mockops;
 
   string mock_room_name = "testroom";
   
   virtual void SetUp() {
-    mockops.send_bare = send_bare;
-    mockops.join = new_session_announce;
-    mockops.leave = new_session_announce;
+    uint32_t ten_sec = 10000;
+
+    mockops = new np1secAppOps(ten_sec, ten_sec, ten_sec, ten_sec);
+    mockops->send_bare = send_bare;
+    mockops->join = new_session_announce;
+    mockops->leave = new_session_announce;
+    mockops->set_timer = set_timer;
+    mockops->axe_timer = axe_timer;
     
   };
   
@@ -140,9 +146,9 @@ TEST_F(SessionTest, test_receive) {
 //   //to sign in the room
 //   string username = "sole-tester";
 //   std::pair<ChatMocker*, string> mock_aux_data(&mock_server,username);
-//   mockops.bare_sender_data = static_cast<void*>(&mock_aux_data);
+//   mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
 
-//   np1secUserState* user_state = new np1secUserState(username, &mockops);
+//   np1secUserState* user_state = new np1secUserState(username, mockops);
 //   user_state->init();
 
 //   pair<np1secUserState*, ChatMocker*> user_server_state(user_state, &mock_server);
@@ -180,14 +186,14 @@ TEST_F(SessionTest, test_receive) {
 //   string creator = "creator";
 //   np1secAppOps creator_mockops = mockops;
 //   std::pair<ChatMocker*, string> mock_aux_creator_data(&mock_server,creator);
-//   creator_mockops.bare_sender_data = static_cast<void*>(&mock_aux_creator_data);
+//   creator_mockops->bare_sender_data = static_cast<void*>(&mock_aux_creator_data);
 //   np1secUserState* creator_state = new np1secUserState(creator, &creator_mockops);
 //   creator_state->init();
   
 //   np1secAppOps joiner_mockops = mockops;
 //   string joiner = "joiner";
 //   std::pair<ChatMocker*, string> mock_aux_joiner_data(&mock_server,joiner);
-//   joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
+//   joiner_mockops->bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
 //   np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);
 //   //They can use the same mock up as they are using the same mock server
 //   joiner_state->init();
@@ -226,8 +232,8 @@ TEST_F(SessionTest, test_solitary_talk) {
   //to sign in the room
   string username = "sole-tester";
   std::pair<ChatMocker*, string> mock_aux_data(&mock_server,username);
-  mockops.bare_sender_data = static_cast<void*>(&mock_aux_data);
-  np1secUserState* user_state = new np1secUserState(username, &mockops);
+  mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
+  np1secUserState* user_state = new np1secUserState(username, mockops);
   user_state->init();
 
   pair<np1secUserState*, ChatMocker*> user_server_state(user_state, &mock_server);

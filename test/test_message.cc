@@ -44,38 +44,6 @@ protected: //gtest needs the elements to be protocted
 TEST_F(MessageTest, test_compute_message_id) {
 }
 
-// TEST_F(MessageTest, test_np1secMessage_constructor) {
-//   Cryptic cryptic;
-//   SessionId session_id(reinterpret_cast<const uint8_t*>("abcdefgh"));
-//   std::string sender_id = "test_user";
-//   std::string user_message = "test message";
-//   np1secMessage::np1secMessageType message_type = np1secMessage::USER_MESSAGE;
-//   HashBlock* transcript_chain_hash = 0;
-//   np1secLoadFlag meta_load_flag = NO_LOAD;
-//   std::string meta_load = "";
-//   std::vector<std::string> pstates = {"1"};
-//   np1secUserState* us = new np1secUserState("tester", nullptr);
-//   np1secMessage msg(session_id,
-//                     sender_id,
-//                     user_message,
-//                     message_type,
-//                     transcript_chain_hash,
-//                     meta_load_flag,
-//                     meta_load,
-//                     pstates,
-//                     &cryptic,
-//                     &us);
-
-//   ASSERT_EQ(msg.session_id, session_id);
-//   ASSERT_EQ(msg.sender_id, sender_id);
-//   ASSERT_EQ(msg.meta_load_flag, meta_load_flag);
-//   ASSERT_EQ(msg.meta_load, meta_load);
-//   ASSERT_EQ(msg.pstates, pstates);
-// }
-
-// TEST_F(MessageTest, test_format_meta_message) {
-// }
-
 TEST_F(MessageTest, test_user_message){
 
   std::string room_name = "test_room_name";
@@ -151,8 +119,7 @@ TEST_F(MessageTest, test_join_auth){
                                nullptr,
                                joiner_state,
                                room_name);
-  ASSERT_EQ(outbound.message_type, inbound.message_type);
-
+  ASSERT_EQ((*outbound.session_id), (*inbound.session_id));
 }
 
 

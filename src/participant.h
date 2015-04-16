@@ -21,6 +21,7 @@
 
 #include <string>
 #include <list>
+#include <map>
 #include <event2/event.h>
 
 #include "exceptions.h"
@@ -208,8 +209,8 @@ class Participant {
   ParticipantId id;
   np1secPublicKey long_term_pub_key = nullptr;
   np1secPublicKey ephemeral_key = nullptr;
-  event* receive_ack_timer;
-  event* send_ack_timer;
+  MessageId last_acked_message_id;
+  void* send_ack_timer;
   HashBlock raw_ephemeral_key = {};
   // MessageDigest message_digest;
 
@@ -219,26 +220,7 @@ class Participant {
   bool authed_to;
   bool key_share_contributed;
   unsigned int index; //keep the place of the partcipant in sorted peers array
-  // np1secKeySHare future_key_share;
-
-  //default copy constructor
-  Participant(const Participant& rhs)
-    :
-  id(rhs.id),
-  long_term_pub_key(rhs.long_term_pub_key),
-  authenticated(rhs.authenticated),
-  authed_to(rhs.authed_to),
-  thread_user_crypto(rhs.thread_user_crypto),
-  receive_ack_timer(nullptr),
-  send_ack_timer(nullptr)
-  {
-    long_term_pub_key = Cryptic::copy_crypto_resource(rhs.long_term_pub_key);
-    set_ephemeral_key(rhs.raw_ephemeral_key);
-    memcpy(p2p_key, rhs.p2p_key, sizeof(HashBlock));
-  }
-    
-
-  uint32_t in_session_index; /* this is the i in U_i and we have
+   /* this is the i in U_i and we have
                                 participants[peers[i]].index == i
                                 tautology
                                 
@@ -246,6 +228,26 @@ class Participant {
                                 half of human kind in a room :(
                              */
 
+  // np1secKeySHare future_key_share;
+
+  //default copy constructor
+  Participant(const Participant& rhs)
+    :
+  id(rhs.id),
+    long_term_pub_key(rhs.long_term_pub_key),
+    authenticated(rhs.authenticated),
+    authed_to(rhs.authed_to),
+    thread_user_crypto(rhs.thread_user_crypto),
+    send_ack_timer(nullptr),
+    key_share_contributed(rhs.key_share_contributed),
+    index(rhs.index)
+    
+  {
+    long_term_pub_key = Cryptic::copy_crypto_resource(rhs.long_term_pub_key);
+    set_ephemeral_key(rhs.raw_ephemeral_key);
+    memcpy(p2p_key, rhs.p2p_key, sizeof(HashBlock));
+  }
+  
   enum ForwardSecracyContribution {
     NONE,
     EPHEMERAL,
@@ -328,7 +330,6 @@ class Participant {
     authed_to(false),
     long_term_pub_key(Cryptic::reconstruct_public_key_sexp(Cryptic::hash_to_string_buff(unauth_participant.participant_id.fingerprint))),
     thread_user_crypto(thread_crypto),
-    receive_ack_timer(nullptr),
     send_ack_timer(nullptr)
 
       {

@@ -31,23 +31,39 @@ void MessageDigest::update(std::string new_message) {
   return;
 }
 
-void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg) {
+void cb_send_heartbeat(void *arg) {
   np1secSession* session = (static_cast<np1secSession*>(arg));
   session->send("Heartbeat", np1secMessage::PURE_META_MESSAGE);
-  //session->start_heartbeat_timer();
+  session->restart_heartbeat_timer();
 }
                          
-void cb_ack_not_received(evutil_socket_t fd,short what,void *arg) {
+void cb_ack_not_received(void *arg) {
   // Construct message for ack
-  np1secSession* session = (static_cast<np1secSession*>(arg));
-  session->send("Where is my ack?", np1secMessage::PURE_META_MESSAGE);
+  AckTimerOps* ack_timer_ops = static_cast<AckTimerOps*>(arg);
+
+  std::string ack_failure_message = ack_timer_ops->participant->id.nickname + " failed to ack";
+  ack_timer_ops->session->us->ops->display_message(ack_failure_message, ack_timer_ops->session->room_name, ack_timer_ops->session->us);
+  delete ack_timer_ops;
+}
+
+void cb_send_ack(void *arg) {
+  // Construct message with p.id
+  AckTimerOps* ack_timer_ops = static_cast<AckTimerOps*>(arg);
+  ack_timer_ops->session->send_ack_timer = nullptr;
+  ack_timer_ops->session->send("ACK", np1secMessage::PURE_META_MESSAGE);
 
 }
 
-void cb_send_ack(evutil_socket_t fd, short what, void *arg) {
+/**
+ * The timer set upon of sending a message.
+ * when this timer is timed out means that 
+ * we haven't received our own message
+ */
+void cb_ack_not_sent(void* arg) {
   // Construct message with p.id
-  np1secSession* session = (static_cast<np1secSession*>(arg));
-  session->send("ACK", np1secMessage::PURE_META_MESSAGE);
+  AckTimerOps* ack_timer_ops = static_cast<AckTimerOps*>(arg);
+  std::string ack_failure_message = "we did not receive our own sent message";
+  ack_timer_ops->session->us->ops->display_message(ack_failure_message, ack_timer_ops->session->room_name, ack_timer_ops->session->us);
 
 }
 
@@ -64,9 +80,10 @@ gcry_error_t np1secSession::compute_hash(HashBlock transcript_chain,
     sscanf(p, "%2hhx", &bin);
   }
   return cryptic.hash(bin, message.size()/2, transcript_chain, true);
+
 }
 
-//All constructors
+//All constructorsg
 // np1secSession::np1secSession(np1secUserState *us)
 //   :myself(us->user_id())
 // {
@@ -78,7 +95,7 @@ gcry_error_t np1secSession::compute_hash(HashBlock transcript_chain,
  */
 np1secSession::np1secSession(np1secUserState *us, std::string room_name,
                              Cryptic* current_ephemeral_crypto,
-                             const UnauthenticatedParticipantList& sole_participant_view) : us(us), room_name(room_name),  cryptic(*current_ephemeral_crypto), myself(*us->myself)
+                             const UnauthenticatedParticipantList& sole_participant_view) : us(us), room_name(room_name),  cryptic(*current_ephemeral_crypto), myself(*us->myself), heartbeat_timer(nullptr)
 
 {
   engrave_transition_graph();
@@ -99,7 +116,7 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name,
  */
 np1secSession::np1secSession(np1secUserState *us, std::string room_name,
                              Cryptic* current_ephemeral_crypto,
-                             np1secMessage participants_info_message) : us(us), room_name(room_name),  cryptic(*current_ephemeral_crypto)
+                             np1secMessage participants_info_message) : us(us), room_name(room_name), cryptic(*current_ephemeral_crypto), myself(*us->myself), heartbeat_timer(nullptr)
 {
   engrave_transition_graph();
 
@@ -145,12 +162,12 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name,
        - send 
  */
 np1secSession::np1secSession(np1secUserState *us, std::string room_name, np1secMessage join_message, ParticipantMap current_authed_participants)
-  :room_name(room_name),
-   myself(*us->myself)
+  :us(us), room_name(room_name),
+   myself(*us->myself), heartbeat_timer(nullptr)
+{
    //TODO: not sure the session needs to know the room name: It needs because message class
           //need  to know to send the message to :-/
           //send should be the function of np1secRoom maybe :-?
-{
   engrave_transition_graph();
   
   this->participants = current_authed_participants;
@@ -165,7 +182,7 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name, np1secM
   //TODO::    throw np1secMessageFormatException(); when message is bad
 
   //We can't authenticate here, join message doesn't have kc
-  // if (!participants[received_message.sender_id].authenticate(my_id, received_message.kc)) {
+  // if (!participants[received_message.sender_index].authenticate(my_id, received_message.kc)) {
   //   return;
   // }
 
@@ -183,9 +200,9 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name, np1secM
 
 */
 np1secSession::np1secSession(np1secUserState* us, std::string room_name, string leaver_id, ParticipantMap current_authed_participants)
-  :room_name(room_name),
-   myself(*us->myself)
-   //TODO: not sure the session needs to know the room name
+  :us(us), room_name(room_name),
+   myself(*us->myself), 
+  heartbeat_timer(nullptr)
 {
   engrave_transition_graph();
 
@@ -218,8 +235,9 @@ np1secSession::np1secSession(np1secUserState* us, std::string room_name, string 
 
 */
 np1secSession::np1secSession(np1secUserState* us, std::string room_name, ParticipantMap current_authed_participants)
-  :room_name(room_name),
-   myself(*us->myself)
+  :us(us), room_name(room_name),
+   myself(*us->myself),
+  heartbeat_timer(nullptr)
    //TODO: not sure the session needs to know the room name
 {
   engrave_transition_graph();
@@ -329,7 +347,7 @@ bool np1secSession::compute_session_confirmation()
 //TODO with having session confirmation it is not clear if 
 //this is necessary at all but I include it for now
 //as it is part of the protocol
-void np1secSession::account_for_session_and_key_consistancy()
+void np1secSession::account_for_session_and_key_consistency()
 {
   string to_be_hashed = Cryptic::hash_to_string_buff(session_key);
   to_be_hashed += session_id.get_as_stringbuff();
@@ -581,7 +599,7 @@ RoomAction np1secSession::state_handler(np1secMessage received_message)
   //     break;
   //   case np1secSession::LEAVE_REQUESTED: //Leave requested by the thread: waiting for final transcirpt consitancy check
   //     break;
-  //   case np1secSession::FAREWELLED: //LEAVE is received from another participant and a meta message for transcript consistancy and new shares has been sent
+  //   case np1secSession::FAREWELLED: //LEAVE is received from another participant and a meta message for transcript consistency and new shares has been sent
   //     break;
   //   case np1secSession::DEAD: //Won't accept receive or sent messages, possibly throw up
   //     break;
@@ -827,7 +845,7 @@ np1secSession::StateAndAction np1secSession::mark_confirmed_and_may_move_session
   if (everybody_confirmed()) {
     //activate(); it is matter of changing to IN_SESSION
     //we also need to initiate the transcript chain with 
-    account_for_session_and_key_consistancy();
+    account_for_session_and_key_consistency();
 
     return StateAndAction(IN_SESSION, c_no_room_action);
   }
@@ -862,8 +880,6 @@ np1secSession::StateAndAction np1secSession::send_farewell_and_reshare(np1secMes
   outbound.create_farewell_msg(session_id,
                                session_view_list,
                                string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)));
-
-
 
   np1secSession* new_child_session = new np1secSession(us, room_name, received_message, participants); //TODO::we need a different constructor for leave, for the reason of tracking RaisonDEtre
   
@@ -948,46 +964,42 @@ bool np1secSession::received_p_list(std::string participant_list) {
 //   return true;
 // }
 
-void np1secSession::start_heartbeat_timer() {
-  struct event *timer_event;
-  struct timeval ten_seconds = {10, 0};
-  struct event_base *base = event_base_new();
+void np1secSession::restart_heartbeat_timer() {
 
-  timer_event = event_new(base, -1, EV_TIMEOUT, &cb_send_heartbeat, this);
-  event_add(timer_event, &ten_seconds);
+  if (heartbeat_timer)
+    us->ops->axe_timer(heartbeat_timer);
+  
+  heartbeat_timer = us->ops->set_timer(cb_send_heartbeat, this, us->ops->c_heartbeating_interval);
 
-  //event_base_dispatch(base);
 }
 
-void np1secSession::start_ack_timers() {
-  struct event *timer_event;
-  struct timeval ten_seconds = {10, 0};
-  struct event_base *base = event_base_new();
-
+void np1secSession::start_ack_timers(np1secMessage received_message) {
   for (ParticipantMap::iterator it = participants.begin();
        it != participants.end();
        ++it) {
-    timer_event = event_new(base, -1, EV_TIMEOUT, cb_ack_not_received, this);
-    (*it).second.receive_ack_timer = timer_event;
-    event_add((*it).second.receive_ack_timer, &ten_seconds);
+    //we accumulate the timers, when we receive ack, we drop what we
+    //have before 
+    if ((received_message.sender_index != (*it).second.id.nickname) &&
+        (received_message.sender_index != myself.nickname)) //not for the sender and not 
+      //for myself
+    {
+      received_transcript_chain[received_message.message_id][(*it).second.index].ack_timer_ops.session = this;
+      received_transcript_chain[received_message.message_id][(*it).second.index].ack_timer_ops.participant = &(it->second);
+      received_transcript_chain[received_message.message_id][(*it).second.index].ack_timer_ops.message_id = received_message.message_id;
+      received_transcript_chain[received_message.message_id][(*it).second.index].consistency_timer = us->ops->set_timer(cb_ack_not_received, &(received_transcript_chain[received_message.message_id][(*it).second.index].ack_timer_ops), us->ops->c_consistency_failure_interval);
+      
+    }
   }
-
-  //event_base_dispatch(base);
 }
 
-void np1secSession::start_receive_ack_timer(std::string sender_id) {
-  struct event *timer_event;
-  struct timeval ten_seconds = {10, 0};
-  struct event_base *base = event_base_new();
-
-  //msg = otrl_base64_otr_encode((unsigned char*)combined_content.c_str(),
-  //                             combined_content.size());
-  //(us->ops->send_bare)(room_name, myself.id, msg, static_cast<void*>(us));
-
-  timer_event = event_new(base, -1, EV_TIMEOUT, &cb_send_ack, this);
-  participants[sender_id].receive_ack_timer = timer_event;
-  event_add(participants[sender_id].receive_ack_timer, &ten_seconds);
-  //event_base_dispatch(base);
+void np1secSession::start_receive_ack_timer(std::string sender_index) {
+  //if there is already an ack timer 
+  //then that will take care of acking 
+  //for us as well
+  if (!send_ack_timer) {
+    send_ack_timer = us->ops->set_timer(cb_send_ack, this, us->ops->c_ack_interval);
+  }
+  
 }
 
 void np1secSession::stop_timer_send() {
@@ -995,23 +1007,82 @@ void np1secSession::stop_timer_send() {
        it = participants.begin();
        it != participants.end();
        ++it) {
-    if ((*it).second.send_ack_timer)
-      event_free((*it).second.send_ack_timer);
+    if ((*it).second.send_ack_timer) {
+      us->ops->axe_timer((*it).second.send_ack_timer);
+      send_ack_timer = nullptr;
+    }
   }
 }
 
-void np1secSession::stop_timer_receive(std::string acknowledger_id) {
-  event_free(participants[acknowledger_id].receive_ack_timer);
+void np1secSession::stop_timer_receive(std::string acknowledger_id, MessageId message_id) {
+
+  for(MessageId i = participants[acknowledger_id].last_acked_message_id + 1; i <= message_id; i++) {
+      us->ops->axe_timer(received_transcript_chain[message_id][participants[acknowledger_id].index].consistency_timer);
+      received_transcript_chain[message_id][participants[acknowledger_id].index].consistency_timer = nullptr;
+  }
+
+  participants[acknowledger_id].last_acked_message_id = message_id;
+
+}
+
+/**
+ * Inserts a block in the send transcript chain and start a 
+ * timer to receive the ack for it
+ */
+void np1secSession::update_send_transcript_chain(MessageId own_message_id,
+                                  std::string message) {
+  HashBlock hb;
+  Cryptic::hash(message, hb, true);
+  sent_transcript_chain[own_message_id].transcript_hash = Cryptic::hash_to_string_buff(hb);
+  sent_transcript_chain[own_message_id].ack_timer_ops = AckTimerOps(this, nullptr, own_message_id);
+ 
+ sent_transcript_chain[own_message_id].consistency_timer = us->ops->set_timer(cb_ack_not_sent, &(sent_transcript_chain[own_message_id].ack_timer_ops), us->ops->c_send_receive_interval);
+
+}
+/**
+ * - kills the send ack timer for the message in case we are the sender
+ * - Fill our own transcript chain for the message
+ * - start all ack timer for others for this message
+ * - Perform parent consistency check
+ */
+void np1secSession::perform_received_consisteny_tasks(np1secMessage received_message)
+{
+  //defuse the "I didn't get my own message timer 
+  if (received_message.sender_index == myself.nickname) {
+    assert(sent_transcript_chain.find(received_message.sender_message_id) != sent_transcript_chain.end()); //if the signature isn't failed and we don't have record of sending this then something is terribly wrong;
+    us->ops->axe_timer(sent_transcript_chain[received_message.sender_message_id].consistency_timer);
+    sent_transcript_chain[received_message.sender_message_id].consistency_timer = nullptr;}
+
+  add_message_to_transcript(received_message.final_whole_message, received_message.message_id);  
+
+}
+
+/**
+ * - check the consistency of the parent message with our own.
+ * - kill all ack receive timers of the sender for the parent backward
+ */
+void np1secSession::check_parent_message_consistency(np1secMessage received_message)
+{
+  received_transcript_chain[received_message.parent_id][participants[received_message.sender_index].index].transcript_hash = Cryptic::hash_to_string_buff(received_message.transcript_chain_hash);
+
+  if (received_transcript_chain[received_message.parent_id][participants[received_message.sender_index].index].transcript_hash != received_transcript_chain[received_message.parent_id][participants[received_message.sender_index].index].transcript_hash)
+    {
+      std::string consistancy_failure_message = received_message.sender_index  + " transcript doesn't match ours as of " + to_string(received_message.parent_id);
+      us->ops->display_message(consistancy_failure_message, room_name, us);
+    }
+
+  stop_timer_receive(received_message.sender_index, received_message.message_id);
+
 }
 
 void np1secSession::add_message_to_transcript(std::string message,
-                                        uint32_t message_id) {
-  HashBlock *hb;
+                                        MessageId message_id) {
+  HashBlock hb;
   std::stringstream ss;
   std::string pointlessconversion;
 
-  if (transcript_chain.size() > 0) {
-    ss << transcript_chain.rbegin()->second;
+  if (received_transcript_chain.size() > 0) {
+    ss << received_transcript_chain.rbegin()->second[my_index].transcript_hash;
     ss >> pointlessconversion;
     pointlessconversion += c_np1sec_delim + message;
 
@@ -1020,13 +1091,17 @@ void np1secSession::add_message_to_transcript(std::string message,
 
   }
 
-  compute_message_hash(*hb, pointlessconversion);
+  Cryptic::hash(pointlessconversion, hb);
 
-  transcript_chain[message_id] = hb;
+  received_transcript_chain[message_id][my_index].transcript_hash = Cryptic::hash_to_string_buff(hb);
+  received_transcript_chain[message_id][my_index].consistency_timer = nullptr;
+
 }
 
 bool np1secSession::send(std::string message, np1secMessage::np1secMessageType message_type) {
-  HashBlock* transcript_chain_hash = transcript_chain.rbegin()->second;
+  own_message_counter++;
+  HashBlock transcript_chain_hash;
+  memcpy(transcript_chain_hash, received_transcript_chain.rbegin()->second[my_index].transcript_hash.c_str(), sizeof(HashBlock));  
   // TODO(bill)
   // Add code to check message type and get
   // meta load if needed
@@ -1038,12 +1113,13 @@ bool np1secSession::send(std::string message, np1secMessage::np1secMessageType m
                                us->user_id(),
                                message, 
                                message_type,
-                               *transcript_chain_hash,
+                               transcript_chain_hash,
                                meta_load_flag, 
                                meta_load,
                                peers,
                                &cryptic);
 
+  update_send_transcript_chain(own_message_counter, outbound.compute_hash());
   // As we're sending a new message we are no longer required to ack
   // any received messages
   stop_timer_send();
@@ -1051,7 +1127,8 @@ bool np1secSession::send(std::string message, np1secMessage::np1secMessageType m
   if (message_type == np1secMessage::USER_MESSAGE) {
     // We create a set of times for all other peers for acks we expect for
     // our sent message
-    start_ack_timers();
+    start_ack_timers(outbound); //If you are overwritng
+    //timers then you need plan of recourse.
   }
 
   // us->ops->send_bare(room_name, outbound);
@@ -1061,30 +1138,31 @@ bool np1secSession::send(std::string message, np1secMessage::np1secMessageType m
 }
 
 np1secMessage np1secSession::receive(std::string raw_message) {
-  HashBlock* transcript_chain_hash = transcript_chain.rbegin()->second;
   np1secMessage received_message(raw_message, &cryptic);
 
-  if (*transcript_chain_hash == received_message.transcript_chain_hash) {
-    add_message_to_transcript(received_message.user_message,
-                        received_message.message_id);
-    // Stop awaiting ack timer for the sender
-    stop_timer_receive(received_message.sender_index);
+  perform_received_consisteny_tasks(received_message);
+  // if (*transcript_chain_hash == received_message.transcript_chain_hash) {
+  //   add_message_to_transcript(received_message.user_message,
+  //                       received_message.message_id);
+  //   // Stop awaiting ack timer for the sender
+  //   stop_timer_receive(received_message.sender_index, received_message.message_id);
 
-    // Start an ack timer for us so we remember to say thank you
-    // for the message
-    start_receive_ack_timer(received_message.sender_index);
+  //   // Start an ack timer for us so we remember to say thank you
+  //   // for the message
+  //   start_receive_ack_timer(received_message.sender_index);
 
-  } else {
-    // The hash is a lie!
-  }
+  // } else {
+  //   // The hash is a lie!
+  // }
 
-  if (received_message.message_type == np1secMessage::SESSION_P_LIST) {
-    //TODO
-    // function to separate peers
-    // add peers to map
-    // convert load to sexp
-  }
+  // if (received_message.message_type == np1secMessage::SESSION_P_LIST) {
+  //   //TODO
+  //   // function to separate peers
+  //   // add peers to map
+  //   // convert load to sexp
+  // }
 
+  
   return received_message;
 
 }
@@ -1094,7 +1172,3 @@ np1secSession::~np1secSession() {
   //return;
 }
 
-gcry_error_t np1secSession::compute_message_hash(HashBlock transcript_chain,
-                                     std::string message) {
-  return Cryptic::hash(message.c_str(), message.size(), transcript_chain, true);
-}

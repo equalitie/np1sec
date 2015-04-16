@@ -29,6 +29,7 @@ np1secMessage::np1secMessage(){
 np1secMessage::np1secMessage(std::string raw_message, Cryptic* cryptic):
   cryptic(cryptic)
 {
+  final_whole_message = raw_message;
   std::vector<std::string> message_tokens = split(raw_message,c_np1sec_delim); 
   if (message_tokens[0] == c_np1sec_protocol_name) {
     unwrap_generic_message(message_tokens);  
@@ -177,7 +178,6 @@ void np1secMessage::append_msg_end() {
   } 
   
   sys_message = std::to_string(this->message_type) + sys_message + c_np1sec_delim;
-  
   sys_message = base64_encode(sys_message);
   sys_message = c_np1sec_protocol_name + c_np1sec_delim + sys_message + c_np1sec_delim;
 
@@ -186,9 +186,7 @@ void np1secMessage::append_msg_end() {
 void np1secMessage::unwrap_generic_message(std::vector<std::string> m_tokens) {
   std::string message = base64_decode(m_tokens[1]);
   std::vector<std::string> sub_tokens = split(message, c_np1sec_delim);
-  /*if(sub_tokens.size() <=0 ){
-    throw "np1secMessage::unwrap_generic_message: message no tokenisable";
-  } */ 	
+
   message_type = (np1secMessageType)atoi(sub_tokens[0].c_str());
   std::string signature, sv_string;
   
@@ -282,7 +280,10 @@ std::string np1secMessage::create_user_msg(SessionId session_id,
   phased_message = base64_encode(phased_message);
   phased_message = "np1sec:0)" + phased_message + c_np1sec_delim.c_str();
 
+  final_whole_message = phased_message;
+
   return phased_message;
+  
 }
 
 void np1secMessage::unwrap_user_message(std::string u_message) {
@@ -414,18 +415,29 @@ bool np1secMessage::verify_message(std::string signed_message,
   }
 
   return false;
+
 }
 
 std::string np1secMessage::encrypt_message(std::string signed_message) {
   return cryptic->Encrypt(signed_message);
 }
 
+HashStdBlock np1secMessage::compute_hash()
+{
+  if (final_whole_message.length()) {
+    HashBlock hb;
+    Cryptic::hash(final_whole_message, hb, true);
+    return Cryptic::hash_to_string_buff(hb);
+  }
+  else
+    return "";
+  
+}
 
 std::string np1secMessage::decrypt_message(std::string encrypted_message) {
   return cryptic->Decrypt(encrypted_message);
 }
 
 np1secMessage::~np1secMessage() {
-  return;
 }
 #endif  // SRC_MESSAGE_CC_

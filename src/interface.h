@@ -34,6 +34,27 @@
  */
 struct np1secAppOps {
   // Data that is passed to send_bare
+  uint32_t c_heartbeating_interval;
+  uint32_t c_inactive_ergo_non_sum_interval;
+  uint32_t c_unresponsive_ergo_non_sum_interval;
+  uint32_t c_ack_interval;
+  uint32_t c_consistency_failure_interval;
+  uint32_t c_send_receive_interval;
+
+  np1secAppOps() {};
+  
+  np1secAppOps(uint32_t ACK_GRACE_INTERVAL , uint32_t REKEY_GRACE_INTERVAL,  uint32_t INTERACTION_GRACE_INTERVAL, uint32_t BROADCAST_LATENCY)
+  : c_heartbeating_interval(REKEY_GRACE_INTERVAL / 2),
+    c_inactive_ergo_non_sum_interval(REKEY_GRACE_INTERVAL + 2*(BROADCAST_LATENCY)),
+    c_unresponsive_ergo_non_sum_interval(INTERACTION_GRACE_INTERVAL + 2*(BROADCAST_LATENCY)),
+    c_ack_interval(ACK_GRACE_INTERVAL),
+    c_consistency_failure_interval(ACK_GRACE_INTERVAL + 2*(BROADCAST_LATENCY)),
+    c_send_receive_interval(INTERACTION_GRACE_INTERVAL + 2*(BROADCAST_LATENCY))
+
+    
+  {
+  }
+  
   void* bare_sender_data = NULL;
   /**
    * It is called by np1sec whenever the protocol needs to send meta data
@@ -88,6 +109,20 @@ struct np1secAppOps {
   void (*validate_long_term_key)(std::string nickname,
                           np1secPublicKey fingerprint,
                           void* aux_data);
+
+  /**
+   * it needs to set a timer which calls timer_callback function after 
+   * interval
+   * 
+   * @return a handle to the timer as void* which can be sent to axe_timer
+   *         to delete the timer
+   */
+  void* (*set_timer)(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval);
+
+  /**
+   * should deactiave to_be_defused timer
+   */
+  void (*axe_timer)(void* to_be_defused_timer);
 
   
 };

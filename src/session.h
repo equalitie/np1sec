@@ -34,42 +34,12 @@
 #include "src/message.h"
 #include "src/crypt.h"
 
+#include "src/transcript_consistency.h"
+
 class np1secUserState;
 class np1secSession;
 
-/**
- * Callback function to manage sending of heartbeats
- *
- */
-static void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg);
 
-/**
- * Callback function to cause automatic sending of ack for 
- * received message
- *
- */
-static void cb_send_ack(evutil_socket_t fd, short what, void *arg);
-
-/**
- * Callback function to cause automatic warning if ack not
- * received for previously sent message
- *
- */
-static void cb_ack_not_received(evutil_socket_t fd, short what, void *arg);
-
-class MessageDigest {
- public:
-  HashBlock digest;
-  uint32_t message_id;
-
-  void update(std::string new_message);
-
-  /**
-   * Compute a unique globally ordered id from the time stamped message,
-   * ultimately this function should be overridable by the client.
-   */
-  uint32_t compute_message_id(std::string cur_message);
-};
 
 //This has been removed in favor of np1secSession::operator- function
 //np1secSession::operator+ functions.
@@ -99,7 +69,7 @@ class RoomAction {
 /*     LEAVE, */
 /*     REKEY, */
 /*     NEW_MESSAGE */
-   }; 
+   };
 
    ActionType action_type;
    // The user which joined, left or sent a message. 
@@ -142,6 +112,7 @@ struct RaisonDEtre {
 typedef uint8_t np1secBareMessage[];
 typedef std::map<std::string,Participant> ParticipantMap;
 
+
 /**
  * This class is encapsulating all information and action, a user needs and
  * performs in a session.
@@ -172,10 +143,40 @@ class np1secSession {
   //UnauthenticatedParticipantList participants_in_the_room;
 
   /**
-   * Stores Transcritp chain hashes indexed by message id
+   * Stores Transcritp chain hashes indexed by received message id
    */
-  std::map<uint32_t, HashBlock*> transcript_chain;
+  std::map<MessageId, ConsistencyBlockVector> received_transcript_chain;
 
+  /**
+   * Stores the Transcript chain of hashes of all sent messages by the 
+   * thread user index by own_message_id
+   *
+   * When a message of our is received we extract the sender_message_id
+   * to index it here and kill the timer and check the consistency. 
+   *
+   * We also update message id, and we check for the consistency for
+   * the orders of own_message_id and the message_id
+   */
+  std::map<MessageId, ParticipantConsistencyBlock> sent_transcript_chain;
+
+  /**
+   * Inserts a block in the send transcript chain and start a 
+   * timer to receive the ack for it
+   */
+  void update_send_transcript_chain(MessageId own_message_id, HashStdBlock message_hash);
+  /**
+   * - kills the send ack timer for the message
+   * - Fill our own transcript chain for the message
+   * - Perform parent consistency check
+   */
+  void perform_received_consisteny_tasks(np1secMessage received_message);
+
+  /**
+   * - check the consistency of the parent message with our own.
+   * - kill all ack receive timers of the sender for the parent backward
+   */
+  void check_parent_message_consistency(np1secMessage message);
+  
   //participants data:
   /**
    * Keeps the list of the updated participants in the room once the
@@ -225,7 +226,7 @@ class np1secSession {
    * Generate acknowledgement timers for all other participants
    *
    */
-  void start_ack_timers();
+  void start_ack_timers(np1secMessage received_message);
 
   /**
     * Construct and start timers for acking received messages
@@ -237,7 +238,7 @@ class np1secSession {
    * End ack timer on for given acknowledgeing participants
    *
    */
-  void stop_timer_receive(std::string acknowledger_id);
+  void stop_timer_receive(std::string acknowledger_id, MessageId message_id);
 
   /*
    * Stop ack to send timers when user sends new message before timer expires
@@ -248,6 +249,12 @@ class np1secSession {
   HashBlock session_key_secret_share;
   HashBlock session_key;
   HashBlock session_confirmation;
+
+  void* heartbeat_timer;
+  void* send_ack_timer;
+
+  MessageId last_message_received_id;
+  MessageId own_message_counter; //sent message counter
   //Depricated in favor of raison detr.
   //tree structure seems to be insufficient. because
   //sid only encode the session structure but not
@@ -355,8 +362,8 @@ class np1secSession {
     //flush the confirmation
     confirmed_peers.clear();
     confirmed_peers.resize(peers.size());
+    
   }
-
 
 // TODO: This should move to crypto really and called hash with
 // overloaded parameters
@@ -370,7 +377,7 @@ class np1secSession {
    */
   bool compute_session_id();
   bool compute_session_confirmation();
-  void account_for_session_and_key_consistancy();
+  void account_for_session_and_key_consistency();
   bool validate_session_confirmation(np1secMessage confirmation_message);
 
   bool setup_session_view(np1secMessage session_view_message);
@@ -444,7 +451,7 @@ class np1secSession {
     LEAVE_REQUESTED,  // Leave requested by the thread, waiting
                       // for final transcirpt consitancy check
     FAREWELLED,  // LEAVE is received from another participant and a
-                 // meta message for transcript consistancy and
+                 // meta message for transcript consistency and
                  // new shares has been sent
     DEAD,  // Won't accept receive or sent messages, possibly throw up
     SCHEDULED_TO_DIE, //a new session has been activated,
@@ -618,7 +625,7 @@ class np1secSession {
      otherwise no change to the status
 
    */
-  StateAndAction check_transcript_consistancy_update_share_repo(np1secMessage received_message);
+  StateAndAction check_transcript_consistency_update_share_repo(np1secMessage received_message);
 
   /**
      This pointer represent an edge in the transition
@@ -668,9 +675,9 @@ class np1secSession {
     //np1secFSMGraphTransitionMatrix[IN_SESSION][np1secMessage::LEAVE_REQUEST] = &np1secSession::send_farewell_and_reshare;
 
     //I'm not sure either of these occures
-    //np1secFSMGraphTransitionMatrix[RE_SHARED][np1secMessage::FAREWELL] = &np1secSession::check_transcript_consistancy_update_share_repo;
+    //np1secFSMGraphTransitionMatrix[RE_SHARED][np1secMessage::FAREWELL] = &np1secSession::check_transcript_consistency_update_share_repo;
 
-    //np1secFSMGraphTransitionMatrix[LEAVE_REQUESTED][np1secMessage::FAREWELL] = &np1secSession::check_transcript_consistancy_update_share_repo;
+    //np1secFSMGraphTransitionMatrix[LEAVE_REQUESTED][np1secMessage::FAREWELL] = &np1secSession::check_transcript_consistency_update_share_repo;
 
     //We don't accept join request while in farewelled state (for now at least)
     //TODO: we should forward it with the session with reduced plist.
@@ -681,7 +688,7 @@ class np1secSession {
     * Construct and start timers for sending heartbeat messages
     *
     */
-  void start_heartbeat_timer();
+  void restart_heartbeat_timer();
 
   //This really doesn't make sense because we create a sessien based on
   //join request
@@ -827,9 +834,10 @@ class np1secSession {
   ~np1secSession();
 
   //friend all timer call backs
-  friend /*static*/ void cb_send_heartbeat(evutil_socket_t fd, short what, void *arg);
-  friend /*static*/ void cb_send_ack(evutil_socket_t fd, short what, void *arg);
-  friend /*static*/ void cb_ack_not_received(evutil_socket_t fd, short what, void *arg);
+  friend  void cb_send_heartbeat(void *arg);
+  friend  void cb_send_ack(void *arg);
+  friend  void cb_ack_not_received(void *arg);
+  friend void cb_ack_not_sent(void* arg);
 
 };
 
