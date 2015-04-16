@@ -248,10 +248,9 @@ std::string np1secMessage::create_user_msg(SessionId session_id,
                                            ) {
 
   std::string base_message, phased_message, signature;
-  std::string length;
   unsigned char buffer[128];
   gcry_randomize(buffer, 128, GCRY_STRONG_RANDOM);
-
+ std::string length;
   std::string ustates = ustate_values(pstates);
 
   std::string hash_string(reinterpret_cast<char const*>(transcript_chain_hash), sizeof(HashBlock));
@@ -264,7 +263,6 @@ std::string np1secMessage::create_user_msg(SessionId session_id,
   base_message += sender_index;
   
   length = std::to_string(user_message.size());
-
   base_message += length;  
   base_message += user_message;
 
