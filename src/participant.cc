@@ -24,7 +24,7 @@
  */
 bool sort_by_long_term_pub_key(const Participant& lhs, const Participant& rhs)
 {
-  return Cryptic::retrieve_result(lhs.long_term_pub_key) < Cryptic::retrieve_result(rhs.long_term_pub_key);
+  return Cryptic::public_key_to_stringbuff(lhs.long_term_pub_key) < Cryptic::public_key_to_stringbuff(rhs.long_term_pub_key);
 
 }
 
@@ -65,7 +65,8 @@ bool Participant::be_authenticated(const std::string authenticator_id, const Has
 
   Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), regenerated_auth_token);
 
-  return (!Cryptic::compare_hash(regenerated_auth_token, auth_token));
+  authenticated = !Cryptic::compare_hash(regenerated_auth_token, auth_token);
+  return (authenticated);
 
 }
 
@@ -85,7 +86,8 @@ bool Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKe
     return false;
 
   std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
-  to_be_hashed += id.nickname;
+  to_be_hashed += id.id_to_stringbuffer(); //the question is that why should we include the public
+  //key here? 
   Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), auth_token);
 
   return true;

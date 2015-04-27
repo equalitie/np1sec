@@ -47,6 +47,22 @@ typedef std::pair<np1secPrivateKey, np1secPublicKey> KeyPair;
 //Format as we never use public key directly when we have the main
 //key and only use this to transmit it to others
 
+// The length of the output of the hash function in bytes.
+const size_t c_hash_length = 32;
+const size_t c_signature_length = 64;
+
+typedef uint8_t HashBlock[c_hash_length];
+typedef std::string HashStdBlock; //This eventually gonna replace HashBlock,
+//mainly because StdHashBlock can be easily checked to see if it is initiated
+//or not (length)
+
+//np1sec Message data type
+typedef uint8_t DTByte;
+typedef uint16_t DTShort;
+typedef uint32_t DTLength;
+typedef HashBlock DTHash;
+
+
 enum np1secLoadFlag {
   NO_LOAD,
   NEW_EPHEMERAL_KEY,
@@ -54,13 +70,6 @@ enum np1secLoadFlag {
   NEW_SECRET_SHARE
 };
 
-// The length of the output of the hash function in bytes.
-const size_t c_hash_length = 32;
-
-typedef uint8_t HashBlock[c_hash_length];
-typedef std::string HashStdBlock; //This eventually gonna replace HashBlock,
-//mainly because StdHashBlock can be easily checked to see if it is initiated
-//or not (length)
 //typedef std::vector<uint8_t> SessionID;
 class SessionId
 {
@@ -85,7 +94,7 @@ class SessionId
   /*   is_set = lhs.is_set; */
   /* } */
 
-  void set(HashBlock sid)
+  void set(const HashBlock sid)
   {
     //only one time is possible
     //sanity check: You can only compute session id once
@@ -105,8 +114,9 @@ class SessionId
   
 };
 
-const std::string c_np1sec_protocol_name("np1sec");
-const std::string c_np1sec_delim(":o)"); //because http://en.wikipedia.org/wiki/Man%27s_best_friend_(phrase)
+const std::string c_np1sec_protocol_name(":o3np1sec:");
+const DTShort c_np1sec_protocol_version = 0x0001;
+const std::string c_np1sec_delim(":o3"); //because http://en.wikipedia.org/wiki/Man%27s_best_friend_(phrase)
 const std::string c_subfield_delim(":"); //needed by ParticipantId defined in interface.h 
 
 #endif  // SRC_COMMON_H_

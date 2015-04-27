@@ -99,6 +99,7 @@ struct np1secAppOps {
    * Asks the app to display a message in the room
    */
   void (*display_message)(std::string room_name,
+                          std::string sender_nick,
                           std::string message,
                           void* aux_data);
 

@@ -37,6 +37,14 @@ class np1secMessageFormatException : public std::exception
    }                                                               
  };                                   
 
+class np1secVersionMismatchException : public std::exception                               
+{                                                                 
+   virtual const char* what() const throw()                        
+   {                                                               
+     return "Invalid protocol version";                               
+   }                                                               
+ };                                   
+
 class np1secMessageSignatureException : public std::exception                               
 {                                                                 
    virtual const char* what() const throw()                        
@@ -62,5 +70,27 @@ class np1secInsufficientCredentialException : public std::exception
    }                                                               
  };                                   
 
+class np1secInvalidDataException : public std::exception                               
+{                                                                 
+   virtual const char* what() const throw()                        
+   {                                                               
+     return "Data doesn't match expected value";                               
+   }                                                               
+ };                                   
+
+class np1secInvalidRoomException : public std::exception                               
+{                                                                 
+   virtual const char* what() const throw()                        
+   {                                                               
+     return "Invalid room";                               
+   }                                                               
+ };                                   
+
+class np1secNotImplementedException : public std::exception                             {                                                                 
+   virtual const char* what() const throw()                        
+   {                                                               
+     return "Not Implemented";                               
+   }                                                               
+ };                                   
 
 #endif  // SRC_EXCEPTIONS_H_

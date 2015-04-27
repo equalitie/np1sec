@@ -49,12 +49,17 @@ TEST_F(MessageTest, test_user_message){
   std::string room_name = "test_room_name";
   std::string sender_id;
   std::string user_message = "This is a test message";
-  std::string base  = "0xfd, 0xfc, 0xfe, 0xfa";
   std::string meta_load = "load";
   HashBlock sid, transcript_chain_hash;
   SessionId session_id;
-  Cryptic* cryptic;
+  Cryptic cryptic;
   np1secAppOps ops;
+  HashBlock hb;
+
+  Cryptic::hash("mydummyhash", hb);
+  std::string base  = Cryptic::hash_to_string_buff(hb);
+
+  cryptic.init();
 
   std::vector<std::string> pstates = {"test_pstate_1", "test_pstate_2"};
   np1secUserState* user_state = new np1secUserState("test", &ops);
@@ -65,20 +70,18 @@ TEST_F(MessageTest, test_user_message){
   memcpy(transcript_chain_hash, base.c_str(), sizeof(HashBlock) );
   session_id.set(sid);
 
-  np1secMessage outbound;
+  np1secMessage outbound(&cryptic);
 
-  outbound.create_user_msg(session_id,
-                           user_state->user_id(),
-                           user_message,
-                           np1secMessage::USER_MESSAGE,
-                           transcript_chain_hash,
-                           np1secLoadFlag::NO_LOAD,
-                           meta_load,
-                           pstates,
-                           cryptic);
+  // outbound.create_user_msg(session_id,
+  //                          user_state->myself->nickname,
+  //                          user_message,
+  //                          np1secMessage::USER_MESSAGE,
+  //                          transcript_chain_hash,
+  //                          np1secLoadFlag::NO_LOAD,
+  //                          meta_load,
+  //                          pstates);
 
-
-  ASSERT_EQ(true, false);
+  // ASSERT_EQ(true, false);
 }
 /*
 TEST_F(MessageTest, test_join_auth){

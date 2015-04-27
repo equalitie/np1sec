@@ -38,8 +38,7 @@
 
 class np1secUserState;
 class np1secSession;
-
-
+class np1secRoom;
 
 //This has been removed in favor of np1secSession::operator- function
 //np1secSession::operator+ functions.
@@ -232,7 +231,7 @@ class np1secSession {
     * Construct and start timers for acking received messages
     *
     */
-  void start_receive_ack_timer(std::string sender_id);
+  void start_receive_ack_timer();
 
   /**
    * End ack timer on for given acknowledgeing participants
@@ -253,7 +252,7 @@ class np1secSession {
   void* heartbeat_timer;
   void* send_ack_timer;
 
-  MessageId last_message_received_id;
+  MessageId last_received_message_id;
   MessageId own_message_counter; //sent message counter
   //Depricated in favor of raison detr.
   //tree structure seems to be insufficient. because
@@ -279,18 +278,18 @@ class np1secSession {
   /*  * child session */
   /*  *\/ */
   /* void kill_rival_children(); */
-  static const uint8_t c_my_right = 1;
-  static const uint8_t c_my_left = -1;
+  static const int32_t c_my_right = 1;
+  static const int32_t c_my_left = -1;
   /**
    * compute the right secret share
    * @param side  either c_my_right = 1 or c_my_left = 1
    */
-  std::string secret_share_on(uint8_t side)
+  std::string secret_share_on(int32_t side)
     {
       HashBlock hb;
       
       assert(side == c_my_left || side == c_my_right);
-      unsigned int my_neighbour = my_index + side % peers.size();
+      unsigned int my_neighbour = (my_index + side) % peers.size();
       Cryptic::hash(Cryptic::hash_to_string_buff(participants[peers[my_neighbour]].p2p_key) + session_id.get_as_stringbuff(), hb, true);
 
       return Cryptic::hash_to_string_buff(hb);
@@ -320,6 +319,7 @@ class np1secSession {
   {
     peers.clear();
     for(ParticipantMap::iterator it = participants.begin(); it != participants.end();  it++) {
+      std::cout << it->first << std::endl;
       peers.push_back(it->first);
     }
 
@@ -351,13 +351,27 @@ class np1secSession {
     std::sort(peers.begin(), peers.end());
     
     std::vector<std::string>::iterator my_entry = std::find(peers.begin(), peers.end(), myself.nickname);
-    if (my_entry == peers.end())
+    if (my_entry == peers.end()) {
+      std::cout << myself.nickname << std::endl;
+      std::cout << peers.size() << std::endl;
+      for(size_t i = 0; i <  peers.size(); i++)
+        std::cout << peers[i] << std::endl;
       assert(0); //throw up
+    }
 
     my_index = std::distance(peers.begin(), my_entry);
 
-    for(size_t i = 0; i <  peers.size(); i++)
+    //we trust ourselves so no need to auth ourselves neither be_authed_to
+    participants[peers[my_index]].authenticated = true;
+    participants[peers[my_index]].authed_to = true;
+
+    for(size_t i = 0; i <  peers.size(); i++) {
+      participants[peers[i]].thread_user_as_participant = &participants[peers[my_index]];
+      //if we copy the session the pointer
+      // //to thread user as participant is not valid anymore. This is obviously digusting
+      // //we need a respectable copy constructor for np1secSession
       participants[peers[i]].index = i;
+    }
 
     //flush the confirmation
     confirmed_peers.clear();
@@ -365,10 +379,6 @@ class np1secSession {
     
   }
 
-// TODO: This should move to crypto really and called hash with
-// overloaded parameters
-  gcry_error_t compute_hash(uint8_t*, std::string);
-  
   /**
    * it should be invoked only once to compute the session id
    * if one need session id then they need a new session
@@ -422,7 +432,7 @@ class np1secSession {
   bool send_view_auth_and_share(std::string joiner_id = "");
 
   public:
-      /**
+  /**
    * (n+1)sec sessions are implemented as finite state machines.
    * Each message transaction might ends up in state change. 
    * this is a generic class to store every state and manage its
@@ -465,6 +475,14 @@ class np1secSession {
   typedef std::pair<np1secSessionState, RoomAction> StateAndAction;
 
   /**
+   * sends session confirmation if everybody is contributed and authenticated
+   * returns DEAD state if fails to decrypt the group key.
+   *         GROUP_KEY_GENERATED otherwise
+   *          the current state if not everybody authenticated
+   */
+  np1secSession::StateAndAction send_session_confirmation_if_everybody_is_contributed();
+
+    /**
      list of state transitors:
      J: joining C: current
 
@@ -552,7 +570,7 @@ class np1secSession {
      change status to REPLIED_TO_NEW_JOIN
 
    */
-  StateAndAction send_auth_share_and_participant_info(np1secMessage received_message);
+  StateAndAction init_a_session_with_new_plist(np1secMessage received_message);
 
   /**
      For the current user, calls it when receive JOINER_AUTH
@@ -652,16 +670,27 @@ class np1secSession {
     
     //joining user
     np1secFSMGraphTransitionMatrix[JOIN_REQUESTED][np1secMessage::PARTICIPANTS_INFO] = &np1secSession::auth_and_reshare;
+    //^^^ doesn't really happen because before receiving participant info you don't have
+    //a session anyway
+    //^^^ this is bullshit, only the first one generate the session the second one
+    //is get to the state handler
 
     np1secFSMGraphTransitionMatrix[JOIN_REQUESTED][np1secMessage::SESSION_CONFIRMATION] = &np1secSession::confirm_or_resession;
 
     //user currently in the session: current session
-    np1secFSMGraphTransitionMatrix[IN_SESSION][np1secMessage::JOIN_REQUEST] = &np1secSession::send_auth_share_and_participant_info;
+    np1secFSMGraphTransitionMatrix[IN_SESSION][np1secMessage::JOIN_REQUEST] = &np1secSession::init_a_session_with_new_plist;
 
     //new session for currently in previous session
+    //JOINER_AUTH and PARTICIPANT_INFO are essentially the same beside the 
+    np1secFSMGraphTransitionMatrix[REPLIED_TO_NEW_JOIN][np1secMessage::JOINER_AUTH] = &np1secSession::confirm_auth_add_update_share_repo;
+
     np1secFSMGraphTransitionMatrix[REPLIED_TO_NEW_JOIN][np1secMessage::PARTICIPANTS_INFO] = &np1secSession::confirm_auth_add_update_share_repo;
 
     np1secFSMGraphTransitionMatrix[GROUP_KEY_GENERATED][np1secMessage::SESSION_CONFIRMATION] = &np1secSession::mark_confirmed_and_may_move_session;
+
+    //If it is in session and it is an in session message, then need to receive it
+    //by the session first
+    np1secFSMGraphTransitionMatrix[IN_SESSION][np1secMessage::IN_SESSION_MESSAGE] = &np1secSession::receive;
 
     //Leave should have priority over join because the leaving user
     //is not gonna confirm the session and as such the join will
@@ -684,6 +713,14 @@ class np1secSession {
 
   }
 
+  /**
+   * In session forward secrecy stuff
+   */
+  /**
+   * Decides what load to include in the current message
+   */
+  np1secMessage::np1secMessageSubType forward_secrecy_load_type();
+    
   /**
     * Construct and start timers for sending heartbeat messages
     *
@@ -750,7 +787,7 @@ class np1secSession {
    * When a user wants to send a message to a session it needs to call its send
    * function.
    */
-  bool send(std::string message, np1secMessage::np1secMessageType message_type);
+  bool send(std::string message, np1secMessage::np1secMessageSubType message_type);
 
   //List ofc onstructors
   /* /\** */
@@ -795,7 +832,7 @@ class np1secSession {
      - set new session status to RE_SHARED
      
   */
-  np1secSession(np1secUserState* us, std::string room_name, std::string leaver_id, ParticipantMap current_authed_participants);
+  np1secSession(np1secUserState* us, std::string room_name, Cryptic* current_ephemeral_crypto, std::string leaver_id, ParticipantMap current_authed_participants);
     
   /**
      Constructor being called by operator+ and operator- to breed 
@@ -807,7 +844,7 @@ class np1secSession {
        - set new session status to RE_SHARED
 
   */
-  np1secSession(np1secUserState* us, std::string room_name, ParticipantMap current_authed_participants);
+  np1secSession(np1secUserState* us, std::string room_name, Cryptic* current_ephemeral_crypto, ParticipantMap current_authed_participants);
   /**
    * Almost copy constructor, we only alter the plist
    */
@@ -815,7 +852,7 @@ class np1secSession {
     ParticipantMap participants_in_the_room);*/
 
   //TODO really one of these two are needed;
-  np1secSession(np1secUserState *us, std::string room_name, np1secMessage join_message, ParticipantMap current_authed_participants);
+  np1secSession(np1secUserState *us, std::string room_name,  Cryptic* current_ephemeral_crypto, np1secMessage join_message, ParticipantMap current_authed_participants);
   /**
    * access function for session_id;
    */
@@ -826,7 +863,7 @@ class np1secSession {
    * called to decrypt. It updates the session status and returns the decrypted
    * message to be shown, it might be null if the message was a meta message.
    */
-  np1secMessage receive(std::string raw_message);
+  StateAndAction receive(np1secMessage encrypted_message);
 
   /**
    * Destructor, session should be destroyed at leave.
@@ -838,6 +875,7 @@ class np1secSession {
   friend  void cb_send_ack(void *arg);
   friend  void cb_ack_not_received(void *arg);
   friend void cb_ack_not_sent(void* arg);
+  friend np1secRoom;
 
 };
 

@@ -66,6 +66,10 @@ class np1secUserState {
     return myself->id_to_stringbuffer();
   }
 
+  std::string user_nick()  {
+    return myself->nickname;
+  }
+
   /**
    * access function for for long term id key
    */

@@ -148,13 +148,17 @@ void np1secRoom::receive_handler(np1secMessage received_message)
       if (received_message.message_type == np1secMessage::JOIN_REQUEST) {
         RoomAction action_to_take = session_universe[active_session.get_as_stringbuff()].state_handler(received_message);
         if (action_to_take.action_type == RoomAction::NEW_SESSION) {
-          session_universe.insert(pair<string, np1secSession>(action_to_take.bred_session->my_session_id().get_as_stringbuff(),*(action_to_take.bred_session)));
-          delete action_to_take.bred_session; //:(
+          session_universe.emplace(pair<string, np1secSession>(action_to_take.bred_session->my_session_id().get_as_stringbuff(),*(action_to_take.bred_session)));
+          // delete action_to_take.bred_session; //:( TODO: room needs to create the session.
+          // new_session_it.firs->keep_peers_in_order_spot_myself(); //to update pointer
+          // //to thread user as participant is not valid anymore. This is obviously digusting
+          // //we need a respectable copy constructor for np1secSession
         }
+      } else {
+        //else just ignore it
+        assert(0); //just for test to make sure we don't end up here
+        return;
       }
-    //else just ignore it
-    assert(0); //just for test to make sure we don't end up here
-    return;
   }
 
   //Now we check if the resulting action resulted in new session

@@ -46,7 +46,6 @@ struct ParticipantId
    */
   std::string id_to_stringbuffer() {
     std::string string_id(nickname);
-    string_id += c_subfield_delim; 
     string_id.append(reinterpret_cast<char*>(fingerprint), c_fingerprint_length);
 
     return string_id;
@@ -81,14 +80,14 @@ struct ParticipantId
    *  and fingerprint
    *
    */
-  ParticipantId(std::string nick_clone_fingerprint_strbuff)
+  ParticipantId(const std::string& nick_fingerprint_strbuff)
   {
     //TODO:: We need to throw up if the participant format isn't correct
-    std::string nickname = nick_clone_fingerprint_strbuff.substr(0, nick_clone_fingerprint_strbuff.find(c_subfield_delim.c_str()));
-    if ((nick_clone_fingerprint_strbuff.size() - nickname.size()) != ParticipantId::c_fingerprint_length)
+    nickname = nick_fingerprint_strbuff.substr(0, nick_fingerprint_strbuff.size()-c_fingerprint_length);
+    if ((nick_fingerprint_strbuff.size() - nickname.size()) != ParticipantId::c_fingerprint_length)
       throw np1secMessageFormatException();
     
-    std::string fingerprint_strbuff = nick_clone_fingerprint_strbuff.substr(nickname.length() + c_subfield_delim.length() , ParticipantId::c_fingerprint_length);
+    std::string fingerprint_strbuff = nick_fingerprint_strbuff.substr(nickname.length() , ParticipantId::c_fingerprint_length);
     memcpy(fingerprint, fingerprint_strbuff.c_str(), fingerprint_strbuff.size());
   }
 
@@ -155,28 +154,32 @@ UnauthenticatedParticipant(ParticipantId participant_id, std::string ephemeral_p
   /**
    * turns a string of type:
    * 
-   *  nick:fingerprintephemeralkey 
+   *  nickfingerprintephemeralkey 
    *
    * to an authenticated particpiant
    */
-UnauthenticatedParticipant(std::string participant_id_and_ephmeralkey)
-:participant_id(participant_id_and_ephmeralkey)
+UnauthenticatedParticipant(const std::string& participant_id_and_ephmeralkey)
+:participant_id(
+                (participant_id_and_ephmeralkey.size() > c_ephemeral_key_length + sizeof(DTByte) ?
+                 participant_id_and_ephmeralkey.substr(0, participant_id_and_ephmeralkey.size() - c_ephemeral_key_length - 1) :
+                 ""))
   {
+    if (participant_id_and_ephmeralkey.size() < c_ephemeral_key_length + sizeof(DTByte))
+      throw np1secMessageFormatException();
     //TODO:: We need to throw up if the participant format isn't correct
-    std::string ephemeral_pub_key =
-      participant_id_and_ephmeralkey.substr(
-                                            participant_id.nickname.length() +
-                                            c_subfield_delim.length() +
-                                            ParticipantId::c_fingerprint_length,
-                                            c_ephemeral_key_length);
+    std::string ephemeral_pub_key = 
+      participant_id_and_ephmeralkey.substr(participant_id_and_ephmeralkey.size() - c_ephemeral_key_length - sizeof(DTByte));
     
     memcpy(this->ephemeral_pub_key, ephemeral_pub_key.c_str(), c_ephemeral_key_length);
-
-  }
+    authenticated = (participant_id_and_ephmeralkey.back() == 1);
+    
+  };
+                
 
   std::string unauthed_participant_to_stringbuffer() {
     std::string string_id(participant_id.id_to_stringbuffer());
-    string_id += std::string(reinterpret_cast<char*>(ephemeral_pub_key), sizeof(c_ephemeral_key_length));
+    string_id += std::string(reinterpret_cast<char*>(ephemeral_pub_key), c_ephemeral_key_length);
+    string_id += static_cast<char>(authenticated ? 1 : 0); 
     return string_id;
   }
   
@@ -203,7 +206,6 @@ class Participant {
   bool compute_p2p_private(np1secAsymmetricKey thread_user_id_key);
 
   Cryptic* thread_user_crypto;
-  Participant* thread_user_as_participant;
   
  public:
   ParticipantId id;
@@ -219,14 +221,19 @@ class Participant {
   bool authenticated;
   bool authed_to;
   bool key_share_contributed;
-  unsigned int index; //keep the place of the partcipant in sorted peers array
+  uint32_t index; //keep the place of the partcipant in sorted peers array
    /* this is the i in U_i and we have
                                 participants[peers[i]].index == i
                                 tautology
                                 
                                 sorry we barely have space for half
-                                half of human kind in a room :(
+                                of human kind in a room :( on the other
+                                hand if you cramp 4billion people in 
+                                a room, you have little reason to keep
+                                the transcript confidential
                              */
+
+  Participant* thread_user_as_participant;
 
   // np1secKeySHare future_key_share;
 
@@ -238,6 +245,7 @@ class Participant {
     authenticated(rhs.authenticated),
     authed_to(rhs.authed_to),
     thread_user_crypto(rhs.thread_user_crypto),
+    thread_user_as_participant(rhs.thread_user_as_participant),
     send_ack_timer(nullptr),
     key_share_contributed(rhs.key_share_contributed),
     index(rhs.index)
@@ -328,13 +336,13 @@ class Participant {
    :id(unauth_participant.participant_id),
     authenticated(false),
     authed_to(false),
+    key_share_contributed(false),
     long_term_pub_key(Cryptic::reconstruct_public_key_sexp(Cryptic::hash_to_string_buff(unauth_participant.participant_id.fingerprint))),
     thread_user_crypto(thread_crypto),
     send_ack_timer(nullptr)
-
-      {
-        set_ephemeral_key(unauth_participant.ephemeral_pub_key);
-      }
+    {
+      set_ephemeral_key(unauth_participant.ephemeral_pub_key);
+    }
 
   //destructor
   ~Participant()

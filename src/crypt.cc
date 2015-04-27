@@ -449,7 +449,7 @@ bool Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey p
   
 };
 
-gcry_error_t Cryptic::Sign(unsigned char **sigp, size_t *siglenp,
+gcry_error_t Cryptic::sign(unsigned char **sigp, size_t *siglenp,
                            std::string plain_text) {
   gcry_mpi_t r, s;
   gcry_error_t err = 0;
@@ -512,14 +512,19 @@ gcry_error_t Cryptic::Sign(unsigned char **sigp, size_t *siglenp,
   gcry_mpi_print(format, (*sigp)+ half_magic_number + (half_magic_number-ns),
                  ns, NULL, s);
 
+  //it seems that we have assumed this
+  assert(magic_number >= nr+ns);
+  *siglenp = nr+ns;
+  
   gcry_mpi_release(r);
   gcry_mpi_release(s);
 
   return gcry_error(GPG_ERR_NO_ERROR);
 }
 
-gcry_error_t Cryptic::Verify(std::string plain_text,
-                             const unsigned char *sigbuf) {
+gcry_error_t Cryptic::verify(std::string plain_text,
+                             const unsigned char *sigbuf,
+                             np1secPublicKey signer_ephemeral_pub_key) {
   gcry_error_t err = 0;
   gcry_mpi_t r, s;
   gcry_sexp_t datas, sigs;
@@ -530,7 +535,6 @@ gcry_error_t Cryptic::Verify(std::string plain_text,
   gcry_mpi_scan(&s, GCRYMPI_FMT_USG, sigbuf+nr, ns, NULL);
 
   gcry_sexp_build(&sigs, NULL, "(sig-val (eddsa (r %M)(s %M)))", r, s);
-
 
   gcry_mpi_release(r);
   gcry_mpi_release(s);
@@ -551,7 +555,7 @@ gcry_error_t Cryptic::Verify(std::string plain_text,
   }
 
 
-  err = gcry_pk_verify(sigs, datas, ephemeral_pub_key);
+  err = gcry_pk_verify(sigs, datas, signer_ephemeral_pub_key);
 
   if ( err ) {
     std::printf("ed25519Key: failed to verify signed_text");

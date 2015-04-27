@@ -126,6 +126,16 @@ teddh   *
     return hash(string_buffer.c_str(), string_buffer.size(), hb, secure);
   }
 
+  static HashStdBlock hash(const std::string string_buffer,
+                           bool secure = true) {
+    HashBlock hb;
+    gcry_error_t err =  hash(string_buffer.c_str(), string_buffer.size(), hb, secure);
+    if (err)
+      throw np1secCryptoException();
+
+    return hash_to_string_buff(hb);
+  }
+
   static int compare_hash(const HashBlock rhs, const HashBlock lhs)
   {
     return memcmp(rhs, lhs, sizeof(HashBlock));
@@ -192,7 +202,7 @@ teddh   *
    *
    * @return gcry_error_t indicating whether the operation succeeded or not
    */
-  gcry_error_t Sign(unsigned char **sigp,
+  gcry_error_t sign(unsigned char **sigp,
                     size_t *siglenp, std::string plain_text);
 
   /**
@@ -201,10 +211,11 @@ teddh   *
    *
    * @param std::string representing signed data
    * @param const unsigned char*  representing data signature buffer
+   * @param the public key of the party who has signed the message
    *
    * @return gcry_error_t failure or verification of given signature
    */
-  gcry_error_t Verify(std::string signed_text, const unsigned char *sigbuf);
+  gcry_error_t verify(std::string signed_text, const unsigned char *sigbuf, np1secPublicKey signer_ephmeral_pub_key);
 
   /**
    * Create instance of cipher session based on configured algorithm, mode,

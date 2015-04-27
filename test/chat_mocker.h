@@ -11,6 +11,9 @@ extern "C" {
 #include <map>
 #include <list>
 #include <queue>
+#include <iostream>
+
+using namespace std;
 
 #ifndef TEST_CHAT_MOCKER_H_
 #define TEST_CHAT_MOCKER_H_
@@ -105,6 +108,7 @@ class MockRoom {
     void receive() {
     while (!message_queue.empty())
       {
+        cout << message_queue.front() << endl;
         for (std::map<std::string, MockParticipant>::iterator
                cur_participant = _participant_list.begin();
              cur_participant != _participant_list.end(); cur_participant++)
