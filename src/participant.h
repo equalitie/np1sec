@@ -198,14 +198,7 @@ class ParticipantInSessionProperties {
  */
 class Participant {
  protected:
-  /**
-   * computes the p2p triple dh secret between participants
-   *
-   * @return true on success
-   */
-  bool compute_p2p_private(np1secAsymmetricKey thread_user_id_key);
-
-  Cryptic* thread_user_crypto;
+  Cryptic* thread_user_crypto; //TODO: instead we should make a copy
   
  public:
   ParticipantId id;
@@ -233,7 +226,7 @@ class Participant {
                                 the transcript confidential
                              */
 
-  Participant* thread_user_as_participant;
+  //Participant* thread_user_as_participant;
 
   // np1secKeySHare future_key_share;
 
@@ -245,7 +238,7 @@ class Participant {
     authenticated(rhs.authenticated),
     authed_to(rhs.authed_to),
     thread_user_crypto(rhs.thread_user_crypto),
-    thread_user_as_participant(rhs.thread_user_as_participant),
+    //thread_user_as_participant(rhs.thread_user_as_participant),
     send_ack_timer(nullptr),
     key_share_contributed(rhs.key_share_contributed),
     index(rhs.index)
@@ -254,6 +247,8 @@ class Participant {
     long_term_pub_key = Cryptic::copy_crypto_resource(rhs.long_term_pub_key);
     set_ephemeral_key(rhs.raw_ephemeral_key);
     memcpy(p2p_key, rhs.p2p_key, sizeof(HashBlock));
+    memcpy(cur_keyshare, rhs.cur_keyshare, sizeof(HashBlock));
+
   }
   
   enum ForwardSecracyContribution {
@@ -297,6 +292,13 @@ class Participant {
     key_share_contributed = true;
 
   }
+
+  /**
+   * computes the p2p triple dh secret between participants
+   *
+   * @return true on success
+   */
+  bool compute_p2p_private(np1secAsymmetricKey thread_user_id_key);
 
   /**
    * Generate the approperiate authentication token to send to the
@@ -358,7 +360,7 @@ class Participant {
  * To be used in std::sort to sort the particpant list
  * in a way that is consistent way between all participants
  */
-bool sort_by_long_term_pub_key(const Participant& lhs, const Participant& rhs);
+bool sort_by_long_term_pub_key(const np1secAsymmetricKey lhs, const np1secAsymmetricKey rhs);
 
 /**
  * operator < needed by map class not clear why but it doesn't compile

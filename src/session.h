@@ -284,17 +284,7 @@ class np1secSession {
    * compute the right secret share
    * @param side  either c_my_right = 1 or c_my_left = 1
    */
-  std::string secret_share_on(int32_t side)
-    {
-      HashBlock hb;
-      
-      assert(side == c_my_left || side == c_my_right);
-      unsigned int my_neighbour = (my_index + side) % peers.size();
-      Cryptic::hash(Cryptic::hash_to_string_buff(participants[peers[my_neighbour]].p2p_key) + session_id.get_as_stringbuff(), hb, true);
-
-      return Cryptic::hash_to_string_buff(hb);
-      
-    }
+  std::string secret_share_on(int32_t side);
 
   /**
    * reading the particpant_in_the_room list, it populate the 
@@ -366,7 +356,7 @@ class np1secSession {
     participants[peers[my_index]].authed_to = true;
 
     for(size_t i = 0; i <  peers.size(); i++) {
-      participants[peers[i]].thread_user_as_participant = &participants[peers[my_index]];
+      //participants[peers[i]].thread_user_as_participant = &participants[peers[my_index]];
       //if we copy the session the pointer
       // //to thread user as participant is not valid anymore. This is obviously digusting
       // //we need a respectable copy constructor for np1secSession

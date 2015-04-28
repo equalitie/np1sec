@@ -262,6 +262,7 @@ TEST_F(SessionTest, test_solitary_talk) {
 }
 
 TEST_F(SessionTest, test_join_talk) {
+  return;
   //first we need a username and we use it
   //to sign in the room
   string creator = "creator";
@@ -312,6 +313,76 @@ TEST_F(SessionTest, test_join_talk) {
   mock_server.receive();
 
   //chat_mocker_np1sec_plugin_send(mock_room_name, "Hello, Creator!", &joiner_server_state);
+  //and receive it
+  mock_server.receive();
+
+}
+
+TEST_F(SessionTest, test_three_party_chat) {
+  //first we need a username and we use it
+  //to sign in the room
+  string alice = "alice";
+  np1secAppOps alice_mockops = *mockops;
+  std::pair<ChatMocker*, string> mock_aux_alice_data(&mock_server,alice);
+  alice_mockops.bare_sender_data = static_cast<void*>(&mock_aux_alice_data);
+  np1secUserState* alice_state = new np1secUserState(alice, &alice_mockops);
+  alice_state->init();
+  
+  np1secAppOps bob_mockops = *mockops;
+  string bob = "bob";
+  std::pair<ChatMocker*, string> mock_aux_bob_data(&mock_server,bob);
+  bob_mockops.bare_sender_data = static_cast<void*>(&mock_aux_bob_data);
+  np1secUserState* bob_state = new np1secUserState(bob, &bob_mockops);
+  //They can use the same mock up as they are using the same mock server
+  bob_state->init();
+
+  np1secAppOps charlie_mockops = *mockops;
+  string charlie = "charlie";
+  std::pair<ChatMocker*, string> mock_aux_charlie_data(&mock_server,charlie);
+  charlie_mockops.bare_sender_data = static_cast<void*>(&mock_aux_charlie_data);
+  np1secUserState* charlie_state = new np1secUserState(charlie, &charlie_mockops);
+  charlie_state->init();
+
+  pair<np1secUserState*, ChatMocker*> alice_server_state(alice_state, &mock_server);
+  pair<np1secUserState*, ChatMocker*> bob_server_state(bob_state, &mock_server);
+  pair<np1secUserState*, ChatMocker*> charlie_server_state(charlie_state, &mock_server);
+
+  //everybody signs in
+  //alice
+  mock_server.sign_in(alice, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&alice_server_state));
+  //bob
+  mock_server.sign_in(bob, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&bob_server_state));
+  //charlie
+  mock_server.sign_in(charlie, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&charlie_server_state));
+
+  //alice joins first
+  mock_server.join(mock_room_name, alice_state->user_nick());
+
+  //receive your share and own confirmation
+  mock_server.receive();
+  
+  //then bob joins
+  mock_server.join(mock_room_name, bob_state->user_nick());
+
+  //receive the join requests and start reations
+  mock_server.receive();
+
+  //say something
+  chat_mocker_np1sec_plugin_send(mock_room_name, "Hello, I'm Alice!", &alice_server_state);
+  //and receive it
+  mock_server.receive();
+
+  //then charlie joins
+  mock_server.join(mock_room_name, charlie_state->user_nick());
+
+  //receive the join requests and start reations
+  mock_server.receive();
+
+  //chat_mocker_np1sec_plugin_send(mock_room_name, "Hello, I'm Bob!", &bob_server_state);
+  //and receive it
+  mock_server.receive();
+
+  chat_mocker_np1sec_plugin_send(mock_room_name, "Hello, I'm Charlie!", &charlie_server_state);
   //and receive it
   mock_server.receive();
 

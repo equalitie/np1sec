@@ -146,7 +146,8 @@ void new_session_announce(std::string room_name, std::string sender_nickname, vo
 //Display received messages
 void display_message(std::string room_name, std::string sender_nickname, std::string user_message, void* aux_data)
 {
-  cout << sender_nickname << "@" << room_name << ": " << user_message << endl;
+  
+  cout << reinterpret_cast<std::pair<ChatMocker*, string>*>(aux_data)->second << "'s client: " << sender_nickname << "@" << room_name << ": " << user_message << endl;
   
 }
 

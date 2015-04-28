@@ -22,9 +22,9 @@
  * To be used in std::sort to sort the particpant list
  * in a way that is consistent way between all participants
  */
-bool sort_by_long_term_pub_key(const Participant& lhs, const Participant& rhs)
+bool sort_by_long_term_pub_key(const np1secAsymmetricKey lhs, const np1secAsymmetricKey rhs)
 {
-  return Cryptic::public_key_to_stringbuff(lhs.long_term_pub_key) < Cryptic::public_key_to_stringbuff(rhs.long_term_pub_key);
+  return Cryptic::public_key_to_stringbuff(lhs) < Cryptic::public_key_to_stringbuff(rhs);
 
 }
 
@@ -39,7 +39,7 @@ bool operator<(const Participant& lhs, const Participant& rhs)
 {
   if (lhs.id.nickname < rhs.id.nickname) return true;
 
-  return sort_by_long_term_pub_key(lhs, rhs);
+  return sort_by_long_term_pub_key(lhs.long_term_pub_key, rhs.long_term_pub_key);
   
 }
  
@@ -101,6 +101,6 @@ bool Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKe
  */
 bool Participant::compute_p2p_private(np1secAsymmetricKey thread_user_id_key)
 {
-  thread_user_crypto->triple_ed_dh(ephemeral_key, long_term_pub_key, thread_user_id_key, sort_by_long_term_pub_key(*this, *thread_user_as_participant), &p2p_key);
+  thread_user_crypto->triple_ed_dh(ephemeral_key, long_term_pub_key, thread_user_id_key, sort_by_long_term_pub_key(this->long_term_pub_key, thread_user_id_key), &p2p_key);
                       
 }

@@ -128,11 +128,13 @@ void np1secRoom::receive_handler(np1secMessage received_message)
   //RoomAction resulting_action = c_no_room_action;
   if (user_in_room_state == JOINING) {
     if (received_message.has_sid()) {
-      if (session_universe.find(received_message.session_id.get_as_stringbuff()) != session_universe.end())
-        RoomAction resulting_action = session_universe[received_message.session_id.get_as_stringbuff()].state_handler(received_message);
+      if (session_universe.find(received_message.session_id.get_as_stringbuff()) != session_universe.end()) {
+        auto message_session = session_universe.find(received_message.session_id.get_as_stringbuff());
+        RoomAction resulting_action = message_session->second.state_handler(received_message);
       
-      else {
-        session_universe.insert(pair<string, np1secSession>(received_message.session_id.get_as_stringbuff(), np1secSession(user_state, name, &np1sec_ephemeral_crypto, received_message)));
+      } else {
+        np1secSession* new_session = new np1secSession(user_state, name, &np1sec_ephemeral_crypto, received_message);
+        session_universe.emplace(pair<string, np1secSession>(received_message.session_id.get_as_stringbuff(), *new_session));
       }
     }
     //else just ignore it, it is probably another user's join that we don't
@@ -164,10 +166,11 @@ void np1secRoom::receive_handler(np1secMessage received_message)
   //Now we check if the resulting action resulted in new session
   //we have to activate that session
   if (received_message.has_sid())
-    if (active_session.get_as_stringbuff() != received_message.session_id.get_as_stringbuff())
-      if (session_universe[received_message.session_id.get_as_stringbuff()].get_state() == np1secSession::IN_SESSION)
-      activate_session(received_message.session_id.get());
-  
+    if (active_session.get_as_stringbuff() != received_message.session_id.get_as_stringbuff()) {
+      auto message_session = session_universe.find(received_message.session_id.get_as_stringbuff());
+      if (message_session->second.get_state() == np1secSession::IN_SESSION)
+        activate_session(received_message.session_id.get());
+    }
   //np1secSession *cur_session = retrieve_session(room_name);
   // if (!cur_session) {
   //   //only possible operation should be join and leave 

@@ -190,6 +190,10 @@ np1secSession::np1secSession(np1secUserState *us,
   //update participant info or let it be there if they are consistent with
 
   this->participants.insert(pair<string,Participant> (joiner.participant_id.nickname, Participant(joiner, &cryptic)));
+
+  //we have the ephemeral public key we can compute the p2p key
+  
+  
   populate_peers_from_participants();
   //the participant is added unauthenticated
   //TODO::    throw np1secMessageFormatException(); when message is bad
@@ -390,14 +394,41 @@ bool np1secSession::validate_session_confirmation(np1secMessage confirmation_mes
   
 }
 
-bool np1secSession::group_enc() {
+/**
+ * compute the right secret share
+ * @param side  either c_my_right = 1 or c_my_left = 1
+ */
+std::string np1secSession::secret_share_on(int32_t side)
+{
+  HashBlock hb;
+  
+  assert(side == c_my_left || side == c_my_right);
+  uint32_t positive_side = side + ((side < 0) ? peers.size() : 0);
+  unsigned int my_neighbour = (my_index + positive_side) % peers.size();
 
+  //we can't compute the secret if we don't know the neighbour ephemeral key
+  assert(participants[peers[my_neighbour]].ephemeral_key);
+  if (!participants[peers[my_neighbour]].compute_p2p_private(us->long_term_key_pair.get_key_pair().first))
+    throw np1secCryptoException();
+
+  cout << my_index << ", " << my_neighbour << ": " << Cryptic::hash_to_string_buff(participants[peers[my_neighbour]].p2p_key) + session_id.get_as_stringbuff() << endl;
+  Cryptic::hash(Cryptic::hash_to_string_buff(participants[peers[my_neighbour]].p2p_key) + session_id.get_as_stringbuff(), hb, true);
+  
+  return Cryptic::hash_to_string_buff(hb);
+  
+}
+
+bool np1secSession::group_enc() {
+  
   HashBlock hbr, hbl;
   memcpy(hbr, Cryptic::strbuff_to_hash(secret_share_on(c_my_right)), sizeof(HashBlock));
   memcpy(hbl, Cryptic::strbuff_to_hash(secret_share_on(c_my_left)), sizeof(HashBlock));
 
+  cout << my_index << "on right: " << hbr << endl;
+  cout << my_index << "on left: " << hbl << endl;
+  
   for (unsigned i=0; i < sizeof(HashBlock); i++) {
-      hbr[i] ^= hbl[i];
+    hbr[i] ^= hbl[i];
   }
 
   participants[myself.nickname].set_key_share(hbr);
@@ -421,15 +452,21 @@ bool np1secSession::group_dec() {
   // all_r[(my_index + c_my_right) % peers.size()] = Cryptic::hash_to_string_buff(hbr);
   // memcpy(last_hbr, hbr, sizeof(HashBlock));
 
-  for (unsigned counter = 1; counter < peers.size(); counter++) {
-    size_t current_peer_index = (my_index+counter) % peers.size();
-    for (unsigned i=0; i < sizeof(HashBlock); i++) {
-        hbr[i] ^= participants[peers[current_peer_index]].cur_keyshare[i];
-   }
+  for (uint32_t counter = 0; counter < peers.size(); counter++) {
     //memcpy(all_r[my_right], last_hbr, sizeof(HashBlock));
-    all_r[current_peer_index] = Cryptic::hash_to_string_buff(hbr);
+    size_t current_peer = (my_index + counter) % peers.size();
+    size_t peer_on_the_right = (current_peer + 1) % peers.size();
+    all_r[current_peer] = Cryptic::hash_to_string_buff(hbr);
+    for (unsigned i=0; i < sizeof(HashBlock); i++) {
+        hbr[i] ^= participants[peers[peer_on_the_right]].cur_keyshare[i];
+   }
   } 
-
+  //assert(hbr[0]==reinterpret_cast<const uint8_t&>(all_r[my_index][0]));
+  
+  cout << "all r for " << my_index << ": " << endl;
+  for(uint32_t i = 0; i < peers.size(); i++)
+    cout << all_r[i] << endl;
+  cout << endl;
   std::string to_hash;
   for (std::vector<std::string>::iterator it = all_r.begin(); it != all_r.end(); ++it) {
     to_hash += (*it).c_str();
@@ -483,7 +520,6 @@ bool np1secSession::joiner_send_auth_and_share() {
     }
   }
 
-  UnauthenticatedParticipantList temp_view = session_view();
   np1secMessage outbound(&cryptic);
 
   outbound.create_joiner_auth_msg(session_id,
@@ -653,11 +689,15 @@ np1secSession::StateAndAction np1secSession::auth_and_reshare(np1secMessage rece
   if (participants.find(received_message.sender_nick) == participants.end())
     return StateAndAction(DEAD, RoomAction());
 
-  if (!participants[received_message.sender_nick].be_authenticated(myself.id_to_stringbuffer(), reinterpret_cast<const uint8_t*>(received_message.key_confirmation.c_str()), us->long_term_key_pair.get_key_pair().first))
+  if (!participants[received_message.sender_nick].be_authenticated(myself.id_to_stringbuffer(), reinterpret_cast<const uint8_t*>(received_message.key_confirmation.c_str()), us->long_term_key_pair.get_key_pair().first)) {
+    assert(0);
     return StateAndAction(DEAD, RoomAction());
+  }
   
   //keep participant's z_share if they passes authentication
   participants[received_message.sender_nick].set_key_share(reinterpret_cast<const uint8_t*>(received_message.z_sender.c_str()));
+
+  cout << "received from" <<  received_message.sender_nick << participants[received_message.sender_nick].cur_keyshare << endl;
 
   return send_session_confirmation_if_everybody_is_contributed();
 
