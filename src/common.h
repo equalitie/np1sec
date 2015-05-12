@@ -70,50 +70,6 @@ enum np1secLoadFlag {
   NEW_SECRET_SHARE
 };
 
-//typedef std::vector<uint8_t> SessionID;
-class SessionId
-{
- protected:
-  HashBlock session_id_raw;
-  bool is_set;
-
- public:
-  SessionId(const HashBlock sid)
-    :is_set(true)
-    {
-      memcpy(session_id_raw, sid, sizeof(HashBlock));
-    }
-
-  SessionId()
-   :is_set(false) {
-  }
-
-  // copy constructor: do we need one?
-  /* SessionId(SessionId& lhs) { */
-  /*   std::memcpy(session_id_raw, lhs.session_id_raw, sizeof(HashBlock)); */
-  /*   is_set = lhs.is_set; */
-  /* } */
-
-  void set(const HashBlock sid)
-  {
-    //only one time is possible
-    //sanity check: You can only compute session id once
-    assert(!is_set);
-    memcpy(session_id_raw, sid, sizeof(HashBlock));
-    is_set = true;
-    
-  }
-
-  uint8_t* get() {
-    if (is_set) return session_id_raw; else return nullptr;
-  }
-
-  std::string get_as_stringbuff() {
-    return (is_set) ? std::string(reinterpret_cast<const char*>(session_id_raw), sizeof(HashBlock)) : std::string();
-  }
-  
-};
-
 const std::string c_np1sec_protocol_name(":o3np1sec:");
 const DTShort c_np1sec_protocol_version = 0x0001;
 const std::string c_np1sec_delim(":o3"); //because http://en.wikipedia.org/wiki/Man%27s_best_friend_(phrase)

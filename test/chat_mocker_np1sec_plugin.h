@@ -27,7 +27,7 @@ void chat_mocker_np1sec_plugin_join(std::string room_name,
 // Just a wrapper to call the mocker send function
 void send_bare(std::string room_name, std::string message, void* data);
 
-void new_session_announce(std::string room_name, std::string sender_nickname, void* aux_data);
+void new_session_announce(std::string room_name, std::vector<std::string> plist, void* aux_data);
 
 void display_message(std::string room_name, std::string sender_nickname, std::string user_message, void* aux_data);
 

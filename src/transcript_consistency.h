@@ -20,7 +20,6 @@
 //this header files contains the structure needed for transcript consistency
 //check it moved out of session.h to make the code easier to read and follow
 
-
 class np1secUserState;
 class np1secSession;
 
@@ -100,5 +99,11 @@ static void cb_ack_not_received(void *arg);
  * we haven't received our own message
  */
 static void cb_ack_not_sent(void* arg);
+
+/**
+ * when times out, the leaving user check 
+ * all user's consistency before leaving
+ */
+static void cb_leave(void *arg);
 
 #endif

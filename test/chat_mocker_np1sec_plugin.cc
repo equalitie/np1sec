@@ -81,14 +81,26 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
       //user_server_state->first->accept_new_user(room_name, joining_nick);
       //ignore
     }
-  } else if (np1sec_message.find("@<o>@LEAVE@<o>@") == 0) {
-    string leaving_nick = np1sec_message.substr(strlen("@<o>@LEAVE@<o>@"));
+  } else if (np1sec_message.find("@<o>@INTEND2LEAVE@<o>@") == 0) {
+    string leaving_nick = np1sec_message.substr(strlen("@<o>@INTEND2LEAVE@<o>@"));
     if (leaving_nick==user_server_state->first->user_nick()) {
       user_server_state->first->leave_room(room_name);
     } else {
-      user_server_state->first->shrink_on_leave(room_name, leaving_nick);
-      //kick out in case haven't left cleanly.
+      //do nothing. //in real life this won't come as a message
+      //we are using the room both for IM and internal  messaging
+      //apparatus
     }
+  } else if (np1sec_message.find("@<o>@LEAVE@<o>@") == 0) {
+    string leaving_nick = np1sec_message.substr(strlen("@<o>@LEAVE@<o>@"));
+    if (leaving_nick!=user_server_state->first->user_nick()) {
+      //kick out in case haven't left cleanly.
+      user_server_state->first->shrink(room_name, leaving_nick);
+      
+    }else {
+      //that shouldn't happen, if I left I shouldn't receive messages
+      assert(0);
+    }
+    
   } else if (np1sec_message.find("@<o>@SEND@<o>@") == 0) {
     string message_with_id = np1sec_message.substr(strlen("@<o>@SEND@<o>@"));
     size_t sender_pos = message_with_id.find("@<o>@");
@@ -138,11 +150,25 @@ void send_bare(std::string room_name, std::string message, void* data)
 }
 
 // informing join and leave
-void new_session_announce(std::string room_name, std::string sender_nickname, void* aux_data)
+void new_session_announce(std::string room_name, std::vector<std::string> plist, void* aux_data)
 {
-  cout << "new session established" << endl;
+  std::pair<ChatMocker*, string>* server_and_nick = reinterpret_cast<std::pair<ChatMocker*, string>*>(aux_data);
+  if (std::find(plist.begin(), plist.end(), server_and_nick->second) == plist.end()) {//we are leaving the room
+    cout << server_and_nick->second << "'s client: " << server_and_nick->second << " left room" << endl;
+    server_and_nick->first->leave(room_name, server_and_nick->second);
+
+  } else {
+    cout << reinterpret_cast<std::pair<ChatMocker*, string>*>(aux_data)->second << "'s client: " << "new session established: ";
+    for(uint32_t i = 0; i < plist.size();  i++) {
+      std::cout << plist[i] << " ";
+    }
+
+    std::cout << std::endl;
+
+  }
   
 }
+
 //Display received messages
 void display_message(std::string room_name, std::string sender_nickname, std::string user_message, void* aux_data)
 {
@@ -152,7 +178,6 @@ void display_message(std::string room_name, std::string sender_nickname, std::st
 }
 
 //ignore timers all together
-
 void* set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval)
 {
   return nullptr; //do nothing

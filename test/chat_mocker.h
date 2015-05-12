@@ -93,6 +93,10 @@ class MockRoom {
       return participant_nicks;
   }
 
+  void intend_to_leave(std::string nick) {
+    broadcast("@<o>@INTEND2LEAVE@<o>@" + nick);
+  }
+
   void leave(std::string nick) {
     _participant_list.erase(nick);
     broadcast("@<o>@LEAVE@<o>@" + nick);
@@ -105,7 +109,7 @@ class MockRoom {
                "@<o>@"+sender_nick+"@<o>@"+message);
     }
 
-    void receive() {
+  void receive() {
     while (!message_queue.empty())
       {
         cout << message_queue.front() << endl;
@@ -165,6 +169,19 @@ class ChatMocker {
     return rooms[room].participant_list();
   }
 
+  /**
+   * signal intention to leave so the last transcript
+   * consistency check can be executed.
+   */
+  void intend_to_leave(std::string room, std::string nick)
+  {
+    //In normal situation you need to call a local function
+    //for the similicity in the mock version, we make this through
+    //sending a message to the room and other participants just
+    //ignore it
+    rooms[room].intend_to_leave(nick);
+    
+  }
   /**
    * drop the participant from the room
    */

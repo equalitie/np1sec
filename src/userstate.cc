@@ -93,6 +93,40 @@ bool np1secUserState::join_room(std::string room_name,
 }
 
 /**
+ * The client informs the user state about leaving the room by calling this
+ * function.
+ * 
+ * @param room_name the chat room name to leave from
+ */
+void np1secUserState::leave_room(std::string room_name) {
+  //if there is no room, it was a mistake to give us the message
+  assert(chatrooms.find(room_name) != chatrooms.end());
+
+  chatrooms[room_name].leave();
+
+}
+
+/**
+ * the client need to call this function when another user leave the chatroom.
+ *
+ * @param room_name the chat room name
+ * @param leaving_user_id is the id that the leaving user is using in the room.
+ *
+ * @return true in case initiating the leave was successful. This does not
+ *         mean that the successful leave false if process fails
+ */
+bool np1secUserState::shrink(std::string room_name, std::string leaving_user_id)
+{
+  //if there is no room, it was a mistake to give us the message
+  assert(chatrooms.find(room_name) != chatrooms.end());
+
+  //we really should start shrinking here. the other
+  //session will take care of consistency
+  chatrooms[room_name].shrink(leaving_user_id);
+  
+}
+
+/**
    This is the main message handler of the whole protocol:
 
    The most important thing that user state message handler

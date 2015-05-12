@@ -243,8 +243,6 @@ void np1secMessage::unwrap_generic_message(std::string b64ed_message) {
 
   message_type = (np1secMessageType)(*reinterpret_cast<DTByte*>(&message[c_message_type_offset]));
 
-  std::cout << message_type << std::endl;
-
   size_t current_offset = c_message_type_offset + sizeof(DTByte);
   
   switch (message_type)
@@ -356,7 +354,6 @@ void np1secMessage::build_authentication_table()
 {
   std::string remaining_confirmations = key_confirmation;
   while(remaining_confirmations.size()) {
-    std::cout << remaining_confirmations.size() << ", " << remaining_confirmations << std::endl;
     if (remaining_confirmations.size() < sizeof(DTLength) + sizeof(DTHash))
       throw np1secMessageFormatException();
 
@@ -403,7 +400,7 @@ std::string np1secMessage::create_in_session_msg(SessionId session_id,
 
   message_type = IN_SESSION_MESSAGE;
   this->session_id.set(session_id.get());
-  std::string base_message, phased_message, signature;
+  std::string base_message;
   //first we cook the meta part
 
   char length[8];
@@ -488,10 +485,12 @@ void np1secMessage::unwrap_in_session_message(std::string u_message) {
   //now we recover the TVs
   current_offset = move_offset_or_throw_up(signed_encrypted_part, current_offset, sizeof(DTHash));
   std::string sub_messages_remainder = signed_encrypted_part.substr(current_offset);
+  //if the message has no TVs then it is just an ACK
+  np1secMessageSubType current_sub_message_type = JUST_ACK;
   while(sub_messages_remainder.size()) {
     //message sub type hash: DTLength
-    current_offset = move_offset_or_throw_up(sub_messages_remainder, 0, 0, sizeof(DTShort));
-    DTShort current_sub_message_type = string_to_short(&sub_messages_remainder[current_offset]);
+    current_offset = move_offset_or_throw_up(sub_messages_remainder, 0, 0, sizeof(DTShort)); //just checking to have valid length
+    np1secMessageSubType current_sub_message_type = static_cast<np1secMessageSubType>(string_to_short(&sub_messages_remainder[current_offset]));
     current_offset = move_offset_or_throw_up(sub_messages_remainder, current_offset, sizeof(DTShort));
 
     switch(current_sub_message_type)

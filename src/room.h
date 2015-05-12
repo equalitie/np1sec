@@ -68,7 +68,7 @@ class np1secRoom {
   //session has session id.
   enum UserInRoomState {
     CURRENT_USER,
-    JOINING
+    JOINING //, LEAVING_USER //TODO: sit and think if we need this?
   };
 
   UserInRoomState user_in_room_state;
@@ -165,6 +165,19 @@ class np1secRoom {
    *  room
    */
   bool send_user_message(std::string plain_message);
+
+  /**
+   * Just sends a message for closing the transcript consistency
+   * this also initiate the new session creation for other users
+   */
+  void leave();
+
+  /**
+   * Just sends a message for closing the transcript consistency
+   * this also initiate the new session creation for other users
+   */
+  void shrink(std::string leaving_user_nick);
+
 
 };    
 

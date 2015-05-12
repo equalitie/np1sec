@@ -198,7 +198,9 @@ class ParticipantInSessionProperties {
  */
 class Participant {
  protected:
-  Cryptic* thread_user_crypto; //TODO: instead we should make a copy
+  //Cryptic* thread_user_crypto; //TODO: instead we should make a copy
+  //TODO: this is actually shouldn't be stored by this user, the private key
+  //just to be provided when participant wants to compute the p2p key
   
  public:
   ParticipantId id;
@@ -214,6 +216,8 @@ class Participant {
   bool authenticated;
   bool authed_to;
   bool key_share_contributed;
+  bool leaving = false;
+  
   uint32_t index; //keep the place of the partcipant in sorted peers array
    /* this is the i in U_i and we have
                                 participants[peers[i]].index == i
@@ -237,7 +241,7 @@ class Participant {
     long_term_pub_key(rhs.long_term_pub_key),
     authenticated(rhs.authenticated),
     authed_to(rhs.authed_to),
-    thread_user_crypto(rhs.thread_user_crypto),
+    //thread_user_crypto(rhs.thread_user_crypto),
     //thread_user_as_participant(rhs.thread_user_as_participant),
     send_ack_timer(nullptr),
     key_share_contributed(rhs.key_share_contributed),
@@ -262,10 +266,10 @@ class Participant {
   /**
    * running thread user crypto access function
    */
-  void set_thread_user_crypto(Cryptic* cryptic)
-  {
-    thread_user_crypto = cryptic;
-  }
+  /* void set_thread_user_crypto(Cryptic* cryptic) */
+  /* { */
+  /*   thread_user_crypto = cryptic; */
+  /* } */
     
   /**
    * crypto material access functions
@@ -298,7 +302,7 @@ class Participant {
    *
    * @return true on success
    */
-  bool compute_p2p_private(np1secAsymmetricKey thread_user_id_key);
+  bool compute_p2p_private(np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
 
   /**
    * Generate the approperiate authentication token to send to the
@@ -308,7 +312,7 @@ class Participant {
    * 
    * @return true if peer's authenticity could be established
    */
-  bool authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key);
+  bool authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
 
   /**
    * Generate the approperiate authentication token check its equality
@@ -318,7 +322,7 @@ class Participant {
    * 
    * @return true if peer's authenticity could be established
    */
-  bool be_authenticated(std::string authenicator_id, const HashBlock auth_token, np1secAsymmetricKey thread_user_id_key);
+  bool be_authenticated(std::string authenicator_id, const HashBlock auth_token, np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
 
   /**
    * default constructor
@@ -340,7 +344,7 @@ class Participant {
     authed_to(false),
     key_share_contributed(false),
     long_term_pub_key(Cryptic::reconstruct_public_key_sexp(Cryptic::hash_to_string_buff(unauth_participant.participant_id.fingerprint))),
-    thread_user_crypto(thread_crypto),
+    //thread_user_crypto(thread_crypto),
     send_ack_timer(nullptr)
     {
       set_ephemeral_key(unauth_participant.ephemeral_pub_key);
@@ -355,6 +359,8 @@ class Participant {
 
     }
 };
+
+typedef std::map<std::string,Participant> ParticipantMap;
 
 /**
  * To be used in std::sort to sort the particpant list
