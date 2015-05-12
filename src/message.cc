@@ -244,6 +244,7 @@ void np1secMessage::unwrap_generic_message(std::string b64ed_message) {
   message_type = (np1secMessageType)(*reinterpret_cast<DTByte*>(&message[c_message_type_offset]));
 
   size_t current_offset = c_message_type_offset + sizeof(DTByte);
+  std::cout << message_type << std::endl;
   
   switch (message_type)
     {
@@ -283,6 +284,7 @@ void np1secMessage::unwrap_generic_message(std::string b64ed_message) {
         //verify the signature ourselves.
         signed_message = message.substr(0, message.size() - c_signature_length);
         signature = message.substr(signed_message.size());
+
 
         //from now on we deal with the messages separately
         switch (message_type)

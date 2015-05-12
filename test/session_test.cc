@@ -145,7 +145,7 @@ TEST_F(SessionTest, test_receive) {
 TEST_F(SessionTest, test_init) {
   //first we need a username and we use it
   //to sign in the room
-  return;
+  //return;
   string username = "sole-tester";
   std::pair<ChatMocker*, string> mock_aux_data(&mock_server,username);
   mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
@@ -185,7 +185,7 @@ TEST_F(SessionTest, test_init) {
 TEST_F(SessionTest, test_second_join) {
   //first we need a username and we use it
   //to sign in the room
-  return;
+  //return;
   string creator = "creator";
   np1secAppOps creator_mockops = *mockops;
   std::pair<ChatMocker*, string> mock_aux_creator_data(&mock_server,creator);
@@ -233,7 +233,7 @@ TEST_F(SessionTest, test_second_join) {
 TEST_F(SessionTest, test_solitary_talk) {
   //first we need a username and we use it
   //to sign in the room
-  return;
+  //return;
   string username = "sole-tester";
   std::pair<ChatMocker*, string> mock_aux_data(&mock_server,username);
   mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
@@ -262,7 +262,7 @@ TEST_F(SessionTest, test_solitary_talk) {
 }
 
 TEST_F(SessionTest, test_join_talk) {
-  return;
+  //return;
   //first we need a username and we use it
   //to sign in the room
   string creator = "creator";
@@ -319,7 +319,7 @@ TEST_F(SessionTest, test_join_talk) {
 }
 
 TEST_F(SessionTest, test_three_party_chat) {
-  return;
+  //return;
   //first we need a username and we use it
   //to sign in the room
   string alice = "alice";
@@ -381,7 +381,6 @@ TEST_F(SessionTest, test_three_party_chat) {
   //receive the join requests and start reations
   mock_server.receive();
 
-
   chat_mocker_np1sec_plugin_send(mock_room_name, "Hello, I'm Charlie!", &charlie_server_state);
   //and receive it
   mock_server.receive();
@@ -391,7 +390,7 @@ TEST_F(SessionTest, test_three_party_chat) {
 TEST_F(SessionTest, test_solitary_leave) {
   //first we need a username and we use it
   //to sign in the room
-  return;
+  //return;
   string username = "sole-tester";
   std::pair<ChatMocker*, string> mock_aux_data(&mock_server, username);
   mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
@@ -418,7 +417,7 @@ TEST_F(SessionTest, test_solitary_leave) {
 TEST_F(SessionTest, test_leave_from_2p_conv) {
   //first we need a username and we use it
   //to sign in the room
-  return;
+  //return;
   string creator = "creator";
   np1secAppOps creator_mockops = *mockops;
   std::pair<ChatMocker*, string> mock_aux_creator_data(&mock_server,creator);

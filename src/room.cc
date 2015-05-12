@@ -134,7 +134,7 @@ void np1secRoom::receive_handler(np1secMessage received_message)
       
       } else {
         //we are only interested in PARTICIANT_INFO
-        if (np1secMessage::PARTICIPANTS_INFO) {
+        if (received_message.message_type == np1secMessage::PARTICIPANTS_INFO) {
           np1secSession* new_session = new np1secSession(user_state, name, &np1sec_ephemeral_crypto, received_message);
           if (new_session->my_state != np1secSession::DEAD)
             session_universe.emplace(pair<string, np1secSession>(received_message.session_id.get_as_stringbuff(), *new_session));

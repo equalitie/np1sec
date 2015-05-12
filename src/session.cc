@@ -227,7 +227,7 @@ np1secSession::np1secSession(np1secUserState *us,
   } else if ((join_leave_message.message_type == np1secMessage::IN_SESSION_MESSAGE) &&
              (join_leave_message.message_sub_type == np1secMessage::LEAVE_MESSAGE)) {
     string leaver_id = join_leave_message.sender_nick;
-    assert(participants.find(leaver_id) != current_authed_participants.end());
+    assert(participants.find(leaver_id) != participants.end());
     participants.erase(leaver_id);
 
     populate_peers_from_participants();
