@@ -33,6 +33,10 @@ void Logger::config(bool log_stdout, bool log_to_file, std::string fname)
   if (log_to_file) {
     log_filename = fname;
     log_file.open(log_filename, std::ios::out | std::ios::app);
+  } else {
+    if (log_file.is_open()) {
+      log_file.close();
+    }
   }
 }
 
