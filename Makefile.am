@@ -19,7 +19,8 @@ libnp1sec_la_SOURCES = \
 	src/participant.cc \
 	src/session.cc \
 	src/room.cc \
-	src/userstate.cc
+	src/userstate.cc \
+  src/logger.cc
 
 
 libnp1sec_la_LIBADD = \

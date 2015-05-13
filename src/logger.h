@@ -48,6 +48,9 @@ public:
   // Destructor closes an open log file
   ~Logger();
 
+  // Get the current log file name
+  std::string current_log_file() { return log_filename; }
+
   void config(bool log_stdout, bool log_file, std::string fname);
   void set_threshold(log_level_t level);
   void log(log_level_t level, std::string msg);
