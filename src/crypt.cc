@@ -79,6 +79,7 @@ err:
   std::fprintf(stderr, "Key failure: %s/%s\n", gcry_strsource(err), gcry_strerror(err));
   throw np1secCryptoException();
   return false;
+
 }
 
 bool Cryptic::init() {
@@ -287,7 +288,6 @@ bool Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey p
   //                       ephemeral_key);
 
   // //gcry_sexp_dump(triple_dh_sexp[peer_is_first ? 0 : 1]);
-
 
   // err = gcry_sexp_build( &s_data, NULL, "%m", scaler_one );
   // if ( err ) {

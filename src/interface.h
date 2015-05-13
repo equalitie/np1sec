@@ -84,16 +84,17 @@ struct np1secAppOps {
    * join a room or a coversation left the room.
    */
   void (*join)(std::string room_name,
-                std::string joiner_nickname,
+               //std::string joiner_nickname,
+               std::vector<std::string> plist,
                void* aux_data);
 
   /** 
    * inform the app that someone (including the user themself) left  
-   a room or a coversation, for ui purpose
+   a room or a coversation, for other p ui purpose
    */
    void (*leave)(std::string room_name,
-         std::string joiner_nickname,
-         void* aux_data);
+                 std::vector<std::string> plist,
+                 void* aux_data);
 
   /**
    * Asks the app to display a message in the room

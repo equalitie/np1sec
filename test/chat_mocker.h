@@ -37,6 +37,7 @@ class MockParticipant {
   void (*receive_handler)(std::string room_name,
                           std::string message,
                           void* aux_data);
+  bool scheduled_to_leave = false;
   
   //void (*join_handler)(std::string room_name,
   //void* aux_data); //we don't need the join handler
@@ -93,8 +94,12 @@ class MockRoom {
       return participant_nicks;
   }
 
+  void intend_to_leave(std::string nick) {
+    broadcast("@<o>@INTEND2LEAVE@<o>@" + nick);
+  }
+
   void leave(std::string nick) {
-    _participant_list.erase(nick);
+    _participant_list[nick].scheduled_to_leave = true;
     broadcast("@<o>@LEAVE@<o>@" + nick);
   }
 
@@ -105,15 +110,26 @@ class MockRoom {
                "@<o>@"+sender_nick+"@<o>@"+message);
     }
 
-    void receive() {
+  void receive() {
+    std::string leaving_nick;
     while (!message_queue.empty())
       {
         cout << message_queue.front() << endl;
         for (std::map<std::string, MockParticipant>::iterator
                cur_participant = _participant_list.begin();
-             cur_participant != _participant_list.end(); cur_participant++)
-          (*(cur_participant->second).receive_handler)(name, message_queue.front(),
+             cur_participant != _participant_list.end() && !_participant_list.empty(); cur_participant++) {
+          if (cur_participant->second.scheduled_to_leave)
+            leaving_nick = cur_participant->second.nick;
+          else
+            (*(cur_participant->second).receive_handler)(name, message_queue.front(),
                                                        (cur_participant->second).aux_data);
+        }
+        
+        if (!leaving_nick.empty()) {//one participant can leave per message
+          _participant_list.erase(leaving_nick);
+          leaving_nick.clear();
+        }
+        
         message_queue.pop();
       }
   }
@@ -165,6 +181,19 @@ class ChatMocker {
     return rooms[room].participant_list();
   }
 
+  /**
+   * signal intention to leave so the last transcript
+   * consistency check can be executed.
+   */
+  void intend_to_leave(std::string room, std::string nick)
+  {
+    //In normal situation you need to call a local function
+    //for the similicity in the mock version, we make this through
+    //sending a message to the room and other participants just
+    //ignore it
+    rooms[room].intend_to_leave(nick);
+    
+  }
   /**
    * drop the participant from the room
    */

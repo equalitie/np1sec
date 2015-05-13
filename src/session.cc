@@ -67,6 +67,18 @@ void cb_ack_not_sent(void* arg) {
 
 }
 
+/**
+ * when times out, the leaving user check 
+ * all user's consistency before leaving
+ */
+void cb_leave(void *arg) {
+  np1secSession* session = (static_cast<np1secSession*>(arg));
+
+  session->check_leave_transcript_consistency();
+  session->my_state = np1secSession::DEAD;
+
+}
+
 // TODO: Who is calling this? Answer: compute_session_id
 // TODO: This should move to crypto really and called hash with
 // overloaded parameters
@@ -168,52 +180,9 @@ np1secSession::np1secSession(np1secUserState *us, std::string room_name,
        - compute z_sender (self)
        - set new session status to REPLIED_TO_NEW_JOIN
        - send 
- */
-np1secSession::np1secSession(np1secUserState *us,
-                             std::string room_name,
-                             Cryptic* current_ephemeral_crypto,
-                             np1secMessage join_message,
-                             ParticipantMap current_authed_participants)
-  :us(us), room_name(room_name),
-   cryptic(*current_ephemeral_crypto),
-   myself(*us->myself),
-   participants(current_authed_participants),
-   heartbeat_timer(nullptr)
-{
-   //TODO: not sure the session needs to know the room name: It needs because message class
-          //need  to know to send the message to :-/
-          //send should be the function of np1secRoom maybe :-?
-  engrave_transition_graph();
-  
-  UnauthenticatedParticipant  joiner(join_message.joiner_info);
-  //TODO:: obviously we need an access function to make sure there is joiner info
-  //update participant info or let it be there if they are consistent with
 
-  this->participants.insert(pair<string,Participant> (joiner.participant_id.nickname, Participant(joiner, &cryptic)));
-
-  //we have the ephemeral public key we can compute the p2p key
-  
-  
-  populate_peers_from_participants();
-  //the participant is added unauthenticated
-  //TODO::    throw np1secMessageFormatException(); when message is bad
-
-  //We can't authenticate here, join message doesn't have kc
-  // if (!participants[received_message.sender_index].authenticate(my_id, received_message.kc)) {
-  //   return;
-  // }
-
-  compute_session_id();
-
-  if (session_id.get()) {
-    send_view_auth_and_share(joiner.participant_id.nickname);
-    my_state = REPLIED_TO_NEW_JOIN;
-  }
-  
-}
-
-/**
-   Constructor being called by current participant receiving leave request
+  Or
+  Leave Constructor being called by current participant receiving leave request
    
      - in new session constructor these will happen
        - drop leaver
@@ -222,33 +191,57 @@ np1secSession::np1secSession(np1secUserState *us,
        - set new session status to RE_SHARED
 
 */
-np1secSession::np1secSession(np1secUserState* us,
+np1secSession::np1secSession(np1secUserState *us,
                              std::string room_name,
                              Cryptic* current_ephemeral_crypto,
-                             string leaver_id, ParticipantMap current_authed_participants)
+                             np1secMessage join_leave_message,
+                             ParticipantMap current_authed_participants)
   :us(us), room_name(room_name),
    cryptic(*current_ephemeral_crypto),
-   myself(*us->myself), 
-  heartbeat_timer(nullptr)
+   myself(*us->myself),
+   participants(current_authed_participants),
+   heartbeat_timer(nullptr)
 {
+   //TODO: not sure the session needs to know the room name: It needs because message class
+  //need  to know to send the message to :-/
+  //send should be the function of np1secRoom maybe :-?
+  
   engrave_transition_graph();
 
-  participants = current_authed_participants;
-  current_authed_participants.erase(leaver_id);
+  if (join_leave_message.message_type == np1secMessage::JOIN_REQUEST) {
+    UnauthenticatedParticipant  joiner(join_leave_message.joiner_info);
+    //TODO:: obviously we need an access function to make sure there is joiner info
+    //update participant info or let it be there if they are consistent with
 
-  auto it = std::find(peers.begin(), peers.end(), leaver_id);
-  if(it != peers.end())
-    peers.erase(it);
+    this->participants.insert(pair<string,Participant> (joiner.participant_id.nickname, Participant(joiner, &cryptic)));
 
-  keep_peers_in_order_spot_myself(); 
+    //we have the ephemeral public key we can compute the p2p key
+    populate_peers_from_participants();
 
-  /*if (!participants[participant_id].set_ephemeral_key(it->ephemeral_key))
-    throw np1secMessage::MessageFormatException;*/
+    compute_session_id();
 
-  compute_session_id();
-  if (send_auth_and_share_message()) //TODO a reshare message
-    my_state = RE_SHARED;
+    if (session_id.get()) {
+      send_view_auth_and_share(joiner.participant_id.nickname);
+      my_state = REPLIED_TO_NEW_JOIN;
+    }
+  } else if ((join_leave_message.message_type == np1secMessage::IN_SESSION_MESSAGE) &&
+             (join_leave_message.message_sub_type == np1secMessage::LEAVE_MESSAGE)) {
+    string leaver_id = join_leave_message.sender_nick;
+    assert(participants.find(leaver_id) != participants.end());
+    participants.erase(leaver_id);
 
+    populate_peers_from_participants();
+
+    /*if (!participants[participant_id].set_ephemeral_key(it->ephemeral_key))
+      throw np1secMessage::MessageFormatException;*/
+
+    compute_session_id();
+    if (send_new_share_message()) //TODO a reshare message
+      my_state = RE_SHARED;
+  }
+  else {
+    assert(0); //we shouldn't have been here
+  }
 }
 
 /**
@@ -263,7 +256,8 @@ np1secSession::np1secSession(np1secUserState* us,
 */
 np1secSession::np1secSession(np1secUserState* us, std::string room_name,
                              Cryptic* current_ephemeral_crypto,
-                             ParticipantMap current_authed_participants)
+                             const ParticipantMap& current_authed_participants,
+                             bool broadcast_participant_info)
   :us(us), room_name(room_name),
    cryptic(*current_ephemeral_crypto),
    myself(*us->myself),
@@ -276,8 +270,15 @@ np1secSession::np1secSession(np1secUserState* us, std::string room_name,
 
   populate_peers_from_participants();
   compute_session_id();
-  
-  if (send_view_auth_and_share())
+
+  bool broadcast_result;
+  if (broadcast_participant_info) {
+    broadcast_result = send_view_auth_and_share();
+  } else {
+    broadcast_result = send_new_share_message();
+  }
+
+  if (broadcast_result)
     my_state = RE_SHARED;
 
 }
@@ -303,37 +304,27 @@ np1secSession np1secSession::operator-(np1secSession a) {
   return new_session;
 }
 
-/**
+np1secSession np1secSession::operator-(std::string leaver_nick) {
+  assert(participants.find(leaver_nick) != participants.end());
+  
+  ParticipantMap new_session_plist = participants;
+  new_session_plist.erase(leaver_nick);
+  np1secSession new_session(us, room_name, &cryptic, new_session_plist, false);
+
+  return new_session;
+  
+}
+
+ /**
  * it should be invoked only once to compute the session id
  * if one need session id then they need a new session
  *
  * @return return true upon successful computation
  */
-//TODO::move this to SessionId Class
-bool np1secSession::compute_session_id() {
-  std::string cat_string = "";
-
-  if (peers.size() == 0) //nothing to compute
-    return false;
-
-  /**
-   * Generate Session ID
-   */
-
-  //session_id = Hash of (U1,ehpmeral1, U2);
-  for (std::vector<std::string>::iterator it = peers.begin(); it != peers.end(); ++it) {
-    Participant& p = participants[*it];
-    UnauthenticatedParticipant uap(p.id, cryptic.hash_to_string_buff(p.raw_ephemeral_key), p.authenticated);
-    cat_string += uap.unauthed_participant_to_stringbuffer();
-    cat_string.erase(cat_string.size()-1); //dropping authentication info
-    // cat_string += ;
-  }
-
-  HashStdBlock sid = Cryptic::hash(cat_string);
-  //compute_hash(sid, cat_string); //why just not having  simple function which
-  //compute the hash of an string
+bool np1secSession::compute_session_id()
+{
   assert(!session_id.get()); //if session id isn't set we have to set it
-  session_id.set(reinterpret_cast<const uint8_t*>(sid.data()));
+  session_id.compute(participants);
   return true;
 
 }
@@ -376,8 +367,9 @@ void np1secSession::account_for_session_and_key_consistency()
   HashBlock key_sid_hash;
   Cryptic::hash(to_be_hashed, key_sid_hash);
 
+  last_received_message_id = 0; //key confirmation is the first message
   add_message_to_transcript(Cryptic::hash_to_string_buff(key_sid_hash),
-                            0);
+                            last_received_message_id);
 
 }
 
@@ -408,10 +400,9 @@ std::string np1secSession::secret_share_on(int32_t side)
 
   //we can't compute the secret if we don't know the neighbour ephemeral key
   assert(participants[peers[my_neighbour]].ephemeral_key);
-  if (!participants[peers[my_neighbour]].compute_p2p_private(us->long_term_key_pair.get_key_pair().first))
+  if (!participants[peers[my_neighbour]].compute_p2p_private(us->long_term_key_pair.get_key_pair().first, &cryptic))
     throw np1secCryptoException();
 
-  cout << my_index << ", " << my_neighbour << ": " << Cryptic::hash_to_string_buff(participants[peers[my_neighbour]].p2p_key) + session_id.get_as_stringbuff() << endl;
   Cryptic::hash(Cryptic::hash_to_string_buff(participants[peers[my_neighbour]].p2p_key) + session_id.get_as_stringbuff(), hb, true);
   
   return Cryptic::hash_to_string_buff(hb);
@@ -419,14 +410,10 @@ std::string np1secSession::secret_share_on(int32_t side)
 }
 
 bool np1secSession::group_enc() {
-  
   HashBlock hbr, hbl;
   memcpy(hbr, Cryptic::strbuff_to_hash(secret_share_on(c_my_right)), sizeof(HashBlock));
   memcpy(hbl, Cryptic::strbuff_to_hash(secret_share_on(c_my_left)), sizeof(HashBlock));
 
-  cout << my_index << "on right: " << hbr << endl;
-  cout << my_index << "on left: " << hbl << endl;
-  
   for (unsigned i=0; i < sizeof(HashBlock); i++) {
     hbr[i] ^= hbl[i];
   }
@@ -445,12 +432,6 @@ bool np1secSession::group_dec() {
   memcpy(hbr, Cryptic::strbuff_to_hash(secret_share_on(c_my_right)), sizeof(HashBlock));
   size_t my_right = (my_index+c_my_right) % peers.size();
   all_r[my_index] = Cryptic::hash_to_string_buff(hbr);
-  // for (unsigned i=0; i < sizeof(HashBlock); i++) {
-  //   hbr[i] ^= participants[peers[my_right]].cur_keyshare[i];
-  // }
-  // //memcpy(all_r[my_right], hbr, sizeof(HashBlock));
-  // all_r[(my_index + c_my_right) % peers.size()] = Cryptic::hash_to_string_buff(hbr);
-  // memcpy(last_hbr, hbr, sizeof(HashBlock));
 
   for (uint32_t counter = 0; counter < peers.size(); counter++) {
     //memcpy(all_r[my_right], last_hbr, sizeof(HashBlock));
@@ -463,10 +444,6 @@ bool np1secSession::group_dec() {
   } 
   //assert(hbr[0]==reinterpret_cast<const uint8_t&>(all_r[my_index][0]));
   
-  cout << "all r for " << my_index << ": " << endl;
-  for(uint32_t i = 0; i < peers.size(); i++)
-    cout << all_r[i] << endl;
-  cout << endl;
   std::string to_hash;
   for (std::vector<std::string>::iterator it = all_r.begin(); it != all_r.end(); ++it) {
     to_hash += (*it).c_str();
@@ -514,7 +491,7 @@ bool np1secSession::joiner_send_auth_and_share() {
 
   for(uint32_t i = 0; i < peers.size(); i++) {
     if (!participants[peers[i]].authed_to) {
-      participants[peers[i]].authenticate_to(cur_auth_token, us->long_term_key_pair.get_key_pair().first);
+      participants[peers[i]].authenticate_to(cur_auth_token, us->long_term_key_pair.get_key_pair().first, &cryptic);
       auth_batch.append(reinterpret_cast<char*>(&i), sizeof(uint32_t));
       auth_batch.append(reinterpret_cast<char*>(cur_auth_token), sizeof(HashBlock));
     }
@@ -532,16 +509,16 @@ bool np1secSession::joiner_send_auth_and_share() {
 
 /**
  *  Current participant sends this to the room
- *  to re share? 
+ *  to re share?  (when someone leave or in
+ *  session forward secrecy)
  *  TODO: when do actually we need to call this
  *  When a partcipant leave
  */
-bool np1secSession::send_auth_and_share_message() {
+bool np1secSession::send_new_share_message() {
   assert(session_id.get());
   if (!group_enc()) //compute my share for group key
     return false;
 
-  HashBlock cur_auth_token;
   np1secMessage outboundmessage(&cryptic);
 
   outboundmessage.create_group_share_msg(session_id,
@@ -567,7 +544,7 @@ bool np1secSession::send_view_auth_and_share(string joiner_id) {
   HashBlock cur_auth_token;
   if (!joiner_id.empty())
     if (!participants[joiner_id].authed_to)
-      participants[joiner_id].authenticate_to(cur_auth_token, us->long_term_key_pair.get_key_pair().first);
+      participants[joiner_id].authenticate_to(cur_auth_token, us->long_term_key_pair.get_key_pair().first, &cryptic);
 
   UnauthenticatedParticipantList session_view_list = session_view();
   np1secMessage outboundmessage(&cryptic);
@@ -622,38 +599,6 @@ RoomAction np1secSession::state_handler(np1secMessage received_message)
   
   return RoomAction(RoomAction::BAD_ACTION);
 
-//depricated in favor of double array fsm model
-  // switch(my_state) {
-  //   case np1secSession::NONE:
-  //     //This probably shouldn't happen, if a session has
-  //     //no state state_handler shouldn't be called.
-  //     //The receive_handler of the user_state should call
-  //     //approperiate inition of a session of session less
-  //     //message
-  //     throw  np1secSessionStateException();
-  //     break;
-        
-  //   case np1secSession::JOIN_REQUESTED: //The thread has requested to join by sending ephemeral key
-  //     //Excepting to receive list of current participant
-  //     break;
-  //   case np1secSession::REPLIED_TO_NEW_JOIN: //The thread has received a join from a participant replied by participant list
-  //     break;
-  //   case np1secSession::GROUP_KEY_GENERATED: //The thread has computed the session key and has sent the conformation
-  //     break;
-  //   case np1secSession::IN_SESSION: //Key has been confirmed      
-  //     break;
-  //   case np1secSession::UPDATED_KEY: //all new shares has been received and new key has been generated: no more send possible
-  //     break;
-  //   case np1secSession::LEAVE_REQUESTED: //Leave requested by the thread: waiting for final transcirpt consitancy check
-  //     break;
-  //   case np1secSession::FAREWELLED: //LEAVE is received from another participant and a meta message for transcript consistency and new shares has been sent
-  //     break;
-  //   case np1secSession::DEAD: //Won't accept receive or sent messages, possibly throw up
-  //     break;
-  //   default:
-  //     return false;
-  // };
-  
 }
 
 //***** Joiner state transitors ****
@@ -689,15 +634,13 @@ np1secSession::StateAndAction np1secSession::auth_and_reshare(np1secMessage rece
   if (participants.find(received_message.sender_nick) == participants.end())
     return StateAndAction(DEAD, RoomAction());
 
-  if (!participants[received_message.sender_nick].be_authenticated(myself.id_to_stringbuffer(), reinterpret_cast<const uint8_t*>(received_message.key_confirmation.c_str()), us->long_term_key_pair.get_key_pair().first)) {
+  if (!participants[received_message.sender_nick].be_authenticated(myself.id_to_stringbuffer(), reinterpret_cast<const uint8_t*>(received_message.key_confirmation.c_str()), us->long_term_key_pair.get_key_pair().first, &cryptic)) {
     assert(0);
     return StateAndAction(DEAD, RoomAction());
   }
   
   //keep participant's z_share if they passes authentication
   participants[received_message.sender_nick].set_key_share(reinterpret_cast<const uint8_t*>(received_message.z_sender.c_str()));
-
-  cout << "received from" <<  received_message.sender_nick << participants[received_message.sender_nick].cur_keyshare << endl;
 
   return send_session_confirmation_if_everybody_is_contributed();
 
@@ -814,6 +757,44 @@ np1secSession::StateAndAction np1secSession::init_a_session_with_new_plist(np1se
 }
 
 /**
+ * for immature leave when we don't have leave intention 
+ */
+RoomAction np1secSession::shrink(std::string leaving_nick)
+{
+
+  //we are basically running the intention to leave message
+  //without broadcasting it (because it is not us who intend to do so)
+  //make a fake intention to leave message but don't send ack
+  RoomAction new_session_action;
+
+  np1secSession* new_child_session = new np1secSession(*this - leaving_nick);
+  
+  if (!new_child_session->session_id.get()) 
+    delete new_child_session; //failed to establish a legit session
+  else {
+    new_session_action.action_type = RoomAction::NEW_SESSION;
+    new_session_action.bred_session = new_child_session;
+  }
+    
+  //we are as we have farewelled
+  my_state = FAREWELLED;
+  return new_session_action;
+
+}
+
+/**
+ * Move the session from DEAD to 
+ */
+// RoomAction np1secSession::revive_session()
+// {
+//   StateAndAction state_and_action = send_session_confirmation_if_everybody_is_contributed();
+//   my_state = state_and_action.first;
+
+//   return state_and_action.second;
+  
+// }
+
+/**
    For the current user, calls it when receive JOINER_AUTH
    
    sid, U_sender, y_i, _kc, z_sender, signature
@@ -840,7 +821,7 @@ np1secSession::StateAndAction np1secSession::confirm_auth_add_update_share_repo(
 
   if (received_message.message_type == np1secMessage::JOINER_AUTH) {
     if (received_message.authentication_table.find(my_index) != received_message.authentication_table.end())
-      if (!participants[received_message.sender_nick].be_authenticated(myself.id_to_stringbuffer(), Cryptic::strbuff_to_hash(received_message.authentication_table[my_index]), us->long_term_key_pair.get_key_pair().first))  {
+      if (!participants[received_message.sender_nick].be_authenticated(myself.id_to_stringbuffer(), Cryptic::strbuff_to_hash(received_message.authentication_table[my_index]), us->long_term_key_pair.get_key_pair().first, &cryptic))  {
       return StateAndAction(DEAD, RoomAction());
     }
   }
@@ -879,6 +860,7 @@ np1secSession::StateAndAction np1secSession::send_session_confirmation_if_everyb
     }
 
     return StateAndAction(DEAD, RoomAction());
+    
   }
   //otherwise just wait for more shares
   return StateAndAction(my_state, RoomAction());
@@ -938,24 +920,26 @@ np1secSession::StateAndAction np1secSession::mark_confirmed_and_may_move_session
  */
 np1secSession::StateAndAction np1secSession::send_farewell_and_reshare(np1secMessage received_message) {
 
-  np1secMessage outbound(&cryptic);
+  //send a farewell message
+  send("", np1secMessage::JUST_ACK); //no point to send FS loads as the session is
+  //ending anyway
+  return init_a_session_with_new_plist(received_message);
 
-  outbound.create_group_share_msg(session_id,
-                               string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)));
+}
 
-  np1secSession* new_child_session = new np1secSession(us, room_name, &cryptic, received_message, participants); //TODO::we need a different constructor for leave, for the reason of tracking RaisonDEtre
+/**
+ * compute the id of a potential session when leaving_nick leaves the session
+ */
+SessionId np1secSession::shrank_session_id(std::string leaver_nick)
+{
+  assert(participants.find(leaver_nick) != participants.end());
+  ParticipantMap temp_plist = participants;
+  temp_plist.erase(leaver_nick);
+
+  SessionId shrank_id(temp_plist);
+
+  return shrank_id;
   
-  RoomAction new_session_action;
-  //if (new_child_session->session_id.get()) { //why it should fail?
-  assert(new_child_session->session_id.get());
-  new_session_action.action_type = RoomAction::NEW_SESSION;
-  new_session_action.bred_session = new_child_session;
-    
-  return StateAndAction(FAREWELLED, c_no_room_action);
-    
-  //our state doesn't need to change
-  //return StateAndAction(my_state, c_no_room_action);
-
 }
 
 //Depricated: room take care of join and make a new session
@@ -1021,13 +1005,33 @@ bool np1secSession::received_p_list(std::string participant_list) {
   return true;
 }
 
-// bool np1secSession::farewell(std::string leaver_id) {
-//   UNUSED(leaver_id);
-//   return true;
-// }
+bool np1secSession::leave() {
+  //tell everybody I'm leaving and tell them about the closure
+  //of my transcript consistency
+
+  //if you are the only person in the session then
+  //just leave
+  //TODO:: is it good to call the ops directly?
+  if (participants.size() == 1) {
+    assert(my_index == 0 && peers.size() == 1);
+    peers.pop_back();
+    us->ops->leave(room_name, peers, us->ops->bare_sender_data);
+    my_state = DEAD;
+    return true;
+  }
+
+  //otherwise, inform others in the room about your leaving the room
+  leave_parent = last_received_message_id;
+  send("", np1secMessage::LEAVE_MESSAGE);
+
+  farewell_deadline_timer = us->ops->set_timer(cb_leave, this, us->ops->c_inactive_ergo_non_sum_interval);
+  my_state = LEAVE_REQUESTED;
+
+  return true;
+
+}
 
 void np1secSession::restart_heartbeat_timer() {
-
   if (heartbeat_timer)
     us->ops->axe_timer(heartbeat_timer);
   
@@ -1106,9 +1110,10 @@ void np1secSession::update_send_transcript_chain(MessageId own_message_id,
   sent_transcript_chain[own_message_id].transcript_hash = Cryptic::hash_to_string_buff(hb);
   sent_transcript_chain[own_message_id].ack_timer_ops = AckTimerOps(this, nullptr, own_message_id);
  
- sent_transcript_chain[own_message_id].consistency_timer = us->ops->set_timer(cb_ack_not_sent, &(sent_transcript_chain[own_message_id].ack_timer_ops), us->ops->c_send_receive_interval);
+  sent_transcript_chain[own_message_id].consistency_timer = us->ops->set_timer(cb_ack_not_sent, &(sent_transcript_chain[own_message_id].ack_timer_ops), us->ops->c_send_receive_interval);
 
 }
+
 /**
  * - kills the send ack timer for the message in case we are the sender
  * - Fill our own transcript chain for the message
@@ -1123,7 +1128,7 @@ void np1secSession::perform_received_consisteny_tasks(np1secMessage received_mes
     us->ops->axe_timer(sent_transcript_chain[received_message.sender_message_id].consistency_timer);
     sent_transcript_chain[received_message.sender_message_id].consistency_timer = nullptr;}
 
-  add_message_to_transcript(received_message.final_whole_message, received_message.message_id);  
+  add_message_to_transcript(received_message.final_whole_message, received_message.message_id);
 
 }
 
@@ -1135,7 +1140,7 @@ void np1secSession::check_parent_message_consistency(np1secMessage received_mess
 {
   received_transcript_chain[received_message.parent_id][participants[received_message.sender_nick].index].transcript_hash = received_message.transcript_chain_hash;
 
-  if (received_transcript_chain[received_message.parent_id][participants[received_message.sender_nick].index].transcript_hash != received_transcript_chain[received_message.parent_id][participants[received_message.sender_nick].index].transcript_hash)
+  if (received_transcript_chain[received_message.parent_id][my_index].transcript_hash != received_transcript_chain[received_message.parent_id][participants[received_message.sender_nick].index].transcript_hash)
     {
       std::string consistancy_failure_message = received_message.sender_nick  + " transcript doesn't match ours as of " + to_string(received_message.parent_id);
       us->ops->display_message(room_name, "np1sec directive", consistancy_failure_message, us);
@@ -1143,6 +1148,30 @@ void np1secSession::check_parent_message_consistency(np1secMessage received_mess
 
   stop_timer_receive(received_message.sender_nick, received_message.message_id);
 
+}
+
+/**
+ * - check the consistency of all participants for the parent leave message
+ */
+bool np1secSession::check_leave_transcript_consistency()
+{
+  uint32_t no_of_peers_farewelled = 0;
+  if (received_transcript_chain.find(leave_parent) != received_transcript_chain.end()) {
+    for(uint32_t i = 0; i < peers.size(); i++) {
+     
+      //we need to check if we have already got the farewell from this peer
+      if (!received_transcript_chain[leave_parent][i].transcript_hash.empty()) {
+        no_of_peers_farewelled++;
+        if (received_transcript_chain[leave_parent][i].transcript_hash != received_transcript_chain[leave_parent][my_index].transcript_hash) {
+          std::string consistency_failure_message = peers[i]  + " transcript doesn't match ours";
+          us->ops->display_message(room_name, "np1sec directive", consistency_failure_message, us);
+        } //not equal
+      } //not empty
+    } //for
+  } //we got it already
+  
+  return (no_of_peers_farewelled == peers.size());
+  
 }
 
 void np1secSession::add_message_to_transcript(std::string message,
@@ -1195,7 +1224,7 @@ bool np1secSession::send(std::string message, np1secMessage::np1secMessageSubTyp
   // any received messages
   stop_timer_send();
 
-  if (message_type == np1secMessage::USER_MESSAGE) {
+  if (message_type == np1secMessage::USER_MESSAGE)  {
     // We create a set of times for all other peers for acks we expect for
     // our sent message
     start_receive_ack_timer(); //If you are overwritng
@@ -1216,11 +1245,33 @@ np1secSession::StateAndAction np1secSession::receive(np1secMessage encrypted_mes
   //check signature if not valid, just ignore the message
   //first we need to get the correct ephemeral key
   if (received_message.sender_index < peers.size()) {
-    if (received_message.verify_message(participants[peers[received_message.sender_index]].ephemeral_key)) {      
+    if (received_message.verify_message(participants[peers[received_message.sender_index]].ephemeral_key)) {
+      //only messages with valid signature are concidered received
+      //for any matters including consistency chcek
+      last_received_message_id++;
+      received_message.sender_nick = peers[received_message.sender_index]; //just to keep the message structure consistent, and for the use in new session (like session resulted from leave) otherwise in the session we should just use the index
       perform_received_consisteny_tasks(received_message);
+      if (my_state == LEAVE_REQUESTED) {
+        if (check_leave_transcript_consistency()) {//we are done we can leave
+          //stop the farewell deadline timer
+          if (farewell_deadline_timer) {
+            us->ops->axe_timer(farewell_deadline_timer);
+            farewell_deadline_timer = nullptr;
+          }
+
+          peers.pop_back();
+          us->ops->leave(room_name, peers, us->ops->bare_sender_data);
+          StateAndAction(DEAD, c_no_room_action);
+          
+        }
+      }
       //if it is user message, display content
-      if (received_message.message_sub_type == np1secMessage::USER_MESSAGE)
+      else if ((received_message.message_sub_type == np1secMessage::USER_MESSAGE)) {
         us->ops->display_message(room_name, participants[peers[received_message.sender_index]].id.nickname, received_message.user_message, us->ops->bare_sender_data);
+      }
+      else if ((received_message.message_sub_type == np1secMessage::LEAVE_MESSAGE) && (received_message.sender_nick != myself.nickname))  {
+        return send_farewell_and_reshare(received_message);
+      }
     
     } else 
       received_message.message_type = np1secMessage::INADMISSIBLE;
@@ -1249,7 +1300,6 @@ np1secSession::StateAndAction np1secSession::receive(np1secMessage encrypted_mes
   //   // add peers to map
   //   // convert load to sexp
   // }
-
   return StateAndAction(IN_SESSION, c_no_room_action);
 
 }

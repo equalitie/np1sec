@@ -140,8 +140,7 @@ class np1secUserState {
    * 
    * @param room_name the chat room name to leave from
    */
-  void leave_room(std::string room_name)
-  {}
+  void leave_room(std::string room_name);
 
   /**
    * the client need to call this function when another user leave the chatroom.
@@ -152,8 +151,7 @@ class np1secUserState {
    * @return true in case initiating the leave was successful. This does not
    *         mean that the successful leave false if process fails
    */
-  bool shrink_on_leave(std::string room_name, std::string leaving_user_id)
-  {}
+  bool shrink(std::string room_name, std::string leaving_user_id);
   
   /**
    * Retrieve the session object associated with the given room name. To

@@ -125,16 +125,23 @@ void np1secRoom::receive_handler(np1secMessage received_message)
   //If the user is not in the session, we can do nothing with
   //session less messages, we are joining and we need info
   //about the room
-  //RoomAction resulting_action = c_no_room_action;
+  RoomAction action_to_take = c_no_room_action;
   if (user_in_room_state == JOINING) {
     if (received_message.has_sid()) {
       if (session_universe.find(received_message.session_id.get_as_stringbuff()) != session_universe.end()) {
         auto message_session = session_universe.find(received_message.session_id.get_as_stringbuff());
-        RoomAction resulting_action = message_session->second.state_handler(received_message);
+        action_to_take = message_session->second.state_handler(received_message);
       
       } else {
-        np1secSession* new_session = new np1secSession(user_state, name, &np1sec_ephemeral_crypto, received_message);
-        session_universe.emplace(pair<string, np1secSession>(received_message.session_id.get_as_stringbuff(), *new_session));
+        //we are only interested in PARTICIANT_INFO
+        if (received_message.message_type == np1secMessage::PARTICIPANTS_INFO) {
+          np1secSession* new_session = new np1secSession(user_state, name, &np1sec_ephemeral_crypto, received_message);
+          if (new_session->my_state != np1secSession::DEAD)
+            session_universe.emplace(pair<string, np1secSession>(received_message.session_id.get_as_stringbuff(), *new_session));
+          else
+            delete new_session;
+        } //otherwise that message doesn't concern us (the entrance for setting up session id is
+        //PARTICIPANTS_INFO
       }
     }
     //else just ignore it, it is probably another user's join that we don't
@@ -142,35 +149,47 @@ void np1secRoom::receive_handler(np1secMessage received_message)
   } else if (user_in_room_state == CURRENT_USER) {
     if (received_message.has_sid()) {
       if (session_universe.find(Cryptic::hash_to_string_buff(received_message.session_id.get())) != session_universe.end()) {
-        RoomAction resulting_action = session_universe[received_message.session_id.get_as_stringbuff()].state_handler(received_message);
+        action_to_take = session_universe[received_message.session_id.get_as_stringbuff()].state_handler(received_message);
         
       }
-      // else //ignone
-    } else  //no sid, it should be a join message, verify and send to active session
+      // else //ignone, we haven't generated this session, so we could be leaving, we have 
+    } else  {//no sid, it should be a join message, verify and send to active session
       if (received_message.message_type == np1secMessage::JOIN_REQUEST) {
-        RoomAction action_to_take = session_universe[active_session.get_as_stringbuff()].state_handler(received_message);
-        if (action_to_take.action_type == RoomAction::NEW_SESSION) {
-          session_universe.emplace(pair<string, np1secSession>(action_to_take.bred_session->my_session_id().get_as_stringbuff(),*(action_to_take.bred_session)));
-          // delete action_to_take.bred_session; //:( TODO: room needs to create the session.
-          // new_session_it.firs->keep_peers_in_order_spot_myself(); //to update pointer
-          // //to thread user as participant is not valid anymore. This is obviously digusting
-          // //we need a respectable copy constructor for np1secSession
-        }
-      } else {
-        //else just ignore it
-        assert(0); //just for test to make sure we don't end up here
-        return;
+        action_to_take = session_universe[active_session.get_as_stringbuff()].state_handler(received_message);
+        // delete action_to_take.bred_session; //:( TODO: room needs to create the session.
+        // new_session_it.firs->keep_peers_in_order_spot_myself(); //to update pointer
+        // //to thread user as participant is not valid anymore. This is obviously digusting
+        // //we need a respectable copy constructor for np1secSession
       }
-  }
+    } //has sid or not
+    //if the action resulted in new session we need to add it to session universe
+    if (action_to_take.action_type == RoomAction::NEW_SESSION) 
+      session_universe.emplace(pair<string, np1secSession>(action_to_take.bred_session->my_session_id().get_as_stringbuff(),*(action_to_take.bred_session)));
 
-  //Now we check if the resulting action resulted in new session
-  //we have to activate that session
-  if (received_message.has_sid())
-    if (active_session.get_as_stringbuff() != received_message.session_id.get_as_stringbuff()) {
-      auto message_session = session_universe.find(received_message.session_id.get_as_stringbuff());
-      if (message_session->second.get_state() == np1secSession::IN_SESSION)
-        activate_session(received_message.session_id.get());
+  } else {
+    //else just ignore it
+    assert(0); //just for test to make sure we don't end up here
+    return;
+    
+  }//State in the room
+
+  //Now we check if the resulting action resulted in new confirmed session
+  //we have to activate that session:
+  //1. first we should have the session in our universe.
+  //2. The session should have different session_id than
+  //   the currently active one
+  
+  if (received_message.has_sid()) {
+    auto message_session = session_universe.find(received_message.session_id.get_as_stringbuff());
+    if (message_session != session_universe.end()) {
+      if (active_session.get_as_stringbuff() != received_message.session_id.get_as_stringbuff()) {
+        if (message_session->second.get_state() == np1secSession::IN_SESSION) {
+          user_state->ops->join(name, message_session->second.peers, user_state->ops->bare_sender_data);
+          activate_session(received_message.session_id.get());
+        }
+      }
     }
+  }
   //np1secSession *cur_session = retrieve_session(room_name);
   // if (!cur_session) {
   //   //only possible operation should be join and leave 
@@ -298,3 +317,92 @@ bool np1secRoom::send_user_message(std::string plain_message)
 //   return cur_session;
 
 // }
+/**
+ * Just sends a message for closing the transcript consistency
+ * this also initiate the new session creation for other users
+ */
+void np1secRoom::leave() {
+  if (user_in_room_state == CURRENT_USER) { 
+    if (active_session.get()) {
+      session_universe[active_session.get_as_stringbuff()].leave();//send leave and start leave timer
+    }
+  //else do nothing basically TODO::somebody should throw out the room though
+  }
+  else {
+    assert(0); //for testing for now
+  }
+
+}
+
+void np1secRoom::shrink(std::string leaving_nick) {
+  if (user_in_room_state == CURRENT_USER) {
+    //we need to detect if we have already generated the shrunk
+    //session or not.
+    //first we get the plist of active session, if the leaving use
+    if (active_session.get()) {
+      auto active_session_element = session_universe.find(active_session.get_as_stringbuff());
+      if (active_session_element != session_universe.end()) {
+        if (active_session_element->second.participants.find(leaving_nick) != active_session_element->second.participants.end()) {
+          np1secSession& active_np1sec_session = active_session_element->second;
+
+          if (active_np1sec_session.my_state != np1secSession::FAREWELLED) {
+            //alternatively we can just check the state of active_session and if 
+            //it is farewelled then we don't need to worry about generating the
+            //shrank session
+            // Actually this is a better solution, because the session are staying
+            //in the session universe even after they die so their existenec doesn't
+            //mean we have taken any action
+            //we avoid making a new session, if the session is not made we will make the new session 
+            //so not to duplicate the re-share message. the reshare message has the same session
+            //id so the participants handle it to the previously made session. the shares are the same. Either the session
+          //is waiting for more share which result in replacing the same share or is
+          //waiting for confirmation and so it ignores the share message.
+
+          //We basically avoid sending an extra message which is not part of the protocol
+          //but it is the implementation particularity, and duplicating such message which doesn't
+          // violate the          
+          //protocol. (you might want to send the same message 10 times to increase
+          //reliability and the protocol shouldn't choke on that.
+
+          //Now consider the situation that pn announce intention to leave at the same
+          //then last person forward secrecy contribution is matured. the current
+          //session should stop the share renewal, cause the state is farewelled.
+          //(normally the renew session should never be confirmed. because the leaving
+          //(user haven't confirmed and move cause it sends its leaving message
+          //to current session, as such it is important that the leaving user,
+          //doesn't confirm a session after intention to leave, if he does though,
+          //we'll recover through immature leave procedure.
+
+          //It is also important to note as soon as we have new session, all session
+          //in limbo will die and give birth to new session compatible with current
+          //plist
+
+
+            SessionId shrank_session_id = active_np1sec_session.shrank_session_id(leaving_nick);
+            auto shrank_session = session_universe.find(shrank_session_id.get_as_stringbuff());
+            if (shrank_session != session_universe.end()) {
+              //TODO: come up with a revining mechanism
+              //revive the session, if revive fails we re-make it
+              //shrank_session->second.revive();
+              //if (shrank_session->second.my_state = np1sec::DEAD) {
+              session_universe.erase(shrank_session_id.get_as_stringbuff());
+              //shrank_session = session_universe.end();
+            }
+
+            auto action_to_take = active_np1sec_session.shrink(leaving_nick);
+            if (action_to_take.action_type == RoomAction::NEW_SESSION) {
+              session_universe.emplace(pair<string, np1secSession>(action_to_take.bred_session->my_session_id().get_as_stringbuff(),*(action_to_take.bred_session)));
+            }
+
+          } //Already FAREWELLED
+          //otherwise we already have made the
+          //shrank session don't worry about it
+        } //else if we don't find the nick, it is ok, just ignore it might be the leaving user has joined the xmpp room but not being accepted by the pariticipants
+      }
+    }
+  }
+        //else do nothing basically TODO::somebody should throw out the room though
+  else {
+        assert(0); //for testing for now
+  }
+}

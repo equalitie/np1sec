@@ -26,7 +26,7 @@
 #include "src/crypt.h"
 #include "src/base64.h"
 #include "src/participant.h"
-//#include "src/userstate.h"
+#include "src/session_id.h"
 
 class np1secUserState;
 
@@ -150,12 +150,12 @@ class np1secMessage {
   };
 
   enum np1secMessageSubType {
+    JUST_ACK,
     USER_MESSAGE,
     LEAVE_MESSAGE,
     EPHEMERAL_KEY,
     KEY_SHARE,
-    CONTRIBUTION_STATE,
-    JUST_ACK
+    CONTRIBUTION_STATE
   };
 
   np1secMessageType message_type;

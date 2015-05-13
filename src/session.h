@@ -33,6 +33,7 @@
 #include "src/participant.h"
 #include "src/message.h"
 #include "src/crypt.h"
+#include "src/session_id.h"
 
 #include "src/transcript_consistency.h"
 
@@ -109,9 +110,8 @@ struct RaisonDEtre {
 
 // Defining essential types
 typedef uint8_t np1secBareMessage[];
-typedef std::map<std::string,Participant> ParticipantMap;
 
-
+//typedef std::vector<uint8_t> SessionID;
 /**
  * This class is encapsulating all information and action, a user needs and
  * performs in a session.
@@ -249,11 +249,13 @@ class np1secSession {
   HashBlock session_key;
   HashBlock session_confirmation;
 
-  void* heartbeat_timer;
-  void* send_ack_timer;
+  void* heartbeat_timer = nullptr;
+  void* send_ack_timer = nullptr;
+  void* farewell_deadline_timer = nullptr;
 
   MessageId last_received_message_id;
   MessageId own_message_counter; //sent message counter
+  MessageId leave_parent;
   //Depricated in favor of raison detr.
   //tree structure seems to be insufficient. because
   //sid only encode the session structure but not
@@ -292,16 +294,17 @@ class np1secSession {
    * reading the particpant map, it populate the 
    * peers vector then find the index of thread runner
    */
-  void populate_participants_and_peers(const UnauthenticatedParticipantList& session_view)
+  bool populate_participants_and_peers(const UnauthenticatedParticipantList& session_view)
   {    
     for(UnauthenticatedParticipantList::const_iterator view_it = session_view.begin(); view_it != session_view.end();  view_it++) {
       participants.insert(std::pair<std::string, Participant>(view_it->participant_id.nickname, Participant(*view_it, &cryptic)));
       participants[view_it->participant_id.nickname].authenticated = view_it->authenticated;
+      //participants[view_it->participant_id.nickname].set_thread_user_crypto(&cryptic);
       peers.push_back(view_it->participant_id.nickname);
     
     }
 
-    keep_peers_in_order_spot_myself();
+    return keep_peers_in_order_spot_myself();
 
   }
 
@@ -309,7 +312,7 @@ class np1secSession {
   {
     peers.clear();
     for(ParticipantMap::iterator it = participants.begin(); it != participants.end();  it++) {
-      std::cout << it->first << std::endl;
+      //std::cout << it->first << std::endl;
       peers.push_back(it->first);
     }
 
@@ -334,19 +337,24 @@ class np1secSession {
   /**
    * everytime that peers are modified we need to call this function to 
    * to keep it in order
+   *
+   * @return if we can't spot ourselves the session isn't meant for us
+   *
    */
-  void keep_peers_in_order_spot_myself()
+  bool keep_peers_in_order_spot_myself()
   {
 
     std::sort(peers.begin(), peers.end());
     
     std::vector<std::string>::iterator my_entry = std::find(peers.begin(), peers.end(), myself.nickname);
     if (my_entry == peers.end()) {
-      std::cout << myself.nickname << std::endl;
-      std::cout << peers.size() << std::endl;
-      for(size_t i = 0; i <  peers.size(); i++)
-        std::cout << peers[i] << std::endl;
-      assert(0); //throw up
+      //the message wasn't meant to us
+      return false;
+      /* std::cout << myself.nickname << std::endl; */
+      /* std::cout << peers.size() << std::endl; */
+      /* for(size_t i = 0; i <  peers.size(); i++) */
+      /*   std::cout << peers[i] << std::endl; */
+      /* assert(0); //throw up */
     }
 
     my_index = std::distance(peers.begin(), my_entry);
@@ -376,6 +384,12 @@ class np1secSession {
    * @return return true upon successful computation
    */
   bool compute_session_id();
+
+  /**
+   * compute the id of a potential session when leaving_nick leaves the session
+   */
+  SessionId shrank_session_id(std::string leaving_nick);
+
   bool compute_session_confirmation();
   void account_for_session_and_key_consistency();
   bool validate_session_confirmation(np1secMessage confirmation_message);
@@ -404,7 +418,7 @@ class np1secSession {
   * new people about it (leave) then this function is 
   * is used (no participant_info)
   */
-  bool send_auth_and_share_message();
+  bool send_new_share_message();
 
   /**
    *   Joiner call this after receiving the participant info to
@@ -618,6 +632,11 @@ class np1secSession {
   StateAndAction send_farewell_and_reshare(np1secMessage received_message);
 
   /**
+   * for immature leave when we don't have leave intention 
+   */
+  RoomAction shrink(std::string leaving_nick);
+    
+  /**
      For the current/leaving user, calls it when receive FAREWELL
      
      sid, ((U_1,y_i)...(U_{n-1},y_{n-1}), z_sender, transcript_consistency_stuff
@@ -634,6 +653,13 @@ class np1secSession {
 
    */
   StateAndAction check_transcript_consistency_update_share_repo(np1secMessage received_message);
+  
+  /**
+   * - check the consistency of all participants for the parent leave message
+   *  
+   *  @return true if everybody has farewelled (consistent or not)
+   */
+  bool check_leave_transcript_consistency();
 
   /**
      This pointer represent an edge in the transition
@@ -676,6 +702,10 @@ class np1secSession {
 
     np1secFSMGraphTransitionMatrix[REPLIED_TO_NEW_JOIN][np1secMessage::PARTICIPANTS_INFO] = &np1secSession::confirm_auth_add_update_share_repo;
 
+    //After leave or in session forward secrecy
+    np1secFSMGraphTransitionMatrix[RE_SHARED][np1secMessage::GROUP_SHARE] = &np1secSession::confirm_auth_add_update_share_repo;
+
+    //always confirm the new key
     np1secFSMGraphTransitionMatrix[GROUP_KEY_GENERATED][np1secMessage::SESSION_CONFIRMATION] = &np1secSession::mark_confirmed_and_may_move_session;
 
     //If it is in session and it is an in session message, then need to receive it
@@ -690,16 +720,21 @@ class np1secSession {
     //killall its sibling 2. No new child session should be created till
     //transition to the left session is complete
 
-    //LEAVE Request is indicated in the meta message of user message
+    //LEAVE Request is indicated in the meta message of user message so this redirect
+    //actually happens in receive
     //np1secFSMGraphTransitionMatrix[IN_SESSION][np1secMessage::LEAVE_REQUEST] = &np1secSession::send_farewell_and_reshare;
 
     //I'm not sure either of these occures
-    //np1secFSMGraphTransitionMatrix[RE_SHARED][np1secMessage::FAREWELL] = &np1secSession::check_transcript_consistency_update_share_repo;
 
-    //np1secFSMGraphTransitionMatrix[LEAVE_REQUESTED][np1secMessage::FAREWELL] = &np1secSession::check_transcript_consistency_update_share_repo;
+    //only reply to in session messages (for the reason of consistency check)
+    //if you are leaving. receive drops user messages
+    np1secFSMGraphTransitionMatrix[LEAVE_REQUESTED][np1secMessage::IN_SESSION_MESSAGE] = &np1secSession::receive;
 
-    //We don't accept join request while in farewelled state (for now at least)
-    //TODO: we should forward it with the session with reduced plist.
+    //We don't accept join request while in farewelled state (for now at least) but the participants still can talk: We actually do but:
+    //1. session will never materialized cause the leaver never confirm.
+    //2. when leaver leaves a new session will be created and the new
+    //   participant info message will be sent which will take care of
+    //   forwarding the join to the session with reduced plist.
 
   }
 
@@ -774,6 +809,12 @@ class np1secSession {
   np1secSession operator-(np1secSession a);
 
   /**
+   * is called for force kickout a person without a message from
+   * that participant
+   */
+  np1secSession operator-(std::string nick);
+
+  /**
    * When a user wants to send a message to a session it needs to call its send
    * function.
    */
@@ -834,7 +875,7 @@ class np1secSession {
        - set new session status to RE_SHARED
 
   */
-  np1secSession(np1secUserState* us, std::string room_name, Cryptic* current_ephemeral_crypto, ParticipantMap current_authed_participants);
+  np1secSession(np1secUserState* us, std::string room_name, Cryptic* current_ephemeral_crypto, const ParticipantMap& current_authed_participants, bool broadcast_participant_info = true);
   /**
    * Almost copy constructor, we only alter the plist
    */
@@ -856,6 +897,12 @@ class np1secSession {
   StateAndAction receive(np1secMessage encrypted_message);
 
   /**
+   * is called by the room to send "I'm leaving" message
+   * it changs session state to LEAVE_REQUESTED
+   */
+  bool leave();
+
+  /**
    * Destructor, session should be destroyed at leave.
    */
   ~np1secSession();
@@ -865,6 +912,7 @@ class np1secSession {
   friend  void cb_send_ack(void *arg);
   friend  void cb_ack_not_received(void *arg);
   friend void cb_ack_not_sent(void* arg);
+  friend void cb_leave(void *arg);
   friend np1secRoom;
 
 };

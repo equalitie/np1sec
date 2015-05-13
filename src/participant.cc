@@ -55,8 +55,8 @@ bool operator<(const Participant& lhs, const Participant& rhs)
  * 
  * @return true if peer's authenticity could be established
  */
-bool Participant::be_authenticated(const std::string authenticator_id, const HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key) {
-  if (!compute_p2p_private(thread_user_id_key))
+bool Participant::be_authenticated(const std::string authenticator_id, const HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto) {
+  if (!compute_p2p_private(thread_user_id_key, thread_user_crypto))
     return false;
   
   std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
@@ -80,9 +80,9 @@ bool Participant::be_authenticated(const std::string authenticator_id, const Has
  * 
  * @return true if peer's authenticity could be established
  */
-bool Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key) {
+bool Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto) {
 
-  if (!compute_p2p_private(thread_user_id_key))
+  if (!compute_p2p_private(thread_user_id_key, thread_user_crypto))
     return false;
 
   std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
@@ -99,7 +99,7 @@ bool Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKe
  *
  * @return true on success
  */
-bool Participant::compute_p2p_private(np1secAsymmetricKey thread_user_id_key)
+bool Participant::compute_p2p_private(np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto)
 {
   thread_user_crypto->triple_ed_dh(ephemeral_key, long_term_pub_key, thread_user_id_key, sort_by_long_term_pub_key(this->long_term_pub_key, thread_user_id_key), &p2p_key);
                       

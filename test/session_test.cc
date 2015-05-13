@@ -145,7 +145,7 @@ TEST_F(SessionTest, test_receive) {
 TEST_F(SessionTest, test_init) {
   //first we need a username and we use it
   //to sign in the room
-  return;
+  //return;
   string username = "sole-tester";
   std::pair<ChatMocker*, string> mock_aux_data(&mock_server,username);
   mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
@@ -185,7 +185,7 @@ TEST_F(SessionTest, test_init) {
 TEST_F(SessionTest, test_second_join) {
   //first we need a username and we use it
   //to sign in the room
-  return;
+  //return;
   string creator = "creator";
   np1secAppOps creator_mockops = *mockops;
   std::pair<ChatMocker*, string> mock_aux_creator_data(&mock_server,creator);
@@ -233,7 +233,7 @@ TEST_F(SessionTest, test_second_join) {
 TEST_F(SessionTest, test_solitary_talk) {
   //first we need a username and we use it
   //to sign in the room
-  return;
+  //return;
   string username = "sole-tester";
   std::pair<ChatMocker*, string> mock_aux_data(&mock_server,username);
   mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
@@ -262,7 +262,7 @@ TEST_F(SessionTest, test_solitary_talk) {
 }
 
 TEST_F(SessionTest, test_join_talk) {
-  return;
+  //return;
   //first we need a username and we use it
   //to sign in the room
   string creator = "creator";
@@ -319,6 +319,7 @@ TEST_F(SessionTest, test_join_talk) {
 }
 
 TEST_F(SessionTest, test_three_party_chat) {
+  //return;
   //first we need a username and we use it
   //to sign in the room
   string alice = "alice";
@@ -375,15 +376,141 @@ TEST_F(SessionTest, test_three_party_chat) {
   //then charlie joins
   mock_server.join(mock_room_name, charlie_state->user_nick());
 
-  //receive the join requests and start reations
-  mock_server.receive();
+  chat_mocker_np1sec_plugin_send(mock_room_name, "Ah Charlie is here again!", &bob_server_state);
 
-  //chat_mocker_np1sec_plugin_send(mock_room_name, "Hello, I'm Bob!", &bob_server_state);
-  //and receive it
+  //receive the join requests and start reations
   mock_server.receive();
 
   chat_mocker_np1sec_plugin_send(mock_room_name, "Hello, I'm Charlie!", &charlie_server_state);
   //and receive it
   mock_server.receive();
 
+}
+
+TEST_F(SessionTest, test_solitary_leave) {
+  //first we need a username and we use it
+  //to sign in the room
+  //return;
+  string username = "sole-tester";
+  std::pair<ChatMocker*, string> mock_aux_data(&mock_server, username);
+  mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
+  np1secUserState* user_state = new np1secUserState(username, mockops);
+  user_state->init();
+
+  pair<np1secUserState*, ChatMocker*> user_server_state(user_state, &mock_server);
+
+  //client login and join
+  mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));
+  mock_server.join(mock_room_name, user_state->user_nick());
+
+  //we need to call this after every action
+  //receive your own key share and send confirmation
+  mock_server.receive();
+
+  mock_server.intend_to_leave(mock_room_name, user_state->user_nick());
+
+  mock_server.receive();
+
+  
+}
+
+TEST_F(SessionTest, test_leave_from_2p_conv) {
+  //first we need a username and we use it
+  //to sign in the room
+  //return;
+  string creator = "creator";
+  np1secAppOps creator_mockops = *mockops;
+  std::pair<ChatMocker*, string> mock_aux_creator_data(&mock_server,creator);
+  creator_mockops.bare_sender_data = static_cast<void*>(&mock_aux_creator_data);
+  np1secUserState* creator_state = new np1secUserState(creator, &creator_mockops);
+  creator_state->init();
+  
+  np1secAppOps joiner_mockops = *mockops;
+  string joiner = "joiner";
+  std::pair<ChatMocker*, string> mock_aux_joiner_data(&mock_server,joiner);
+  joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
+  np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);
+  //They can use the same mock up as they are using the same mock server
+  joiner_state->init();
+
+  pair<np1secUserState*, ChatMocker*> creator_server_state(creator_state, &mock_server);
+  pair<np1secUserState*, ChatMocker*> joiner_server_state(joiner_state, &mock_server);
+
+  //everybody signs in
+  //creator
+  mock_server.sign_in(creator, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&creator_server_state));
+  //joiner
+  mock_server.sign_in(joiner, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&joiner_server_state));
+
+  //creator joins first
+  mock_server.join(mock_room_name, creator_state->user_nick());
+
+  //receive your share and own confirmation
+  mock_server.receive();
+  
+  //then joiner joins
+  mock_server.join(mock_room_name, joiner_state->user_nick());
+
+  //receive the join requests and start reations
+  mock_server.receive();
+  
+  //creator says I'm leaving the room.
+  mock_server.intend_to_leave(mock_room_name, creator_state->user_nick());
+
+  mock_server.receive();
+
+  //this should be called by the receive
+  mock_server.leave(mock_room_name, creator_state->user_nick());
+
+  //and receive it
+  mock_server.receive();
+  
+}
+
+TEST_F(SessionTest, test_immature_leave_from_2p_conv) {
+  //first we need a username and we use it
+  //to sign in the room
+  string creator = "creator";
+  np1secAppOps creator_mockops = *mockops;
+  std::pair<ChatMocker*, string> mock_aux_creator_data(&mock_server,creator);
+  creator_mockops.bare_sender_data = static_cast<void*>(&mock_aux_creator_data);
+  np1secUserState* creator_state = new np1secUserState(creator, &creator_mockops);
+  creator_state->init();
+  
+  np1secAppOps joiner_mockops = *mockops;
+  string joiner = "joiner";
+  std::pair<ChatMocker*, string> mock_aux_joiner_data(&mock_server,joiner);
+  joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
+  np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);
+  //They can use the same mock up as they are using the same mock server
+  joiner_state->init();
+
+  pair<np1secUserState*, ChatMocker*> creator_server_state(creator_state, &mock_server);
+  pair<np1secUserState*, ChatMocker*> joiner_server_state(joiner_state, &mock_server);
+
+  //everybody signs in
+  //creator
+  mock_server.sign_in(creator, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&creator_server_state));
+  //joiner
+  mock_server.sign_in(joiner, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&joiner_server_state));
+
+  //creator joins first
+  mock_server.join(mock_room_name, creator_state->user_nick());
+
+  //receive your share and own confirmation
+  mock_server.receive();
+  
+  //then joiner joins
+  mock_server.join(mock_room_name, joiner_state->user_nick());
+
+  //receive the join requests and start reations
+  mock_server.receive();
+  
+  //Joiner just leave without announcing the intention and doing the consistency
+  //check
+  mock_server.leave(mock_room_name, joiner_state->user_nick());
+
+  //and receive it
+  mock_server.receive();
+  
 }
