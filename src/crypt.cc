@@ -29,8 +29,12 @@
 
 #include "src/crypt.h"
 #include "src/exceptions.h"
+#include "src/logger.h"
 
 using namespace std;
+
+// Global logger
+Logger global_log(INFO);
 
 gcry_error_t Cryptic::hash(const void *buffer, size_t buffer_len, HashBlock hb,
                   bool secure) {
@@ -258,6 +262,14 @@ gcry_sexp_t Cryptic::copy_crypto_resource(gcry_sexp_t crypto_resource)
  */
 bool Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey peer_long_term_key, np1secAsymmetricKey my_long_term_key, bool peer_is_first, HashBlock* teddh_token)
 {
+  global_log.info("My long term key");
+  gcry_sexp_dump(my_long_term_key);
+  global_log.info("Ephemeral key");
+  gcry_sexp_dump(ephemeral_key);
+  global_log.info("Peer ephemeral key");
+  gcry_sexp_dump(peer_ephemeral_key);
+  global_log.info("Peer long term key");
+  gcry_sexp_dump(peer_long_term_key);
   gcry_error_t err = 0;
   bool failed = true;
   //we need to call 
