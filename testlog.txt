@@ -1,0 +1,18 @@
+[1;34m[INFO][0m This is the first info log
+[1;35;47m[SILLY] This is the first silly log[0m
+[90;103m[WARN] This is the first warning[0m
+[91;40m[ERROR] This is the first error[0m
+[1;37m[VERBOSE][0m This should make it out
+[90;103m[WARN] This should make it out[0m
+[1;34m[INFO][0m This is the first info log
+[1;35;47m[SILLY] This is the first silly log[0m
+[90;103m[WARN] This is the first warning[0m
+[91;40m[ERROR] This is the first error[0m
+[1;37m[VERBOSE][0m This should make it out
+[90;103m[WARN] This should make it out[0m
+[1;34m[INFO][0m This is the first info log
+[1;35;47m[SILLY] This is the first silly log[0m
+[90;103m[WARN] This is the first warning[0m
+[91;40m[ERROR] This is the first error[0m
+[1;37m[VERBOSE][0m This should make it out
+[90;103m[WARN] This should make it out[0m

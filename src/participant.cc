@@ -108,5 +108,6 @@ bool Participant::compute_p2p_private(np1secAsymmetricKey thread_user_id_key, Cr
   log.info("Before calling triple_ed_dh, p2p_key = " + Cryptic::hash_to_string_buff(p2p_key));
   thread_user_crypto->triple_ed_dh(ephemeral_key, long_term_pub_key, thread_user_id_key, sort_by_long_term_pub_key(this->long_term_pub_key, thread_user_id_key), &p2p_key);
   log.info("After calling triple_ed_dh, p2p_key = " + Cryptic::hash_to_string_buff(p2p_key));
+  return true;
                       
 }
