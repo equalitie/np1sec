@@ -29,7 +29,8 @@ enum log_level_t {
   VERBOSE,
   INFO,
   WARN,
-  ERROR
+  ERROR,
+  ABORT
 };
 
 const log_level_t default_log_level = DEBUG;
@@ -60,6 +61,10 @@ public:
   void info(std::string msg);
   void warn(std::string msg);
   void error(std::string msg);
+  void abort(std::string msg);
+  
+  void assert(bool expr, std::string failure_message);
+  
 };
 
 #endif  // SRC_LOGGER_H_

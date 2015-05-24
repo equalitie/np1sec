@@ -20,7 +20,7 @@
 #include <fstream>
 
 #include "src/logger.h"
-
+Logger logger(INFO);
 // Standard constructor
 // Threshold adopts a default level of DEBUG if an invalid threshold is provided.
 Logger::Logger(log_level_t threshold)
@@ -92,6 +92,9 @@ void Logger::log(log_level_t level, std::string msg)
   case ERROR:
     msg = "\033[91;40m[ERROR] " + msg + "\033[0m";
     break;
+  case ABORT:
+    msg = "\033[91;40m[ABORT] " + msg + "\033[0m";
+    break;
   }
   if (log_to_stdout) {
     std::cout << msg << std::endl;
@@ -99,6 +102,7 @@ void Logger::log(log_level_t level, std::string msg)
   if (log_to_file && log_file.is_open()) {
     log_file << msg << std::endl;
   }
+  
 }
 
 // Convenience methods
@@ -131,4 +135,18 @@ void Logger::warn(std::string msg)
 void Logger::error(std::string msg)
 {
   log(ERROR, msg);
+}
+
+void Logger::abort(std::string msg)
+{
+  log(ABORT, msg);
+  exit(1);
+    
+}
+
+void Logger::assert(bool expr, std::string failure_message)
+{
+  if (!expr)
+    log_abort(failure_message);
+  
 }

@@ -378,23 +378,39 @@ class np1secSession {
   }
 
   /**
-   * it should be invoked only once to compute the session id
+   * it is invoked only once to compute the session id
    * if one need session id then they need a new session
-   *
-   * @return return true upon successful computation
+   * as such it dies on re-computation.
    */
-  bool compute_session_id();
+  void compute_session_id();
 
   /**
    * compute the id of a potential session when leaving_nick leaves the session
    */
   SessionId shrank_session_id(std::string leaving_nick);
 
-  bool compute_session_confirmation();
+  /**
+   * compute the session confirmation of the based on the value of
+   * the shared key
+   */
+  void compute_session_confirmation();
+
+  /**
+   * add the hash of( the session key | session id) as the first element
+   * of transcript chain.
+   */
   void account_for_session_and_key_consistency();
+
+  /**
+   * check if session confirmation has been computed correctly
+   */
   bool validate_session_confirmation(np1secMessage confirmation_message);
 
-  bool setup_session_view(np1secMessage session_view_message);
+  /**
+   * exctract partcipanat info message information to setup session view
+   * and session id. throw exception if the message format is wrong
+   */
+  void setup_session_view(np1secMessage session_view_message);
 
   bool group_enc();
   bool group_dec();
@@ -474,8 +490,19 @@ class np1secSession {
     TOTAL_NO_OF_STATES //This should be always the last state
   };
 
-  protected:
-  np1secSessionState my_state;
+  /**
+   * When a session request the creation of a session it inform
+   * the sessoin of the condition it has been created
+   */
+  enum np1secSessionConceiverCondition {
+    CREATOR,
+    JOINER,
+    ACCEPTOR,
+    PEER
+  };
+
+ protected:
+  np1secSessionState my_state = DEAD;
   typedef std::pair<np1secSessionState, RoomAction> StateAndAction;
 
   /**
@@ -677,13 +704,27 @@ class np1secSession {
   np1secFSMGraphTransitionEdge np1secFSMGraphTransitionMatrix[np1secSession::TOTAL_NO_OF_STATES][np1secMessage::TOTAL_NO_OF_MESSAGE_TYPE] = {};
 
   /**
-     Setups the state machine transition double array once and
-     for all during the initiation.
+   *  Setups the state machine transition double array once and
+   *  for all during the initiation.
+   *  set also userstate, room_name, cryptic and myself.
+   * 
+   *  This usually happens in constructor but because we have different 
+   *  way of constructing sessions and those depends on different type of 
+   *  data, then we need to overload the sessoin.
+   * 
   */
-  void engrave_transition_graph()
+  void set_session_fundaemntal(np1secUserState *us, std::string room_name,
+                             Cryptic* current_ephemeral_crypto)
   {
-    my_state = DEAD; //intitated as DEAD, in case anything fails
+    this->us = us;
+    this->room_name = room_name;
+    this->cryptic = *current_ephemeral_crypto;
+    this->myself = *us->myself;
+    heartbeat_timer = nullptr;
     
+    my_state = DEAD; //intitated as DEAD, in case anything fails
+
+    //engraving state machine graph
     //joining user
     np1secFSMGraphTransitionMatrix[JOIN_REQUESTED][np1secMessage::PARTICIPANTS_INFO] = &np1secSession::auth_and_reshare;
     //^^^ doesn't really happen because before receiving participant info you don't have

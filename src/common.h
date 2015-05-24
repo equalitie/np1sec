@@ -31,6 +31,7 @@ extern "C" {
 #include <string>
 #include <cstring>
 
+#include "src/logger.h"
 #include "src/base64.h"
 
 #define UNUSED(expr) (void)(expr)
@@ -74,5 +75,8 @@ const std::string c_np1sec_protocol_name(":o3np1sec:");
 const DTShort c_np1sec_protocol_version = 0x0001;
 const std::string c_np1sec_delim(":o3"); //because http://en.wikipedia.org/wiki/Man%27s_best_friend_(phrase)
 const std::string c_subfield_delim(":"); //needed by ParticipantId defined in interface.h 
+
+// Global logger
+extern Logger logger;
 
 #endif  // SRC_COMMON_H_

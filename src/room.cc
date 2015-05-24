@@ -23,6 +23,21 @@
 using namespace std;
 
 /**
+ * constructor: sets room name, make the user status joing 
+ * by default.
+ *
+ */
+np1secRoom::np1secRoom(std::string room_name, np1secUserState* user_state, std::vector<std::string> participants_in_the_room)
+  : name(room_name), user_state(user_state), user_in_room_state(JOINING)
+{
+  np1sec_ephemeral_crypto.init(); //generate intitial ephemeral keys for join
+  if (participants_in_the_room.size() <= 1)
+    solitary_join();
+  else
+    join();
+}
+
+/**
  * called by room constructor, everytime the user is the first joiner
  * of an empty room and hence does not need to convince anybody about
  * their identity, etc.
@@ -31,7 +46,8 @@ void np1secRoom::solitary_join() {
   //simply faking the particpant inf message
   assert(user_in_room_state == JOINING); 
   
-  UnauthenticatedParticipantList session_view;
+  //UnauthenticatedParticipantList session_view;
+  ParticipantMap& participants;
   
   session_view.push_back(UnauthenticatedParticipant(*(user_state->myself), Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()),true));
 
@@ -71,19 +87,18 @@ void np1secRoom::join() {
   
 }
 
-/**
- * constructor: sets room name, make the user status joing 
- * by default.
- *
- */
-np1secRoom::np1secRoom(std::string room_name, np1secUserState* user_state, std::vector<std::string> participants_in_the_room)
-  : name(room_name), user_state(user_state), user_in_room_state(JOINING)
-{
-  np1sec_ephemeral_crypto.init(); //generate intitial ephemeral keys for join
-  if (participants_in_the_room.size() <= 1)
-    solitary_join();
-  else
+void np1secRoom::try_rejoin() {
+  //you don't need to retry sole-joining as it is
+  //a deterministic process 
+  if (user_in_room_state != JOINING) {
     join();
+
+  } else {
+    //you have to leave before rejoining
+    throw np1secInvalidRoomException();
+
+  }
+
 }
 
 /**
@@ -326,10 +341,14 @@ void np1secRoom::leave() {
     if (active_session.get()) {
       session_universe[active_session.get_as_stringbuff()].leave();//send leave and start leave timer
     }
-  //else do nothing basically TODO::somebody should throw out the room though
+    //else do nothing basically TODO::somebody should throw out the room though
   }
   else {
-    assert(0); //for testing for now
+    //if you want to leave the room while joining. 
+    //if you have confirmed your session or not. However, as long as
+    //the session hasn't been started then we don't need to check for
+    //consistency. In any case we can just let it shrink
+    log.info("nothing to do; leaving from a room we haven't joined");
   }
 
 }
@@ -395,14 +414,24 @@ void np1secRoom::shrink(std::string leaving_nick) {
             }
 
           } //Already FAREWELLED
+          log.info("no need to shrinked. Already farewelled.");
           //otherwise we already have made the
           //shrank session don't worry about it
         } //else if we don't find the nick, it is ok, just ignore it might be the leaving user has joined the xmpp room but not being accepted by the pariticipants
+        else {
+          log.warn("The leaving user " + leaving_nick + " is not part of active session");
+        }
+      } else {
+        log.error("Internal error: the active session is not in session universe.");
+        assert(0); //I'm not throwing exception, cause if we end up here it
+        //is totally our fault, nothing external can cause this.
+      
       }
     }
-  }
         //else do nothing basically TODO::somebody should throw out the room though
   else {
-        assert(0); //for testing for now
+    log.warn("room contains no active sesssion");
   }
 }
+
+

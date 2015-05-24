@@ -151,7 +151,7 @@ TEST_F(SessionTest, test_init) {
   mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
 
   np1secUserState* user_state = new np1secUserState(username, mockops);
-  user_state->init();
+  ASSERT_TRUE(user_state->init());
 
   pair<np1secUserState*, ChatMocker*> user_server_state(user_state, &mock_server);
 

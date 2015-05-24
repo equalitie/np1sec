@@ -45,9 +45,11 @@ class Cryptic {
  protected:
   gcry_sexp_t ephemeral_key, ephemeral_pub_key, ephemeral_prv_key;
   np1secSymmetricKey session_key;
+
+  HashBlock session_iv;
   
   static const uint32_t ED25519_KEY_SIZE = 32;
-  const static gcry_mpi_format NP1SEC_BLOB_OUT_FORMAT = GCRYMPI_FMT_USG;
+  static const gcry_mpi_format NP1SEC_BLOB_OUT_FORMAT = GCRYMPI_FMT_USG;
 
  public:
 
@@ -225,6 +227,14 @@ teddh   *
    */
   gcry_cipher_hd_t OpenCipher();
 
+  /**
+   * Zeroising all secret key materials
+   *
+   */
+  ~Cryptic() {
+    
+  }
+
 
 };
 
@@ -245,7 +255,7 @@ class  LongTermIDKey {
    */
   ~LongTermIDKey() {
     Cryptic::release_crypto_resource(key_pair.first);
-    Cryptic::release_crypto_resource(key_pair.first);
+    Cryptic::release_crypto_resource(key_pair.second);
   }
 
   /**
@@ -276,6 +286,7 @@ class  LongTermIDKey {
       key_pair.second = Cryptic::extract_public_key(key_pair.first);
       initiated = true;
     } catch(np1secCryptoException& crypto_exception) {
+      //rethrow
       throw crypto_exception;
     }      
       
@@ -311,16 +322,6 @@ class  LongTermIDKey {
 
 };
 
-const unsigned char SESSION_KEY[] = {
-  0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe, 0x2b, 0x73, 0xae, 0xf0,
-  0x85, 0x7d, 0x77, 0x81, 0x1f, 0x35, 0x2c, 0x07, 0x3b, 0x61, 0x08, 0xd7,
-  0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
-};
-
-const unsigned char SESSION_IV[] = {
-  0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
-  0x0c, 0x0d, 0x0e, 0x0f
-};
 
 const int c_np1sec_hash = gcry_md_algos::GCRY_MD_SHA256;
 
