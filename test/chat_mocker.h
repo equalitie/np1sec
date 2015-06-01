@@ -12,6 +12,9 @@ extern "C" {
 #include <list>
 #include <queue>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
+#include <event2/event.h>
 
 using namespace std;
 
@@ -145,8 +148,25 @@ class ChatMocker {
  protected:
   std::map<std::string, MockRoom> rooms;
   std::map<std::string, MockParticipant> signed_in_participant;
+  EventManager event_manager;
 
  public:
+  /**
+   * Add a new timeout event to the event manager
+   */
+  std::string add_timeout(event_callback_fn cb, void* arg, timeval* timeout)
+  {
+    return event_manager.add_timeout(cb, arg, timeout);
+  }
+
+  /**
+   * Remove a timeout event from the event manager
+   */
+  void remove_timeout(std::string identifier)
+  {
+    event_manager.remove_timeout(identifier);
+  }
+
   /**
    * Add the participant to the singed in list and keep track of their
    * receive handler 
@@ -217,6 +237,23 @@ class ChatMocker {
       it->second.receive();
   }
   
+};
+
+// A simple timeout event manager
+class EventManager
+{
+private:
+  std::map<std::string, struct event*> timers;
+  struct event_base* base;
+  
+  std:string next_identifier();
+
+public:
+  EventManager(struct event_base* base);
+  std::string add_timeout(event_callback_fn cb, void* arg, timeval* timeout);
+  struct event* get(std::string identifier);
+  int size();
+  void remove_timeout(std::string identifier);
 };
 
 #endif  // TEST_CHAT_MOCKER_H_

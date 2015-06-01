@@ -25,6 +25,48 @@
 #include "src/common.h"
 #include "test/chat_mocker.h"
 
+
+// A simple constructor that copies the event base to simplify adding events
+EventManager::EventManager(struct event_base* base)
+{
+  this->base = base;
+}
+
+std::string EventManager::next_identifier()
+{
+  int elements = size();
+  std::stringstream stream;
+  stream << std::setfill('0') << std::setw(sizeof(int) * 2) << std::hex << elements;
+  return stream.str();
+}
+
+std::string EventManager::add_timeout(event_callback_fn cb, void* arg, timeval* timeout)
+{
+  std::string new_ident = next_identifier();
+  timers[new_ident] = evtimer_new(base, cb, arg);
+  evtimer_add(timers[new_ident], timeout);
+  return new_ident;
+}
+
+struct event* EventManager::get(std::string identifier)
+{
+  return timers[identifier];
+}
+
+int EventManager::size()
+{
+  return timers.size();
+}
+
+void EventManager::remove_timeout(std::string indentifier)
+{
+  event* evt = get(identifier);
+  if (evt) {
+    event_del(evt);
+    timers.erase(identifier);
+  }
+}
+
 // #define CUSTOM_USER_DIRECTORY "/tmp/test_user"
 // #define CUSTOM_PLUGIN_PATH ""
 // #define PLUGIN_SAVE_PREF "/tmp/test_client/plugins/saved"

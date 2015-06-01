@@ -177,15 +177,32 @@ void display_message(std::string room_name, std::string sender_nickname, std::st
   
 }
 
-//ignore timers all together
-void* set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval)
+void intermediate_cb(evutil_socket_t fd, short what, void* arg)
 {
-  return nullptr; //do nothing
+  auto fn_and_data = reinterpret_cast<pair<void (*timer_callback)(void* opdata), void*>*>(arg);
+  fn_and_data->first(fn_and_data->second);
 }
 
-void axe_timer(void* to_be_defused_timer)
+// Add a timeout callback to the ChatMocker server provided
+// timer_callback - The callback to call with the provided opdata
+// opdata         - The data to call timer_callback with
+// interval       - The number of microseconds to wait before calling timer_callback
+// data           - A pair containing a chatmocker and a string
+std::string set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval, void* data)
 {
-  return; //do nothing
+  ChatMocker* chat_server = (static_cast<pair<ChatMocker*, std::string>*>(data))->first;
+  pair<void (*timer_callback)(void* opdata), void*> my_data(timer_callback, opdata);
+  struct timeval timeout = {0, interval};
+  return chat_server.add_timeout(intermediate_cb, my_data, &timeout);
+}
+
+// Remove a timeout event from the ChatMocker server provided
+// identifier - The string that identifies the event to be removed in the event manager
+// data       - A pair containing a chatmocker and a string
+void axe_timer(std::string identifier, void* data)
+{
+  ChatMocker* chat_server = (static_cast<pair<ChatMocker*, std::string>*>(data)->first;
+  chat_server.remove_timeout(identifier);
 }
 
 /*void join(std::string room_name, std::string sender_nickname, void* data)
