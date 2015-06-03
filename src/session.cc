@@ -33,6 +33,7 @@ void MessageDigest::update(std::string new_message) {
 
 void cb_send_heartbeat(void *arg) {
   np1secSession* session = (static_cast<np1secSession*>(arg));
+  logger.info("HEARTBEAT", __FUNCTION__, session->myself.nickname);
   session->send("", session->forward_secrecy_load_type());
   session->restart_heartbeat_timer();
 }

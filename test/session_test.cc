@@ -1,7 +1,5 @@
 /**
  * Multiparty Off-the-Record Messaging library
- * Copyright (C) 2014, eQualit.ie
- *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of version 3 of the GNU Lesser General
  * Public License as published by the Free Software Foundation.
@@ -17,6 +15,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <fstream>
 
 #include "src/session.h"
 #include "src/userstate.h"
@@ -31,6 +30,8 @@
 
 using namespace std;
 
+const std::string callback_log =  "callbackoutput.txt";
+const uint32_t five_seconds_mic = 5000000; // Microseconds
 
 class SessionTest : public ::testing::Test{
 
@@ -52,10 +53,55 @@ protected: //gtest needs the elements to be protocted
     mockops->display_message = display_message;
     mockops->set_timer = set_timer;
     mockops->axe_timer = axe_timer;
-    
+    logger.config(true, true, callback_log);    
   };
   
 };
+
+void check_heartbeat_log(void* arg)
+{
+  std::ifstream in;
+  in.open(callback_log, std::ifstream::in);
+  std::string log_line;
+
+  ASSERT_TRUE(in.good());
+  in >> log_line;
+  std::size_t heartbeat_index = log_line.find("HEARTBEAT", 0);
+  in.close();
+  ASSERT_TRUE(heartbeat_index != std::string::npos);
+}
+
+TEST_F(SessionTest, test_heartbeat_timer)
+{
+  //first we need a username and we use it
+  //to sign in the room
+  string username = "sole-tester";
+  std::pair<ChatMocker*, string> mock_aux_data(&mock_server,username);
+  mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
+
+  np1secUserState* user_state = new np1secUserState(username, mockops);
+  user_state->init();
+
+  pair<np1secUserState*, ChatMocker*> user_server_state(user_state, &mock_server);
+
+  //client login and join
+  mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));
+  mock_server.join(mock_room_name, user_state->user_nick());
+
+  //we need to call this after every action
+  //receive your own key share and send confirmation
+  mock_server.receive();
+
+  //receive your own confirmation
+  mock_server.receive(); //no need actually
+  
+  auto timeout = mockops->c_heartbeating_interval * 2;
+  pair<ChatMocker*, srd::string>* encoded(&mock_server, "");
+  set_timer(check_heartbeat_log, nullptr, five_seconds_mic, encoded);
+  // TODO - Delete `callback_log`
+  
+  // TODO - Test that callbacks don't fire when stopped
+}
 
 TEST_F(SessionTest, test_cb_ack_not_received){
   //Awaiting test frame
