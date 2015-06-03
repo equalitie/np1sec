@@ -152,6 +152,14 @@ class ChatMocker {
 
  public:
   /**
+   * Initialize the event manager with a libevent event_base
+   */
+  void initialize_event_manager(struct event_base* base)
+  {
+    event_manager(base);
+  }
+
+  /**
    * Add a new timeout event to the event manager
    */
   std::string add_timeout(event_callback_fn cb, void* arg, timeval* timeout)

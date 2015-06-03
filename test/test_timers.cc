@@ -20,20 +20,43 @@
 #include "contrib/gtest/include/gtest/gtesh.h"
 #include "src/session.h"
 #include "test/chat_mocker.h"
+#include "event2/event.h"
 
-class TimerTest : public ::testing::Test {};
+const uint32_t five_seconds_mic = 5000000; // Microseconds
 
-void test_fire_timer(ChatMocker chat_server, void (*timer)(void* arg), void* arg)
+class TimerTest : public ::testing::Test
 {
-  
+protected:
+  ChatMocker mock_server;
+  struct event_base* base;
+
+  virtual void SetUp()
+  {
+    base = event_base_new();
+    mock_server.initialize_event_manager(base);
+  }
+};
+
+// TODO
+// Either extend test_fire_timer and test_stop_timer to include some assertions to verify the
+// correctness of each callback or else augment the calls to each callback so that each call has
+// appropriate assertions made.
+void test_fire_timer(ChatMocker chat_server, struct event_base* base, void (*timer)(void* arg), void* arg)
+{
+  pair<ChatMocker*, std::string>* encoded(&chat_server, "");
+  set_timer(timer, arg, five_seconds_mic, encoded);
+  event_base_dispatch(base);
 }
 
-void test_stop_timer(ChatMocker chat_server, void (*timer)(void* arg), void* arg)
+void test_stop_timer(ChatMocker chat_server, struct event_base* base, void (*timer)(void* arg), void* arg)
 {
-
+  pair<ChatMocker*, std::string>* encoded(&chat_server, "");
+  std::string identifier = set_timer(timer, arg, five_seconds_mic, encoded);
+  event_base_dispatch(base);
+  axe_timer(identifier, encoded);
 }
 
 TEST_F(TimerTest, test_timers)
 {
-  
+  test_fire_timer(
 }
