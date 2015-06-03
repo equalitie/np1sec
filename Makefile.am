@@ -13,7 +13,7 @@ TESTS =
 lib_LTLIBRARIES = libnp1sec.la
 
 libnp1sec_la_SOURCES = \
-	src/common.c \
+	src/common.cc \
 	src/crypt.cc \
 	src/logger.cc \
 	src/base64.cc \

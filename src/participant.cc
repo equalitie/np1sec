@@ -16,6 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <algorithm>
+
 #include "src/participant.h"
 
 /**
@@ -55,9 +57,8 @@ bool operator<(const Participant& lhs, const Participant& rhs)
  * 
  * @return true if peer's authenticity could be established
  */
-bool Participant::be_authenticated(const std::string authenticator_id, const HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto) {
-  if (!compute_p2p_private(thread_user_id_key, thread_user_crypto))
-    return false;
+void Participant::be_authenticated(const std::string authenticator_id, const HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto) {
+  compute_p2p_private(thread_user_id_key, thread_user_crypto);
   
   std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
   to_be_hashed+= authenticator_id;
@@ -65,9 +66,16 @@ bool Participant::be_authenticated(const std::string authenticator_id, const Has
 
   Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), regenerated_auth_token);
 
-  authenticated = !Cryptic::compare_hash(regenerated_auth_token, auth_token);
-  return (authenticated);
+  if (Cryptic::compare_hash(regenerated_auth_token, auth_token)) {
+      logger.warn("participant " + id.nickname + " failed TDH authentication");
+      throw np1secAuthenticationException();
+  } else {
+    this->authenticated = true;
+    
+  }
 
+  
+ 
 }
 
 /**
@@ -80,17 +88,15 @@ bool Participant::be_authenticated(const std::string authenticator_id, const Has
  * 
  * @return true if peer's authenticity could be established
  */
-bool Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto) {
+void Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto) {
 
-  if (!compute_p2p_private(thread_user_id_key, thread_user_crypto))
-    return false;
+  compute_p2p_private(thread_user_id_key, thread_user_crypto);
 
   std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
   to_be_hashed += id.id_to_stringbuffer(); //the question is that why should we include the public
-  //key here? 
+  //key here?
+  
   Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), auth_token);
-
-  return true;
 
 }
 
@@ -99,11 +105,37 @@ bool Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKe
  *
  * @return true on success
  */
-bool Participant::compute_p2p_private(np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto)
+void Participant::compute_p2p_private(np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto)
 {
-  logger.info("Before calling triple_ed_dh, p2p_key = " + Cryptic::hash_to_string_buff(p2p_key));
   thread_user_crypto->triple_ed_dh(ephemeral_key, long_term_pub_key, thread_user_id_key, sort_by_long_term_pub_key(this->long_term_pub_key, thread_user_id_key), &p2p_key);
-  logger.info("After calling triple_ed_dh, p2p_key = " + Cryptic::hash_to_string_buff(p2p_key));
-  return true;
                       
 }
+
+/**
+ *  this is basically the merge function
+ */
+ParticipantMap operator+(const ParticipantMap& lhs, const ParticipantMap& rhs)
+{
+  ParticipantMap result(lhs);
+
+  result.insert(rhs.begin(), rhs.end());
+  return result;
+  
+}
+
+/**
+ * this is basically the difference function
+ */
+ParticipantMap operator-(const ParticipantMap& lhs, const ParticipantMap& rhs)
+{
+  ParticipantMap difference;
+
+  std::set_difference(
+    lhs.begin(), lhs.end(),
+    rhs.begin(), rhs.end(),
+    std::inserter(difference, difference.end()));
+
+  return difference;
+  
+}
+

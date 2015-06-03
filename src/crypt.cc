@@ -29,7 +29,7 @@
 
 #include "src/crypt.h"
 #include "src/exceptions.h"
-#include "src/loggerger.h"
+#include "src/logger.h"
 
 using namespace std;
 
@@ -220,8 +220,8 @@ np1secAsymmetricKey Cryptic::reconstruct_public_key_sexp(const std::string pub_k
 
 void Cryptic::release_crypto_resource(gcry_sexp_t crypto_resource)
 {
-  assert(crypto_resource);
-  gcry_sexp_release(crypto_resource);
+  if (crypto_resource)
+    gcry_sexp_release(crypto_resource);
 }
 
 gcry_sexp_t Cryptic::copy_crypto_resource(gcry_sexp_t crypto_resource)
@@ -459,7 +459,7 @@ bool Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey p
   
 };
 
-gcry_error_t Cryptic::sign(unsigned char **sigp, size_t *siglenp,
+void Cryptic::sign(unsigned char **sigp, size_t *siglenp,
                            std::string plain_text) {
   gcry_mpi_t r, s;
   gcry_error_t err = 0;
@@ -519,7 +519,7 @@ gcry_error_t Cryptic::sign(unsigned char **sigp, size_t *siglenp,
                  ns, NULL, s);
 
   //it seems that we have assumed this
-  log_assert(magic_number >= nr+ns, "signature length is wrong");
+  logger.assert_or_die(magic_number >= nr+ns, "signature length is wrong");
   *siglenp = nr+ns;
   
   gcry_mpi_release(r);
@@ -529,7 +529,7 @@ gcry_error_t Cryptic::sign(unsigned char **sigp, size_t *siglenp,
 
  err:
   if (*sigp) delete[] *sigp;
-  logger.error("Failure: " + gcry_strsource(err) + gcry_strerror(err));
+  logger.error("Failure: " + (string)gcry_strsource(err) + (string)gcry_strerror(err));
   throw np1secCryptoException();
 
 }
@@ -537,7 +537,7 @@ gcry_error_t Cryptic::sign(unsigned char **sigp, size_t *siglenp,
 bool Cryptic::verify(std::string plain_text,
                              const unsigned char *sigbuf,
                              np1secPublicKey signer_ephemeral_pub_key) {
-  gcry_error_t err, = 0;
+  gcry_error_t err;
   gcry_mpi_t r, s;
   gcry_sexp_t datas, sigs;
   static const uint32_t nr = 32, ns = 32;
@@ -583,12 +583,12 @@ bool Cryptic::verify(std::string plain_text,
   gcry_sexp_release(sigs);
   gcry_sexp_release(datas);
   if (err == GPG_ERR_NO_ERROR) {
-    log.info("good signature");
+    logger.info("good signature");
     return true;
     
-  }else if ( err == GCRY_ERR_BAD_SIGNATURE ) {
-    log.warn("failed to verify signed blobed");
-    log.warn("Failure: " + gcry_strsource(err) + "/" + gcry_strerror(err));
+  }else if ( err == GPG_ERR_BAD_SIGNATURE ) {
+    logger.warn("failed to verify signed blobed");
+    logger.warn("Failure: " + (string)gcry_strsource(err) + "/" + (string)gcry_strerror(err));
     return false;
   }  else {
     logger.error("ed25519Key: failed to build gcry_sexp_t");
@@ -596,7 +596,7 @@ bool Cryptic::verify(std::string plain_text,
   }
     
  err:
-  logger.error("Failure: " + gcry_strsource(err) + gcry_strerror(err));
+  logger.error("Failure: " + (string)gcry_strsource(err) + (string)gcry_strerror(err));
   throw np1secCryptoException();
   
 }
@@ -617,14 +617,12 @@ gcry_cipher_hd_t Cryptic::OpenCipher() {
     logger.error("Failed to set the block cipher key");
     goto err;
   }
-    
-  err = gcry_cipher_setiv(hd, , 16);
-
+      
   return hd;
 
  err:
   if (hd) gcry_cipher_close(hd);
-  logger.error("Failure: " + gcry_strsource(err) + gcry_strerror(err));
+  logger.error("Failure: " + (string)gcry_strsource(err) + (string)gcry_strerror(err));
   throw np1secCryptoException();
   
 }
@@ -632,31 +630,67 @@ gcry_cipher_hd_t Cryptic::OpenCipher() {
 std::string Cryptic::Encrypt(std::string plain_text) {
   std::string crypt_text = plain_text;
   gcry_error_t err = 0;
-  gcry_cipher_hd_t hd = OpenCipher();
+  gcry_cipher_hd_t hd = OpenCipher(); //TODO: we shouldn't need to open cipher all the time
+
+  IVBlock buffer;
+
+  gcry_randomize(buffer, c_iv_length, GCRY_STRONG_RANDOM);
+  err = gcry_cipher_setiv(hd, buffer, c_iv_length);
+
+  if (err) {
+    logger.error("Failed to set the block cipher iv");
+    goto err;
+  }
 
   err = gcry_cipher_encrypt(hd, const_cast<char *>(crypt_text.c_str()),
                             crypt_text.size(), NULL, 0);
   if (err) {
-    std::printf("ed25519Key: Encryption of message failed");
+    logger.error("ed25519Key: Encryption of message failed");
+    goto err;
   }
 
+  crypt_text = std::string(reinterpret_cast<char*>(buffer), c_iv_length) + crypt_text;
+  
   gcry_cipher_close(hd);
   return crypt_text;
+
+ err:
+  if (hd) gcry_cipher_close(hd);
+  logger.error("Failure: " + (string)gcry_strsource(err) + (string)gcry_strerror(err));
+  throw np1secCryptoException();
+ 
 }
 
 std::string Cryptic::Decrypt(std::string encrypted_text) {
-  std::string decrypted_text = encrypted_text;
   gcry_error_t err = 0;
   gcry_cipher_hd_t hd = OpenCipher();
 
-  err = gcry_cipher_decrypt(hd, const_cast<char *>(decrypted_text.c_str()),
-                            decrypted_text.size(), NULL, 0);
+  //The first 16bytes of encrypted text is the iv
+  err = gcry_cipher_setiv(hd, encrypted_text.data(), c_iv_length);
+
   if (err) {
-    std::printf("ed25519Key: failed to decrypt message");
+    logger.error("Failed to set the block cipher iv");
+    goto err;
+  } else {
+    std::string decrypted_text = encrypted_text.substr(c_iv_length);
+
+    err = gcry_cipher_decrypt(hd, const_cast<char *>(decrypted_text.c_str()),
+                            decrypted_text.size(), NULL, 0);
+    if (err) {
+      logger.error("failed to decrypt message");
+      goto err;
+    }
+
+    gcry_cipher_close(hd);
+    return decrypted_text;
+
   }
 
-  gcry_cipher_close(hd);
-  return decrypted_text;
+ err:
+  if (hd) gcry_cipher_close(hd);
+  logger.error("Failure: " + (string)gcry_strsource(err) + (string)gcry_strerror(err));
+  throw np1secCryptoException();
+
 }
 
 #endif  // SRC_CRYPT_CC_

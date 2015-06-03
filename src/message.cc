@@ -113,7 +113,7 @@ void np1secMessage::create_participant_info_msg(SessionId session_id,
                                  HashStdBlock z_sender) {
 
   //data verification
-  logger.assert(session_id.get(), "can not create participant info message for id-less session");
+  logger.assert_or_die(session_id.get(), "can not create participant info message for id-less session");
 
   this->message_type = PARTICIPANTS_INFO;
   this->session_id.set(session_id.get());
@@ -144,7 +144,7 @@ void np1secMessage::create_group_share_msg(SessionId session_id,
 void np1secMessage::create_session_confirmation_msg(SessionId session_id, 
                                  std::string session_key_confirmation) {
   //data verification
-  logger.assert(session_id.get(), "can not create confirmation message for id-less session");
+  logger.assert_or_die(session_id.get(), "can not create confirmation message for id-less session");
 
   this->session_id.set(session_id.get());
   this->message_type = SESSION_CONFIRMATION;
@@ -169,7 +169,7 @@ void np1secMessage::create_joiner_auth_msg(SessionId session_id,
                           std::string z_sender) {
 
   //data verification
-  logger.assert(session_id.get(), "can not create joiner auth message for id-less session");
+  logger.assert_or_die(session_id.get(), "can not create joiner auth message for id-less session");
 
   this->message_type = JOINER_AUTH;
   this->session_id.set(session_id.get());
@@ -200,9 +200,9 @@ void np1secMessage::append_msg_end(bool need_to_be_signed) {
     clear_message += this->session_id.get_as_stringbuff();
   } 
 
-  if (need_to_be_signed) {
-      signature = sign_message(clear_message + sys_message);
-
+  if (need_to_be_signed) //If we fail to sign a message we can't do much
+    signature = sign_message(clear_message + sys_message);
+    
   sys_message = sys_message + signature;
   
   if (message_type == IN_SESSION_MESSAGE) {
@@ -216,7 +216,7 @@ void np1secMessage::append_msg_end(bool need_to_be_signed) {
 
   final_whole_message = sys_message;
   
-}
+}  
 
 void np1secMessage::unwrap_generic_message(std::string b64ed_message) {
   std::string message = base64_decode(b64ed_message);
@@ -231,7 +231,7 @@ void np1secMessage::unwrap_generic_message(std::string b64ed_message) {
   message_type = (np1secMessageType)(*reinterpret_cast<DTByte*>(&message[c_message_type_offset]));
 
   size_t current_offset = c_message_type_offset + sizeof(DTByte);
-  std::cout << message_type << std::endl;
+  logger.info("received message of type " + logger.message_type_to_text[message_type], __FUNCTION__);
   
   switch (message_type)
     {
@@ -239,7 +239,6 @@ void np1secMessage::unwrap_generic_message(std::string b64ed_message) {
       //the only session id-less unsigned message is JOIN_REQUEST
       this->joiner_info = message.substr(current_offset);
       break;
-
 
     default:
       //the message should have 
@@ -327,6 +326,18 @@ void np1secMessage::unwrap_generic_message(std::string b64ed_message) {
 
 }
 
+std::string np1secMessage::ustate_values(std::vector<std::string> pstates) {
+  //throw np1secNotImplementedException();
+  std::string ustates;
+  for (std::vector<std::string>::iterator it = pstates.begin();
+       it != pstates.end(); it++) {
+    ustates += *it;
+  }
+
+  return ustates;
+  
+}
+
 void np1secMessage::build_authentication_table()
 {
   std::string remaining_confirmations = key_confirmation;
@@ -376,7 +387,7 @@ std::string np1secMessage::create_in_session_msg(SessionId session_id,
     throw np1secInsufficientCredentialException();
 
   message_type = IN_SESSION_MESSAGE;
-  logger.assert(session_id.get(), "can not create in-session message for id-less session");
+  logger.assert_or_die(session_id.get(), "can not create in-session message for id-less session");
   this->session_id.set(session_id.get());
   std::string base_message;
   //first we cook the meta part
@@ -492,7 +503,8 @@ void np1secMessage::unwrap_in_session_message(std::string u_message) {
         break;
 
       default: //this is about in session forward secracy
-        throw np1secNotImplementedException();
+        logger.warn("received a sub-message of type " + std::to_string(current_sub_message_type) + " but do not know what to do with it");
+        //throw np1secNotImplementedException();
         
       }
   };
@@ -535,7 +547,7 @@ std::string np1secMessage::sign_message(std::string message) {
   try { 
     cryptic->sign(&sigbuf, &siglen, message);
   } catch (np1secCryptoException& e) {
-    log.error("unable to sign the outgoing message");
+    logger.error("unable to sign the outgoing message");
     throw;
 
   }
@@ -548,7 +560,7 @@ std::string np1secMessage::sign_message(std::string message) {
 
 
 bool np1secMessage::verify_message(np1secPublicKey sender_ephemeral_key) {
-  if (cryptic->verify(signed_message, (unsigned char*)signature.c_str(), sender_ephemeral_key)   == gcry_error(GPG_ERR_NO_ERROR)) {
+  if (cryptic->verify(signed_message, (unsigned char*)signature.c_str(), sender_ephemeral_key)) {
     return true;
   }
 
@@ -568,7 +580,7 @@ HashStdBlock np1secMessage::compute_hash()
     return Cryptic::hash_to_string_buff(hb);
   }
   else
-    throw np1secInvalidDataException;
+    throw np1secInvalidDataException();
   
 }
 

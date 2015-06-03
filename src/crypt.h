@@ -37,6 +37,10 @@ typedef HashBlock np1secSymmetricKey;
 
 const unsigned int c_ephemeral_key_length = 32;
 const unsigned int c_key_share = c_hash_length;
+const unsigned int c_iv_length = 16;
+
+typedef uint8_t IVBlock[c_iv_length];
+
 
 /**
  * Encryption primitives and related definitions.
@@ -196,15 +200,16 @@ teddh   *
 
   /**
    * Given a valid std:string sign the string using the sessions
-   * private key and return the signature.
+   * private key and store the signature in *sigp with *siglenp
+   * throw exception in case of failure
    *
    * @param unsigned char ** representing a buffer to store the create signature
    * @param size_t representing the length of the return sig buffer
    * @parama std::string representing the message to be signed 
    *
-   * @return gcry_error_t indicating whether the operation succeeded or not
+   * 
    */
-  gcry_error_t sign(unsigned char **sigp,
+  void sign(unsigned char **sigp,
                     size_t *siglenp, std::string plain_text);
 
   /**
@@ -215,9 +220,10 @@ teddh   *
    * @param const unsigned char*  representing data signature buffer
    * @param the public key of the party who has signed the message
    *
-   * @return gcry_error_t failure or verification of given signature
+   * @return true if the signature is valid false on false signature
+   * throw exception in case of error
    */
-  gcry_error_t verify(std::string signed_text, const unsigned char *sigbuf, np1secPublicKey signer_ephmeral_pub_key);
+  bool verify(std::string signed_text, const unsigned char *sigbuf, np1secPublicKey signer_ephmeral_pub_key);
 
   /**
    * Create instance of cipher session based on configured algorithm, mode,

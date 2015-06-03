@@ -98,13 +98,21 @@ const RoomAction c_no_room_action;
  *   - if the bred session defies its rasion d'etre
  */
 struct RaisonDEtre {
-  enum ReasonType {
+  enum ReasonType { //orderd by priority
+    LEAVE,  
     JOIN,
-    LEAVE,
     RESESSION
   };
 
+  ReasonType reason;
   ParticipantId changing_particpant;
+
+  RaisonDEtre(ReasonType reason1, ParticipantId changing_particpant) //For leave and join
+  : changing_particpant(changing_particpant)
+  {reason = reason1;}
+  
+  RaisonDEtre(ReasonType reason1)   //For resession
+  {reason  = reason1;}
 
 };
 
@@ -127,6 +135,8 @@ class np1secSession {
   //TODO: To keep track of why the session is created and if it is
   //still relevant
   std::list<RaisonDEtre> raisons_detre;
+  //temprorary solution to replace raisons_detre
+  np1secMessage* conceiving_message = nullptr;
 
   //TODO:: we should probably delete this and just directly use UserState->myself
   //no reason to copy the same thing for every session.
@@ -163,6 +173,7 @@ class np1secSession {
    * timer to receive the ack for it
    */
   void update_send_transcript_chain(MessageId own_message_id, HashStdBlock message_hash);
+  
   /**
    * - kills the send ack timer for the message
    * - Fill our own transcript chain for the message
@@ -182,6 +193,14 @@ class np1secSession {
    * join/accept or farewell finishes.
    */
   ParticipantMap participants;
+
+  /**
+   * Keep lists of those who left. This is necessary otherwise 
+   * two people leave from the same session, create a deadlock
+   * as none of them are there to confirm the new session, there
+   * fore many can leave one session but only one can join.
+   */
+  ParticipantMap zombies;
 
   /**
    * Keeps the list of the live participants in the room and their current/new
@@ -282,6 +301,15 @@ class np1secSession {
   /* void kill_rival_children(); */
   static const int32_t c_my_right = 1;
   static const int32_t c_my_left = -1;
+
+  /**
+   * it is invoked only once to compute the session id
+   * if one need session id then they need a new session
+   * as such it dies on re-computation.
+   */
+  void compute_session_id();
+
+
   /**
    * compute the right secret share
    * @param side  either c_my_right = 1 or c_my_left = 1
@@ -294,17 +322,17 @@ class np1secSession {
    * reading the particpant map, it populate the 
    * peers vector then find the index of thread runner
    */
-  bool populate_participants_and_peers(const UnauthenticatedParticipantList& session_view)
+  void populate_participants_and_peers(const UnauthenticatedParticipantList& session_view)
   {    
     for(UnauthenticatedParticipantList::const_iterator view_it = session_view.begin(); view_it != session_view.end();  view_it++) {
-      participants.insert(std::pair<std::string, Participant>(view_it->participant_id.nickname, Participant(*view_it, &cryptic)));
+      participants.insert(std::pair<std::string, Participant>(view_it->participant_id.nickname, Participant(*view_it)));
       participants[view_it->participant_id.nickname].authenticated = view_it->authenticated;
-      //participants[view_it->participant_id.nickname].set_thread_user_crypto(&cryptic);
       peers.push_back(view_it->participant_id.nickname);
     
     }
 
-    return keep_peers_in_order_spot_myself();
+    keep_peers_in_order_spot_myself();
+    compute_session_id();
 
   }
 
@@ -317,6 +345,10 @@ class np1secSession {
     }
 
     keep_peers_in_order_spot_myself();
+    //session id doesn't need peers vector to be computed
+    //so we just check if it is not set, it is the time to be computed
+    if (!session_id.get())
+      compute_session_id();
 
   }
 
@@ -341,7 +373,7 @@ class np1secSession {
    * @return if we can't spot ourselves the session isn't meant for us
    *
    */
-  bool keep_peers_in_order_spot_myself()
+  void keep_peers_in_order_spot_myself()
   {
 
     std::sort(peers.begin(), peers.end());
@@ -349,7 +381,8 @@ class np1secSession {
     std::vector<std::string>::iterator my_entry = std::find(peers.begin(), peers.end(), myself.nickname);
     if (my_entry == peers.end()) {
       //the message wasn't meant to us
-      return false;
+      throw np1secInvalidRoomException(); //The idea is that if we got an invalid room
+      //then we don't go for creating session;
       /* std::cout << myself.nickname << std::endl; */
       /* std::cout << peers.size() << std::endl; */
       /* for(size_t i = 0; i <  peers.size(); i++) */
@@ -376,13 +409,6 @@ class np1secSession {
     confirmed_peers.resize(peers.size());
     
   }
-
-  /**
-   * it is invoked only once to compute the session id
-   * if one need session id then they need a new session
-   * as such it dies on re-computation.
-   */
-  void compute_session_id();
 
   /**
    * compute the id of a potential session when leaving_nick leaves the session
@@ -412,8 +438,8 @@ class np1secSession {
    */
   void setup_session_view(np1secMessage session_view_message);
 
-  bool group_enc();
-  bool group_dec();
+  void group_enc();
+  void group_dec();
 
   gcry_error_t compute_message_hash(HashBlock transcript_chain,
                                   std::string message);
@@ -434,13 +460,13 @@ class np1secSession {
   * new people about it (leave) then this function is 
   * is used (no participant_info)
   */
-  bool send_new_share_message();
+  void send_new_share_message();
 
   /**
    *   Joiner call this after receiving the participant info to
    *    authenticate to everybody in the room
    */
-  bool joiner_send_auth_and_share();
+  void joiner_send_auth_and_share();
   
   /**
      Preparinig PARTICIPANT_INFO Message
@@ -449,7 +475,7 @@ class np1secSession {
      and others
      sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), kc, z_joiner
   */
-  bool send_view_auth_and_share(std::string joiner_id = "");
+  void send_view_auth_and_share(std::string joiner_id = std::string(""));
 
   public:
   /**
@@ -463,7 +489,7 @@ class np1secSession {
     NONE,
     JOIN_REQUESTED,  // The thread has requested to join
                      // by sending ephemeral key
-    REPLIED_TO_NEW_JOIN,  // The thread has received a join from a
+    //REPLIED_TO_NEW_JOIN (same as RE_SHARED),  // The thread has received a join from a 
                           // participant replied by participant list
     AUTHED_JOINER,  //This mean that the joiner is authed by the thread
                     //thread is waiting for more share to generate the key
@@ -498,10 +524,12 @@ class np1secSession {
     CREATOR,
     JOINER,
     ACCEPTOR,
-    PEER
+    PEER,
+    STAYER
   };
 
  protected:
+  //should only be changed in constructor or state transitor
   np1secSessionState my_state = DEAD;
   typedef std::pair<np1secSessionState, RoomAction> StateAndAction;
 
@@ -601,7 +629,7 @@ class np1secSession {
      change status to REPLIED_TO_NEW_JOIN
 
    */
-  StateAndAction init_a_session_with_new_plist(np1secMessage received_message);
+  StateAndAction init_a_session_with_new_user(np1secMessage received_message);
 
   /**
      For the current user, calls it when receive JOINER_AUTH
@@ -706,24 +734,10 @@ class np1secSession {
   /**
    *  Setups the state machine transition double array once and
    *  for all during the initiation.
-   *  set also userstate, room_name, cryptic and myself.
-   * 
-   *  This usually happens in constructor but because we have different 
-   *  way of constructing sessions and those depends on different type of 
-   *  data, then we need to overload the sessoin.
    * 
   */
-  void set_session_fundaemntal(np1secUserState *us, std::string room_name,
-                             Cryptic* current_ephemeral_crypto)
+  void engrave_state_machine_graph()
   {
-    this->us = us;
-    this->room_name = room_name;
-    this->cryptic = *current_ephemeral_crypto;
-    this->myself = *us->myself;
-    heartbeat_timer = nullptr;
-    
-    my_state = DEAD; //intitated as DEAD, in case anything fails
-
     //engraving state machine graph
     //joining user
     np1secFSMGraphTransitionMatrix[JOIN_REQUESTED][np1secMessage::PARTICIPANTS_INFO] = &np1secSession::auth_and_reshare;
@@ -735,15 +749,15 @@ class np1secSession {
     np1secFSMGraphTransitionMatrix[JOIN_REQUESTED][np1secMessage::SESSION_CONFIRMATION] = &np1secSession::confirm_or_resession;
 
     //user currently in the session: current session
-    np1secFSMGraphTransitionMatrix[IN_SESSION][np1secMessage::JOIN_REQUEST] = &np1secSession::init_a_session_with_new_plist;
+    np1secFSMGraphTransitionMatrix[IN_SESSION][np1secMessage::JOIN_REQUEST] = &np1secSession::init_a_session_with_new_user;
 
     //new session for currently in previous session
     //JOINER_AUTH and PARTICIPANT_INFO are essentially the same beside the 
-    np1secFSMGraphTransitionMatrix[REPLIED_TO_NEW_JOIN][np1secMessage::JOINER_AUTH] = &np1secSession::confirm_auth_add_update_share_repo;
-
-    np1secFSMGraphTransitionMatrix[REPLIED_TO_NEW_JOIN][np1secMessage::PARTICIPANTS_INFO] = &np1secSession::confirm_auth_add_update_share_repo;
-
     //After leave or in session forward secrecy
+    np1secFSMGraphTransitionMatrix[RE_SHARED][np1secMessage::JOINER_AUTH] = &np1secSession::confirm_auth_add_update_share_repo;
+
+    np1secFSMGraphTransitionMatrix[RE_SHARED][np1secMessage::PARTICIPANTS_INFO] = &np1secSession::confirm_auth_add_update_share_repo;
+
     np1secFSMGraphTransitionMatrix[RE_SHARED][np1secMessage::GROUP_SHARE] = &np1secSession::confirm_auth_add_update_share_repo;
 
     //always confirm the new key
@@ -804,12 +818,6 @@ class np1secSession {
   /*  * @return return true if the first stage of join is completed successfully */
   /*  *\/ */
   /* bool join(LongTermIDKey long_term_id_key); */
-
-  /**
-   * Insert the list of unauthenticated participants
-   * based on the input received
-   */
-  bool received_p_list(std::string participant_list);
 
  public:
   /**
@@ -879,52 +887,66 @@ class np1secSession {
       assert(0); //not for calling
     };
 
-  /**
-   sole joiner constructor
-  */
-  np1secSession(np1secUserState *us, std::string room_name,
-                               Cryptic* current_ephemeral_crypto,
-                               const UnauthenticatedParticipantList& sole_participant_view);
+  /* /\** */
+  /*  sole joiner constructor */
+  /* *\/ */
+  /* np1secSession(np1secUserState *us, std::string room_name, */
+  /*                              Cryptic* current_ephemeral_crypto, */
+  /*                              const UnauthenticatedParticipantList& sole_participant_view); */
 
-  /**
-   * Constructor, initiate by joining.
-   */
-  np1secSession(np1secUserState *us,
-                std::string room_name,
-                Cryptic* current_ephemeral_crypto,
-                np1secMessage participants_info_message);
+  /* /\** */
+  /*  * Constructor, initiate by joining. */
+  /*  *\/ */
+  /* np1secSession(np1secUserState *us, */
+  /*               std::string room_name, */
+  /*               Cryptic* current_ephemeral_crypto, */
+  /*               np1secMessage participants_info_message); */
 
-  /**
-     Constructor being called by current participant receiving leave request
+  /* /\** */
+  /*    Constructor being called by current participant receiving leave request */
      
-     - in new session constructor these will happen
-     - drop leaver
-     - computes session_id
-     - compute z_sender (self)
-     - set new session status to RE_SHARED
+  /*    - in new session constructor these will happen */
+  /*    - drop leaver */
+  /*    - computes session_id */
+  /*    - compute z_sender (self) */
+  /*    - set new session status to RE_SHARED */
      
-  */
-  np1secSession(np1secUserState* us, std::string room_name, Cryptic* current_ephemeral_crypto, std::string leaver_id, ParticipantMap current_authed_participants);
+  /* *\/ */
+  /* np1secSession(np1secUserState* us, std::string room_name, Cryptic* current_ephemeral_crypto, std::string leaver_id, ParticipantMap current_authed_participants); */
     
-  /**
-     Constructor being called by operator+ and operator- to breed 
-     new (unestablished) session
+  /* /\** */
+  /*    Constructor being called by operator+ and operator- to breed  */
+  /*    new (unestablished) session */
    
-     - in new session constructor these will happen
-       - computes session_id
-       - compute z_sender (self)
-       - set new session status to RE_SHARED
+  /*    - in new session constructor these will happen */
+  /*      - computes session_id */
+  /*      - compute z_sender (self) */
+  /*      - set new session status to RE_SHARED */
 
-  */
-  np1secSession(np1secUserState* us, std::string room_name, Cryptic* current_ephemeral_crypto, const ParticipantMap& current_authed_participants, bool broadcast_participant_info = true);
-  /**
-   * Almost copy constructor, we only alter the plist
-   */
-  /*np1secSession(np1secSession& breeding_session, 
-    ParticipantMap participants_in_the_room);*/
+  /* *\/ */
+  /* np1secSession(np1secUserState* us, std::string room_name, Cryptic* current_ephemeral_crypto, const ParticipantMap& current_authed_participants, bool broadcast_participant_info = true); */
+  /* /\** */
+  /*  * Almost copy constructor, we only alter the plist */
+  /*  *\/ */
+  /* /\*np1secSession(np1secSession& breeding_session,  */
+  /*   ParticipantMap participants_in_the_room);*\/ */
 
   //TODO really one of these two are needed;
-  np1secSession(np1secUserState *us, std::string room_name,  Cryptic* current_ephemeral_crypto, np1secMessage join_message, ParticipantMap current_authed_participants);
+  /**
+   *  Constructor
+   *
+   *  @param conceiver: the role of thread user in the session being constructed
+   */
+  np1secSession(np1secSessionConceiverCondition conceiver,
+                               np1secUserState* us,
+                               std::string room_name,
+                               Cryptic* current_ephemeral_crypto,
+                               const ParticipantMap& current_participants,
+                               np1secMessage* conceiving_message = nullptr
+                               );
+  
+  //np1secSession(np1secUserState *us, std::string room_name,  Cryptic* current_ephemeral_crypto, np1secMessage join_message, ParticipantMap current_authed_participants);
+
   /**
    * access function for session_id;
    */
@@ -941,7 +963,7 @@ class np1secSession {
    * is called by the room to send "I'm leaving" message
    * it changs session state to LEAVE_REQUESTED
    */
-  bool leave();
+  void leave();
 
   /**
    * Destructor, session should be destroyed at leave.
@@ -949,9 +971,9 @@ class np1secSession {
   ~np1secSession();
 
   //friend all timer call backs
-  friend  void cb_send_heartbeat(void *arg);
-  friend  void cb_send_ack(void *arg);
-  friend  void cb_ack_not_received(void *arg);
+  friend void cb_send_heartbeat(void *arg);
+  friend void cb_send_ack(void *arg);
+  friend void cb_ack_not_received(void *arg);
   friend void cb_ack_not_sent(void* arg);
   friend void cb_leave(void *arg);
   friend np1secRoom;

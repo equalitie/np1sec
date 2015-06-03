@@ -19,14 +19,14 @@
 
 #include <string>
 
-#include "commen.h"
+#include "common.h"
 
 void *
 xmalloc(size_t size)
 {
   void *result;
 
-  log_assert(size < SIZE_T_CEILING);
+  logger.assert_or_die(size < SIZE_T_CEILING, "too much memory to ask");
 
   /* Some malloc() implementations return NULL when the input argument
      is zero. We don't bother detecting whether the implementation we're
@@ -36,8 +36,8 @@ xmalloc(size_t size)
     size = 1;
 
   result = malloc(size);
-  if (result == NULL)
-    die_oom();
+  if (result == nullptr)
+    logger.abort("failed to allocate memory");
 
   return result;
 }

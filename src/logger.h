@@ -19,6 +19,11 @@
 #include <iostream>
 #include <fstream>
 
+/* #include "src/common.h" */
+/* #include "src/crypt.h" */
+/* #include "src/session.h" */
+/* #include "src/message.h" */
+
 #ifndef SRC_LOGGER_H_
 #define SRC_LOGGER_H_
 
@@ -44,6 +49,12 @@ protected:
   std::ofstream log_file;
 
 public:
+  std::string state_to_text[0xFF];//TOTAL_NO_OF_STATES
+  std::string message_type_to_text[0xFF];//TOTAL_NO_OF_MESSAGE_TYPE];
+
+  //put name on states and message types
+  void initiate_textual_conversions();
+ 
   // Constructor sets an initial threshold
   Logger(log_level_t threshold);
   // Destructor closes an open log file
@@ -54,16 +65,16 @@ public:
 
   void config(bool log_stdout, bool log_file, std::string fname);
   void set_threshold(log_level_t level);
-  void log(log_level_t level, std::string msg);
-  void silly(std::string msg);
-  void debug(std::string msg);
-  void verbose(std::string msg);
-  void info(std::string msg);
-  void warn(std::string msg);
-  void error(std::string msg);
-  void abort(std::string msg);
+  void log(log_level_t level, std::string msg, std::string function_name = "", std::string user_nick = "");
+  void silly(std::string msg, std::string function_name = "", std::string user_nick = "");
+  void debug(std::string msg, std::string function_name = "", std::string user_nick = "");
+  void verbose(std::string msg, std::string function_name = "", std::string user_nick = "");
+  void info(std::string msg, std::string function_name = "", std::string user_nick = "");
+  void warn(std::string msg, std::string function_name = "", std::string user_nick = "");
+  void error(std::string msg, std::string function_name = "", std::string user_nick = "");
+  void abort(std::string msg, std::string function_name = "", std::string user_nick = "");
   
-  void assert(bool expr, std::string failure_message);
+  void assert_or_die(bool expr, std::string failure_message, std::string function_name = "", std::string user_nick = "");
   
 };
 

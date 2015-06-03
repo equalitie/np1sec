@@ -374,6 +374,12 @@ class np1secMessage {
   void unwrap_meta_message();
 
   /**
+   * Return string containing the current state for all participants
+   *
+   */
+  std::string ustate_values(std::vector<std::string> pstates);
+
+  /**
    * chop the key_confirmation from joiner auth and make a 
    * table out of it.
    */

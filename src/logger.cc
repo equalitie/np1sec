@@ -20,11 +20,40 @@
 #include <fstream>
 
 #include "src/logger.h"
+
+#include "src/common.h"
+#include "src/crypt.h"
+#include "src/session.h"
+#include "src/message.h"
+
 Logger logger(INFO);
+
+void Logger::initiate_textual_conversions() {
+  state_to_text[np1secSession::NONE] = "NONE";
+  state_to_text[np1secSession::JOIN_REQUESTED] = "JOIN_REQUESTED";
+  state_to_text[np1secSession::RE_SHARED] = "RE_SHARED";
+  state_to_text[np1secSession::GROUP_KEY_GENERATED] = "GROUP_KEY_GENERATED";
+  state_to_text[np1secSession::IN_SESSION] = "IN_SESSION";
+  state_to_text[np1secSession::LEAVE_REQUESTED] = "LEAVE_REQUESTED";
+  state_to_text[np1secSession::FAREWELLED] = "FAREWELLED";
+  state_to_text[np1secSession::DEAD] = "DEAD";
+
+  message_type_to_text[np1secMessage::UNKNOWN] = "UNKNOWN";
+  message_type_to_text[np1secMessage::JOIN_REQUEST] = "JOIN_REQUEST";
+  message_type_to_text[np1secMessage::PARTICIPANTS_INFO] = "PARTICIPANTS_INFO";
+  message_type_to_text[np1secMessage::JOINER_AUTH] = "JOINER_AUTH";
+  message_type_to_text[np1secMessage::GROUP_SHARE] = "GROUP_SHARE";
+  message_type_to_text[np1secMessage::SESSION_CONFIRMATION] = "SESSION_CONFIRMATION";
+  message_type_to_text[np1secMessage::IN_SESSION_MESSAGE] = "IN_SESSION_MESSAGE";
+  message_type_to_text[np1secMessage::INADMISSIBLE] = "INADMISSIBLE";      
+
+}
 // Standard constructor
 // Threshold adopts a default level of DEBUG if an invalid threshold is provided.
 Logger::Logger(log_level_t threshold)
 {
+  initiate_textual_conversions();
+  
   if (threshold < SILLY || threshold > ERROR) {
     this->threshold = default_log_level;
   } else {
@@ -62,17 +91,21 @@ void Logger::config(bool log_stdout, bool log_to_file, std::string fname)
 // If an invalid level is provided, do not update.
 void Logger::set_threshold(log_level_t level)
 {
-  if (level >= SILLY && level <= ERROR) {
+  if (level >= SILLY && level <= ABORT) {
     threshold = level;
   }
 }
 
 // Standard log function. Prints nice colors for each level.
-void Logger::log(log_level_t level, std::string msg)
+void Logger::log(log_level_t level, std::string msg, std::string function_name, std::string user_nick)
 {
-  if (level < SILLY || level > ERROR || level < threshold) {
+  if (level < SILLY || level > ABORT || level < threshold) {
     return;
   }
+
+  msg = (user_nick.empty()) ? msg : user_nick + ": " + msg;
+  msg = (function_name.empty()) ? msg : function_name + ": " + msg;
+   
   switch (level) {
   case SILLY:
     msg = "\033[1;35;47m[SILLY] " + msg + "\033[0m";
@@ -107,46 +140,46 @@ void Logger::log(log_level_t level, std::string msg)
 
 // Convenience methods
 
-void Logger::silly(std::string msg)
+void Logger::silly(std::string msg, std::string function_name, std::string user_nick)
 {
-  log(SILLY, msg);
+  log(SILLY, msg, user_nick);
 }
 
-void Logger::debug(std::string msg)
+void Logger::debug(std::string msg, std::string function_name, std::string user_nick)
 {
-  log(DEBUG, msg);
+  log(DEBUG, msg, function_name, user_nick);
 }
 
-void Logger::verbose(std::string msg)
+void Logger::verbose(std::string msg, std::string function_name, std::string user_nick)
 {
-  log(VERBOSE, msg);
+  log(VERBOSE, msg, function_name, user_nick);
 }
 
-void Logger::info(std::string msg)
+void Logger::info(std::string msg, std::string function_name, std::string user_nick)
 {
-  log(INFO, msg);
+  log(INFO, msg, function_name, user_nick);
 }
 
-void Logger::warn(std::string msg)
+void Logger::warn(std::string msg, std::string function_name, std::string user_nick)
 {
-  log(WARN, msg);
+  log(WARN, msg, function_name, user_nick);
 }
 
-void Logger::error(std::string msg)
+void Logger::error(std::string msg, std::string function_name, std::string user_nick)
 {
-  log(ERROR, msg);
+  log(ERROR, msg, function_name, user_nick);
 }
 
-void Logger::abort(std::string msg)
+void Logger::abort(std::string msg, std::string function_name, std::string user_nick)
 {
-  log(ABORT, msg);
+  log(ABORT, msg, function_name, user_nick);
   exit(1);
     
 }
 
-void Logger::assert(bool expr, std::string failure_message)
+void Logger::assert_or_die(bool expr, std::string failure_message, std::string function_name, std::string user_nick)
 {
   if (!expr)
-    log_abort(failure_message);
+    abort(failure_message, function_name, user_nick);
   
 }

@@ -50,4 +50,5 @@ TEST_F(LoggerTest, test_logging) {
   // Stop outputting logs at all.
   log.config(false, false, "");
   log.error("This should not make it out");
+
 }

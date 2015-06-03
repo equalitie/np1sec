@@ -71,7 +71,7 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
       try {
         user_server_state->first->join_room(room_name, user_server_state->second->participant_list(room_name));
       } catch(np1secInsufficientCredentialException& e) {
-        log.error(joining_nick + " failed to join room" + room_name);
+        logger.error(joining_nick + " failed to join room" + room_name);
       }
     } else {
       cout << user_server_state->first->user_nick() << " " << joining_nick << (int)(user_server_state->first->user_nick() == joining_nick) << endl;
@@ -184,8 +184,18 @@ void display_message(std::string room_name, std::string sender_nickname, std::st
 //ignore timers all together
 void* set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval)
 {
+  // pair<void (*timer_callback)(void*opdata), void*> my_data((*timer_callback)(void* opdata), opdata);
+  // evtimer_add(
   return nullptr; //do nothing
 }
+
+// void intermediate_cb(evutil_socket_t, short, void* arg)
+// {
+//   auto fn_and_data = reinterpret_cast<pair<void (*timer_callback)(void*opdata), void*>*>(arg);
+
+//   fn_and_data->first(fn_and_data->second);
+
+// }
 
 void axe_timer(void* to_be_defused_timer)
 {
