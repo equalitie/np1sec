@@ -16,6 +16,7 @@
 
 #include <gtest/gtest.h>
 #include <fstream>
+#include <cstdio> // Required for `remove` function to delete files
 
 #include "src/session.h"
 #include "src/userstate.h"
@@ -95,11 +96,11 @@ TEST_F(SessionTest, test_heartbeat_timer)
   //receive your own confirmation
   mock_server.receive(); //no need actually
   
-  auto timeout = mockops->c_heartbeating_interval * 2;
+  uint32_t timeout = mockops->c_heartbeating_interval * 2 * 1000; // Convert to microseconds
   pair<ChatMocker*, srd::string>* encoded(&mock_server, "");
-  set_timer(check_heartbeat_log, nullptr, five_seconds_mic, encoded);
-  // TODO - Delete `callback_log`
-  
+  set_timer(check_heartbeat_log, nullptr, timeout, encoded);
+  // Delete `callback_log`
+  remove(callback_log.c_str());
   // TODO - Test that callbacks don't fire when stopped
 }
 

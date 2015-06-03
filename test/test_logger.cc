@@ -18,14 +18,18 @@
 
 /* This test provides example usage for the logger */
 
+#include <cstdio>
+
 #include "contrib/gtest/include/gtest/gtest.h"
 #include "src/logger.h"
+
+const std::string log_file = "testlog.txt";
 
 class LoggerTest : public ::testing::Test {};
 
 TEST_F(LoggerTest, test_logging) {
   Logger log(SILLY); // All logs with level >= SILLY will display
-  log.config(true, true, "testlog.txt"); // Log to stdout and file testlog.txt
+  log.config(true, true, log_file); // Log to stdout and file testlog.txt
 
   // Do some logging
   // You can call log with a level manually
@@ -50,4 +54,7 @@ TEST_F(LoggerTest, test_logging) {
   // Stop outputting logs at all.
   log.config(false, false, "");
   log.error("This should not make it out");
+  
+  // Do not leave the log file lying around
+  remove(log_file.c_str());
 }
