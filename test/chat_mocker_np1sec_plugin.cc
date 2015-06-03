@@ -68,7 +68,11 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
     string joining_nick = np1sec_message.substr(strlen("@<o>@JOIN@<o>@"));
 
     if (user_server_state->first->user_nick() == joining_nick) {
-      user_server_state->first->join_room(room_name, user_server_state->second->participant_list(room_name));
+      try {
+        user_server_state->first->join_room(room_name, user_server_state->second->participant_list(room_name));
+      } catch(np1secInsufficientCredentialException& e) {
+        logger.error(joining_nick + " failed to join room" + room_name);
+      }
     } else {
       cout << user_server_state->first->user_nick() << " " << joining_nick << (int)(user_server_state->first->user_nick() == joining_nick) << endl;
       
@@ -92,7 +96,7 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
     }
   } else if (np1sec_message.find("@<o>@LEAVE@<o>@") == 0) {
     string leaving_nick = np1sec_message.substr(strlen("@<o>@LEAVE@<o>@"));
-    if (leaving_nick!=user_server_state->first->user_nick()) {
+    if (leaving_nick != user_server_state->first->user_nick()) {
       //kick out in case haven't left cleanly.
       user_server_state->first->shrink(room_name, leaving_nick);
       

@@ -1,3 +1,4 @@
+
 /**
  * Multiparty Off-the-Record Messaging library
  * Copyright (C) 2014, eQualit.ie
@@ -16,10 +17,27 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <gtest/gtest.h>
+#include <string>
 
+#include "common.h"
 
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+void *
+xmalloc(size_t size)
+{
+  void *result;
+
+  logger.assert_or_die(size < SIZE_T_CEILING, "too much memory to ask");
+
+  /* Some malloc() implementations return NULL when the input argument
+     is zero. We don't bother detecting whether the implementation we're
+     being compiled for does that, because it should hardly ever come up,
+     and avoiding it unconditionally does no harm. */
+  if (size == 0)
+    size = 1;
+
+  result = malloc(size);
+  if (result == nullptr)
+    logger.abort("failed to allocate memory");
+
+  return result;
 }

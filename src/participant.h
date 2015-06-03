@@ -84,8 +84,10 @@ struct ParticipantId
   {
     //TODO:: We need to throw up if the participant format isn't correct
     nickname = nick_fingerprint_strbuff.substr(0, nick_fingerprint_strbuff.size()-c_fingerprint_length);
-    if ((nick_fingerprint_strbuff.size() - nickname.size()) != ParticipantId::c_fingerprint_length)
+    if ((nick_fingerprint_strbuff.size() - nickname.size()) != ParticipantId::c_fingerprint_length) {
+      logger.error("can not convert string participant id", __FUNCTION__);
       throw np1secMessageFormatException();
+    }
     
     std::string fingerprint_strbuff = nick_fingerprint_strbuff.substr(nickname.length() , ParticipantId::c_fingerprint_length);
     memcpy(fingerprint, fingerprint_strbuff.c_str(), fingerprint_strbuff.size());
@@ -164,9 +166,10 @@ UnauthenticatedParticipant(const std::string& participant_id_and_ephmeralkey)
                  participant_id_and_ephmeralkey.substr(0, participant_id_and_ephmeralkey.size() - c_ephemeral_key_length - 1) :
                  ""))
   {
-    if (participant_id_and_ephmeralkey.size() < c_ephemeral_key_length + sizeof(DTByte))
+    if (participant_id_and_ephmeralkey.size() < c_ephemeral_key_length + sizeof(DTByte)) {
+      logger.error("can not convert string to unauthenticated participant", __FUNCTION__);
       throw np1secMessageFormatException();
-    //TODO:: We need to throw up if the participant format isn't correct
+    }
     std::string ephemeral_pub_key = 
       participant_id_and_ephmeralkey.substr(participant_id_and_ephmeralkey.size() - c_ephemeral_key_length - sizeof(DTByte));
     
@@ -300,9 +303,9 @@ class Participant {
   /**
    * computes the p2p triple dh secret between participants
    *
-   * @return true on success
+   * throw an exception in case it fails
    */
-  bool compute_p2p_private(np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
+  void compute_p2p_private(np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
 
   /**
    * Generate the approperiate authentication token to send to the
@@ -310,9 +313,9 @@ class Participant {
    *
    * @param auth_token authentication token received as a message
    * 
-   * @return true if peer's authenticity could be established
+   * throw an exception in case it fails
    */
-  bool authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
+  void authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
 
   /**
    * Generate the approperiate authentication token check its equality
@@ -320,9 +323,9 @@ class Participant {
    *
    * @param auth_token authentication token received as a message
    * 
-   * @return true if peer's authenticity could be established
+   * throw and exception if authentication fails
    */
-  bool be_authenticated(std::string authenicator_id, const HashBlock auth_token, np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
+  void be_authenticated(std::string authenicator_id, const HashBlock auth_token, np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
 
   /**
    * default constructor
@@ -338,13 +341,12 @@ class Participant {
         assert(0);
       }
     
- Participant(const UnauthenticatedParticipant& unauth_participant, Cryptic* thread_crypto)
+ Participant(const UnauthenticatedParticipant& unauth_participant)
    :id(unauth_participant.participant_id),
     authenticated(false),
     authed_to(false),
     key_share_contributed(false),
     long_term_pub_key(Cryptic::reconstruct_public_key_sexp(Cryptic::hash_to_string_buff(unauth_participant.participant_id.fingerprint))),
-    //thread_user_crypto(thread_crypto),
     send_ack_timer(nullptr)
     {
       set_ephemeral_key(unauth_participant.ephemeral_pub_key);
@@ -377,4 +379,13 @@ bool sort_by_long_term_pub_key(const np1secAsymmetricKey lhs, const np1secAsymme
  */
 bool operator<(const Participant& rhs, const Participant& lhs);
 
+/**
+ *  this is basically the merge function
+ */
+ParticipantMap operator+(const ParticipantMap& lhs, const ParticipantMap& rhs);
+
+/**
+ * this is basically the difference function
+ */
+ParticipantMap operator-(const ParticipantMap& lhs, const ParticipantMap& rhs);
 #endif  // SRC_PARTICIPANT_H_

@@ -130,6 +130,13 @@ class np1secRoom {
   void join();
 
   /**
+   *  If the user is joiner and already has constructed a session for
+   *  the room and for any reason haven't received a reply from current
+   *  participant this functions resend the join request
+   */
+  void try_rejoin();
+  
+  /**
    * called by room constructor, everytime the user is the first joiner
    * of an empty room and hence does not need to convince anybody about
    * their identity, etc.
@@ -161,10 +168,10 @@ class np1secRoom {
    *
    *  @param plain_message user text message
    *
-   *  @return false if no active session is established for the current 
+   *  throw exception if no active session is established for the current 
    *  room
    */
-  bool send_user_message(std::string plain_message);
+  void send_user_message(std::string plain_message);
 
   /**
    * Just sends a message for closing the transcript consistency

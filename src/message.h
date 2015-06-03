@@ -34,6 +34,7 @@ class np1secMessage {
  protected:
 
   Cryptic* cryptic; //message class is never responsible to delete the cryptic object
+  UnauthenticatedParticipantList session_view;
 
   std::vector<std::string> &split(const std::string &s,
                                   const std::string delim,
@@ -173,13 +174,11 @@ class np1secMessage {
   HashStdBlock transcript_chain_hash;
   std::string nonce;
   HashStdBlock z_sender;
-  UnauthenticatedParticipantList session_view;
   std::string session_key_confirmation;
   std::map<DTLength, std::string> authentication_table;
   std::string key_confirmation;
   std::string joiner_info;
   std::vector<std::string> pstates;
-  std::string ustates;
   size_t no_of_participants;
 
   /** signature stuff */
@@ -217,10 +216,11 @@ class np1secMessage {
 
   /**
    * @return if the message is of type PARTICIPANTS_INFO it returns 
-   *         the list of participants with their ephemerals otherwise
+   *         the list of participants with their ephemerals
+   *         (session view)otherwise
    *         throw an exception
    */
-  UnauthenticatedParticipantList participants_in_the_room();
+  const UnauthenticatedParticipantList& get_session_view();
 
   std::string session_view_as_string();
 
@@ -378,7 +378,6 @@ class np1secMessage {
    *
    */
   std::string ustate_values(std::vector<std::string> pstates);
-
 
   /**
    * chop the key_confirmation from joiner auth and make a 

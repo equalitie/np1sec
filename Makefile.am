@@ -13,14 +13,15 @@ TESTS =
 lib_LTLIBRARIES = libnp1sec.la
 
 libnp1sec_la_SOURCES = \
+	src/common.cc \
 	src/crypt.cc \
+	src/logger.cc \
 	src/base64.cc \
 	src/message.cc \
 	src/participant.cc \
 	src/session.cc \
 	src/room.cc \
-	src/userstate.cc \
-  src/logger.cc
+	src/userstate.cc
 
 
 libnp1sec_la_LIBADD = \

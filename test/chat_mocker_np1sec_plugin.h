@@ -31,7 +31,7 @@ void new_session_announce(std::string room_name, std::vector<std::string> plist,
 
 void display_message(std::string room_name, std::string sender_nickname, std::string user_message, void* aux_data);
 
-void* set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval);
+void* set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval/*, void* aux_data*/);
 
 void axe_timer(void* to_be_defused_timer);
 

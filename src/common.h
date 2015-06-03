@@ -30,7 +30,9 @@ extern "C" {
 #include <vector>
 #include <string>
 #include <cstring>
+#include <math.h>
 
+#include "src/logger.h"
 #include "src/base64.h"
 
 #define UNUSED(expr) (void)(expr)
@@ -38,6 +40,8 @@ extern "C" {
 extern "C" {
   #include "gcrypt.h"
 }
+
+const unsigned long SIZE_T_CEILING = pow(2,30);
 
 typedef uint32_t MessageId;
 typedef gcry_sexp_t np1secPrivateKey;
@@ -62,7 +66,6 @@ typedef uint16_t DTShort;
 typedef uint32_t DTLength;
 typedef HashBlock DTHash;
 
-
 enum np1secLoadFlag {
   NO_LOAD,
   NEW_EPHEMERAL_KEY,
@@ -74,5 +77,12 @@ const std::string c_np1sec_protocol_name(":o3np1sec:");
 const DTShort c_np1sec_protocol_version = 0x0001;
 const std::string c_np1sec_delim(":o3"); //because http://en.wikipedia.org/wiki/Man%27s_best_friend_(phrase)
 const std::string c_subfield_delim(":"); //needed by ParticipantId defined in interface.h 
+
+//malloc or die
+void *
+xmalloc(size_t size);
+
+// Global logger
+extern Logger logger;
 
 #endif  // SRC_COMMON_H_

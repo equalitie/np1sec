@@ -179,3 +179,6 @@ Makefile.in
 /xmpp_test*
 .libs/*
 *.orig
+
+#test residues
+testlog.txt

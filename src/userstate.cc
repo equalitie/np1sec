@@ -32,45 +32,61 @@ np1secUserState::np1secUserState(std::string name, np1secAppOps *ops,
     myself(nullptr)
 {
   if (key_pair) {
+    logger.info("intitiating UserState with pre-generated key pair");
     long_term_key_pair.set_key_pair(key_pair);
     //we also populate our id key to send it to other
     //during join.
-    myself = new ParticipantId(name, Cryptic::public_key_to_stringbuff(long_term_key_pair.get_public_key()));
+    try {
+      myself = new ParticipantId(name, Cryptic::public_key_to_stringbuff(long_term_key_pair.get_public_key()));
+    } catch(std::exception& e) {
+      logger.error("failed to initiate user state with provided key " + (std::string)(e.what()));
+      
+      //we can't recover we need to rethrow
+      throw;
+    }
     
     //if the client doesn't initiate the public
     //key now it needs to call init sometimes before
     //join or join fails due to lack of crypto material
   } else {
     myself = new ParticipantId(name, "");
+    logger.warn("no long term key is provided for particiant " + myself->nickname);
   }
     
 }
 
 np1secUserState::~np1secUserState() {
   delete myself;
+  //long_term_key_pair destructor takes care of zeroising
+  //the memory
 
-  //TODO:Maybe for security reason we have
-  //to turn long_term_key_pair into
-  //pointer and fill-up mem before
-  //deleting it
-  //delete long_term_key_pair;
 }
 
 bool np1secUserState::init() {
   if (long_term_key_pair.is_initiated()) {
     return true;
   }
-  long_term_key_pair.generate();
-  myself->set_fingerprint(Cryptic::public_key_to_stringbuff(long_term_key_pair.get_public_key()));
-  return true;
+  logger.info("generating long term key for participant " + myself->nickname);
+  try {
+    long_term_key_pair.generate();
+    myself->set_fingerprint(Cryptic::public_key_to_stringbuff(long_term_key_pair.get_public_key()));
+    return true;
+  } catch (np1secCryptoException& crypto_exception) {
+    logger.error("failed to generate long term key for participant " + myself->nickname);
+    return false;
+
+  }
+  
 }
 
 bool np1secUserState::join_room(std::string room_name,
                                 std::vector<std::string> participants_in_the_room) {
   //we can't join without id key
-  if (!long_term_key_pair.is_initiated())
+  if (!long_term_key_pair.is_initiated()) {
+    logger.error(myself->nickname + "doesn't have sufficient credential to join room" + room_name + ". Long term id key has not been initiated for " + myself->nickname);
     throw np1secInsufficientCredentialException();
-  
+  }
+
   //we join the room, the room make a join session
 
   //if the room is not made, we make it.
@@ -83,9 +99,15 @@ bool np1secUserState::join_room(std::string room_name,
     //we need to have a better way in retrying
     //join 
     //if (!chatrooms[room_name].join()) {
-      //TODO:garbage collector for the room?
+    //TODO:garbage collector for the room?
+    try { //try rejoining
+      chatrooms[room_name].try_rejoin();      
+    }
+    catch (np1secInvalidRoomException& e) {
+      logger.warn("alreay in the room. need to leave the room before rejoining it.");
       return false;
-      //}
+    }
+    
   }
 
   return true;
@@ -100,7 +122,11 @@ bool np1secUserState::join_room(std::string room_name,
  */
 void np1secUserState::leave_room(std::string room_name) {
   //if there is no room, it was a mistake to give us the message
-  assert(chatrooms.find(room_name) != chatrooms.end());
+  if (chatrooms.find(room_name) == chatrooms.end()) {
+    logger.error("unable to leave from room " + room_name + ". user " + myself->nickname + " is not in the room", __FUNCTION__, myself->nickname);
+    throw np1secInvalidRoomException();
+    
+  }
 
   chatrooms[room_name].leave();
 
@@ -118,41 +144,60 @@ void np1secUserState::leave_room(std::string room_name) {
 bool np1secUserState::shrink(std::string room_name, std::string leaving_user_id)
 {
   //if there is no room, it was a mistake to give us the message
-  assert(chatrooms.find(room_name) != chatrooms.end());
+  if (chatrooms.find(room_name) == chatrooms.end()) {
+    logger.error("unable to shrink room " + room_name + ". user " + myself->nickname + "is not in the room");
+    throw np1secInvalidRoomException();
+    
+  }
 
   //we really should start shrinking here. the other
   //session will take care of consistency
+  logger.info(leaving_user_id + " is leaving " + room_name, __FUNCTION__, myself->nickname);
+  logger.info(room_name + " shrinking", __FUNCTION__, myself->nickname);
   chatrooms[room_name].shrink(leaving_user_id);
   
 }
 
 /**
-   This is the main message handler of the whole protocol:
-
-   The most important thing that user state message handler
-   does is to 
-       - Process the unencrypted part of the message.
-       - decide which room should handle the message using the room name
+ *  This is the main message handler of the whole protocol:
+ *
+ *  The most important thing that user state message handler
+ *  does is to 
+ *      - Process the unencrypted part of the message.
+ *      - decide which room should handle the message using the room name
  */
 void np1secUserState::receive_handler(std::string room_name,
                                       std::string sender_nickname,
                                       std::string received_message,
                                       uint32_t message_id) {
-  np1secMessage received(received_message, nullptr); //so no decryption key here
-  received.sender_nick = sender_nickname;
+  logger.info("receiving message...", __FUNCTION__, myself->nickname);
+  try {
+    np1secMessage received(received_message, nullptr); //so no decryption key here
+    received.sender_nick = sender_nickname;
 
   //if there is no room, it was a mistake to give us the message
-  assert(chatrooms.find(room_name) != chatrooms.end());
+    logger.assert_or_die(chatrooms.find(room_name) != chatrooms.end(), "np1sec can not receive messages from room " + room_name + " to which has not been informed to join");
 
-  chatrooms[room_name].receive_handler(received);
+    chatrooms[room_name].receive_handler(received);
+  } catch (std::exception& e) { //any unhandled error till here, we just
+    //ignore as bad message
+    logger.error(e.what(), __FUNCTION__, myself->nickname);
+    logger.warn("unable to handle received message from " + sender_nickname );
+  }
 
 }
 
 bool np1secUserState::send_handler(std::string room_name,
                                    std::string plain_message) {
-  assert(chatrooms.find(room_name) != chatrooms.end());    // uh oh 
-  return chatrooms[room_name].send_user_message(plain_message);
-  
+  logger.assert_or_die(chatrooms.find(room_name) != chatrooms.end(), "np1sec can not send messages to room " + room_name + " to which has not been informed to join");
+  try {
+   chatrooms[room_name].send_user_message(plain_message);
+  } 
+  catch (std::exception& e) { //any unhandled error till here, we just
+    //ignore as bad message
+    logger.error(e.what(), __FUNCTION__, myself->nickname);
+    logger.warn("unable to send  message to " + room_name, __FUNCTION__, myself->nickname );
+  }
 }
 
 #endif  // SRC_USERSTATE_CC_
