@@ -143,14 +143,7 @@ class np1secSession {
   ParticipantId myself; //to keep the nickname and the long term id key
   //these are necessary to send join request
   size_t my_index;
-  /**
-   * Keeps the list of the unauthenticated participants in the room before the
-   * join/accept or farewell finishes.
-   */
-  //TODO:: this is redundent now. We should get rid of it and stick with
-  //participant map.
-  //UnauthenticatedParticipantList participants_in_the_room;
-
+  
   /**
    * Stores Transcritp chain hashes indexed by received message id
    */
@@ -340,7 +333,6 @@ class np1secSession {
   {
     peers.clear();
     for(ParticipantMap::iterator it = participants.begin(); it != participants.end();  it++) {
-      //std::cout << it->first << std::endl;
       peers.push_back(it->first);
     }
 
@@ -383,11 +375,6 @@ class np1secSession {
       //the message wasn't meant to us
       throw np1secInvalidRoomException(); //The idea is that if we got an invalid room
       //then we don't go for creating session;
-      /* std::cout << myself.nickname << std::endl; */
-      /* std::cout << peers.size() << std::endl; */
-      /* for(size_t i = 0; i <  peers.size(); i++) */
-      /*   std::cout << peers[i] << std::endl; */
-      /* assert(0); //throw up */
     }
 
     my_index = std::distance(peers.begin(), my_entry);
@@ -867,7 +854,7 @@ class np1secSession {
    * When a user wants to send a message to a session it needs to call its send
    * function.
    */
-  bool send(std::string message, np1secMessage::np1secMessageSubType message_type);
+  void send(std::string message, np1secMessage::np1secMessageSubType message_type);
 
   //List ofc onstructors
   /* /\** */

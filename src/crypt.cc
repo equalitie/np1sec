@@ -77,7 +77,7 @@ bool Cryptic::generate_key_pair(np1secAsymmetricKey* generated_key) {
   return true;
 
 err:
-  std::fprintf(stderr, "Key failure: %s/%s\n", gcry_strsource(err), gcry_strerror(err));
+  logger.error(std::string("Key failure: ") + gcry_strsource(err)+ "/" + gcry_strerror(err), __FUNCTION__);
   throw np1secCryptoException();
   return false;
 
@@ -99,14 +99,14 @@ bool Cryptic::init() {
 
   ephemeral_pub_key = gcry_sexp_find_token(ephemeral_key, "public-key", 0);
   if (!ephemeral_pub_key) {
-    std::printf("ed25519Key: failed to retrieve public key");
+    logger.error("failed to retrieve public key",__FUNCTION__);
     throw np1secCryptoException();
     return false;
   }
 
   ephemeral_prv_key = gcry_sexp_find_token(ephemeral_key, "private-key", 0);
   if (!ephemeral_prv_key) {
-    std::printf("ed25519Key: failed to retrieve private key");
+    logger.error("failed to retrieve private key", __FUNCTION__);
     throw np1secCryptoException();
     return false;
   }
@@ -114,8 +114,9 @@ bool Cryptic::init() {
   return true;
 
 err:
-  std::printf("Key failure: %s/%s\n", gcry_strsource(err), gcry_strerror(err));
-  return false;
+  logger.error(std::string("Key failure: ") + gcry_strsource(err)+"/" + gcry_strerror(err), __FUNCTION__);
+  throw np1secCryptoException();
+  
 }
 
 gcry_sexp_t Cryptic::get_public_key(np1secAsymmetricKey key_pair)
@@ -129,8 +130,6 @@ std::string Cryptic::public_key_to_stringbuff(np1secAsymmetricKey public_key) {
 }
 
 std::string Cryptic::retrieve_result(gcry_sexp_t text_sexp) {
-  //  size_t buffer_size = gcry_sexp_sprint(text_sexp, GCRYSEXP_FMT_ADVANCED, 	
-  //                                      NULL, 0);
   gcry_mpi_t sexp_to_mpi = gcry_sexp_nth_mpi(text_sexp, 1, GCRYMPI_FMT_USG);
 
   size_t buffer_size;
@@ -139,8 +138,8 @@ std::string Cryptic::retrieve_result(gcry_sexp_t text_sexp) {
   gcry_mpi_release(sexp_to_mpi);
 
   if (!buffer_size) { 	
-    std::printf("ed25519Key: failed to convert s-expression to string"); 	
-    return NULL; 	
+    logger.error("failed to convert s-expression to string", __FUNCTION__); 	
+    throw np1secCryptoException();
   } 	
 
   std::string result(reinterpret_cast<char*>(buffer), buffer_size); 	
@@ -153,13 +152,11 @@ gcry_sexp_t Cryptic::convert_to_sexp(std::string text) {
   gcry_error_t err = 0; 	
   gcry_sexp_t new_sexp; 	
 
-  //assert(0);
   err = gcry_sexp_new(&new_sexp, text.c_str(), text.size(), 1); 	
   if (err) { 	
-    std::printf("Cryptic::convert_to_sexp failed to convert plain_text to gcry_sexp_t");
-    std::printf("Failure: %s/%s\n",
-                gcry_strsource(err),
-                gcry_strerror(err));
+    logger.error("Cryptic::convert_to_sexp failed to convert plain_text to gcry_sexp_t", __FUNCTION__);
+    logger.error(std::string("Failure: ")+ gcry_strsource(err) + "/" +gcry_strerror(err), __FUNCTION__);
+    throw np1secCryptoException();
 
   } 	
   return new_sexp; 	
@@ -213,7 +210,7 @@ np1secAsymmetricKey Cryptic::reconstruct_public_key_sexp(const std::string pub_k
   return public_key_sexp;
   
  err:
-  std::fprintf(stderr, "failed to construct public key: %s/%s\n", gcry_strsource(err), gcry_strerror(err));
+  logger.error(std::string("failed to construct public key: ") + gcry_strsource(err) + "/" + gcry_strerror(err), __FUNCTION__);
   throw np1secCryptoException();
   return nullptr;
 }
@@ -232,7 +229,7 @@ gcry_sexp_t Cryptic::copy_crypto_resource(gcry_sexp_t crypto_resource)
                         "%S",
                         crypto_resource);
   if (err) {
-    std::fprintf(stderr, "failed to copy crypto resource: %s/%s\n", gcry_strsource(err), gcry_strerror(err));
+    logger.error(std::string("failed to copy crypto resource: ") + gcry_strsource(err)+"/" + gcry_strerror(err), __FUNCTION__);
     throw np1secCryptoException();
     return nullptr;
   }
@@ -258,16 +255,8 @@ gcry_sexp_t Cryptic::copy_crypto_resource(gcry_sexp_t crypto_resource)
  *
  * @return true if succeeds otherwise false
  */
-bool Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey peer_long_term_key, np1secAsymmetricKey my_long_term_key, bool peer_is_first, HashBlock* teddh_token)
+void Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey peer_long_term_key, np1secAsymmetricKey my_long_term_key, bool peer_is_first, HashBlock* teddh_token)
 {
-  // global_logger.info("My long term key");
-  // gcry_sexp_dump(my_long_term_key);
-  // global_logger.info("Ephemeral key");
-  // gcry_sexp_dump(ephemeral_key);
-  // global_logger.info("Peer ephemeral key");
-  // gcry_sexp_dump(peer_ephemeral_key);
-  // global_logger.info("Peer long term key");
-  // gcry_sexp_dump(peer_long_term_key);
   gcry_error_t err = 0;
   bool failed = true;
   //we need to call 
@@ -293,65 +282,16 @@ bool Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey p
   gcry_sexp_t my_long_term_secret_scaler = gcry_sexp_nth(gcry_sexp_find_token(my_long_term_key, "a", 0),1);
   gcry_sexp_t my_ephemeral_secret_scaler = gcry_sexp_nth(gcry_sexp_find_token(ephemeral_key, "a", 0),1);
 
-  // err = gcry_pk_encrypt(triple_dh_sexp + (peer_is_first ? 0 : 1),
-  //                       my_ephemeral_secret_scaler,
-  //                       ephemeral_key);
-
-  // //gcry_sexp_dump(triple_dh_sexp[peer_is_first ? 0 : 1]);
-
-  // err = gcry_sexp_build( &s_data, NULL, "%m", scaler_one );
-  // if ( err ) {
-  //   std::printf("teddh: failed to compute dh token\n");
-  //   std::printf("Failure: %s/%s\n",
-  //                       gcry_strsource(err),
-  //                       gcry_strerror(err));
-  //   goto leave;
-  //   }
-
-  // err = gcry_pk_encrypt(&peer_ephemeral_point, s_data, ephemeral_key);
-  //gcry_sexp_dump(peer_ephemeral_point);
-
-  // err = gcry_pk_encrypt(&peer_ephemeral_point, s_data, peer_ephemeral_key);
-  // if ( err ) {
-  //   std::printf("teddh: failed to compute dh token\n");
-  //   std::printf("Failure: %s/%s\n",
-  //                       gcry_strsource(err),
-  //                       gcry_strerror(err));
-  //   goto leave;
-  // }
-  // //gcry_sexp_nth (const gcry_sexp_t list, int number)
-  // //peer_ephemeral_point = gcry_sexp_nth(gcry_sexp_find_token(enc_point, "s", 0),1);
-
-  // //reuse enc_point
-  // //gcry_sexp_release(enc_point);
-  // enc_point = NULL;
-  
-  // err = gcry_pk_encrypt(&peer_long_term_point, s_data, peer_long_term_key);
-  // if ( err ) {
-  //   std::printf("teddh: failed to compute dh token\n");
-  //   std::printf("Failure: %s/%s\n",
-  //                       gcry_strsource(err),
-  //                       gcry_strerror(err));
-  //   goto leave;
-  // }
-  // //peer_long_term_point = gcry_sexp_nth(gcry_sexp_find_token(enc_point, "s", 0),1);
-
-  // gcry_sexp_dump(peer_long_term_key);
-  // gcry_sexp_dump(peer_long_term_point);
-  // gcry_sexp_dump(peer_ephemeral_point);
-  // gcry_sexp_t peer_ephemeral_point = gcry_sexp_find_token(peer_ephemeral_key, "q", 0);
-  // gcry_sexp_t peer_long_term_point = gcry_sexp_find_token(peer_long_term_key, "q", 0);
-
   //bAP
   err = gcry_pk_encrypt(triple_dh_sexp + (peer_is_first ? 0 : 1),
                         my_ephemeral_secret_scaler,
                         peer_long_term_key);
 
   if ( err ) {
-    std::printf("teddh: failed to compute dh token\n");
-    std::printf("Failure: %s/%s\n",
-                        gcry_strsource(err),
-                        gcry_strerror(err));
+    logger.error("teddh: failed to compute dh token\n", __FUNCTION__);
+    logger.error(std::string("Failure: ")+
+                 gcry_strsource(err) + "/" +
+                 gcry_strerror(err), __FUNCTION__);
     goto leave;
   }
 
@@ -361,10 +301,11 @@ bool Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey p
                         my_long_term_secret_scaler,
                         peer_ephemeral_key);
   if ( err ) {
-    std::printf("teddh: failed to compute dh token\n");
-    std::printf("Failure: %s/%s\n",
-                        gcry_strsource(err),
-                        gcry_strerror(err));
+    logger.error("teddh: failed to compute dh token\n", __FUNCTION__);
+    logger.error(std::string("Failure: ")+
+                 gcry_strsource(err) + "/" +
+                 gcry_strerror(err), __FUNCTION__);
+    goto leave;
   }
 
   //abP
@@ -373,66 +314,25 @@ bool Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey p
                         peer_ephemeral_key);
 
   if ( err ) {
-    std::printf("teddh: failed to compute dh token\n");
-    std::printf("Failure: %s/%s\n",
-                        gcry_strsource(err),
-                        gcry_strerror(err));
+    logger.error("teddh: failed to compute dh token\n", __FUNCTION__);
+    logger.error(std::string("Failure: ")+
+                 gcry_strsource(err) + "/" +
+                 gcry_strerror(err), __FUNCTION__);
     goto leave;
 
   }
 
-  //bAP
-  // err = gcry_pk_decrypt(triple_dh_sexp + (peer_is_first ? 0 : 1),
-  //                       peer_long_term_point,
-  //                       ephemeral_key);
-
-  // if ( err ) {
-  //   std::printf("teddh: failed to compute dh token\n");
-  //   std::printf("Failure: %s/%s\n",
-  //                       gcry_strsource(err),
-  //                       gcry_strerror(err));
-  //   goto leave;
-  // }
-
-  // //BaP
-  // err = gcry_pk_decrypt(triple_dh_sexp + (peer_is_first ? 1 : 0),
-  //                       peer_ephemeral_point,
-  //                       my_long_term_key);
-  // if ( err ) {
-  //   std::printf("teddh: failed to compute dh token\n");
-  //   std::printf("Failure: %s/%s\n",
-  //                       gcry_strsource(err),
-  //                       gcry_strerror(err));
-
-  //   goto leave;
-  // }
-  
-  // //abP
-  // err = gcry_pk_decrypt(triple_dh_sexp+2,
-  //                       peer_ephemeral_point,
-  //                       ephemeral_key);
-
-  // if ( err ) {
-  //   std::printf("teddh: failed to compute dh token\n");
-  //   std::printf("Failure: %s/%s\n",
-  //                       gcry_strsource(err),
-  //                       gcry_strerror(err));
-  //   goto leave;
-
-  // }
-
   for(int i = 0; i < 3; i++) {
-    // std::printf("%d\n",i);
-    // gcry_sexp_dump(triple_dh_sexp[i]);
-
     token_concat += retrieve_result(gcry_sexp_find_token(triple_dh_sexp[i], "s", 0));
     gcry_sexp_release(triple_dh_sexp[i]);
   }
 
   for(int i = 0; i < 3; i++) 
     for(int j = i; j < 3; j++)
-      if (i != j && token_concat.substr(j*65,j*65+65) == token_concat.substr(i*65,i*65+65))
-        std::printf("teddh: something is wrong: token %d and %d are equal\n", i, j);
+      if (i != j && token_concat.substr(j*65,j*65+65) == token_concat.substr(i*65,i*65+65)) {
+        logger.error("teddh: something is wrong: token " + to_string(i) + " and "+ to_string(j) + " are equal\n", __FUNCTION__);
+        throw np1secCryptoException();
+      }
   
 
 
@@ -455,8 +355,9 @@ bool Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey p
 
   delete feed_to_hash_buffer;
 
-  return !failed;
-  
+  if (failed)
+    throw np1secCryptoException();
+
 };
 
 void Cryptic::sign(unsigned char **sigp, size_t *siglenp,
@@ -479,7 +380,7 @@ void Cryptic::sign(unsigned char **sigp, size_t *siglenp,
                           plain_text.c_str());
 
   if ( err ) {
-    logger.error("ed25519Key: failed to build gcry_sexp_t for signing");
+    logger.error("ed25519Key: failed to build gcry_sexp_t for signing", __FUNCTION__);
     goto err;
   }
 
@@ -487,7 +388,7 @@ void Cryptic::sign(unsigned char **sigp, size_t *siglenp,
 
   if ( err ) {
     gcry_sexp_release(plain_sexp);
-    logger.error("ed25519Key: failed to sign plain_text");
+    logger.error("ed25519Key: failed to sign plain_text", __FUNCTION__);
     goto err;
   }
 
@@ -519,7 +420,7 @@ void Cryptic::sign(unsigned char **sigp, size_t *siglenp,
                  ns, NULL, s);
 
   //it seems that we have assumed this
-  logger.assert_or_die(magic_number >= nr+ns, "signature length is wrong");
+  logger.assert_or_die(magic_number >= nr+ns, "signature length is wrong", __FUNCTION__);
   *siglenp = nr+ns;
   
   gcry_mpi_release(r);
@@ -544,14 +445,14 @@ bool Cryptic::verify(std::string plain_text,
 
   err = gcry_mpi_scan(&r, GCRYMPI_FMT_USG, sigbuf, nr, NULL);
   if ( err ) {
-    logger.error("failed to reconstruct the signature.");
+    logger.error("failed to reconstruct the signature.", __FUNCTION__);
     goto err;
   }
 
   err = gcry_mpi_scan(&s, GCRYMPI_FMT_USG, sigbuf+nr, ns, NULL);
   if ( err ) {
     gcry_mpi_release(r);
-    logger.error("failed to reconstruct the signed blob.");
+    logger.error("failed to reconstruct the signed blob.", __FUNCTION__);
     goto err;
   }
 
@@ -561,7 +462,7 @@ bool Cryptic::verify(std::string plain_text,
   gcry_mpi_release(s);
 
   if ( err ) {
-    logger.error("failed to construct gcry_sexp_t for the signature");
+    logger.error("failed to construct gcry_sexp_t for the signature", __FUNCTION__);
     goto err;
   }
 
@@ -574,7 +475,7 @@ bool Cryptic::verify(std::string plain_text,
                           plain_text.c_str());
   if ( err ) {
     gcry_sexp_release(sigs);
-    logger.error("failed to build gcry_sexp_t for the signed blob");
+    logger.error("failed to build gcry_sexp_t for the signed blob", __FUNCTION__);
     goto err;
   }
 
@@ -583,20 +484,20 @@ bool Cryptic::verify(std::string plain_text,
   gcry_sexp_release(sigs);
   gcry_sexp_release(datas);
   if (err == GPG_ERR_NO_ERROR) {
-    logger.info("good signature");
+    logger.info("good signature", __FUNCTION__);
     return true;
     
   }else if ( err == GPG_ERR_BAD_SIGNATURE ) {
-    logger.warn("failed to verify signed blobed");
-    logger.warn("Failure: " + (string)gcry_strsource(err) + "/" + (string)gcry_strerror(err));
+    logger.warn("failed to verify signed blobed", __FUNCTION__);
+    logger.warn("Failure: " + (string)gcry_strsource(err) + "/" + (string)gcry_strerror(err), __FUNCTION__);
     return false;
   }  else {
-    logger.error("ed25519Key: failed to build gcry_sexp_t");
+    logger.error("ed25519Key: failed to build gcry_sexp_t", __FUNCTION__);
     goto err;
   }
     
  err:
-  logger.error("Failure: " + (string)gcry_strsource(err) + (string)gcry_strerror(err));
+  logger.error("Failure: " + (string)gcry_strsource(err) + (string)gcry_strerror(err), __FUNCTION__);
   throw np1secCryptoException();
   
 }
@@ -608,13 +509,13 @@ gcry_cipher_hd_t Cryptic::OpenCipher() {
 
   err = gcry_cipher_open(&hd, algo, mode, 0);
   if ( err ) {
-    logger.error("Failed to create GCMb Block cipher");
+    logger.error("Failed to create GCMb Block cipher", __FUNCTION__);
     goto err;
   }
   
   err = gcry_cipher_setkey(hd, session_key, sizeof(np1secSymmetricKey));
   if ( err ) {
-    logger.error("Failed to set the block cipher key");
+    logger.error("Failed to set the block cipher key", __FUNCTION__);
     goto err;
   }
       
@@ -622,7 +523,7 @@ gcry_cipher_hd_t Cryptic::OpenCipher() {
 
  err:
   if (hd) gcry_cipher_close(hd);
-  logger.error("Failure: " + (string)gcry_strsource(err) + (string)gcry_strerror(err));
+  logger.error("Failure: " + (string)gcry_strsource(err) + (string)gcry_strerror(err), __FUNCTION__);
   throw np1secCryptoException();
   
 }

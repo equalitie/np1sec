@@ -194,9 +194,9 @@ teddh   *
    *        hash(BaP|bAP|baP) in GCRYMPI_FMT_USG format if the pointer is null
    *         , necessary space will be allocated.
    *
-   * @return false if the operation fails, true on success
+   * throw an exception  if the operation fails, true on success
    */
-  bool triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey peer_long_term_key, np1secAsymmetricKey my_long_term_key, bool peer_is_first, HashBlock* teddh_token);
+  void triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey peer_long_term_key, np1secAsymmetricKey my_long_term_key, bool peer_is_first, HashBlock* teddh_token);
 
   /**
    * Given a valid std:string sign the string using the sessions

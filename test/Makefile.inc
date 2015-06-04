@@ -9,9 +9,9 @@ libnp1sec_test_SOURCES = \
         test/chat_mocker.cc \
         test/chat_mocker_np1sec_plugin.cc \
         test/test_message.cc \
- 	      test/session_test.cc \
-        test/test_logger.cc
-        #	test/crypt_test.cc
+ 	    test/session_test.cc \
+        test/test_logger.cc \
+        test/crypt_test.cc
 
 libnp1sec_test_CPPFLAGS = \
 	-I$(top_srcdir)/${GTEST_BASE} \

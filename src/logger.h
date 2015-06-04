@@ -43,7 +43,7 @@ const log_level_t default_log_level = DEBUG;
 class Logger {
 protected:
   log_level_t threshold;
-  bool log_to_stdout;
+  bool log_to_stderr;
   bool log_to_file;
   std::string log_filename;
   std::ofstream log_file;
@@ -63,7 +63,7 @@ public:
   // Get the current log file name
   std::string current_log_file() { return log_filename; }
 
-  void config(bool log_stdout, bool log_file, std::string fname);
+  void config(bool log_stderr, bool log_file, std::string fname);
   void set_threshold(log_level_t level);
   void log(log_level_t level, std::string msg, std::string function_name = "", std::string user_nick = "");
   void silly(std::string msg, std::string function_name = "", std::string user_nick = "");
