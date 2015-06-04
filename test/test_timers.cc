@@ -16,6 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+/*
 #include <utility>
 #include "contrib/gtest/include/gtest/gtesh.h"
 #include "src/session.h"
@@ -67,16 +68,18 @@ protected:
 void test_fire_timer(ChatMocker chat_server, struct event_base* base, void (*timer)(void* arg), void* arg)
 {
   pair<ChatMocker*, std::string>* encoded(&chat_server, "");
-  set_timer(timer, arg, five_seconds_mic, encoded);
+  std::string* identifier = set_timer(timer, arg, five_seconds_mic, encoded);
   event_base_dispatch(base);
+  delete identifier;
 }
 
 void test_stop_timer(ChatMocker chat_server, struct event_base* base, void (*timer)(void* arg), void* arg)
 {
   pair<ChatMocker*, std::string>* encoded(&chat_server, "");
-  std::string identifier = set_timer(timer, arg, five_seconds_mic, encoded);
+  std::string* identifier = set_timer(timer, arg, five_seconds_mic, encoded);
   event_base_dispatch(base);
   axe_timer(identifier, encoded);
+  delete identifier;
 }
 
 TEST_F(SessionTest, test_init) {
@@ -108,7 +111,6 @@ TEST_F(TimerTest, test_timers)
 {
   test_fire_timer(mock_server, base, cb_send_heartbeat, session);
   test_stop_timer(mock_server, base, cb_send_heartbeat, session);
-  /*
   test_fire_timer(mock_server, base, cb_ack_not_received, timerops);
   test_stop_timer(mock_server, base, cb_ack_not_received, timerops);
   test_fire_timer(mock_server, base, cb_send_ack, timerops);
@@ -117,5 +119,5 @@ TEST_F(TimerTest, test_timers)
   test_stop_timer(mock_server, base, cb_ack_not_sent, timerops);
   test_fire_timer(mock_server, base, cb_leave, timerops);
   test_stop_timer(mock_server, base, cb_leave, timerops);
-  */
 }
+*/

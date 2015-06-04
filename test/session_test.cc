@@ -97,10 +97,11 @@ TEST_F(SessionTest, test_heartbeat_timer)
   mock_server.receive(); //no need actually
   
   uint32_t timeout = mockops->c_heartbeating_interval * 2 * 1000; // Convert to microseconds
-  pair<ChatMocker*, srd::string>* encoded(&mock_server, "");
-  set_timer(check_heartbeat_log, nullptr, timeout, encoded);
+  pair<ChatMocker*, std::string>* encoded = new pair<ChatMocker*, std::string>(&mock_server, "");
+  std::string* identifier = reinterpret_cast<std::string*>(set_timer(check_heartbeat_log, nullptr, timeout, encoded));
   // Delete `callback_log`
   remove(callback_log.c_str());
+  delete identifier;
   // TODO - Test that callbacks don't fire when stopped
 }
 

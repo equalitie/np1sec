@@ -119,12 +119,12 @@ struct np1secAppOps {
    * @return a handle to the timer as void* which can be sent to axe_timer
    *         to delete the timer
    */
-  void* (*set_timer)(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval);
+  void* (*set_timer)(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval, void* data);
 
   /**
    * should deactiave to_be_defused timer
    */
-  void (*axe_timer)(void* to_be_defused_timer);
+  void (*axe_timer)(void* to_be_defused_timer, void* data);
 
   
 };

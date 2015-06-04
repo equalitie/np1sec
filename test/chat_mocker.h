@@ -140,6 +140,24 @@ class MockRoom {
 
 };
 
+// A simple timeout event manager
+class EventManager
+{
+private:
+  std::map<std::string, struct event*> timers;
+  struct event_base* base;
+  
+  std::string next_identifier();
+
+public:
+  EventManager();
+  EventManager(struct event_base* base);
+  std::string* add_timeout(event_callback_fn cb, void* arg, timeval* timeout);
+  struct event* get(std::string* identifier);
+  int size();
+  void remove_timeout(std::string* identifier);
+};
+
 /**
    This client simulate both client and server.
    as everythnig happens locally
@@ -156,13 +174,13 @@ class ChatMocker {
    */
   void initialize_event_manager(struct event_base* base)
   {
-    event_manager(base);
+    event_manager = EventManager(base);
   }
 
   /**
    * Add a new timeout event to the event manager
    */
-  std::string add_timeout(event_callback_fn cb, void* arg, timeval* timeout)
+  std::string* add_timeout(event_callback_fn cb, void* arg, timeval* timeout)
   {
     return event_manager.add_timeout(cb, arg, timeout);
   }
@@ -170,7 +188,7 @@ class ChatMocker {
   /**
    * Remove a timeout event from the event manager
    */
-  void remove_timeout(std::string identifier)
+  void remove_timeout(std::string* identifier)
   {
     event_manager.remove_timeout(identifier);
   }
@@ -247,21 +265,5 @@ class ChatMocker {
   
 };
 
-// A simple timeout event manager
-class EventManager
-{
-private:
-  std::map<std::string, struct event*> timers;
-  struct event_base* base;
-  
-  std:string next_identifier();
-
-public:
-  EventManager(struct event_base* base);
-  std::string add_timeout(event_callback_fn cb, void* arg, timeval* timeout);
-  struct event* get(std::string identifier);
-  int size();
-  void remove_timeout(std::string identifier);
-};
 
 #endif  // TEST_CHAT_MOCKER_H_

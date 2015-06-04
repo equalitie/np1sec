@@ -26,6 +26,11 @@
 #include "test/chat_mocker.h"
 
 
+// Default constructor
+EventManager::EventManager() : base(nullptr)
+{
+}
+
 // A simple constructor that copies the event base to simplify adding events
 EventManager::EventManager(struct event_base* base)
 {
@@ -40,17 +45,18 @@ std::string EventManager::next_identifier()
   return stream.str();
 }
 
-std::string EventManager::add_timeout(event_callback_fn cb, void* arg, timeval* timeout)
+std::string* EventManager::add_timeout(event_callback_fn cb, void* arg, timeval* timeout)
 {
-  std::string new_ident = next_identifier();
-  timers[new_ident] = evtimer_new(base, cb, arg);
-  evtimer_add(timers[new_ident], timeout);
+  std::string* new_ident = new std::string;
+  *new_ident = next_identifier();
+  timers[*new_ident] = evtimer_new(base, cb, arg);
+  evtimer_add(timers[*new_ident], timeout);
   return new_ident;
 }
 
-struct event* EventManager::get(std::string identifier)
+struct event* EventManager::get(std::string* identifier)
 {
-  return timers[identifier];
+  return timers[*identifier];
 }
 
 int EventManager::size()
@@ -58,12 +64,12 @@ int EventManager::size()
   return timers.size();
 }
 
-void EventManager::remove_timeout(std::string indentifier)
+void EventManager::remove_timeout(std::string* identifier)
 {
   event* evt = get(identifier);
   if (evt) {
     event_del(evt);
-    timers.erase(identifier);
+    timers.erase(*identifier);
   }
 }
 

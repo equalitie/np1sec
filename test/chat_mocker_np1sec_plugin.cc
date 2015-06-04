@@ -181,9 +181,11 @@ void display_message(std::string room_name, std::string sender_nickname, std::st
   
 }
 
+typedef void (*timeout_callback)(void*);
+
 void intermediate_cb(evutil_socket_t fd, short what, void* arg)
 {
-  auto fn_and_data = reinterpret_cast<pair<void (*timer_callback)(void* opdata), void*>*>(arg);
+  auto fn_and_data = reinterpret_cast<pair<timeout_callback, void*>*>(arg);
   fn_and_data->first(fn_and_data->second);
 }
 
@@ -192,21 +194,25 @@ void intermediate_cb(evutil_socket_t fd, short what, void* arg)
 // opdata         - The data to call timer_callback with
 // interval       - The number of microseconds to wait before calling timer_callback
 // data           - A pair containing a chatmocker and a string
-std::string set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval, void* data)
+void* set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval, void* data)
 {
-  ChatMocker* chat_server = (static_cast<pair<ChatMocker*, std::string>*>(data))->first;
-  pair<void (*timer_callback)(void* opdata), void*> my_data(timer_callback, opdata);
-  struct timeval timeout = {0, interval};
-  return chat_server.add_timeout(intermediate_cb, my_data, &timeout);
+  ChatMocker* chat_server = (reinterpret_cast<pair<ChatMocker*, std::string>*>(data))->first;
+  pair<timeout_callback, void*>* my_data = new pair<timeout_callback, void*>(timer_callback, opdata);
+  struct timeval timeout;
+  timeout.tv_sec = 0;
+  timeout.tv_usec = (long)interval;
+  std::string* s = chat_server->add_timeout(intermediate_cb, my_data, &timeout);
+  return s;
 }
 
 // Remove a timeout event from the ChatMocker server provided
 // identifier - The string that identifies the event to be removed in the event manager
 // data       - A pair containing a chatmocker and a string
-void axe_timer(std::string identifier, void* data)
+void axe_timer(void* identifier, void* data)
 {
-  ChatMocker* chat_server = (static_cast<pair<ChatMocker*, std::string>*>(data)->first;
-  chat_server.remove_timeout(identifier);
+  std::string* ident = reinterpret_cast<std::string*>(identifier);
+  ChatMocker* chat_server = (reinterpret_cast<pair<ChatMocker*, std::string>*>(data))->first;
+  chat_server->remove_timeout(ident);
 }
 
 /*void join(std::string room_name, std::string sender_nickname, void* data)

@@ -1047,16 +1047,18 @@ void np1secSession::leave() {
   leave_parent = last_received_message_id;
   send("", np1secMessage::LEAVE_MESSAGE);
 
-  farewell_deadline_timer = us->ops->set_timer(cb_leave, this, us->ops->c_inactive_ergo_non_sum_interval);
+  farewell_deadline_timer = us->ops->set_timer(
+    cb_leave, this, us->ops->c_inactive_ergo_non_sum_interval, us->ops->bare_sender_data);
   my_state = LEAVE_REQUESTED;
 
 }
 
 void np1secSession::restart_heartbeat_timer() {
   if (heartbeat_timer)
-    us->ops->axe_timer(heartbeat_timer);
+    us->ops->axe_timer(heartbeat_timer, us->ops->bare_sender_data);
   
-  heartbeat_timer = us->ops->set_timer(cb_send_heartbeat, this, us->ops->c_heartbeating_interval);
+  heartbeat_timer = us->ops->set_timer(
+    cb_send_heartbeat, this, us->ops->c_heartbeating_interval, us->ops->bare_sender_data);
 
 }
 
@@ -1077,7 +1079,10 @@ void np1secSession::start_ack_timers(np1secMessage received_message) {
       received_transcript_chain[received_message.message_id][(*it).second.index].ack_timer_ops.session = this;
       received_transcript_chain[received_message.message_id][(*it).second.index].ack_timer_ops.participant = &(it->second);
       received_transcript_chain[received_message.message_id][(*it).second.index].ack_timer_ops.message_id = received_message.message_id;
-      received_transcript_chain[received_message.message_id][(*it).second.index].consistency_timer = us->ops->set_timer(cb_ack_not_received, &(received_transcript_chain[received_message.message_id][(*it).second.index].ack_timer_ops), us->ops->c_consistency_failure_interval);
+      received_transcript_chain[received_message.message_id][(*it).second.index].consistency_timer =
+      us->ops->set_timer(cb_ack_not_received,
+      &(received_transcript_chain[received_message.message_id][(*it).second.index].ack_timer_ops),
+      us->ops->c_consistency_failure_interval, us->ops->bare_sender_data);
       
     }
   }
@@ -1092,7 +1097,7 @@ void np1secSession::start_receive_ack_timer() {
   //then that will take care of acking 
   //for us as well
   if (!send_ack_timer) {
-    send_ack_timer = us->ops->set_timer(cb_send_ack, this, us->ops->c_ack_interval);
+    send_ack_timer = us->ops->set_timer(cb_send_ack, this, us->ops->c_ack_interval, us->ops->bare_sender_data);
   }
   
 }
@@ -1103,7 +1108,7 @@ void np1secSession::stop_timer_send() {
        it != participants.end();
        ++it) {
     if ((*it).second.send_ack_timer) {
-      us->ops->axe_timer((*it).second.send_ack_timer);
+      us->ops->axe_timer((*it).second.send_ack_timer, us->ops->bare_sender_data);
       send_ack_timer = nullptr;
     }
   }
@@ -1112,7 +1117,8 @@ void np1secSession::stop_timer_send() {
 void np1secSession::stop_timer_receive(std::string acknowledger_id, MessageId message_id) {
 
   for(MessageId i = participants[acknowledger_id].last_acked_message_id + 1; i <= message_id; i++) {
-      us->ops->axe_timer(received_transcript_chain[message_id][participants[acknowledger_id].index].consistency_timer);
+      us->ops->axe_timer(received_transcript_chain[message_id][participants[acknowledger_id].index].consistency_timer,
+      us->ops->bare_sender_data);
       received_transcript_chain[message_id][participants[acknowledger_id].index].consistency_timer = nullptr;
   }
 
@@ -1131,7 +1137,8 @@ void np1secSession::update_send_transcript_chain(MessageId own_message_id,
   sent_transcript_chain[own_message_id].transcript_hash = Cryptic::hash_to_string_buff(hb);
   sent_transcript_chain[own_message_id].ack_timer_ops = AckTimerOps(this, nullptr, own_message_id);
  
-  sent_transcript_chain[own_message_id].consistency_timer = us->ops->set_timer(cb_ack_not_sent, &(sent_transcript_chain[own_message_id].ack_timer_ops), us->ops->c_send_receive_interval);
+  sent_transcript_chain[own_message_id].consistency_timer = us->ops->set_timer(cb_ack_not_sent,
+  &(sent_transcript_chain[own_message_id].ack_timer_ops), us->ops->c_send_receive_interval, us->ops->bare_sender_data);
 
 }
 
@@ -1146,7 +1153,8 @@ void np1secSession::perform_received_consisteny_tasks(np1secMessage received_mes
   //defuse the "I didn't get my own message timer 
   if (received_message.sender_nick == myself.nickname) {
     assert(sent_transcript_chain.find(received_message.sender_message_id) != sent_transcript_chain.end()); //if the signature isn't failed and we don't have record of sending this then something is terribly wrong;
-    us->ops->axe_timer(sent_transcript_chain[received_message.sender_message_id].consistency_timer);
+    us->ops->axe_timer(sent_transcript_chain[received_message.sender_message_id].consistency_timer,
+    us->ops->bare_sender_data);
     sent_transcript_chain[received_message.sender_message_id].consistency_timer = nullptr;}
 
   add_message_to_transcript(received_message.final_whole_message, received_message.message_id);
@@ -1276,7 +1284,7 @@ np1secSession::StateAndAction np1secSession::receive(np1secMessage encrypted_mes
         if (check_leave_transcript_consistency()) {//we are done we can leave
           //stop the farewell deadline timer
           if (farewell_deadline_timer) {
-            us->ops->axe_timer(farewell_deadline_timer);
+            us->ops->axe_timer(farewell_deadline_timer, us->ops->bare_sender_data);
             farewell_deadline_timer = nullptr;
           }
 
