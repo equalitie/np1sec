@@ -92,7 +92,12 @@ bool np1secUserState::join_room(std::string room_name,
   //if the room is not made, we make it.
   if (chatrooms.find(room_name) == chatrooms.end()) {
     //room creation triger joining
-    chatrooms.insert(pair<string, np1secRoom>(room_name, np1secRoom(room_name, this, participants_in_the_room)));
+    try {
+      chatrooms.insert(pair<string, np1secRoom>(room_name, np1secRoom(room_name, this, participants_in_the_room)));
+    } catch(std::exception& e) {
+      logger.error(e.what(), __FUNCTION__, myself->nickname);
+      logger.error("unable to join the room", __FUNCTION__, myself->nickname);
+    }
   } else {
     //we asks the room to re-join.
     //it is not clear if it is a good idea
@@ -104,7 +109,7 @@ bool np1secUserState::join_room(std::string room_name,
       chatrooms[room_name].try_rejoin();      
     }
     catch (np1secInvalidRoomException& e) {
-      logger.warn("alreay in the room. need to leave the room before rejoining it.");
+      logger.warn("alreay in the\ room. need to leave the room before rejoining it.");
       return false;
     }
     

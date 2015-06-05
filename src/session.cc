@@ -36,32 +36,44 @@ bool compare_creation_priority(const  RaisonDEtre& lhs, const RaisonDEtre& rhs)
 
 }
 
-void MessageDigest::update(std::string new_message) {
-  UNUSED(new_message);
-  return;
-}
-
 void cb_send_heartbeat(void *arg) {
   np1secSession* session = (static_cast<np1secSession*>(arg));
+  //if we are alive
+  logger.assert_or_die(session->my_state != np1secSession::DEAD, "live timer corresponds to a dead session, haven't commited suicide properly", __FUNCTION__, session->myself.nickname);
+  
   logger.info("HEARTBEAT", __FUNCTION__, session->myself.nickname);
   session->send("", session->forward_secrecy_load_type());
   session->restart_heartbeat_timer();
+
 }
                          
 void cb_ack_not_received(void *arg) {
   // Construct message for ack
   AckTimerOps* ack_timer_ops = static_cast<AckTimerOps*>(arg);
 
+  logger.assert_or_die(ack_timer_ops->session->my_state != np1secSession::DEAD, "live timer corresponds to a dead session, haven't commited suicide properly", __FUNCTION__, ack_timer_ops->session->myself.nickname);
+
   std::string ack_failure_message = ack_timer_ops->participant->id.nickname + " failed to ack";
   ack_timer_ops->session->us->ops->display_message(ack_timer_ops->session->room_name, "np1sec directive", ack_failure_message, ack_timer_ops->session->us);
-  delete ack_timer_ops;
+    logger.warn(ack_failure_message + " in room " + ack_timer_ops->session->room_name, __FUNCTION__, ack_timer_ops->session->myself.nickname);
+
+    //this is object (not pointer) in the message chain
+    //it gets destroyed when the chain get destroyed
+    //delete ack_timer_ops;
+  
 }
 
 void cb_send_ack(void *arg) {
   // Construct message with p.id
-  AckTimerOps* ack_timer_ops = static_cast<AckTimerOps*>(arg);
-  ack_timer_ops->session->send_ack_timer = nullptr;
-  ack_timer_ops->session->send("", ack_timer_ops->session->forward_secrecy_load_type());
+  np1secSession* session = (static_cast<np1secSession*>(arg));
+
+  logger.assert_or_die(session->my_state != np1secSession::DEAD, "live timer corresponds to a dead session, haven't commited suicide properly", __FUNCTION__, session->myself.nickname);
+
+  session->send_ack_timer = nullptr;
+
+  logger.info("long time, no messeg...acknowledging received messages");
+  
+  session->send("", session->forward_secrecy_load_type());
 
 }
 
@@ -73,6 +85,9 @@ void cb_send_ack(void *arg) {
 void cb_ack_not_sent(void* arg) {
   // Construct message with p.id
   AckTimerOps* ack_timer_ops = static_cast<AckTimerOps*>(arg);
+
+   logger.assert_or_die(ack_timer_ops->session->my_state != np1secSession::DEAD, "live timer corresponds to a dead session, haven't commited suicide properly", __FUNCTION__, ack_timer_ops->session->myself.nickname);
+
   std::string ack_failure_message = "we did not receive our own sent message";
   ack_timer_ops->session->us->ops->display_message(ack_timer_ops->session->room_name, "np1sec directive", ack_failure_message, ack_timer_ops->session->us);
 
@@ -86,8 +101,27 @@ void cb_leave(void *arg) {
   np1secSession* session = (static_cast<np1secSession*>(arg));
 
   session->check_leave_transcript_consistency();
-  session->my_state = np1secSession::DEAD;
+  session->commit_suicide();
 
+}
+
+/**
+ * rejoining a room in case joining times out. The hope is that room
+ * member kicks the non-responsive user out of the room meanwhile
+ */
+void cb_rejoin(void *arg) {
+  np1secSession* session = (static_cast<np1secSession*>(arg));
+
+  //just kill myself and ask the room to rejoin
+  session->commit_suicide();
+
+  auto session_room = session->us->chatrooms.find(session->room_name);
+  logger.assert_or_die(session_room != session->us->chatrooms.end(), "the room which the ssession belongs you has disappeared", __FUNCTION__, session->myself.nickname);
+
+  logger.info("joining session timed out, trying to rejoin", __FUNCTION__, session->myself.nickname);
+  
+  session_room->second.try_rejoin();
+  
 }
 
 /**
@@ -476,7 +510,7 @@ RoomAction np1secSession::state_handler(np1secMessage received_message)
 //***** Joiner state transitors ****
 
 /**
-   For join user calls this when receivemessage has type of PARTICIPANTS_INFO
+   For join user calls this when receive message has type of PARTICIPANTS_INFO
    
    sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), (kc_{sender, joiner}), z_sender
 
@@ -540,7 +574,10 @@ np1secSession::StateAndAction np1secSession::confirm_or_resession(np1secMessage 
     if (validate_session_confirmation(received_message))
       confirmed_peers[participants[received_message.sender_nick].index] = true;
     else {
-      return StateAndAction(DEAD, RoomAction(RoomAction::NO_ACTION));
+      logger.warn(received_message.sender_nick + "failed to provid a valid session confirmation. confirmation ignored.", __FUNCTION__, myself.nickname);
+      //we just ignore the message instead I think
+      //I can throw something too.
+      return StateAndAction(my_state, RoomAction(RoomAction::NO_ACTION));
     }
 
     if (everybody_confirmed()) {
@@ -759,8 +796,10 @@ np1secSession::StateAndAction np1secSession::send_session_confirmation_if_everyb
 np1secSession::StateAndAction np1secSession::mark_confirmed_and_may_move_session(np1secMessage received_message) {
   //TODO:realistically we don't need to check sid, if sid
   //doesn't match we shouldn't have reached this point
-  if (!validate_session_confirmation(received_message))
-    return StateAndAction(DEAD, c_no_room_action);
+  if (!validate_session_confirmation(received_message)) {
+    logger.warn(received_message.sender_nick + "failed to provid a valid session confirmation. confirmation ignored.", __FUNCTION__, myself.nickname);
+    return StateAndAction(my_state, c_no_room_action);
+  }
   
   confirmed_peers[participants[received_message.sender_nick].index] = true;
   
@@ -850,7 +889,7 @@ void np1secSession::leave() {
     logger.assert_or_die(my_index == 0 && peers.size() == 1, "peers is not sync with participants");
     peers.pop_back();
     us->ops->leave(room_name, peers, us->ops->bare_sender_data);
-    my_state = DEAD;
+    commit_suicide();
   }
 
   //otherwise, inform others in the room about your leaving the room
@@ -903,7 +942,7 @@ void np1secSession::start_ack_timers(np1secMessage received_message) {
  * When we send a message we start a timer to make sure that we'll
  * receive the message from the server
  */
-void np1secSession::start_receive_ack_timer() {
+void np1secSession::start_conditional_send_ack_timer() {
   //if there is already an ack timer 
   //then that will take care of acking 
   //for us as well
@@ -1076,7 +1115,7 @@ void np1secSession::send(std::string message, np1secMessage::np1secMessageSubTyp
   if (message_type == np1secMessage::USER_MESSAGE)  {
     // We create a set of times for all other peers for acks we expect for
     // our sent message
-    start_receive_ack_timer(); //If you are overwritng
+    start_conditional_send_ack_timer(); //If you are overwritng
     //timers then you need plan of recourse.
   }
   
@@ -1106,6 +1145,7 @@ np1secSession::StateAndAction np1secSession::receive(np1secMessage encrypted_mes
 
           peers.pop_back();
           us->ops->leave(room_name, peers, us->ops->bare_sender_data);
+          commit_suicide();
           StateAndAction(DEAD, c_no_room_action);
           
         }
@@ -1134,6 +1174,33 @@ np1secMessage::np1secMessageSubType np1secSession::forward_secrecy_load_type()
 {
   return np1secMessage::JUST_ACK;
   //throw np1secNotImplementedException();
+}
+
+/**
+ * change the state to DEAD. it is needed when we bread a new
+ * session out of this session. 
+ * it also axes all of the timers
+ */
+void np1secSession::commit_suicide() {
+  if (heartbeat_timer) us->ops->axe_timer(heartbeat_timer, us->ops->bare_sender_data);
+  if (farewell_deadline_timer) us->ops->axe_timer(farewell_deadline_timer, us->ops->bare_sender_data);
+  if (send_ack_timer) us->ops->axe_timer(send_ack_timer, us->ops->bare_sender_data);
+  
+  heartbeat_timer = farewell_deadline_timer = send_ack_timer = nullptr;
+
+  for(auto& cur_block: received_transcript_chain)
+    for(auto& cur_participant: cur_block.second)
+      if(cur_participant.consistency_timer) {
+        us->ops->axe_timer(cur_participant.consistency_timer, us->ops->bare_sender_data);
+        cur_participant.consistency_timer = nullptr;
+      }
+
+  for(auto& cur_block: sent_transcript_chain)
+    if (cur_block.second.consistency_timer) {
+      us->ops->axe_timer(cur_block.second.consistency_timer, us->ops->bare_sender_data);
+      cur_block.second.consistency_timer = nullptr;
+    }
+  
 }
 
 np1secSession::~np1secSession() {

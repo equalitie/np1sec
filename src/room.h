@@ -63,6 +63,9 @@ class np1secRoom {
   std::string name; //room name given in creation by user_state
   np1secUserState* user_state;
   ParticipantId myself;
+  size_t original_room_size = 0; //we only need keep track of
+  //the room size till we become a current user. after that
+  //the session can take care of that
 
   //with exception of possibly one session, every
   //session has session id.

@@ -243,7 +243,7 @@ class np1secSession {
     * Construct and start timers for acking received messages
     *
     */
-  void start_receive_ack_timer();
+  void start_conditional_send_ack_timer();
 
   /**
    * End ack timer on for given acknowledgeing participants
@@ -813,9 +813,10 @@ class np1secSession {
 
   /**
    * change the state to DEAD. it is needed when we bread a new
-   * session out of this session.
+   * session out of this session. 
+   * it also axes all of the timers
    */
-  void commit_suicide() { my_state = DEAD; };
+  void commit_suicide();
 
   /**
    * Create a new np1secSession object based on the combination of participants
@@ -950,6 +951,9 @@ class np1secSession {
   friend void cb_ack_not_received(void *arg);
   friend void cb_ack_not_sent(void* arg);
   friend void cb_leave(void *arg);
+
+  friend void cb_rejoin(void *arg);
+
   friend np1secRoom;
 
 };

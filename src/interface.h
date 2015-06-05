@@ -43,7 +43,10 @@ struct np1secAppOps {
 
   np1secAppOps() {};
   
-  np1secAppOps(uint32_t ACK_GRACE_INTERVAL , uint32_t REKEY_GRACE_INTERVAL,  uint32_t INTERACTION_GRACE_INTERVAL, uint32_t BROADCAST_LATENCY)
+  np1secAppOps(uint32_t ACK_GRACE_INTERVAL,
+               uint32_t REKEY_GRACE_INTERVAL,
+               uint32_t INTERACTION_GRACE_INTERVAL,
+               uint32_t BROADCAST_LATENCY)
   : c_heartbeating_interval(REKEY_GRACE_INTERVAL / 2),
     c_inactive_ergo_non_sum_interval(REKEY_GRACE_INTERVAL + 2*(BROADCAST_LATENCY)),
     c_unresponsive_ergo_non_sum_interval(INTERACTION_GRACE_INTERVAL + 2*(BROADCAST_LATENCY)),
@@ -126,6 +129,12 @@ struct np1secAppOps {
    */
   void (*axe_timer)(void* to_be_defused_timer, void* data);
 
+
+  /**
+   * should report if the participants is the only participant 
+   * in the room
+   */
+  bool (*am_i_alone)(std::string room_name);
   
 };
 

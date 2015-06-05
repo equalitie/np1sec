@@ -31,14 +31,10 @@ np1secRoom::np1secRoom(std::string room_name, np1secUserState* user_state, std::
   : name(room_name), user_state(user_state), user_in_room_state(JOINING)
 {
   np1sec_ephemeral_crypto.init(); //generate intitial ephemeral keys for join
-  if (participants_in_the_room.size() <= 1) {
-    logger.info("creating room " + room_name + "...");
-    solitary_join();
-  } else {
-    logger.info("joining room " + room_name + "...");
-    join();
-  }
-  
+  original_room_size = participants_in_the_room.size();
+
+  join();
+
 }
 
 /**
@@ -48,7 +44,7 @@ np1secRoom::np1secRoom(std::string room_name, np1secUserState* user_state, std::
  */
 void np1secRoom::solitary_join() {
   //simply faking the particpant inf message
-  assert(user_in_room_state == JOINING); 
+  logger.assert_or_die(user_in_room_state == JOINING, "only can be called in joining stage", __FUNCTION__, user_state->myself->nickname); 
   
   //UnauthenticatedParticipantList session_view;
   ParticipantMap participants;
@@ -66,18 +62,14 @@ void np1secRoom::solitary_join() {
   //                                    user_state,
   //                                    name);
   
-  try {
-    np1secSession sole_joiner_session(np1secSession::CREATOR,
+  np1secSession sole_joiner_session(np1secSession::CREATOR,
                                       user_state,
                                       name,
                                       &np1sec_ephemeral_crypto,
                                       participants);
   
 
-    session_universe.insert(pair<string, np1secSession>(sole_joiner_session.my_session_id().get_as_stringbuff(), sole_joiner_session));
-  } catch(std::exception& e) {
-    logger.error(e.what());
-  }
+  session_universe.insert(pair<string, np1secSession>(sole_joiner_session.my_session_id().get_as_stringbuff(), sole_joiner_session));
   
 }
 
@@ -86,14 +78,25 @@ void np1secRoom::solitary_join() {
  * occupied by others. it just simply send a join message to the room.
  */
 void np1secRoom::join() {
-  assert(user_in_room_state == JOINING); //no double join but we need a
-  //more humane way of doing this
-  //turening sexp to stirng buffer.
-  UnauthenticatedParticipant me(*(user_state->myself), Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()),true);
-  np1secMessage join_message;
+  logger.assert_or_die(user_in_room_state == JOINING, "only can be called in joining stage", __FUNCTION__, user_state->myself->nickname); //no double join but we need a
+  logger.assert_or_die(original_room_size, "being in an empty room is a logical contradition", __FUNCTION__, user_state->myself->nickname);
 
-  join_message.create_join_request_msg(me);
-  join_message.send(name, user_state);
+  if (original_room_size == 1) {
+    logger.info("creating room " + name + "...", __FUNCTION__, user_state->myself->nickname);
+    solitary_join();
+
+  } else {
+    logger.info("joining room " + name + "...",  __FUNCTION__, user_state->myself->nickname);
+
+    //more humane way of doing this
+    //turening sexp to stirng buffer.
+    UnauthenticatedParticipant me(*(user_state->myself), Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()),true);
+    np1secMessage join_message;
+
+    join_message.create_join_request_msg(me);
+    join_message.send(name, user_state);
+
+  }
   
 }
 
@@ -102,16 +105,17 @@ void np1secRoom::join() {
  *  the room and for any reason haven't received a reply from current
  *  participant this functions resend the join request
  */
-
 void np1secRoom::try_rejoin() {
   //you don't need to retry sole-joining as it is
   //a deterministic process 
-  if (user_in_room_state != JOINING) {
+  if (user_in_room_state == JOINING) {
     join();
 
   } else {
-    //you have to leave before rejoining
-    throw np1secInvalidRoomException();
+    //it is probably called by a desperate
+    //ding session that doesn't know we are
+    //are already joind
+    logger.warn("already in the session. igonring calls for re-join", __FUNCTION__, user_state->myself->nickname);
 
   }
 
@@ -163,18 +167,23 @@ void np1secRoom::receive_handler(np1secMessage received_message)
   if (user_in_room_state == JOINING) {
     logger.info("in JOINING state", __FUNCTION__, user_state->myself->nickname);
     if (received_message.has_sid()) {
-      if (session_universe.find(received_message.session_id.get_as_stringbuff()) != session_universe.end()) {
-        auto message_session = session_universe.find(received_message.session_id.get_as_stringbuff());
+      auto message_session = session_universe.find(received_message.session_id.get_as_stringbuff());
+      if (message_session != session_universe.end() && (message_session->second.my_state != np1secSession::DEAD)) {
         action_to_take = message_session->second.state_handler(received_message);
-      
       } else {
         //we are only interested in PARTICIANT_INFO
         if (received_message.message_type == np1secMessage::PARTICIPANTS_INFO) {
           try {
             ParticipantMap prop_empty_plist;
             np1secSession* new_session = new np1secSession(np1secSession::JOINER, user_state, name, &np1sec_ephemeral_crypto, prop_empty_plist, &received_message);
-            if (new_session->my_state != np1secSession::DEAD)
+            if (new_session->my_state != np1secSession::DEAD) {
+              //we need to get rid of old session if it is dead
+              //till we get a reviving mechanisim
+              if (message_session != session_universe.end() && (message_session->second.my_state == np1secSession::DEAD)) {
+                session_universe.erase(message_session->first);
+              }
               session_universe.emplace(pair<string, np1secSession>(received_message.session_id.get_as_stringbuff(), *new_session));
+            }
           } catch(std::exception& e) {
             logger.error(e.what(), __func__, user_state->myself->nickname);
             
@@ -193,7 +202,7 @@ void np1secRoom::receive_handler(np1secMessage received_message)
         try {
           action_to_take = session_universe[received_message.session_id.get_as_stringbuff()].state_handler(received_message);
         } catch(std::exception& e) {
-          logger.error(e.what());
+          logger.error(e.what(), __FUNCTION__, user_state->myself->nickname);
         }
       }
       // else //ignone, we haven't generated this session, so we could be leaving, we have 
@@ -201,8 +210,8 @@ void np1secRoom::receive_handler(np1secMessage received_message)
       if (received_message.message_type == np1secMessage::JOIN_REQUEST) {
         try {
           action_to_take = session_universe[active_session.get_as_stringbuff()].state_handler(received_message);
-          } catch(std::exception& e) {
-          logger.error(e.what());
+        } catch(std::exception& e) {
+          logger.error(e.what(), __FUNCTION__, user_state->myself->nickname);
         }
 
         // delete action_to_take.bred_session; //:( TODO: room needs to create the session.
@@ -402,7 +411,13 @@ void np1secRoom::leave() {
 }
 
 void np1secRoom::shrink(std::string leaving_nick) {
-  if (user_in_room_state == CURRENT_USER) {
+  if (user_in_room_state == JOINING) {
+    original_room_size--;
+    try_rejoin(); //it helps because although the active session
+    //of current occupants still contatins the leaver, the new
+    //session will be born without zombies
+    
+  } else if (user_in_room_state == CURRENT_USER) {
     //we need to detect if we have already generated the shrunk
     //session or not.
     //first we get the plist of active session, if the leaving use
