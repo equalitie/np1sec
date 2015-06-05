@@ -74,8 +74,6 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
         logger.error(joining_nick + " failed to join room" + room_name);
       }
     } else {
-      cout << user_server_state->first->user_nick() << " " << joining_nick << (int)(user_server_state->first->user_nick() == joining_nick) << endl;
-      
       //we don't need to react, (we can, the protocol doesn't stop us
       //but we are lazy and we react to the join request sent by the joiner
       // user_server_state->first->receive_handler(room_name,

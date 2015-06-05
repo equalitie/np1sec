@@ -16,10 +16,13 @@ extern "C" {
 #include <sstream>
 #include <event2/event.h>
 
+#include "src/logger.h"
 using namespace std;
 
 #ifndef TEST_CHAT_MOCKER_H_
 #define TEST_CHAT_MOCKER_H_
+
+extern Logger mock_logger;
 
 /**
    This class store the information about different participants
@@ -117,7 +120,7 @@ class MockRoom {
     std::string leaving_nick;
     while (!message_queue.empty())
       {
-        cout << message_queue.front() << endl;
+        mock_logger.info(name + " received message: ", message_queue.front(),__FUNCTION__);
         for (std::map<std::string, MockParticipant>::iterator
                cur_participant = _participant_list.begin();
              cur_participant != _participant_list.end() && !_participant_list.empty(); cur_participant++) {

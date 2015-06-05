@@ -70,11 +70,8 @@ TEST_F(CryptTest, test_sign_verify) {
   unsigned char *sigbuf = NULL;
   size_t siglen;
   cryptic.init();
-  err = cryptic.Sign(&sigbuf, &siglen, test_text);
-  ASSERT_TRUE(cryptic.Sign(&sigbuf, &siglen, test_text)
-              == gcry_error(GPG_ERR_NO_ERROR));
-  ASSERT_TRUE(cryptic.Verify(test_text, sigbuf)
-              == gcry_error(GPG_ERR_NO_ERROR));
+  ASSERT_NO_THROW(cryptic.sign(&sigbuf, &siglen, test_text));
+  ASSERT_TRUE(cryptic.verify(test_text, sigbuf, cryptic.get_ephemeral_pub_key()));
 }
 
 TEST_F(CryptTest, test_teddh_test) {
@@ -99,9 +96,9 @@ TEST_F(CryptTest, test_teddh_test) {
   bool bob_is_first = !alice_is_first;
   HashBlock teddh_alice_bob, teddh_bob_alice;
 //Alice is making the tdh token, peer is bob
-  ASSERT_TRUE(alice_crypt.triple_ed_dh(bob_crypt.get_ephemeral_pub_key(), bob_long_term_pub_key, alice_long_term_key, bob_is_first, &teddh_alice_bob));
+  ASSERT_NO_THROW(alice_crypt.triple_ed_dh(bob_crypt.get_ephemeral_pub_key(), bob_long_term_pub_key, alice_long_term_key, bob_is_first, &teddh_alice_bob));
   //Bob is making the tdh token, peer is alice
-  ASSERT_TRUE(bob_crypt.triple_ed_dh(alice_crypt.get_ephemeral_pub_key(), alice_long_term_pub_key, bob_long_term_key, alice_is_first, &teddh_bob_alice));
+  ASSERT_NO_THROW(bob_crypt.triple_ed_dh(alice_crypt.get_ephemeral_pub_key(), alice_long_term_pub_key, bob_long_term_key, alice_is_first, &teddh_bob_alice));
 
   for(unsigned int i = 0; i < sizeof(HashBlock); i++)
     ASSERT_EQ(teddh_alice_bob[i], teddh_bob_alice[i]);

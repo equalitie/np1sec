@@ -561,9 +561,11 @@ std::string np1secMessage::sign_message(std::string message) {
 
 bool np1secMessage::verify_message(np1secPublicKey sender_ephemeral_key) {
   if (cryptic->verify(signed_message, (unsigned char*)signature.c_str(), sender_ephemeral_key)) {
+    logger.info("massage bears a valid signature from " + sender_nick, __FUNCTION__);
     return true;
   }
 
+  logger.info("signature doesn't correspond to the ephemeral key provided by " + sender_nick, __FUNCTION__);
   return false;
 
 }

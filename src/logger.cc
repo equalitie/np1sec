@@ -35,7 +35,6 @@ void Logger::initiate_textual_conversions() {
   state_to_text[np1secSession::GROUP_KEY_GENERATED] = "GROUP_KEY_GENERATED";
   state_to_text[np1secSession::IN_SESSION] = "IN_SESSION";
   state_to_text[np1secSession::LEAVE_REQUESTED] = "LEAVE_REQUESTED";
-  state_to_text[np1secSession::FAREWELLED] = "FAREWELLED";
   state_to_text[np1secSession::DEAD] = "DEAD";
 
   message_type_to_text[np1secMessage::UNKNOWN] = "UNKNOWN";
@@ -59,7 +58,7 @@ Logger::Logger(log_level_t threshold)
   } else {
     this->threshold = threshold;
   }
-  log_to_stdout = true;
+  log_to_stderr = true;
   log_to_file = false;
   log_filename = "";
 }
@@ -72,10 +71,10 @@ Logger::~Logger()
   }
 }
 
-// Configure the logger to log to stdout and/or to a file.
-void Logger::config(bool log_stdout, bool log_to_file, std::string fname)
+// Configure the logger to log to stderr and/or to a file.
+void Logger::config(bool log_stderr, bool log_to_file, std::string fname)
 {
-  log_to_stdout = log_stdout;
+  log_to_stderr = log_stderr;
   this->log_to_file = log_to_file;
   if (log_to_file) {
     log_filename = fname;
@@ -129,8 +128,8 @@ void Logger::log(log_level_t level, std::string msg, std::string function_name, 
     msg = "\033[91;40m[ABORT] " + msg + "\033[0m";
     break;
   }
-  if (log_to_stdout) {
-    std::cout << msg << std::endl;
+  if (log_to_stderr) {
+    std::cerr << msg << std::endl;
   }
   if (log_to_file && log_file.is_open()) {
     log_file << msg << std::endl;

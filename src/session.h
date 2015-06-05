@@ -143,14 +143,7 @@ class np1secSession {
   ParticipantId myself; //to keep the nickname and the long term id key
   //these are necessary to send join request
   size_t my_index;
-  /**
-   * Keeps the list of the unauthenticated participants in the room before the
-   * join/accept or farewell finishes.
-   */
-  //TODO:: this is redundent now. We should get rid of it and stick with
-  //participant map.
-  //UnauthenticatedParticipantList participants_in_the_room;
-
+  
   /**
    * Stores Transcritp chain hashes indexed by received message id
    */
@@ -340,7 +333,6 @@ class np1secSession {
   {
     peers.clear();
     for(ParticipantMap::iterator it = participants.begin(); it != participants.end();  it++) {
-      //std::cout << it->first << std::endl;
       peers.push_back(it->first);
     }
 
@@ -383,11 +375,6 @@ class np1secSession {
       //the message wasn't meant to us
       throw np1secInvalidRoomException(); //The idea is that if we got an invalid room
       //then we don't go for creating session;
-      /* std::cout << myself.nickname << std::endl; */
-      /* std::cout << peers.size() << std::endl; */
-      /* for(size_t i = 0; i <  peers.size(); i++) */
-      /*   std::cout << peers[i] << std::endl; */
-      /* assert(0); //throw up */
     }
 
     my_index = std::distance(peers.begin(), my_entry);
@@ -489,11 +476,6 @@ class np1secSession {
     NONE,
     JOIN_REQUESTED,  // The thread has requested to join
                      // by sending ephemeral key
-    //REPLIED_TO_NEW_JOIN (same as RE_SHARED),  // The thread has received a join from a 
-                          // participant replied by participant list
-    AUTHED_JOINER,  //This mean that the joiner is authed by the thread
-                    //thread is waiting for more share to generate the key
-                    //so no more join till t
     RE_SHARED,      // key is being made, thread has been sent its share,
                     // waiting for more shares. This is the same as
                     // AUTHED_JOINER but for leave procedure where there
@@ -502,17 +484,9 @@ class np1secSession {
     GROUP_KEY_GENERATED,  // The thread has computed the session
                           // key and has sent the conformation
     IN_SESSION,  // Key has been confirmed
-    UPDATED_KEY,  // all new shares has been received and new
-                  // key has been generated, no more send possible
     LEAVE_REQUESTED,  // Leave requested by the thread, waiting
                       // for final transcirpt consitancy check
-    FAREWELLED,  // LEAVE is received from another participant and a
-                 // meta message for transcript consistency and
-                 // new shares has been sent
     DEAD,  // Won't accept receive or sent messages, possibly throw up
-    SCHEDULED_TO_DIE, //a new session has been activated,
-    //we receive all messages which has been sent before arrival of
-    //last confirmation
     TOTAL_NO_OF_STATES //This should be always the last state
   };
 
@@ -867,7 +841,7 @@ class np1secSession {
    * When a user wants to send a message to a session it needs to call its send
    * function.
    */
-  bool send(std::string message, np1secMessage::np1secMessageSubType message_type);
+  void send(std::string message, np1secMessage::np1secMessageSubType message_type);
 
   //List ofc onstructors
   /* /\** */

@@ -25,7 +25,6 @@
 #include "src/common.h"
 #include "test/chat_mocker.h"
 
-
 // Default constructor
 EventManager::EventManager() : base(nullptr)
 {
@@ -444,3 +443,4 @@ void EventManager::remove_timeout(std::string* identifier)
   rooms[room].join(nick);
   }*/
 
+Logger mock_logger(INFO);
