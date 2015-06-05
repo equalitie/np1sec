@@ -958,7 +958,8 @@ void np1secSession::perform_received_consisteny_tasks(np1secMessage received_mes
     logger.info("own ctr of received message: "+ to_string(own_message_counter), __FUNCTION__, myself.nickname);
     logger.assert_or_die(sent_transcript_chain.find(received_message.sender_message_id) != sent_transcript_chain.end(), "received a message from myself that never send with valid signature. stolen key?", __FUNCTION__, myself.nickname); //if the signature isn't failed and we don't have record of sending this then something is terribly wrong; only non-bug explanation is that somebody might have stolen our key and faking messages 
     us->ops->axe_timer(sent_transcript_chain[received_message.sender_message_id].consistency_timer);
-    sent_transcript_chain[received_message.sender_message_id].consistency_timer = nullptr;}
+    sent_transcript_chain[received_message.sender_message_id].consistency_timer = nullptr;
+  }
 
   add_message_to_transcript(received_message.final_whole_message, received_message.message_id);
 
