@@ -54,7 +54,6 @@ protected: //gtest needs the elements to be protocted
     mockops->display_message = display_message;
     mockops->set_timer = set_timer;
     mockops->axe_timer = axe_timer;
-    logger.config(true, true, callback_log);    
   };
   
 };
@@ -69,6 +68,8 @@ void check_heartbeat_log(void* arg)
   in >> log_line;
   std::size_t heartbeat_index = log_line.find("HEARTBEAT", 0);
   in.close();
+  // Reconfigure the logger not to write to a file.
+  logger.config(true, false, "");
   ASSERT_TRUE(heartbeat_index != std::string::npos);
 }
 
@@ -95,7 +96,10 @@ TEST_F(SessionTest, test_heartbeat_timer)
 
   //receive your own confirmation
   mock_server.receive(); //no need actually
-  
+ 
+  // Configure the logger to write to `callback_log` for the sake of checking that it is written to
+  // in the heartbeat test
+  logger.config(true, true, callback_log);    
   uint32_t timeout = mockops->c_heartbeating_interval * 2 * 1000; // Convert to microseconds
   pair<ChatMocker*, std::string>* encoded = new pair<ChatMocker*, std::string>(&mock_server, "");
   std::string* identifier = reinterpret_cast<std::string*>(set_timer(check_heartbeat_log, nullptr, timeout, encoded));
