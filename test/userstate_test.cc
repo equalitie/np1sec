@@ -19,12 +19,6 @@
 #include <gtest/gtest.h>
 #include "src/userstate.h"
 
-
-void log(std::string room_name, std::string message) {
-  fprintf(stderr, "room: %s / message: %s\n", room_name.c_str(),
-          message.c_str());
-}
-
 np1secAppOps ops;
 
 class UserStateTest : public ::testing::Test { };

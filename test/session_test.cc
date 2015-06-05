@@ -197,7 +197,6 @@ TEST_F(SessionTest, test_receive) {
 TEST_F(SessionTest, test_init) {
   //first we need a username and we use it
   //to sign in the room
-  return;
   string username = "sole-tester";
   std::pair<ChatMocker*, string> mock_aux_data(&mock_server,username);
   mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
