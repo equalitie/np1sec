@@ -117,7 +117,7 @@ class MockRoom {
     std::string leaving_nick;
     while (!message_queue.empty())
       {
-        mock_logger.info(name + "received message: ", message_queue.front(),__FUNCTION__);
+        mock_logger.info(name + " received message: ", message_queue.front(),__FUNCTION__);
         for (std::map<std::string, MockParticipant>::iterator
                cur_participant = _participant_list.begin();
              cur_participant != _participant_list.end() && !_participant_list.empty(); cur_participant++) {

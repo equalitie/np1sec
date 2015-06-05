@@ -410,66 +410,89 @@ void np1secRoom::shrink(std::string leaving_nick) {
     auto active_session_element = session_universe.find(active_session.get_as_stringbuff());
     logger.assert_or_die(active_session_element != session_universe.end(), "Internal error: the active session is not in session universe.");
 
-    if (active_session_element->second.participants.find(leaving_nick) != active_session_element->second.participants.end()) {
-      np1secSession& active_np1sec_session = active_session_element->second;
+    np1secSession& active_np1sec_session = active_session_element->second;
 
-      if (active_np1sec_session.my_state != np1secSession::FAREWELLED) {
-          //alternatively we can just check the state of active_session and if 
-            //it is farewelled then we don't need to worry about generating the
-            //shrank session
-            // Actually this is a better solution, because the session are staying
-            //in the session universe even after they die so their existenec doesn't
-            //mean we have taken any action
-            //we avoid making a new session, if the session is not made we will make the new session 
-            //so not to duplicate the re-share message. the reshare message has the same session
-            //id so the participants handle it to the previously made session. the shares are the same. Either the session
-          //is waiting for more share which result in replacing the same share or is
-          //waiting for confirmation and so it ignores the share message.
+    //if (active_np1sec_session.my_state != np1secSession::FAREWELLED) {
+    //alternatively we can just check the state of active_session and if 
+    //it is farewelled then we don't need to worry about generating the
+    //shrank session
 
-          //We basically avoid sending an extra message which is not part of the protocol
-          //but it is the implementation particularity, and duplicating such message which doesn't
-          // violate the          
-          //protocol. (you might want to send the same message 10 times to increase
-          //reliability and the protocol shouldn't choke on that.
+    //this is not true anymore as many participants can request leave
+    //from current session. as the result new session will be generated
+    //cumulatively for participants who are leaving current session
+    //until the one of the session is confirmed. therefore many farewell
+    //can occure in one session.
 
-          //Now consider the situation that pn announce intention to leave at the same
-          //then last person forward secrecy contribution is matured. the current
-          //session should stop the share renewal, cause the state is farewelled.
-          //(normally the renew session should never be confirmed. because the leaving
-          //(user haven't confirmed and move cause it sends its leaving message
-          //to current session, as such it is important that the leaving user,
-          //doesn't confirm a session after intention to leave, if he does though,
-          //we'll recover through immature leave procedure.
+    //because the session are staying in the session universe even after
+    //they die so their existenec doesn't mean we have taken any action we
+    //avoid making a new session, if the session is not made we will make
+    //the new session  so not to duplicate the re-share message.
+    //the reshare message has the same session id so the participants
+    //handle it to the previously made session. the shares are the same.
+    //Either the session is waiting for more share which result in
+    //replacing the same share or is
+    //waiting for confirmation and so it ignores the share message.
 
-          //It is also important to note as soon as we have new session, all session
-          //in limbo will die and give birth to new session compatible with current
-          //plist
+    //The best practice is to check the zombie list of the session,
+    //if the participant is already in zombie list, we already have
+    //made a session without them
 
-        SessionId shrank_session_id = active_np1sec_session.shrank_session_id(leaving_nick);
-        auto shrank_session = session_universe.find(shrank_session_id.get_as_stringbuff());
-        if (shrank_session != session_universe.end()) {
-              //TODO: come up with a revining mechanism
-              //revive the session, if revive fails we re-make it
-              //shrank_session->second.revive();
-              //if (shrank_session->second.my_state = np1sec::DEAD) {
-          session_universe.erase(shrank_session_id.get_as_stringbuff());
-              //shrank_session = session_universe.end();
+    //We basically avoid sending an extra message which is not part of the protocol
+    //but it is the implementation particularity, and duplicating such message whinch doesn't
+    // violate the          
+    //protocol. (you might want to send the same message 10 times to increase
+    //reliability and the protocol shouldn't choke on that.
+
+    //Now consider the situation that pn announce intention to leave at the same
+    //then last person forward secrecy contribution is matured. the current
+    //session should stop the share renewal, cause the state is farewelled.
+    //(normally the renew session should never be confirmed. because the leaving
+    //(user haven't confirmed and move cause it sends its leaving message
+    //to current session, as such it is important that the leaving user,
+    //doesn't confirm a session after intention to leave, if he does though,
+    //we'll recover through immature leave procedure.
+
+    //It is also important to note as soon as we have new session, all session
+    //in limbo will die and give birth to new session compatible with current
+    //plist
+
+    // SessionId shrank_session_id = active_np1sec_session.shrank_session_id(leaving_nick);
+    // auto shrank_session = session_universe.find(shrank_session_id.get_as_stringbuff());
+    // if (shrank_session != session_universe.end()) {
+    //   //TODO: come up with a revining mechanism
+    //   //revive the session, if revive fails we re-make it
+    //   //shrank_session->second.revive();
+    //   //if (shrank_session->second.my_state = np1sec::DEAD) {
+    //   session_universe.erase(shrank_session_id.get_as_stringbuff());
+    //         //shrank_session = session_universe.end();
+    // }
+    //as long as we are replacing it no nead to erase the std::map
+    //will take care of it (not really emplace only work if there is
+    //no element) but if we want to revive it then we can
+    //do more
+
+    //so we try to shrink it anyway, if the user is already zombied
+    //we do nothing.
+    try {
+      auto action_to_take = active_np1sec_session.shrink(leaving_nick);
+      if (action_to_take.action_type == RoomAction::NEW_SESSION) {
+        auto old_shrank_session = session_universe.find(action_to_take.bred_session->my_session_id().get_as_stringbuff());
+        if (old_shrank_session != session_universe.end()) {
+          //if (old_shrank_session->second.my_state = np1sec::DEAD) { //should we check and erease only if DEAD?
+          session_universe.erase(old_shrank_session->first);
         }
-
-        auto action_to_take = active_np1sec_session.shrink(leaving_nick);
-        if (action_to_take.action_type == RoomAction::NEW_SESSION) {
-          session_universe.emplace(pair<string, np1secSession>(action_to_take.bred_session->my_session_id().get_as_stringbuff(),*(action_to_take.bred_session)));
-        }
-
-      } //Already FAREWELLED: TODO you should check the zombie list actually
-      logger.info("no need to shrinked. Already farewelled.");
-          //otherwise we already have made the
-          //shrank session don't worry about it
-    } //else if we don't find the nick, it is ok, just ignore it might be the leaving user has joined the xmpp room but not being accepted by the pariticipants
-    else {
-      logger.warn("The leaving user " + leaving_nick + " is not part of active session");
+        session_universe.emplace(pair<string, np1secSession>(action_to_take.bred_session->my_session_id().get_as_stringbuff(),*(action_to_take.bred_session)));
+      } else {
+        //Already FAREWELLED: TODO you should check the zombie list actually
+        logger.info("no need to shrink. Already farewelled.");
+        //otherwise we already have made the
+        //shrank session don't worry about it
+      }
+    } catch (std::exception &e) {
+      logger.error("failed to shrink the session", __FUNCTION__, user_state->myself->nickname);
+      logger.error(e.what(), __FUNCTION__, user_state->myself->nickname);
     }
-      
+   
     //active session
     //else do nothing basically TODO::somebody should throw out the room though
     //else {

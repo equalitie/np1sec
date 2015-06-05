@@ -476,11 +476,6 @@ class np1secSession {
     NONE,
     JOIN_REQUESTED,  // The thread has requested to join
                      // by sending ephemeral key
-    //REPLIED_TO_NEW_JOIN (same as RE_SHARED),  // The thread has received a join from a 
-                          // participant replied by participant list
-    AUTHED_JOINER,  //This mean that the joiner is authed by the thread
-                    //thread is waiting for more share to generate the key
-                    //so no more join till t
     RE_SHARED,      // key is being made, thread has been sent its share,
                     // waiting for more shares. This is the same as
                     // AUTHED_JOINER but for leave procedure where there
@@ -489,17 +484,9 @@ class np1secSession {
     GROUP_KEY_GENERATED,  // The thread has computed the session
                           // key and has sent the conformation
     IN_SESSION,  // Key has been confirmed
-    UPDATED_KEY,  // all new shares has been received and new
-                  // key has been generated, no more send possible
     LEAVE_REQUESTED,  // Leave requested by the thread, waiting
                       // for final transcirpt consitancy check
-    FAREWELLED,  // LEAVE is received from another participant and a
-                 // meta message for transcript consistency and
-                 // new shares has been sent
     DEAD,  // Won't accept receive or sent messages, possibly throw up
-    SCHEDULED_TO_DIE, //a new session has been activated,
-    //we receive all messages which has been sent before arrival of
-    //last confirmation
     TOTAL_NO_OF_STATES //This should be always the last state
   };
 

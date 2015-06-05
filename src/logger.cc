@@ -35,7 +35,6 @@ void Logger::initiate_textual_conversions() {
   state_to_text[np1secSession::GROUP_KEY_GENERATED] = "GROUP_KEY_GENERATED";
   state_to_text[np1secSession::IN_SESSION] = "IN_SESSION";
   state_to_text[np1secSession::LEAVE_REQUESTED] = "LEAVE_REQUESTED";
-  state_to_text[np1secSession::FAREWELLED] = "FAREWELLED";
   state_to_text[np1secSession::DEAD] = "DEAD";
 
   message_type_to_text[np1secMessage::UNKNOWN] = "UNKNOWN";

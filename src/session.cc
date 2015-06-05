@@ -89,20 +89,6 @@ void cb_leave(void *arg) {
 
 }
 
-
-/**
- * Almost copy constructor, we only alter the plist
- */
-// np1secSession::np1secSession(np1secSession& breeding_session, 
-//               ParticipantMap updated_participants)
-//   :participants(updated_participants)
-// {
-
-//   compute_session_id();
-  
-// }
-
-
 /**
    Constructor being called by current participant receiving join request
    That's why (in room) participants are are already authenticated
@@ -221,51 +207,6 @@ np1secSession::np1secSession(np1secSessionConceiverCondition conceiver,
   logger.info("session constructed with FSM new state: " + logger.state_to_text[my_state], __FUNCTION__, myself.nickname);
 
 }
-
-// np1secSession np1secSession::operator+(np1secSession a) {
-//   std::map<std::string, Participant> combination;
-//   combination.insert(participants.begin(), participants.end());
-//   combination.insert(a.participants.begin(), a.participants.end());
-//   np1secSession new_session(ACCEPTOR, us, room_name, &cryptic, combination);
-
-//    std::merge(raisons_detre.front(), raisons_detre.back(), a.raisons_detre.front(), a.raisons_detre.back(), std::inserter(new_session.raisons_detre, new_session.raisons_detre.end()), compare_creation_priority);
-
-//   return new_session;
-
-// }
-
-// np1secSession np1secSession::operator-(np1secSession a) {
-//   std::map<std::string, Participant> difference;
-//   std::set_difference(
-//     participants.begin(), participants.end(),
-//     a.participants.begin(), a.participants.end(),
-//     std::inserter(difference, difference.end()));
-
-//   np1secSession new_session(ACCEPTOR, us, room_name, &cryptic, difference);
-
-//   std::merge(raisons_detre.front(), raisons_detre.back(), a.raisons_detre.front(), a.raisons_detre.back(), std::inserter(new_session.raisons_detre, new_session.raisons_detre.end()), compare_creation_priority);
-
-//   return new_session;
-  
-// }
-
-// np1secSession np1secSession::operator-(std::string leaver_nick) {
-//   logger.assert_or_die(participants.find(leaver_nick) != participants.end(), "Failed to find the leaver in the session");
-  
-//   ParticipantMap new_session_plist = participants;
-//   ParticipantMap::iterator leaver = participants.find(leaver_id);
-//   if (leaver != participants.end())
-//     throw np1secInvalidRoomException();
-  
-//   new_session_plist.erase(leaver_nick);
-//   np1secSession new_session(PEER, us, room_name, &cryptic, new_session_plist, false);
-
-//   new_session.raisons_detre = raisons_detre;
-//   new_session.raisons_detre.raison_detre.push_back(RaisonDEtre(LEAVE, participants.find(leaver_nick)->second.id));
-                                                   
-//   return new_session;
-  
-// }
 
 /**
  * it should be invoked only once to compute the session id
@@ -517,7 +458,7 @@ RoomAction np1secSession::state_handler(np1secMessage received_message)
 {
   logger.info("handling state: " + logger.state_to_text[my_state] + " message_type:" + logger.message_type_to_text[received_message.message_type], __FUNCTION__, myself.nickname);
   if (!this->np1secFSMGraphTransitionMatrix[my_state][received_message.message_type]) {
-    logger.warn("lose state transitor, don't know where to go on FSM.",  __FUNCTION__, myself.nickname);
+    logger.warn("lose state transitor, don't know where to go on FSM. ignoring message",  __FUNCTION__, myself.nickname);
   
   } else {
     StateAndAction result  = (this->*np1secFSMGraphTransitionMatrix[my_state][received_message.message_type])(received_message);
@@ -527,7 +468,6 @@ RoomAction np1secSession::state_handler(np1secMessage received_message)
 
   } 
   
-  //return RoomAction(RoomAction::BAD_ACTION);
   return RoomAction(RoomAction::NO_ACTION);
 
 }
@@ -646,13 +586,15 @@ np1secSession::StateAndAction np1secSession::init_a_session_with_new_user(np1sec
   logger.assert_or_die(received_message.message_type == np1secMessage::JOIN_REQUEST, "wrong message type is provided to the accetpor " + myself.nickname + " to establish a session. Message type " + to_string(np1secMessage::JOIN_REQUEST) + " was expected but type " + to_string(received_message.message_type) + " was provided.");
 
   UnauthenticatedParticipant  joiner(received_message.joiner_info);
-  //each id can only join once
-  if (participants.find(joiner.participant_id.nickname) == participants.end()) {
-    logger.info("creating a session with new participant " + joiner.participant_id.nickname);
-    ParticipantMap new_participant_list = participants;
-    new_participant_list.insert(pair<string,Participant> (joiner.participant_id.nickname, Participant(joiner)));
+  //each id can only join once but it might be zombied out so we need
+  //account for that
 
-    np1secSession* new_child_session = new np1secSession(ACCEPTOR, us, room_name, &cryptic, new_participant_list, &received_message);
+  ParticipantMap live_participants = participants - zombies;
+  if (live_participants.find(joiner.participant_id.nickname) == live_participants.end()) {
+    logger.info("creating a session with new participant " + joiner.participant_id.nickname);
+    live_participants.insert(pair<string,Participant> (joiner.participant_id.nickname, Participant(joiner)));
+
+    np1secSession* new_child_session = new np1secSession(ACCEPTOR, us, room_name, &cryptic, live_participants, &received_message);
 
     //if it fails it throw exception catched by the room 
     new_session_action.action_type = RoomAction::NEW_SESSION;
@@ -668,7 +610,8 @@ np1secSession::StateAndAction np1secSession::init_a_session_with_new_user(np1sec
 
   //TODO: this is incomplete, you need to report your session 
   //to the room. more logically the room just need to request the
-  //creation of the room.
+  //creation of the room. so just return the list of participants
+  //to the room and ask the room to construct it
     
   //our state doesn't need to change
   return StateAndAction(my_state, new_session_action);
@@ -687,26 +630,29 @@ RoomAction np1secSession::shrink(std::string leaving_nick)
 
   auto leaver = participants.find(leaving_nick);
   if (leaver == participants.end()) {
-    logger.error("participant " + leaving_nick + " is not in the session from which they are trying to leave");
-    throw np1secInvalidDataException();
+    logger.warn("participant " + leaving_nick + " is not part of the active session of the room " + room_name + " from which they are trying to leave, already parted?");
+  } else if (zombies.find(leaving_nick) != zombies.end()) {//we haven already shrunk and made a session 
+    logger.info("shrunk session for leaving user " + leaving_nick + " has already been generated. nothing to do", __FUNCTION__, myself.nickname);
+  } else { //shrink now
+    //if everything is ok add the leaver to the zombie list and make a
+    //session without zombies
+    zombies.insert(*leaver);
+    ParticipantMap live_participants = participants - zombies;
+
+    //raison_detre.insert(RaisonDEtre(LEAVE, leaver->id));
+    np1secSession* new_child_session = new np1secSession(PEER, us, room_name, &cryptic, live_participants);
+  
+    new_session_action.action_type = RoomAction::NEW_SESSION;
+    new_session_action.bred_session = new_child_session;
+    
+    //we are as we have farewelled
+    //my_state = FAREWELLED; //We shouldn't change here and it is not clear why we
+    //we need this stage, not to accept join? why? join will fail by non confirmation
+    //of the leavers 
+    return new_session_action;
   }
 
-  //if everything is ok add the leaver to the zombie list and make a
-  //session without zombies
-  zombies.insert(*leaver);
-  ParticipantMap live_participants = participants - zombies;
-
-  //raison_detre.insert(RaisonDEtre(LEAVE, leaver->id));
-  np1secSession* new_child_session = new np1secSession(PEER, us, room_name, &cryptic, live_participants);
-  
-  new_session_action.action_type = RoomAction::NEW_SESSION;
-  new_session_action.bred_session = new_child_session;
-    
-  //we are as we have farewelled
-  //my_state = FAREWELLED; //We shouldn't change here and it is not clear why we
-  //we need this stage, not to accept join? why? join will fail by non confirmation
-  //of the leavers 
-  return new_session_action;
+  return c_no_room_action;
 
 }
 
