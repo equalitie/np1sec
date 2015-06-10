@@ -362,7 +362,7 @@ void Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey p
 
 void Cryptic::sign(unsigned char **sigp, size_t *siglenp,
                            std::string plain_text) {
-  gcry_mpi_t r, s;
+  const char* r,*s;
   gcry_error_t err = 0;
   gcry_sexp_t plain_sexp, sigs, eddsa, rs, ss;
   size_t nr, ns;
@@ -380,15 +380,16 @@ void Cryptic::sign(unsigned char **sigp, size_t *siglenp,
                           plain_text.c_str());
 
   if ( err ) {
-    logger.error("ed25519Key: failed to build gcry_sexp_t for signing", __FUNCTION__);
+    logger.error("failed to build gcry_sexp_t for signing", __FUNCTION__);
     goto err;
   }
 
+  
   err = gcry_pk_sign(&sigs, plain_sexp, ephemeral_prv_key);
 
   if ( err ) {
     gcry_sexp_release(plain_sexp);
-    logger.error("ed25519Key: failed to sign plain_text", __FUNCTION__);
+    logger.error("failed to sign plain_text", __FUNCTION__);
     goto err;
   }
 
@@ -400,37 +401,28 @@ void Cryptic::sign(unsigned char **sigp, size_t *siglenp,
   rs = gcry_sexp_find_token(eddsa, "r", 0);
   ss = gcry_sexp_find_token(eddsa, "s", 0);
 
-  r = gcry_sexp_nth_mpi(rs, 1, GCRYMPI_FMT_USG);
+  r = gcry_sexp_nth_data(rs, 1, &nr);
 
-  gcry_sexp_release(rs);
-
-  s = gcry_sexp_nth_mpi(ss, 1, GCRYMPI_FMT_USG);
-  gcry_sexp_release(ss);
-
-  gcry_mpi_print(format, NULL, 0, &nr, r);
-  gcry_mpi_print(format, NULL, 0, &ns, s);
+  s = gcry_sexp_nth_data(ss, 1, &ns);
   memset(*sigp, 0, magic_number);
 
-  gcry_mpi_print(format, (*sigp)+(half_magic_number - nr), nr, NULL, r);
-  /* 
-   * if r has 0 on the left decimal positions, gcry_mpi_print cut them out 
-   * and hence nr < half_magic_number
-   */
-  gcry_mpi_print(format, (*sigp)+ half_magic_number + (half_magic_number-ns),
-                 ns, NULL, s);
+  logger.assert_or_die(nr==32 && ns==32, "wrong signature length");
+
+  memcpy(*sigp, r, nr);
+  memcpy((*sigp)+half_magic_number, s, ns);
+
+  gcry_sexp_release(rs);
+  gcry_sexp_release(ss);
 
   //it seems that we have assumed this
-  logger.assert_or_die(magic_number >= nr+ns, "signature length is wrong", __FUNCTION__);
-  *siglenp = nr+ns;
-  
-  gcry_mpi_release(r);
-  gcry_mpi_release(s);
+  logger.assert_or_die(magic_number == nr+ns, "signature length is wrong", __FUNCTION__);
+  *siglenp = magic_number;
 
   return;
 
  err:
   if (*sigp) delete[] *sigp;
-  logger.error("Failure: " + (string)gcry_strsource(err) + (string)gcry_strerror(err));
+  logger.error("Failure: " + (string)gcry_strsource(err) + ": " + (string)gcry_strerror(err));
   throw np1secCryptoException();
 
 }
@@ -439,27 +431,10 @@ bool Cryptic::verify(std::string plain_text,
                              const unsigned char *sigbuf,
                              np1secPublicKey signer_ephemeral_pub_key) {
   gcry_error_t err;
-  gcry_mpi_t r, s;
   gcry_sexp_t datas, sigs;
   static const uint32_t nr = 32, ns = 32;
 
-  err = gcry_mpi_scan(&r, GCRYMPI_FMT_USG, sigbuf, nr, NULL);
-  if ( err ) {
-    logger.error("failed to reconstruct the signature.", __FUNCTION__);
-    goto err;
-  }
-
-  err = gcry_mpi_scan(&s, GCRYMPI_FMT_USG, sigbuf+nr, ns, NULL);
-  if ( err ) {
-    gcry_mpi_release(r);
-    logger.error("failed to reconstruct the signed blob.", __FUNCTION__);
-    goto err;
-  }
-
-  err = gcry_sexp_build(&sigs, NULL, "(sig-val (eddsa (r %M)(s %M)))", r, s);
-
-  gcry_mpi_release(r);
-  gcry_mpi_release(s);
+  err = gcry_sexp_build(&sigs, NULL, "(sig-val (eddsa (r %b)(s %b)))", nr, sigbuf, ns, sigbuf+nr);
 
   if ( err ) {
     logger.error("failed to construct gcry_sexp_t for the signature", __FUNCTION__);
@@ -492,12 +467,13 @@ bool Cryptic::verify(std::string plain_text,
     logger.warn("Failure: " + (string)gcry_strsource(err) + "/" + (string)gcry_strerror(err), __FUNCTION__);
     return false;
   }  else {
-    logger.error("ed25519Key: failed to build gcry_sexp_t", __FUNCTION__);
+    logger.error("verification computation failed", __FUNCTION__);
     goto err;
   }
     
  err:
-  logger.error("Failure: " + (string)gcry_strsource(err) + (string)gcry_strerror(err), __FUNCTION__);
+  logger.error(plain_text);
+  logger.error("Failure: " + (string)gcry_strsource(err) + ": " + (string)gcry_strerror(err), __FUNCTION__);
   throw np1secCryptoException();
   
 }
@@ -523,7 +499,7 @@ gcry_cipher_hd_t Cryptic::OpenCipher() {
 
  err:
   if (hd) gcry_cipher_close(hd);
-  logger.error("Failure: " + (string)gcry_strsource(err) + (string)gcry_strerror(err), __FUNCTION__);
+  logger.error("Failure: " + (string)gcry_strsource(err) + ": " + (string)gcry_strerror(err), __FUNCTION__);
   throw np1secCryptoException();
   
 }
@@ -539,14 +515,14 @@ std::string Cryptic::Encrypt(std::string plain_text) {
   err = gcry_cipher_setiv(hd, buffer, c_iv_length);
 
   if (err) {
-    logger.error("Failed to set the block cipher iv");
+    logger.error("Failed to set the block cipher iv", __FUNCTION__);
     goto err;
   }
 
   err = gcry_cipher_encrypt(hd, const_cast<char *>(crypt_text.c_str()),
                             crypt_text.size(), NULL, 0);
   if (err) {
-    logger.error("ed25519Key: Encryption of message failed");
+    logger.error("Encryption of message failed", __FUNCTION__);
     goto err;
   }
 
@@ -557,7 +533,7 @@ std::string Cryptic::Encrypt(std::string plain_text) {
 
  err:
   if (hd) gcry_cipher_close(hd);
-  logger.error("Failure: " + (string)gcry_strsource(err) + (string)gcry_strerror(err));
+  logger.error("Failure: " + (string)gcry_strsource(err) + ": " + (string)gcry_strerror(err));
   throw np1secCryptoException();
  
 }
@@ -589,7 +565,7 @@ std::string Cryptic::Decrypt(std::string encrypted_text) {
 
  err:
   if (hd) gcry_cipher_close(hd);
-  logger.error("Failure: " + (string)gcry_strsource(err) + (string)gcry_strerror(err));
+  logger.error("Failure: " + (string)gcry_strsource(err) + ": " + (string)gcry_strerror(err));
   throw np1secCryptoException();
 
 }

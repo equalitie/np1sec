@@ -55,7 +55,8 @@ std::string* EventManager::add_timeout(event_callback_fn cb, void* arg, timeval*
 
 struct event* EventManager::get(std::string* identifier)
 {
-  return timers[*identifier];
+  auto requested_event =  timers.find(*identifier);
+  return (requested_event == timers.end()) ? nullptr : requested_event->second;
 }
 
 int EventManager::size()
@@ -69,6 +70,8 @@ void EventManager::remove_timeout(std::string* identifier)
   if (evt) {
     event_del(evt);
     timers.erase(*identifier);
+  } else {
+    mock_logger.warn("trying to delete none-existing timer", __FUNCTION__);
   }
 }
 

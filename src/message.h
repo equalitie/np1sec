@@ -62,9 +62,19 @@ class np1secMessage {
     return elems;
   }
 
+  /**
+   * move the current offset to point to the next token, it checks that
+   * we won't exceed the expected length of next token
+   * otherwise throw message format exception
+   */
   size_t move_offset_or_throw_up(const std::string& parsed_string, size_t current_offset, size_t move_window, size_t expected_field_length = 0) {
-    if (parsed_string.size() < current_offset + move_window + expected_field_length)
+    if (parsed_string.size() < current_offset + move_window + expected_field_length) {
+      logger.error("invalid length: total: " +  std::to_string(parsed_string.size()) +
+                   " cur: " + std::to_string(current_offset) +
+                   " f1: " + std::to_string(move_window) +
+                   " f2: " + std::to_string(expected_field_length));
       throw np1secMessageFormatException();
+    }
 
     return current_offset + move_window;
     
@@ -174,9 +184,10 @@ class np1secMessage {
   HashStdBlock transcript_chain_hash;
   std::string nonce;
   HashStdBlock z_sender;
-  std::string session_key_confirmation;
   std::map<DTLength, std::string> authentication_table;
   std::string key_confirmation;
+  std::string session_key_confirmation;
+  std::string next_session_ephemeral_key;
   std::string joiner_info;
   std::vector<std::string> pstates;
   size_t no_of_participants;
@@ -238,7 +249,8 @@ class np1secMessage {
    *
    */
   void create_session_confirmation_msg(SessionId session_id, 
-                                 std::string session_key_confirmation);
+                                       std::string session_key_confirmation,
+                                       std::string next_session_ephemeral_key);
 
   /**
    * create JOIN_REQUEST system message

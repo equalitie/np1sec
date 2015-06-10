@@ -212,6 +212,7 @@ class Participant {
   MessageId last_acked_message_id;
   void* send_ack_timer;
   HashBlock raw_ephemeral_key = {};
+  HashBlock future_raw_ephemeral_key;
   // MessageDigest message_digest;
 
   np1secKeyShare cur_keyshare;
@@ -253,6 +254,7 @@ class Participant {
   {
     long_term_pub_key = Cryptic::copy_crypto_resource(rhs.long_term_pub_key);
     set_ephemeral_key(rhs.raw_ephemeral_key);
+    memcpy(future_raw_ephemeral_key, rhs.future_raw_ephemeral_key, sizeof(HashBlock));
     memcpy(p2p_key, rhs.p2p_key, sizeof(HashBlock));
     memcpy(cur_keyshare, rhs.cur_keyshare, sizeof(HashBlock));
 
@@ -276,17 +278,14 @@ class Participant {
     
   /**
    * crypto material access functions
-   *
-   * @return true if successfully updated to the new key
    */
-  bool set_ephemeral_key(const HashBlock raw_ephemeral_key)
+  void set_ephemeral_key(const HashBlock raw_ephemeral_key)
   {
     Cryptic::release_crypto_resource(this->ephemeral_key);
     //delete [] this->raw_ephemeral_key; doesn't make sense to delete const length array
     memcpy(this->raw_ephemeral_key, raw_ephemeral_key, sizeof(HashBlock));
     ephemeral_key = Cryptic::reconstruct_public_key_sexp(std::string(reinterpret_cast<const char*>(raw_ephemeral_key), c_ephemeral_key_length));
 
-    return (ephemeral_key != nullptr);
   }
 
   /**

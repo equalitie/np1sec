@@ -127,6 +127,7 @@ typedef uint8_t np1secBareMessage[];
 class np1secSession {
  protected:
   Cryptic cryptic;
+  Cryptic future_cryptic;
   HashBlock hashed_id;
 
   np1secUserState *us;
@@ -264,6 +265,9 @@ class np1secSession {
   void* heartbeat_timer = nullptr;
   void* send_ack_timer = nullptr;
   void* farewell_deadline_timer = nullptr;
+  void* rejoin_timer = nullptr;
+  void* session_life_timer = nullptr;
+
 
   MessageId last_received_message_id;
   MessageId own_message_counter; //sent message counter
@@ -398,6 +402,11 @@ class np1secSession {
   }
 
   /**
+   * prepare a new list of participant for a new session
+   * replacing future key to current key and drop zombies
+   */
+  ParticipantMap future_participants();
+  /**
    * compute the id of a potential session when leaving_nick leaves the session
    */
   SessionId shrank_session_id(std::string leaving_nick);
@@ -418,6 +427,25 @@ class np1secSession {
    * check if session confirmation has been computed correctly
    */
   bool validate_session_confirmation(np1secMessage confirmation_message);
+
+  /**
+   * if the message is signed (that's anything but join request)
+   * this function verify it
+   *
+   * throw authentication exception in case it fails
+   */
+  void verify_peers_signature(np1secMessage& received_message) {
+      //If the participant isn't in the list then don't bother
+    if (participants.find(received_message.sender_nick) == participants.end()) {
+      logger.error("authing participant " + received_message.sender_nick + " is not in the session ");
+      throw np1secInvalidParticipantException(); //or show we throw invalid participants?
+    }
+
+    //we need to check the signature of the message here
+    if (!received_message.verify_message(participants[received_message.sender_nick].ephemeral_key))
+      throw np1secAuthenticationException();
+
+  }
 
   /**
    * exctract partcipanat info message information to setup session view
@@ -823,20 +851,20 @@ class np1secSession {
    * from the current session plus another session
    *
    */
-  np1secSession operator+(np1secSession a);
+  //np1secSession operator+(np1secSession a);
 
   /**
    * Create a new np1secSession object based which has all the participants
    * from the current session minus the provided session
    *
    */
-  np1secSession operator-(np1secSession a);
+  //np1secSession operator-(np1secSession a);
 
   /**
    * is called for force kickout a person without a message from
    * that participant
    */
-  np1secSession operator-(std::string nick);
+  //np1secSession operator-(std::string nick);
 
   /**
    * When a user wants to send a message to a session it needs to call its send
@@ -953,6 +981,7 @@ class np1secSession {
   friend void cb_leave(void *arg);
 
   friend void cb_rejoin(void *arg);
+  friend void cb_re_session(void *arg);
 
   friend np1secRoom;
 

@@ -188,6 +188,12 @@ class np1secRoom {
    */
   void shrink(std::string leaving_user_nick);
 
+  /**
+   * for np1secSession when it breeds a new session specailly 
+   * in the forward secrecy timer to be able to insert it 
+   * in the room's session map
+   */
+  void insert_session(np1secSession* new_session);
 
 };    
 

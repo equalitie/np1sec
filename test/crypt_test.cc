@@ -69,9 +69,12 @@ TEST_F(CryptTest, test_sign_verify) {
   std::string test_text = "This is a string to be encrypted";
   unsigned char *sigbuf = NULL;
   size_t siglen;
+  unsigned int no_trial = 10;
   cryptic.init();
-  ASSERT_NO_THROW(cryptic.sign(&sigbuf, &siglen, test_text));
-  ASSERT_TRUE(cryptic.verify(test_text, sigbuf, cryptic.get_ephemeral_pub_key()));
+  for(int i = 0; i <no_trial; i++) {
+    test_text = "This is a string to be encrypted" + std::to_string(i);
+    ASSERT_NO_THROW(cryptic.sign(&sigbuf, &siglen, test_text));
+    ASSERT_TRUE(cryptic.verify(test_text, sigbuf, cryptic.get_ephemeral_pub_key()));}
 }
 
 TEST_F(CryptTest, test_teddh_test) {

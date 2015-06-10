@@ -35,6 +35,7 @@
 struct np1secAppOps {
   // Data that is passed to send_bare
   uint32_t c_heartbeating_interval;
+  uint32_t c_session_life_span;
   uint32_t c_inactive_ergo_non_sum_interval;
   uint32_t c_unresponsive_ergo_non_sum_interval;
   uint32_t c_ack_interval;
@@ -47,14 +48,12 @@ struct np1secAppOps {
                uint32_t REKEY_GRACE_INTERVAL,
                uint32_t INTERACTION_GRACE_INTERVAL,
                uint32_t BROADCAST_LATENCY)
-  : c_heartbeating_interval(REKEY_GRACE_INTERVAL / 2),
-    c_inactive_ergo_non_sum_interval(REKEY_GRACE_INTERVAL + 2*(BROADCAST_LATENCY)),
+  : c_heartbeating_interval(REKEY_GRACE_INTERVAL / 2 + 2*(BROADCAST_LATENCY)),
+    c_session_life_span(REKEY_GRACE_INTERVAL + 2*(BROADCAST_LATENCY)),
     c_unresponsive_ergo_non_sum_interval(INTERACTION_GRACE_INTERVAL + 2*(BROADCAST_LATENCY)),
     c_ack_interval(ACK_GRACE_INTERVAL),
     c_consistency_failure_interval(ACK_GRACE_INTERVAL + 2*(BROADCAST_LATENCY)),
     c_send_receive_interval(INTERACTION_GRACE_INTERVAL + 2*(BROADCAST_LATENCY))
-
-    
   {
   }
   
@@ -107,7 +106,6 @@ struct np1secAppOps {
                           std::string message,
                           void* aux_data);
 
-
   /**
    * confirm the association of nickname and public key
    */
@@ -128,7 +126,6 @@ struct np1secAppOps {
    * should deactiave to_be_defused timer
    */
   void (*axe_timer)(void* to_be_defused_timer, void* data);
-
 
   /**
    * should report if the participants is the only participant 

@@ -36,6 +36,24 @@ bool compare_creation_priority(const  RaisonDEtre& lhs, const RaisonDEtre& rhs)
 
 }
 
+void cb_re_session(void *arg) {
+  np1secSession* session = (static_cast<np1secSession*>(arg));
+
+  np1secSession* new_child_session = new np1secSession(np1secSession::PEER, session->us, session->room_name, &session->future_cryptic, session->future_participants());
+
+  try {
+    logger.assert_or_die(session->us->chatrooms.find(session->room_name) != session->us->chatrooms.end(), "np1sec can not add session to room " + session->room_name + " which apparenly doesn't exists", __FUNCTION__, session->myself.nickname);
+
+    session->us->chatrooms[session->room_name].insert_session(new_child_session);
+  } catch(std::exception& e) {
+    logger.error("Failed to resession to ensure forward secrecy", __FUNCTION__, session->myself.nickname);
+
+  }
+
+  session->session_life_timer = nullptr;
+  
+}
+
 void cb_send_heartbeat(void *arg) {
   np1secSession* session = (static_cast<np1secSession*>(arg));
   //if we are alive
@@ -121,6 +139,8 @@ void cb_rejoin(void *arg) {
   logger.info("joining session timed out, trying to rejoin", __FUNCTION__, session->myself.nickname);
   
   session_room->second.try_rejoin();
+
+  session->rejoin_timer = nullptr;
   
 }
 
@@ -222,14 +242,24 @@ np1secSession::np1secSession(np1secSessionConceiverCondition conceiver,
   } //end of else (i.e !=  JOINER)
   
   //common ritual after getting the participants filled up (or down) as requested
-  if (conceiver == CREATOR) 
+  if (conceiver == CREATOR) {
     send_view_auth_and_share();
-  else if (conceiver == JOINER) {
+    rejoin_timer = us->ops->set_timer(cb_rejoin, this, us->ops->c_unresponsive_ergo_non_sum_interval, us->ops->bare_sender_data);
+
+    
+  }else if (conceiver == JOINER) {
     logger.assert_or_die(conceiving_message, "conceiving message missing to create new session", __FUNCTION__, myself.nickname);
     np1secMessage to_send  = *conceiving_message;
+
+    verify_peers_signature(to_send); //check message authenticity before going forward
+    joiner_send_auth_and_share();
     my_state = auth_and_reshare(to_send).first;
+
+    rejoin_timer = us->ops->set_timer(
+    cb_rejoin, this, us->ops->c_unresponsive_ergo_non_sum_interval, us->ops->bare_sender_data);
+
   }
-  else if (conceiver == CREATOR || conceiver == ACCEPTOR) {
+  else if (conceiver == ACCEPTOR) {
     string joiner_id = conceiving_message ? UnauthenticatedParticipant(conceiving_message->joiner_info).participant_id.nickname : std::string("");
     send_view_auth_and_share(conceiving_message ?
                              joiner_id : std::string(""));
@@ -297,6 +327,9 @@ void np1secSession::account_for_session_and_key_consistency()
 bool np1secSession::validate_session_confirmation(np1secMessage confirmation_message)
 {
   HashBlock expected_hash;
+
+  //set the future ephemeral key for the user
+  memcpy(participants[confirmation_message.sender_nick].future_raw_ephemeral_key, confirmation_message.next_session_ephemeral_key.data(), c_ephemeral_key_length);
 
   string to_be_hashed = Cryptic::hash_to_string_buff(session_key);
   to_be_hashed += confirmation_message.sender_nick;
@@ -496,6 +529,12 @@ RoomAction np1secSession::state_handler(np1secMessage received_message)
     logger.warn("lose state transitor, don't know where to go on FSM. ignoring message",  __FUNCTION__, myself.nickname);
   
   } else {
+    //JOIN_REQUEST has no singnature
+    //IN_SESSION is encrypted
+    //Note that the first PARTICIPANT_INFO of the joiner doesn't make it here 
+    if ((received_message.message_type != np1secMessage::JOIN_REQUEST) &&
+        (received_message.message_type != np1secMessage::IN_SESSION_MESSAGE))
+      verify_peers_signature(received_message);
     StateAndAction result  = (this->*np1secFSMGraphTransitionMatrix[my_state][received_message.message_type])(received_message);
     my_state = result.first;
     logger.info("FSM new state: " + logger.state_to_text[my_state], __FUNCTION__, myself.nickname);
@@ -528,14 +567,8 @@ RoomAction np1secSession::state_handler(np1secMessage received_message)
    sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), kc, z_joiner
 */
 np1secSession::StateAndAction np1secSession::auth_and_reshare(np1secMessage received_message) {
-  joiner_send_auth_and_share();
-
   if (participants.find(received_message.sender_nick) == participants.end())
     throw np1secInvalidParticipantException();
-
-  //first we check the signature of the message
-  if (!received_message.verify_message(participants[received_message.sender_nick].ephemeral_key))
-    throw np1secAuthenticationException();
   
   participants[received_message.sender_nick].be_authenticated(myself.id_to_stringbuffer(), reinterpret_cast<const uint8_t*>(received_message.key_confirmation.c_str()), us->long_term_key_pair.get_key_pair().first, &cryptic);
   
@@ -626,13 +659,15 @@ np1secSession::StateAndAction np1secSession::init_a_session_with_new_user(np1sec
   UnauthenticatedParticipant  joiner(received_message.joiner_info);
   //each id can only join once but it might be zombied out so we need
   //account for that
+  //inform everybody about your transcript chain
+  send("", np1secMessage::JUST_ACK);
 
-  ParticipantMap live_participants = participants - zombies;
+  ParticipantMap live_participants = future_participants();
   if (live_participants.find(joiner.participant_id.nickname) == live_participants.end()) {
     logger.info("creating a session with new participant " + joiner.participant_id.nickname);
     live_participants.insert(pair<string,Participant> (joiner.participant_id.nickname, Participant(joiner)));
 
-    np1secSession* new_child_session = new np1secSession(ACCEPTOR, us, room_name, &cryptic, live_participants, &received_message);
+    np1secSession* new_child_session = new np1secSession(ACCEPTOR, us, room_name, &future_cryptic, live_participants, &received_message);
 
     //if it fails it throw exception catched by the room 
     new_session_action.action_type = RoomAction::NEW_SESSION;
@@ -675,10 +710,10 @@ RoomAction np1secSession::shrink(std::string leaving_nick)
     //if everything is ok add the leaver to the zombie list and make a
     //session without zombies
     zombies.insert(*leaver);
-    ParticipantMap live_participants = participants - zombies;
 
     //raison_detre.insert(RaisonDEtre(LEAVE, leaver->id));
-    np1secSession* new_child_session = new np1secSession(PEER, us, room_name, &cryptic, live_participants);
+    
+    np1secSession* new_child_session = new np1secSession(PEER, us, room_name, &future_cryptic, future_participants());
   
     new_session_action.action_type = RoomAction::NEW_SESSION;
     new_session_action.bred_session = new_child_session;
@@ -727,16 +762,6 @@ RoomAction np1secSession::shrink(std::string leaving_nick)
    
 */
 np1secSession::StateAndAction np1secSession::confirm_auth_add_update_share_repo(np1secMessage received_message) {
-  //If the participant isn't in the list then don't bother
-  if (participants.find(received_message.sender_nick) == participants.end()) {
-    logger.error("authing participant " + received_message.sender_nick + " is not in the session ");
-    throw np1secInvalidParticipantException(); //or show we throw invalid participants?
-  }
-
-  //we need to check the signature of the message here
-  if (!received_message.verify_message(participants[received_message.sender_nick].ephemeral_key))
-    throw np1secAuthenticationException();
-
   if (received_message.message_type == np1secMessage::JOINER_AUTH) {
     if (received_message.authentication_table.find(my_index) != received_message.authentication_table.end())
       participants[received_message.sender_nick].be_authenticated(myself.id_to_stringbuffer(), Cryptic::strbuff_to_hash(received_message.authentication_table[my_index]), us->long_term_key_pair.get_key_pair().first, &cryptic);
@@ -763,11 +788,13 @@ np1secSession::StateAndAction np1secSession::send_session_confirmation_if_everyb
     group_dec();
     //first compute the confirmation
     compute_session_confirmation();
-    //now send the confirmation message
+    //we need our future ephemeral key to attach to the message
+    future_cryptic.init();
+    //now send the confirmation messagbe
     np1secMessage outboundmessage(&cryptic);
 
     outboundmessage.create_session_confirmation_msg(session_id,
-                                    Cryptic::hash_to_string_buff(session_confirmation));
+                                                    Cryptic::hash_to_string_buff(session_confirmation), Cryptic::public_key_to_stringbuff(future_cryptic.get_ephemeral_pub_key()));
       
     outboundmessage.send(room_name, us);
 
@@ -804,17 +831,25 @@ np1secSession::StateAndAction np1secSession::mark_confirmed_and_may_move_session
   confirmed_peers[participants[received_message.sender_nick].index] = true;
   
   if (everybody_confirmed()) {
+    //kill the rejoin timer
+    if (rejoin_timer) us->ops->axe_timer(rejoin_timer, us->ops->bare_sender_data);
+    rejoin_timer = nullptr;
+
     //activate(); it is matter of changing to IN_SESSION
     //we also need to initiate the transcript chain with 
     account_for_session_and_key_consistency();
 
     //flush the raison d'etre because we have fullfield it
     ///raison_detre.clear();
+    //start the session life timer
+    session_life_timer = us->ops->set_timer(cb_re_session, this,
+                                            us->ops->c_session_life_span, us->ops->bare_sender_data);
+
     return StateAndAction(IN_SESSION, c_no_room_action);
   }
 
   return StateAndAction(my_state, c_no_room_action);
-    
+
 }
 
 /**
@@ -1086,6 +1121,11 @@ void np1secSession::add_message_to_transcript(std::string message,
 }
 
 void np1secSession::send(std::string message, np1secMessage::np1secMessageSubType message_type) {
+  if (!(my_state >=  IN_SESSION) && my_state <=  LEAVE_REQUESTED) {
+    logger.error("you can't send in session message to a session which is not established", __FUNCTION__, myself.nickname);
+    throw np1secInvalidSessionStateException();
+  }
+
   np1secMessage outbound(&cryptic);
   logger.info("own ctr before send: " + to_string(own_message_counter), __FUNCTION__, myself.nickname);
 
@@ -1160,6 +1200,7 @@ np1secSession::StateAndAction np1secSession::receive(np1secMessage encrypted_mes
     
     } else 
       received_message.message_type = np1secMessage::INADMISSIBLE;
+
   } else
     received_message.message_type = np1secMessage::INADMISSIBLE;
 
@@ -1177,15 +1218,33 @@ np1secMessage::np1secMessageSubType np1secSession::forward_secrecy_load_type()
 }
 
 /**
+ * prepare a new list of participant for a new session
+ * replacing future key to current key and drop zombies
+ */
+ParticipantMap np1secSession::future_participants() {
+  ParticipantMap live_participants = participants - zombies;
+  for(auto& cur_participant: live_participants)
+    cur_participant.second.set_ephemeral_key(cur_participant.second.future_raw_ephemeral_key);
+
+  return live_participants;
+
+}
+
+/**
  * change the state to DEAD. it is needed when we bread a new
  * session out of this session. 
  * it also axes all of the timers
  */
 void np1secSession::commit_suicide() {
+  //we try to send a last ack, if it fails no big deal
   if (heartbeat_timer) us->ops->axe_timer(heartbeat_timer, us->ops->bare_sender_data);
   if (farewell_deadline_timer) us->ops->axe_timer(farewell_deadline_timer, us->ops->bare_sender_data);
   if (send_ack_timer) us->ops->axe_timer(send_ack_timer, us->ops->bare_sender_data);
-  
+
+  if (rejoin_timer) us->ops->axe_timer(rejoin_timer, us->ops->bare_sender_data);
+
+  if (session_life_timer) us->ops->axe_timer(session_life_timer, us->ops->bare_sender_data);
+
   heartbeat_timer = farewell_deadline_timer = send_ack_timer = nullptr;
 
   for(auto& cur_block: received_transcript_chain)
@@ -1200,7 +1259,22 @@ void np1secSession::commit_suicide() {
       us->ops->axe_timer(cur_block.second.consistency_timer, us->ops->bare_sender_data);
       cur_block.second.consistency_timer = nullptr;
     }
-  
+
+  try {
+    //we try to send one last ack
+    if (my_state == IN_SESSION)
+      send("", np1secMessage::JUST_ACK); //no point to send FS loads as the sessio
+
+  } catch (exception& e) {
+    logger.warn("failed sending pre-destruction consistency check.");
+    logger.warn(e.what(), __FUNCTION__, myself.nickname);
+    //just for test, I don't think we should bother anybody with
+    //this
+    //throw e;
+  }
+
+  my_state = DEAD;
+
 }
 
 np1secSession::~np1secSession() {

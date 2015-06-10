@@ -94,6 +94,14 @@ class np1secInvalidRoomException : public std::exception
    }                                                               
  };                                   
 
+class np1secInvalidSessionStateException : public std::exception                               
+{                                                                 
+   virtual const char* what() const throw()                        
+   {                                                               
+     return "Invalid session state";                               
+   }                                                               
+ };                                   
+
 class np1secDoubleJoinException : public std::exception                               
 {                                                                 
    virtual const char* what() const throw()                        

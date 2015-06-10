@@ -142,13 +142,16 @@ void np1secMessage::create_group_share_msg(SessionId session_id,
 }
 
 void np1secMessage::create_session_confirmation_msg(SessionId session_id, 
-                                 std::string session_key_confirmation) {
+                                                    std::string session_key_confirmation, std::string next_session_ephemeral_key) {
   //data verification
   logger.assert_or_die(session_id.get(), "can not create confirmation message for id-less session");
 
   this->session_id.set(session_id.get());
   this->message_type = SESSION_CONFIRMATION;
-  sys_message = session_key_confirmation;
+  sys_message = session_key_confirmation + next_session_ephemeral_key;
+  logger.info("SC! skey " + std::to_string(session_key_confirmation.size()));
+  logger.info("SC! ekey " + std::to_string(next_session_ephemeral_key.size()));
+  logger.info("SC! skey+ekey " + std::to_string(sys_message.size()));
 
   append_msg_end();
   
@@ -195,14 +198,18 @@ void np1secMessage::create_joiner_auth_msg(SessionId session_id,
 
 void np1secMessage::append_msg_end(bool need_to_be_signed) {
   std::string clear_message = data_to_string(c_np1sec_protocol_version) + data_to_string((DTByte)(this->message_type));
+  logger.info("clear_message " + std::to_string(clear_message.size()));
 
   if (this->session_id.get() != nullptr) {
     clear_message += this->session_id.get_as_stringbuff();
   } 
+  logger.info("session_id " + std::to_string(this->session_id.get_as_stringbuff().size()));
 
   if (need_to_be_signed) //If we fail to sign a message we can't do much
     signature = sign_message(clear_message + sys_message);
-    
+
+  logger.info("signature " + std::to_string(signature.size()));
+
   sys_message = sys_message + signature;
   
   if (message_type == IN_SESSION_MESSAGE) {
@@ -311,9 +318,12 @@ void np1secMessage::unwrap_generic_message(std::string b64ed_message) {
           break;
               
         case SESSION_CONFIRMATION:
-          session_key_confirmation = signed_message.substr(current_offset);
-          if (session_key_confirmation.size() != c_hash_length)
-            throw np1secMessageFormatException();
+          current_offset = move_offset_or_throw_up(signed_message, current_offset, 0,  c_hash_length); //don't move just check
+          session_key_confirmation = signed_message.substr(current_offset, c_hash_length);
+          current_offset = move_offset_or_throw_up(signed_message, current_offset, c_hash_length,  c_ephemeral_key_length);
+          next_session_ephemeral_key = signed_message.substr(current_offset, c_hash_length);
+          //Should we throw up if there is garbage hanging at the end of
+          //legit part?
           break;
 
         default:

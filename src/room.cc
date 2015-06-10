@@ -162,7 +162,7 @@ void np1secRoom::receive_handler(np1secMessage received_message)
   //about the room
   RoomAction action_to_take = c_no_room_action;
 
-  logger.info("room " + name + " handling message " + to_string(received_message.message_type) + " from " + received_message.sender_nick, __FUNCTION__, user_state->myself->nickname);
+  logger.info("room " + name + " handling message " + logger.message_type_to_text[received_message.message_type] + " from " + received_message.sender_nick, __FUNCTION__, user_state->myself->nickname);
   
   if (user_in_room_state == JOINING) {
     logger.info("in JOINING state", __FUNCTION__, user_state->myself->nickname);
@@ -515,5 +515,22 @@ void np1secRoom::shrink(std::string leaving_nick) {
   } // not current user, do nothing
   
 }
+
+void np1secRoom::insert_session(np1secSession* new_session) {
+  logger.assert_or_die(new_session->my_state != np1secSession::DEAD, "trying to adding a dead session?!", __FUNCTION__, user_state->myself->nickname);
+
+  auto old_session = session_universe.find(new_session->my_session_id().get_as_stringbuff());
+  if (old_session != session_universe.end()) {
+    if (old_session->second.my_state != np1secSession::DEAD) {
+      logger.warn("trying to erase a live session? killing the session..." , __FUNCTION__, user_state->myself->nickname); //we need to check and commit suicide in case it is alive
+      old_session->second.commit_suicide();
+      session_universe.erase(old_session->first);
+    }
+  }
+
+  session_universe.emplace(pair<string, np1secSession>(new_session->my_session_id().get_as_stringbuff(),*(new_session)));
+  
+}
+
 
 
