@@ -23,7 +23,6 @@ libnp1sec_la_SOURCES = \
 	src/room.cc \
 	src/userstate.cc
 
-
 libnp1sec_la_LIBADD = \
 	$(LIBGCRYPT_LIBS) \
 	$(LIBEVENT_LIBS)

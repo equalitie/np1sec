@@ -52,5 +52,10 @@ AM_PATH_LIBGCRYPT([], [
 	AC_MSG_ERROR([No libgcrypt])
 ])
 
+AC_CHECK_LIB([pthread], [pthread_create], [
+	PTHREAD="-lpthread"
+	AC_SUBST(PTHREAD)
+], [])
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
