@@ -19,7 +19,8 @@ libnp1sec_test_CPPFLAGS = \
 
 libnp1sec_test_LDADD = \
 	libnp1sec.la \
-	$(LIBGCRYPT_LIBS)
+	$(LIBGCRYPT_LIBS) \
+	$(LIBEVENT_LIBS)
 
 libnp1sec_test_LDFLAGS = \
 	$(top_srcdir)/${GTEST_BASE}/lib/libgtest.la $(PTHREAD)
