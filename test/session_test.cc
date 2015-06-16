@@ -16,6 +16,7 @@
 
 #include <gtest/gtest.h>
 #include <fstream>
+#include <string>
 #include <cstdio> // Required for `remove` function to delete files
 
 #include "src/session.h"
@@ -41,6 +42,7 @@ protected: //gtest needs the elements to be protocted
   //class to setup chat server
   ChatMocker mock_server;
   np1secAppOps* mockops;
+  struct event_base* base;
 
   string mock_room_name = "testroom";
   
@@ -54,23 +56,48 @@ protected: //gtest needs the elements to be protocted
     mockops->display_message = display_message;
     mockops->set_timer = set_timer;
     mockops->axe_timer = axe_timer;
+
+    base = event_base_new();
+    mock_server.initialize_event_manager(base);
+  // Configure the logger to write to `callback_log` for the sake of checking 
   };
   
 };
 
+// Callback for set_timer
+// Checks that a line containing "HEARTBEAT" was written to the `callback_log` file.
 void check_heartbeat_log(void* arg)
 {
   std::ifstream in;
   in.open(callback_log, std::ifstream::in);
   std::string log_line;
+  bool found_heartbeat = false;
 
   ASSERT_TRUE(in.good());
-  in >> log_line;
-  std::size_t heartbeat_index = log_line.find("HEARTBEAT", 0);
+  while (std::getline(in, log_line)) {
+    found_heartbeat = found_heartbeat || log_line.find("HEARTBEAT") != std::string::npos;
+  }
   in.close();
-  // Reconfigure the logger not to write to a file.
-  logger.config(true, false, "");
-  ASSERT_TRUE(heartbeat_index != std::string::npos);
+  ASSERT_TRUE(found_heartbeat);
+}
+
+// Callback for set_timer
+// Checks that `callback_log` does not exist. 
+void check_not_heartbeat_log(void* arg)
+{
+  std::ifstream in;
+  in.open(callback_log, std::ifstream::in);
+  std::string log_line;
+  bool found_log_file = in.good();
+  ASSERT_FALSE(found_log_file);
+}
+
+// A callback function that will always cause a test failure.
+// Used to test that axe_timer prevents a queued timer event from firing.
+void fail(void* arg)
+{
+  log.error("fail() called despite axing of timer");
+  ASSERT_TRUE(false);
 }
 
 TEST_F(SessionTest, test_heartbeat_timer)
@@ -96,17 +123,29 @@ TEST_F(SessionTest, test_heartbeat_timer)
 
   //receive your own confirmation
   mock_server.receive(); //no need actually
- 
-  // Configure the logger to write to `callback_log` for the sake of checking that it is written to
-  // in the heartbeat test
-  logger.config(true, true, callback_log);    
-  uint32_t timeout = mockops->c_heartbeating_interval * 2 * 1000; // Convert to microseconds
-  pair<ChatMocker*, std::string>* encoded = new pair<ChatMocker*, std::string>(&mock_server, "");
-  std::string* identifier = reinterpret_cast<std::string*>(set_timer(check_heartbeat_log, nullptr, timeout, encoded));
-  // Delete `callback_log`
+
+  // that it is written to in the heartbeat test
+  logger.config(true, true, callback_log);
+  logger.info("Writing HEARTBEAT\n");
+  logger.config(true, false, "");
+  uint32_t timeout = mockops->c_heartbeating_interval * 10;
+  pair<ChatMocker*, std::string>* encoded = new pair<ChatMocker*, std::string>(
+    &mock_server, "");
+  std::string* identifier = reinterpret_cast<std::string*>(
+    set_timer(check_heartbeat_log, nullptr, timeout, encoded));
+  event_base_dispatch(base);
   remove(callback_log.c_str());
+  // Give the `fail` callback a little more time, in case axing takes some time.
+  identifier = reinterpret_cast<std::string*>(
+    set_timer(fail, nullptr, timeout * 10, encoded));
+  // Although slightly superfluous, we add a timer to verify that the log file
+  // doesn't exist for the purpose of testing that axe_timer leaves other events.
+  std::string* identifier2 = reinterpret_cast<std::string*>(
+    set_timer(check_not_heartbeat_log, nullptr, timeout, encoded));
+  event_base_dispatch(base);
+  axe_timer(identifier);
   delete identifier;
-  // TODO - Test that callbacks don't fire when stopped
+  delete identifier2;
 }
 
 TEST_F(SessionTest, test_cb_ack_not_received){
