@@ -96,12 +96,13 @@ void check_not_heartbeat_log(void* arg)
 // Used to test that axe_timer prevents a queued timer event from firing.
 void fail(void* arg)
 {
-  log.error("fail() called despite axing of timer");
+  logger.error("fail() called despite axing of timer");
   ASSERT_TRUE(false);
 }
 
 TEST_F(SessionTest, test_heartbeat_timer)
 {
+  logger.info("Starting heartbeat_timer test");
   //first we need a username and we use it
   //to sign in the room
   string username = "sole-tester";
@@ -124,26 +125,31 @@ TEST_F(SessionTest, test_heartbeat_timer)
   //receive your own confirmation
   mock_server.receive(); //no need actually
 
-  // that it is written to in the heartbeat test
+  // Write HEARTBEAT to `callback_log`
   logger.config(true, true, callback_log);
   logger.info("Writing HEARTBEAT\n");
   logger.config(true, false, "");
   uint32_t timeout = mockops->c_heartbeating_interval * 10;
   pair<ChatMocker*, std::string>* encoded = new pair<ChatMocker*, std::string>(
     &mock_server, "");
+  logger.info("Setting check_heartbeat_log callback");
   std::string* identifier = reinterpret_cast<std::string*>(
     set_timer(check_heartbeat_log, nullptr, timeout, encoded));
   event_base_dispatch(base);
   remove(callback_log.c_str());
   // Give the `fail` callback a little more time, in case axing takes some time.
+  logger.info("Setting fail callback");
   identifier = reinterpret_cast<std::string*>(
-    set_timer(fail, nullptr, timeout * 10, encoded));
+    set_timer(fail, nullptr, timeout * 5, encoded));
   // Although slightly superfluous, we add a timer to verify that the log file
   // doesn't exist for the purpose of testing that axe_timer leaves other events.
+  logger.info("Setting check_not_heartbeat_log callback");
   std::string* identifier2 = reinterpret_cast<std::string*>(
     set_timer(check_not_heartbeat_log, nullptr, timeout, encoded));
+  logger.info("Dispatching the event base");
   event_base_dispatch(base);
-  axe_timer(identifier);
+  logger.info("Axing the fail callback");
+  axe_timer(identifier, encoded);
   delete identifier;
   delete identifier2;
 }
