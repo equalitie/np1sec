@@ -68,11 +68,23 @@ void EventManager::remove_timeout(std::string* identifier)
 {
   event* evt = get(identifier);
   if (evt) {
-    event_del(evt);
+    // Delete an event and check that the return code is 0 (success)
+    bool event_deleted = evtimer_del(evt) == 0;
+    //bool event_deleted = event_del(evt) == 0;
+    if (event_deleted) {
+      mock_logger.info("Event with id " + *identifier + " deleted successfully.");
+    } else {
+      mock_logger.warn("Event with id " + *identifier + " not deleted!");
+    }
     timers.erase(*identifier);
   } else {
     mock_logger.warn("trying to delete none-existing timer", __FUNCTION__);
   }
+}
+
+void EventManager::end_event_loop()
+{
+  event_base_loopexit(base, 0);
 }
 
 // #define CUSTOM_USER_DIRECTORY "/tmp/test_user"

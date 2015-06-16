@@ -158,6 +158,7 @@ public:
   std::string* add_timeout(event_callback_fn cb, void* arg, timeval* timeout);
   struct event* get(std::string* identifier);
   int size();
+  void end_event_loop();
   void remove_timeout(std::string* identifier);
 };
 
@@ -178,6 +179,14 @@ class ChatMocker {
   void initialize_event_manager(struct event_base* base)
   {
     event_manager = EventManager(base);
+  }
+
+  /**
+   * End libevent's loop
+   */
+  void end_event_loop()
+  {
+    event_manager.end_event_loop();
   }
 
   /**
