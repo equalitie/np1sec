@@ -25,6 +25,14 @@
 #include "src/common.h"
 #include "test/chat_mocker.h"
 
+Logger mock_logger(INFO);
+
+static void
+check_receive_queue(void *arg)
+{
+  ((ChatMocker*)arg)->receive();
+}
+
 // Default constructor
 EventManager::EventManager() : base(nullptr)
 {

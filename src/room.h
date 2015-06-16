@@ -70,8 +70,8 @@ class np1secRoom {
   //with exception of possibly one session, every
   //session has session id.
   enum UserInRoomState {
-    CURRENT_USER,
-    JOINING //, LEAVING_USER //TODO: sit and think if we need this?
+    JOINING, //, LEAVING_USER //TODO: sit and think if we need this?
+    CURRENT_USER
   };
 
   UserInRoomState user_in_room_state;
@@ -86,6 +86,7 @@ class np1secRoom {
   //session beside current session.
   
   SessionId active_session;
+  SessionId next_in_activation_line;
 
   /**
    * manages activating a session which concerns an additional
@@ -97,6 +98,24 @@ class np1secRoom {
    *        the room
    */
   void activate_session(SessionId newly_activated_session);
+
+  /**
+   * Mark in-limbo sessions which are not valid any more as stale so 
+   * subsequently one can make a fresh session out of each
+   * mark them stale prevent them from replying to confimation etc and  
+   * misleading joining participants in moving forward
+   */
+  void stale_in_limbo_sessions_presume_heir(SessionId new_successor);
+
+  /**
+   *  When a new sesison generates key we need to update all session in limbo
+   *  (kill them and generate new one for each) which ad here to this generated
+   *  key session.
+   * if somebody leaves, as soon as they live you need to update them cause
+   * they are useless and the leaving person aren't going to confirmed any of them
+   */
+  void refresh_stale_in_limbo_sessions(SessionId new_parent_session_id);
+
 
  public:
   /**
@@ -110,10 +129,9 @@ class np1secRoom {
    * bad constructor just for the sake of operator[] of chatrooms
    *
    */
-  np1secRoom()
-    {
+  np1secRoom() {
       assert(0);
-    }
+  }
 
   //Depricated: the approach of session factor is not working
   //as some of request for new session (specifically leave)

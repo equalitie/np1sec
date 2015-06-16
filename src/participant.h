@@ -217,8 +217,8 @@ class Participant {
 
   np1secKeyShare cur_keyshare;
   HashBlock p2p_key = {};
-  bool authenticated;
-  bool authed_to;
+  bool authenticated = false;
+  bool authed_to = false;
   bool key_share_contributed;
   bool leaving = false;
   
@@ -387,4 +387,12 @@ ParticipantMap operator+(const ParticipantMap& lhs, const ParticipantMap& rhs);
  * this is basically the difference function
  */
 ParticipantMap operator-(const ParticipantMap& lhs, const ParticipantMap& rhs);
+
+/**
+ * get a ParticipantMap and make a string containing the names 
+ * of the participant suitable for printing out
+ */
+std::string participants_to_string(const ParticipantMap& plist);
+
 #endif  // SRC_PARTICIPANT_H_
+

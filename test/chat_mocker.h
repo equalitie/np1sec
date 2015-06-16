@@ -32,9 +32,6 @@ extern Logger mock_logger;
 void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
                                                std::string np1sec_message,
                                                void* aux_data);
-/*void chat_mocker_plugin_receive_handler(std::string room_name,
-                                        std::string message,
-                                        void* aux_data);*/
 
 class MockParticipant {
  public:
@@ -252,6 +249,7 @@ class ChatMocker {
     rooms[room].intend_to_leave(nick);
     
   }
+  
   /**
    * drop the participant from the room
    */
@@ -276,6 +274,5 @@ class ChatMocker {
   }
   
 };
-
 
 #endif  // TEST_CHAT_MOCKER_H_
