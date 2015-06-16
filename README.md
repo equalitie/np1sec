@@ -98,9 +98,9 @@ Haveged is used to generate entropy more quickly.  You may or may not want it.
  
 ```
 $ wget https://learn.equalit.ie/mw/images/a/a0/Np1sec.tar.gz.zip
-$ unzip np1sec.tar.gz.zip
-$ tar -xzf np1sec.tar.gz
-$ cd np1sec
+$ unzip Np1sec.tar.gz.zip
+$ tar -xzf Np1sec.tar.gz
+$ cd Np1sec
 $ ./configure
 $ make
 ```
