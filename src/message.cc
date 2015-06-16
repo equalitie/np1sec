@@ -149,10 +149,6 @@ void np1secMessage::create_session_confirmation_msg(SessionId session_id,
   this->session_id.set(session_id.get());
   this->message_type = SESSION_CONFIRMATION;
   sys_message = session_key_confirmation + next_session_ephemeral_key;
-  logger.info("SC! skey " + std::to_string(session_key_confirmation.size()));
-  logger.info("SC! ekey " + std::to_string(next_session_ephemeral_key.size()));
-  logger.info("SC! skey+ekey " + std::to_string(sys_message.size()));
-
   append_msg_end();
   
 }
@@ -198,17 +194,13 @@ void np1secMessage::create_joiner_auth_msg(SessionId session_id,
 
 void np1secMessage::append_msg_end(bool need_to_be_signed) {
   std::string clear_message = data_to_string(c_np1sec_protocol_version) + data_to_string((DTByte)(this->message_type));
-  logger.info("clear_message " + std::to_string(clear_message.size()));
 
   if (this->session_id.get() != nullptr) {
     clear_message += this->session_id.get_as_stringbuff();
   } 
-  logger.info("session_id " + std::to_string(this->session_id.get_as_stringbuff().size()));
 
   if (need_to_be_signed) //If we fail to sign a message we can't do much
     signature = sign_message(clear_message + sys_message);
-
-  logger.info("signature " + std::to_string(signature.size()));
 
   sys_message = sys_message + signature;
   

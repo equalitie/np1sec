@@ -75,7 +75,14 @@ public:
   void abort(std::string msg, std::string function_name = "", std::string user_nick = "");
   
   void assert_or_die(bool expr, std::string failure_message, std::string function_name = "", std::string user_nick = "");
-  
+
 };
 
 #endif  // SRC_LOGGER_H_
+
+
+
+
+
+
+

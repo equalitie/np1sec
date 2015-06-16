@@ -64,7 +64,9 @@ class RoomAction {
    enum ActionType { 
      NO_ACTION,
      BAD_ACTION,
-     NEW_SESSION,
+     NEW_SESSION, //JOIN
+     NEW_PRIORITY_SESSION, //LEAVE
+     PRESUME_HEIR //GROUP_KEY_GENERATED
 /*     JOIN, */
 /*     LEAVE, */
 /*     REKEY, */
@@ -197,6 +199,12 @@ class np1secSession {
   ParticipantMap zombies;
 
   /**
+   * Keep lists of the list of participants of the session 
+   * being confirmed before us.
+   */
+  ParticipantMap parental_participants;
+
+  /**
    * Keeps the list of the live participants in the room and their current/new
    * keys/shares, last heartbeat, etc. The correct way of uisng this array is
    * participants[peers[i]]
@@ -313,6 +321,18 @@ class np1secSession {
    */
   std::string secret_share_on(int32_t side);
 
+  ParticipantMap participants_list_to_map(const UnauthenticatedParticipantList& session_view) {
+    ParticipantMap converted_map;
+    
+    for(UnauthenticatedParticipantList::const_iterator view_it = session_view.begin(); view_it != session_view.end();  view_it++) {
+      converted_map.insert(std::pair<std::string, Participant>(view_it->participant_id.nickname, Participant(*view_it)));
+      converted_map[view_it->participant_id.nickname].authenticated = view_it->authenticated;
+    }
+
+    return converted_map;
+    
+  }
+
   /**
    * reading the particpant_in_the_room list, it populate the 
    * particpants
@@ -320,16 +340,18 @@ class np1secSession {
    * peers vector then find the index of thread runner
    */
   void populate_participants_and_peers(const UnauthenticatedParticipantList& session_view)
-  {    
-    for(UnauthenticatedParticipantList::const_iterator view_it = session_view.begin(); view_it != session_view.end();  view_it++) {
-      participants.insert(std::pair<std::string, Participant>(view_it->participant_id.nickname, Participant(*view_it)));
-      participants[view_it->participant_id.nickname].authenticated = view_it->authenticated;
-      peers.push_back(view_it->participant_id.nickname);
+  {
+    /* for(UnauthenticatedParticipantList::const_iterator view_it = session_view.begin(); view_it != session_view.end();  view_it++) { */
+    /*   participants.insert(std::pair<std::string, Participant>(view_it->participant_id.nickname, Participant(*view_it))); */
+    /*   participants[view_it->participant_id.nickname].authenticated = view_it->authenticated; */
+    /*   peers.push_back(view_it->participant_id.nickname); */
     
-    }
+    /* } */
+    participants = participants_list_to_map(session_view);
+    populate_peers_from_participants();
 
-    keep_peers_in_order_spot_myself();
-    compute_session_id();
+    /*keep_peers_in_order_spot_myself();
+      compute_session_id();*/
 
   }
 
@@ -376,7 +398,7 @@ class np1secSession {
     
     std::vector<std::string>::iterator my_entry = std::find(peers.begin(), peers.end(), myself.nickname);
     if (my_entry == peers.end()) {
-      //the message wasn't meant to us
+      logger.info("the message wasn't meant to us", __FUNCTION__, myself.nickname);
       throw np1secInvalidRoomException(); //The idea is that if we got an invalid room
       //then we don't go for creating session;
     }
@@ -406,6 +428,15 @@ class np1secSession {
    * replacing future key to current key and drop zombies
    */
   ParticipantMap future_participants();
+
+  /**
+   * returns participants - parental_participants
+   * it shows what is the session suppose to add or
+   * drop it is a replacement for raison_detre
+   * 
+   */
+  ParticipantMap delta_plist();
+  
   /**
    * compute the id of a potential session when leaving_nick leaves the session
    */
@@ -465,6 +496,11 @@ class np1secSession {
   bool everybody_confirmed();
 
   /**
+   * Simply checks the confirmed array for every element be false
+   */
+  bool nobody_confirmed();
+
+  /**
    * Simply checks the participant map  for every element be authed.
    */
   bool everybody_authenticated_and_contributed();
@@ -514,6 +550,7 @@ class np1secSession {
     IN_SESSION,  // Key has been confirmed
     LEAVE_REQUESTED,  // Leave requested by the thread, waiting
                       // for final transcirpt consitancy check
+    STALE, //A Mark that a new session with the same goal need to be created
     DEAD,  // Won't accept receive or sent messages, possibly throw up
     TOTAL_NO_OF_STATES //This should be always the last state
   };
@@ -632,6 +669,24 @@ class np1secSession {
 
    */
   StateAndAction init_a_session_with_new_user(np1secMessage received_message);
+
+  /**
+     For the current user, calls it when receive PARTICIPANT_INFO which
+     doesn't exists in its universe, this only happens when they are the 
+     joining participant in previous itteration
+     
+     sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), (kc_{sender, joiner}), z_sender
+
+     - start a new new participant list which does
+       checks if itself is part of the list.
+
+     - it verifies the future keys of current session, other wise
+       reject the session. anybody not on current session list
+       mark as unauthenticated.
+     
+
+ */
+  RoomAction init_a_session_with_plist(np1secMessage received_message);
 
   /**
      For the current user, calls it when receive JOINER_AUTH
@@ -847,6 +902,15 @@ class np1secSession {
   void commit_suicide();
 
   /**
+   * same as suicide but it is marked so its list be used later
+   */
+  void stale_me()
+  {
+    commit_suicide();
+    my_state = STALE;
+  }
+
+  /**
    * Create a new np1secSession object based on the combination of participants
    * from the current session plus another session
    *
@@ -941,12 +1005,13 @@ class np1secSession {
    *  @param conceiver: the role of thread user in the session being constructed
    */
   np1secSession(np1secSessionConceiverCondition conceiver,
-                               np1secUserState* us,
-                               std::string room_name,
-                               Cryptic* current_ephemeral_crypto,
-                               const ParticipantMap& current_participants,
-                               np1secMessage* conceiving_message = nullptr
-                               );
+                np1secUserState* us,
+                std::string room_name,
+                Cryptic* current_ephemeral_crypto,
+                const ParticipantMap& current_participants = ParticipantMap(),
+                const ParticipantMap& parent_plist = ParticipantMap(),
+                np1secMessage* conceiving_message = nullptr
+                );
   
   //np1secSession(np1secUserState *us, std::string room_name,  Cryptic* current_ephemeral_crypto, np1secMessage join_message, ParticipantMap current_authed_participants);
 

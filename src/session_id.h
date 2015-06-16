@@ -90,6 +90,9 @@ class SessionId
     return (is_set) ? std::string(reinterpret_cast<const char*>(session_id_raw), sizeof(HashBlock)) : std::string();
   }
 
+  bool operator==(const SessionId& rhs) {
+    return (is_set == rhs.is_set && !Cryptic::compare_hash(session_id_raw, rhs.session_id_raw));
+  }
 };
 
 #endif

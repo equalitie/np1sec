@@ -20,6 +20,18 @@
 
 #include "src/participant.h"
 
+std::string participants_to_string(const ParticipantMap& plist)
+{
+  std::string string_plist;
+  for(auto& cur_participant : plist)
+    string_plist += ", " + cur_participant.first;
+
+  string_plist.erase(0,2);
+
+  return string_plist;
+  
+}
+
 /**
  * To be used in std::sort to sort the particpant list
  * in a way that is consistent way between all participants
@@ -59,7 +71,8 @@ bool operator<(const Participant& lhs, const Participant& rhs)
  */
 void Participant::be_authenticated(const std::string authenticator_id, const HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto) {
   compute_p2p_private(thread_user_id_key, thread_user_crypto);
-  
+  logger.info("p2p " + std::to_string((unsigned int)p2p_key[0]));
+
   std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
   to_be_hashed+= authenticator_id;
   HashBlock regenerated_auth_token;
@@ -91,6 +104,7 @@ void Participant::be_authenticated(const std::string authenticator_id, const Has
 void Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto) {
 
   compute_p2p_private(thread_user_id_key, thread_user_crypto);
+  logger.info("p2p " + std::to_string((unsigned int)p2p_key[0]));
 
   std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
   to_be_hashed += id.id_to_stringbuffer(); //the question is that why should we include the public

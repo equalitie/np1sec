@@ -23,6 +23,7 @@
 
 #include "src/common.h"
 #include "src/crypt.h"
+#include "participant.h"
 #include "src/session.h"
 #include "src/message.h"
 
@@ -35,6 +36,7 @@ void Logger::initiate_textual_conversions() {
   state_to_text[np1secSession::GROUP_KEY_GENERATED] = "GROUP_KEY_GENERATED";
   state_to_text[np1secSession::IN_SESSION] = "IN_SESSION";
   state_to_text[np1secSession::LEAVE_REQUESTED] = "LEAVE_REQUESTED";
+  state_to_text[np1secSession::STALE] = "STALE";
   state_to_text[np1secSession::DEAD] = "DEAD";
 
   message_type_to_text[np1secMessage::UNKNOWN] = "UNKNOWN";
@@ -47,6 +49,7 @@ void Logger::initiate_textual_conversions() {
   message_type_to_text[np1secMessage::INADMISSIBLE] = "INADMISSIBLE";      
 
 }
+
 // Standard constructor
 // Threshold adopts a default level of DEBUG if an invalid threshold is provided.
 Logger::Logger(log_level_t threshold)
