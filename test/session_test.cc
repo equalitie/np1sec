@@ -68,6 +68,7 @@ protected: //gtest needs the elements to be protocted
 // Checks that a line containing "HEARTBEAT" was written to the `callback_log` file.
 void check_heartbeat_log(void* arg)
 {
+  ChatMocker* server = reinterpret_cast<ChatMocker*>(arg);
   std::ifstream in;
   in.open(callback_log, std::ifstream::in);
   std::string log_line;
@@ -78,6 +79,7 @@ void check_heartbeat_log(void* arg)
     found_heartbeat = found_heartbeat || log_line.find("HEARTBEAT") != std::string::npos;
   }
   in.close();
+  server->end_event_loop();
   ASSERT_TRUE(found_heartbeat);
 }
 
@@ -85,10 +87,12 @@ void check_heartbeat_log(void* arg)
 // Checks that `callback_log` does not exist. 
 void check_not_heartbeat_log(void* arg)
 {
+  ChatMocker* server = reinterpret_cast<ChatMocker*>(arg);
   std::ifstream in;
   in.open(callback_log, std::ifstream::in);
   std::string log_line;
   bool found_log_file = in.good();
+  server->end_event_loop();
   ASSERT_FALSE(found_log_file);
 }
 
@@ -102,7 +106,6 @@ void fail(void* arg)
 
 TEST_F(SessionTest, test_heartbeat_timer)
 {
-  logger.info("Starting heartbeat_timer test");
   //first we need a username and we use it
   //to sign in the room
   string username = "sole-tester";
@@ -134,18 +137,18 @@ TEST_F(SessionTest, test_heartbeat_timer)
     &mock_server, "");
   logger.info("Setting check_heartbeat_log callback");
   std::string* identifier = reinterpret_cast<std::string*>(
-    set_timer(check_heartbeat_log, nullptr, timeout, encoded));
+    set_timer(check_heartbeat_log, &mock_server, timeout, encoded));
   event_base_dispatch(base);
   remove(callback_log.c_str());
   // Give the `fail` callback a little more time, in case axing takes some time.
   logger.info("Setting fail callback");
   identifier = reinterpret_cast<std::string*>(
-    set_timer(fail, nullptr, timeout * 5, encoded));
+    set_timer(fail, nullptr, timeout * 9, encoded));
   // Although slightly superfluous, we add a timer to verify that the log file
   // doesn't exist for the purpose of testing that axe_timer leaves other events.
   logger.info("Setting check_not_heartbeat_log callback");
   std::string* identifier2 = reinterpret_cast<std::string*>(
-    set_timer(check_not_heartbeat_log, nullptr, timeout, encoded));
+    set_timer(check_not_heartbeat_log, &mock_server, timeout, encoded));
   logger.info("Dispatching the event base");
   event_base_dispatch(base);
   logger.info("Axing the fail callback");
