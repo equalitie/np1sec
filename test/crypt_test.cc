@@ -16,6 +16,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <gcrypt.h>
+#include <sstream>
+
 #include "contrib/gtest/include/gtest/gtest.h"
 #include "src/crypt.h"
 
@@ -41,14 +44,12 @@ TEST_F(CryptTest, test_hash) {
   gcry_error_t err = Cryptic::hash(reinterpret_cast<const void *>(str.c_str()),
                           3, res, false);
   EXPECT_FALSE(err);
-  char *buf = new char[c_hash_length*2+1];
-  char *ind = buf;
-  for (uint i = 0; i < c_hash_length; i++) {
-    snprintf(ind, sizeof(char)*3, "%02x", res[i]);
-    ind += 2;
+  std::stringstream buf;
+  buf << std::hex << std::internal << std::setfill('0');
+  for (size_t i = 0; i < c_hash_length; i++) {
+    buf << std::setw(2) << static_cast<uint>(res[i]);
   }
-  ASSERT_EQ(exp, buf);
-  free(buf);
+  ASSERT_EQ(exp, buf.str());
   delete[] res;
 }
 
