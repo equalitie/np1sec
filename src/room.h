@@ -63,7 +63,7 @@ class np1secRoom {
   std::string name; //room name given in creation by user_state
   np1secUserState* user_state;
   ParticipantId myself;
-  size_t original_room_size = 0; //we only need keep track of
+  size_t room_size = 0; //we only need keep track of
   //the room size till we become a current user. after that
   //the session can take care of that
 
@@ -206,6 +206,12 @@ class np1secRoom {
    */
   void shrink(std::string leaving_user_nick);
 
+  /**
+   * called by user state when somebody else joins the
+   * the room to keep track of the room size
+   */
+  void increment_size();
+  
   /**
    * for np1secSession when it breeds a new session specailly 
    * in the forward secrecy timer to be able to insert it 

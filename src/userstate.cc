@@ -119,6 +119,16 @@ bool np1secUserState::join_room(std::string room_name,
   
 }
 
+void np1secUserState::increment_room_size(std::string room_name)
+{                                
+  //if the room is not made, we make it.
+  if (chatrooms.find(room_name) != chatrooms.end()) {
+    //room creation triger joining
+    chatrooms[room_name].increment_size();
+  } 
+
+}
+
 /**
  * The client informs the user state about leaving the room by calling this
  * function.

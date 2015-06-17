@@ -74,6 +74,7 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
         logger.error(joining_nick + " failed to join room" + room_name);
       }
     } else {
+      user_server_state->first->increment_room_size(room_name);
       //we don't need to react, (we can, the protocol doesn't stop us
       //but we are lazy and we react to the join request sent by the joiner
       // user_server_state->first->receive_handler(room_name,
@@ -218,3 +219,10 @@ void axe_timer(void* identifier, void* data)
   cout << sender_nickname << "Securely joined: " << endl;
   
   }*/
+
+bool am_i_alone(std::string room_name, void* aux_data) {
+  ChatMocker* chat_server = (static_cast<pair<ChatMocker*, std::string>*>(aux_data))->first;
+  exit(0);
+  return (!chat_server->participant_list(room_name).size() > 1);
+  
+}

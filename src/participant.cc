@@ -71,7 +71,6 @@ bool operator<(const Participant& lhs, const Participant& rhs)
  */
 void Participant::be_authenticated(const std::string authenticator_id, const HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto) {
   compute_p2p_private(thread_user_id_key, thread_user_crypto);
-  logger.info("p2p " + std::to_string((unsigned int)p2p_key[0]));
 
   std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
   to_be_hashed+= authenticator_id;
@@ -104,7 +103,6 @@ void Participant::be_authenticated(const std::string authenticator_id, const Has
 void Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto) {
 
   compute_p2p_private(thread_user_id_key, thread_user_crypto);
-  logger.info("p2p " + std::to_string((unsigned int)p2p_key[0]));
 
   std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
   to_be_hashed += id.id_to_stringbuffer(); //the question is that why should we include the public

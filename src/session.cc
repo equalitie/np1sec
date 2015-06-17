@@ -195,7 +195,6 @@ np1secSession::np1secSession(np1secSessionConceiverCondition conceiver,
     conceiving_message(&(*conceiving_message)) //forcing copying, we need a fresh copy
 {
   engrave_state_machine_graph();
-  
 
   logger.info("constructing new session for room " + room_name + " with " + to_string(participants.size()) + " participants", __FUNCTION__, myself.nickname);
 
@@ -378,8 +377,10 @@ std::string np1secSession::secret_share_on(int32_t side)
 
 void np1secSession::group_enc() {
   HashBlock hbr, hbl;
-  memcpy(hbr, Cryptic::strbuff_to_hash(secret_share_on(c_my_right)), sizeof(HashBlock));
-  memcpy(hbl, Cryptic::strbuff_to_hash(secret_share_on(c_my_left)), sizeof(HashBlock));
+  HashStdBlock sr = secret_share_on(c_my_right);
+  HashStdBlock sl = secret_share_on(c_my_left);
+  memcpy(hbr, Cryptic::strbuff_to_hash(sr), sizeof(HashBlock));
+  memcpy(hbl, Cryptic::strbuff_to_hash(sl), sizeof(HashBlock));
 
   for (unsigned i=0; i < sizeof(HashBlock); i++) {
     hbr[i] ^= hbl[i];
@@ -395,7 +396,8 @@ void np1secSession::group_dec() {
   HashBlock last_hbr;
 
   HashBlock hbr;
-  memcpy(hbr, Cryptic::strbuff_to_hash(secret_share_on(c_my_right)), sizeof(HashBlock));
+  HashStdBlock sr = secret_share_on(c_my_right);
+  memcpy(hbr, Cryptic::strbuff_to_hash(sr), sizeof(HashBlock));
   size_t my_right = (my_index+c_my_right) % peers.size();
   all_r[my_index] = Cryptic::hash_to_string_buff(hbr);
 
@@ -757,11 +759,16 @@ RoomAction np1secSession::init_a_session_with_plist(np1secMessage received_messa
     throw np1secInvalidParticipantException();
   }    
 
-  if (!received_message.verify_message(Cryptic::reconstruct_public_key_sexp(Cryptic::hash_to_string_buff(participants[received_message.sender_nick].future_raw_ephemeral_key))))
+  np1secPublicKey temp_future_pub_key = Cryptic::reconstruct_public_key_sexp(Cryptic::hash_to_string_buff(participants[received_message.sender_nick].future_raw_ephemeral_key));
+                                                                             
+  if (!received_message.verify_message(temp_future_pub_key))
     {
+      Cryptic::release_crypto_resource(temp_future_pub_key);
       logger.warn("failed to verify signature of PARTICIPANT_INFO message.");
       throw np1secAuthenticationException();
     }
+  
+  Cryptic::release_crypto_resource(temp_future_pub_key);
 
   ParticipantMap live_participants = participants_list_to_map(received_message.get_session_view());
   

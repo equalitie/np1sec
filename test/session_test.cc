@@ -42,7 +42,7 @@ protected: //gtest needs the elements to be protocted
   ChatMocker mock_server;
   np1secAppOps* mockops;
 
-  string mock_room_name = "testroom";
+  string mock_room_name;
   
   virtual void SetUp() {
     uint32_t ten_sec = 10000;
@@ -54,9 +54,19 @@ protected: //gtest needs the elements to be protocted
     mockops->display_message = display_message;
     mockops->set_timer = set_timer;
     mockops->axe_timer = axe_timer;
+    mockops->am_i_alone = am_i_alone;
+
+    // Gets information about the currently running test.
+// Do NOT delete the returned object - it's managed by the UnitTest class.
+    const ::testing::TestInfo* const test_info =
+      ::testing::UnitTest::GetInstance()->current_test_info();
+    
+    mock_room_name = test_info->name();
+    mock_room_name += "_room";
   };
   
 };
+
 
 void check_heartbeat_log(void* arg)
 {
@@ -104,7 +114,7 @@ TEST_F(SessionTest, test_heartbeat_timer)
   uint32_t timeout = mockops->c_heartbeating_interval * 2 * 1000; // Convert to microseconds
   pair<ChatMocker*, std::string>* encoded = new pair<ChatMocker*, std::string>(&mock_server, "");
   std::string* identifier = reinterpret_cast<std::string*>(set_timer(check_heartbeat_log, nullptr, timeout, encoded));
-  // Delete `callback_log`
+  // Delete `callback_log`c
   remove(callback_log.c_str());
   delete identifier;
   // TODO - Test that callbacks don't fire when stopped
@@ -235,6 +245,7 @@ TEST_F(SessionTest, test_init) {
 }
 
 TEST_F(SessionTest, test_second_join) {
+  string mock_room_name = string(__FUNCTION__) + "room";
   //first we need a username and we use it
   //to sign in the room
   //return;
@@ -666,6 +677,70 @@ TEST_F(SessionTest, test_concurrent_join) {
   mock_server.receive();
 
   chat_mocker_np1sec_plugin_send(mock_room_name, "Happy concurrent join!", &charlie_server_state);
+  
+  mock_server.receive();
+
+}
+
+TEST_F(SessionTest, test_concurrent_join_leave) {
+  //return;
+  //first we need a username and we use it
+  //to sign in the room
+  return; //this test is not working cause chatmocker number of particiants
+  //is comming from the server while everything else is based on messages
+  //so from client side.
+  //to make it work is that the number of participant also should come from
+  //client side. so for example the @P@JOIN message should have the number
+  //of participants
+  string alice = "alice";
+  np1secAppOps alice_mockops = *mockops;
+  std::pair<ChatMocker*, string> mock_aux_alice_data(&mock_server,alice);
+  alice_mockops.bare_sender_data = static_cast<void*>(&mock_aux_alice_data);
+  np1secUserState* alice_state = new np1secUserState(alice, &alice_mockops);
+  alice_state->init();
+  
+  np1secAppOps bob_mockops = *mockops;
+  string bob = "bob";
+  std::pair<ChatMocker*, string> mock_aux_bob_data(&mock_server,bob);
+  bob_mockops.bare_sender_data = static_cast<void*>(&mock_aux_bob_data);
+  np1secUserState* bob_state = new np1secUserState(bob, &bob_mockops);
+  //They can use the same mock up as they are using the same mock server
+  bob_state->init();
+
+  np1secAppOps charlie_mockops = *mockops;
+  string charlie = "charlie";
+  std::pair<ChatMocker*, string> mock_aux_charlie_data(&mock_server,charlie);
+  charlie_mockops.bare_sender_data = static_cast<void*>(&mock_aux_charlie_data);
+  np1secUserState* charlie_state = new np1secUserState(charlie, &charlie_mockops);
+  charlie_state->init();
+
+  pair<np1secUserState*, ChatMocker*> alice_server_state(alice_state, &mock_server);
+  pair<np1secUserState*, ChatMocker*> bob_server_state(bob_state, &mock_server);
+  pair<np1secUserState*, ChatMocker*> charlie_server_state(charlie_state, &mock_server);
+
+  //everybody signs in
+  //alice
+  mock_server.sign_in(alice, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&alice_server_state));
+  //bob
+  mock_server.sign_in(bob, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&bob_server_state));
+  //charlie
+  mock_server.sign_in(charlie, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&charlie_server_state));
+
+  //alice joins first
+  mock_server.join(mock_room_name, alice_state->user_nick());
+
+  //receive your share and own confirmation
+  mock_server.receive();
+  
+  //then bob joins
+  mock_server.join(mock_room_name, bob_state->user_nick());
+  mock_server.join(mock_room_name, charlie_state->user_nick());
+  mock_server.leave(mock_room_name, bob_state->user_nick());
+
+  //receive the join requests and start reations
+  mock_server.receive();
+
+  chat_mocker_np1sec_plugin_send(mock_room_name, "Happy concurrent join/leave!", &charlie_server_state);
   
   mock_server.receive();
 

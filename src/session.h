@@ -277,9 +277,9 @@ class np1secSession {
   void* session_life_timer = nullptr;
 
 
-  MessageId last_received_message_id;
-  MessageId own_message_counter; //sent message counter
-  MessageId leave_parent;
+  MessageId last_received_message_id = 0;
+  MessageId own_message_counter = 0; //sent message counter
+  MessageId leave_parent = 0;
   //Depricated in favor of raison detr.
   //tree structure seems to be insufficient. because
   //sid only encode the session structure but not

@@ -26,7 +26,6 @@
 #include <cstdio>
 #include <string>
 
-
 #include "src/crypt.h"
 #include "src/exceptions.h"
 #include "src/logger.h"
@@ -43,7 +42,6 @@ gcry_error_t Cryptic::hash(const void *buffer, size_t buffer_len, HashBlock hb,
   if (secure)
     flags |= GCRY_MD_FLAG_SECURE;
 
-  assert(!gcry_md_test_algo(c_np1sec_hash));
   err = gcry_md_open(&digest, c_np1sec_hash, flags);
   if (err)
     goto done;
@@ -58,12 +56,15 @@ done:
   return err;
 }
 
-Cryptic::Cryptic() {}
+Cryptic::Cryptic() {
+  assert(!gcry_md_test_algo(c_np1sec_hash));
+
+}
 
 bool Cryptic::generate_key_pair(np1secAsymmetricKey* generated_key) {
   /* Generate a new Ed25519 key pair. */
   gcry_error_t err = 0;
-  gcry_sexp_t ed25519_params;
+  gcry_sexp_t ed25519_params = nullptr;
 
   err = gcry_sexp_build(&ed25519_params, NULL,
                         "(genkey (ecc (curve Ed25519) (flags eddsa)))");
@@ -71,6 +72,8 @@ bool Cryptic::generate_key_pair(np1secAsymmetricKey* generated_key) {
     goto err;
 
   err = gcry_pk_genkey(generated_key, ed25519_params);
+  gcry_sexp_release(ed25519_params);
+
   if (err)
     goto err;
 
@@ -86,7 +89,7 @@ err:
 bool Cryptic::init() {
   /* Generate a new Ed25519 key pair. */
   gcry_error_t err = 0;
-  gcry_sexp_t ed25519_params;
+  gcry_sexp_t ed25519_params = nullptr;
 
   err = gcry_sexp_build(&ed25519_params, NULL,
                         "(genkey (ecc (curve Ed25519) (flags eddsa)))");
@@ -94,11 +97,14 @@ bool Cryptic::init() {
     goto err;
 
   err = gcry_pk_genkey(&ephemeral_key, ed25519_params);
-  if (err)
+  gcry_sexp_release(ed25519_params);
+  if (err) {
     goto err;
+  }
 
   ephemeral_pub_key = gcry_sexp_find_token(ephemeral_key, "public-key", 0);
   if (!ephemeral_pub_key) {
+    gcry_sexp_release(ephemeral_key);
     logger.error("failed to retrieve public key",__FUNCTION__);
     throw np1secCryptoException();
     return false;
@@ -106,6 +112,8 @@ bool Cryptic::init() {
 
   ephemeral_prv_key = gcry_sexp_find_token(ephemeral_key, "private-key", 0);
   if (!ephemeral_prv_key) {
+    gcry_sexp_release(ephemeral_key);
+    gcry_sexp_release(ephemeral_pub_key);
     logger.error("failed to retrieve private key", __FUNCTION__);
     throw np1secCryptoException();
     return false;
@@ -125,37 +133,41 @@ gcry_sexp_t Cryptic::get_public_key(np1secAsymmetricKey key_pair)
 }
 
 std::string Cryptic::public_key_to_stringbuff(np1secAsymmetricKey public_key) {
-  return retrieve_result(gcry_sexp_find_token(public_key
-                                              , "q", 0));
+  gcry_sexp_t q_of_pub_key = gcry_sexp_find_token(public_key, "q", 0);
+  if (!q_of_pub_key)
+    throw np1secCryptoException();
+  
+  std::string pubkey_blob =  retrieve_result(q_of_pub_key);
+  gcry_sexp_release(q_of_pub_key);
+  
+  return pubkey_blob;
+  
 }
 
 std::string Cryptic::retrieve_result(gcry_sexp_t text_sexp) {
-  gcry_mpi_t sexp_to_mpi = gcry_sexp_nth_mpi(text_sexp, 1, GCRYMPI_FMT_USG);
 
   size_t buffer_size;
-  uint8_t* buffer;
-  gcry_mpi_aprint(Cryptic::NP1SEC_BLOB_OUT_FORMAT, &buffer, &buffer_size, sexp_to_mpi);
-  gcry_mpi_release(sexp_to_mpi);
+  const char* buffer;
+  buffer = gcry_sexp_nth_data(text_sexp, 1, &buffer_size);
 
   if (!buffer_size) { 	
     logger.error("failed to convert s-expression to string", __FUNCTION__); 	
     throw np1secCryptoException();
   } 	
 
-  std::string result(reinterpret_cast<char*>(buffer), buffer_size); 	
-  free(buffer); 	
+  std::string result(buffer, buffer_size); 	
   return result;
 
 }
 
 gcry_sexp_t Cryptic::convert_to_sexp(std::string text) { 	
-  gcry_error_t err = 0; 	
-  gcry_sexp_t new_sexp; 	
+  gcry_error_t err = 0;
+  gcry_sexp_t new_sexp;
 
-  err = gcry_sexp_new(&new_sexp, text.c_str(), text.size(), 1); 	
+  err = gcry_sexp_new(&new_sexp, text.c_str(), text.size(), 1);
   if (err) { 	
     logger.error("Cryptic::convert_to_sexp failed to convert plain_text to gcry_sexp_t", __FUNCTION__);
-    logger.error(std::string("Failure: ")+ gcry_strsource(err) + "/" +gcry_strerror(err), __FUNCTION__);
+    logger.error(std::string("Failure: ")+ gcry_strsource(err) + "/" + gcry_strerror(err), __FUNCTION__);
     throw np1secCryptoException();
 
   } 	
@@ -190,20 +202,11 @@ np1secAsymmetricKey Cryptic::reconstruct_public_key_sexp(const std::string pub_k
 {
   gcry_error_t err = 0; 	
   np1secAsymmetricKey public_key_sexp = nullptr;
-  gcry_mpi_t public_point_mpi;
-  err = gcry_mpi_scan(&public_point_mpi,
-                      NP1SEC_BLOB_OUT_FORMAT,
-                      strbuff_to_hash(pub_key_block),
-                      ED25519_KEY_SIZE,
-                      NULL);
-  
-  if (err)
-    goto err;
-  
+
   err = gcry_sexp_build(&public_key_sexp,
                         NULL,
-                        "(public-key (ecc (curve Ed25519) (flags eddsa) (q %M)))",
-                        public_point_mpi);
+                        "(public-key (ecc (curve Ed25519) (flags eddsa) (q %b)))",
+                        pub_key_block.size(), pub_key_block.data());
   if (err)
     goto err;
   
@@ -235,8 +238,9 @@ gcry_sexp_t Cryptic::copy_crypto_resource(gcry_sexp_t crypto_resource)
   }
 
   return copied_resource;
-  
+
 };
+
 /**
  * Given the peer's long term and ephemeral public key AP and ap, and ours 
  * BP, bP, all points on ed25519 curve, this 
@@ -268,19 +272,19 @@ void Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey p
   //this is quite a complicated opertaion so
   // we use ecc_encrypt_raw(the_public_point, 1, key);
   //initiating the to be encrypted 1
-  gcry_sexp_t peer_ephemeral_point = NULL;
-  gcry_sexp_t peer_long_term_point = NULL;
-  gcry_mpi_t scaler_one = gcry_mpi_set_ui(NULL, 1);
-  gcry_sexp_t s_data = NULL;
-  gcry_sexp_t enc_point = NULL;
 
   gcry_sexp_t triple_dh_sexp[3] = {};
   uint8_t* feed_to_hash_buffer = NULL;
   string token_concat;
 
-  //err=gcry_sexp_build(&s_data,NULL,"(data(flags raw)(value %m))",x);
   gcry_sexp_t my_long_term_secret_scaler = gcry_sexp_nth(gcry_sexp_find_token(my_long_term_key, "a", 0),1);
   gcry_sexp_t my_ephemeral_secret_scaler = gcry_sexp_nth(gcry_sexp_find_token(ephemeral_key, "a", 0),1);
+
+  if (!(my_long_term_secret_scaler && my_ephemeral_secret_scaler)) {
+    logger.error("teddh: failed to retreive long or ephemeral secret scaler, possibly using a wrong version of gcryp", __FUNCTION__);
+    goto leave;
+  }
+    
 
   //bAP
   err = gcry_pk_encrypt(triple_dh_sexp + (peer_is_first ? 0 : 1),
@@ -323,18 +327,14 @@ void Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey p
   }
 
   for(int i = 0; i < 3; i++) {
-    token_concat += retrieve_result(gcry_sexp_find_token(triple_dh_sexp[i], "s", 0));
-    gcry_sexp_release(triple_dh_sexp[i]);
+    gcry_sexp_t cur_tdh_point = gcry_sexp_find_token(triple_dh_sexp[i], "s", 0);
+    if (!cur_tdh_point) {
+      logger.error("teddh: failed to extract tdh token\n", __FUNCTION__);
+      goto leave;
+    }
+    token_concat += retrieve_result(cur_tdh_point);
+    gcry_sexp_release(cur_tdh_point);
   }
-
-  for(int i = 0; i < 3; i++) 
-    for(int j = i; j < 3; j++)
-      if (i != j && token_concat.substr(j*65,j*65+65) == token_concat.substr(i*65,i*65+65)) {
-        logger.error("teddh: something is wrong: token " + to_string(i) + " and "+ to_string(j) + " are equal\n", __FUNCTION__);
-        throw np1secCryptoException();
-      }
-  
-
 
   feed_to_hash_buffer = new uint8_t[token_concat.size()];
   token_concat.copy(reinterpret_cast<char*>(feed_to_hash_buffer), token_concat.size());
@@ -347,11 +347,10 @@ void Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey p
   failed = false;
 
  leave:
-  gcry_mpi_release(scaler_one);
-  gcry_sexp_release(s_data);
-  gcry_sexp_release(enc_point);
-  gcry_sexp_release(peer_ephemeral_point);
-  gcry_sexp_release(peer_long_term_point);
+  gcry_sexp_release(my_long_term_secret_scaler);
+  gcry_sexp_release(my_ephemeral_secret_scaler);
+  for(int i = 0; i < 3; i++)
+    gcry_sexp_release(triple_dh_sexp[i]);
 
   delete feed_to_hash_buffer;
 
@@ -364,9 +363,8 @@ void Cryptic::sign(unsigned char **sigp, size_t *siglenp,
                            std::string plain_text) {
   const char* r,*s;
   gcry_error_t err = 0;
-  gcry_sexp_t plain_sexp, sigs, eddsa, rs, ss;
+  gcry_sexp_t plain_sexp = nullptr, sigs = nullptr, eddsa = nullptr, rs = nullptr, ss = nullptr;
   size_t nr, ns;
-  const enum gcry_mpi_format format = GCRYMPI_FMT_USG;
   const uint32_t magic_number = 64, half_magic_number = 32;
 
   *sigp = (unsigned char*) xmalloc(magic_number);
@@ -397,9 +395,26 @@ void Cryptic::sign(unsigned char **sigp, size_t *siglenp,
   eddsa = gcry_sexp_find_token(sigs, "eddsa", 0);
 
   gcry_sexp_release(sigs);
+  if (!(eddsa)) {
+    logger.error("signature doens't contain eddsa token", __FUNCTION__);
+    goto err;
+  }
 
   rs = gcry_sexp_find_token(eddsa, "r", 0);
+  if (!(rs)) {
+    gcry_sexp_release(eddsa);
+    logger.error("no r in eddsa signature", __FUNCTION__);
+    goto err;
+  }
+  
   ss = gcry_sexp_find_token(eddsa, "s", 0);
+  if (!(ss)) {
+    gcry_sexp_release(eddsa);
+    gcry_sexp_release(rs);
+    logger.error("no s in eddsa signature", __FUNCTION__);
+    goto err;
+    
+  }
 
   r = gcry_sexp_nth_data(rs, 1, &nr);
 
@@ -431,7 +446,7 @@ bool Cryptic::verify(std::string plain_text,
                              const unsigned char *sigbuf,
                              np1secPublicKey signer_ephemeral_pub_key) {
   gcry_error_t err;
-  gcry_sexp_t datas, sigs;
+  gcry_sexp_t datas = nullptr, sigs = nullptr;
   static const uint32_t nr = 32, ns = 32;
 
   err = gcry_sexp_build(&sigs, NULL, "(sig-val (eddsa (r %b)(s %b)))", nr, sigbuf, ns, sigbuf+nr);
@@ -439,6 +454,7 @@ bool Cryptic::verify(std::string plain_text,
   if ( err ) {
     logger.error("failed to construct gcry_sexp_t for the signature", __FUNCTION__);
     goto err;
+    
   }
 
   err = gcry_sexp_build(&datas, NULL,
@@ -448,6 +464,7 @@ bool Cryptic::verify(std::string plain_text,
                           " (value %b))",
                           plain_text.size(),
                           plain_text.c_str());
+
   if ( err ) {
     gcry_sexp_release(sigs);
     logger.error("failed to build gcry_sexp_t for the signed blob", __FUNCTION__);
@@ -472,7 +489,7 @@ bool Cryptic::verify(std::string plain_text,
   }
     
  err:
-  logger.error(plain_text);
+  logger.error(plain_text, __FUNCTION__);
   logger.error("Failure: " + (string)gcry_strsource(err) + ": " + (string)gcry_strerror(err), __FUNCTION__);
   throw np1secCryptoException();
   
@@ -480,7 +497,7 @@ bool Cryptic::verify(std::string plain_text,
 
 gcry_cipher_hd_t Cryptic::OpenCipher() {
   gcry_error_t err = 0;
-  gcry_cipher_hd_t hd;
+  gcry_cipher_hd_t hd= nullptr;
   int algo = GCRY_CIPHER_AES256, mode = GCRY_CIPHER_MODE_GCM;
 
   err = gcry_cipher_open(&hd, algo, mode, 0);
@@ -570,4 +587,11 @@ std::string Cryptic::Decrypt(std::string encrypted_text) {
 
 }
 
+Cryptic::~Cryptic()
+{
+    gcry_sexp_release(ephemeral_key);
+    gcry_sexp_release(ephemeral_pub_key);
+    gcry_sexp_release(ephemeral_prv_key);
+    
+}
 #endif  // SRC_CRYPT_CC_

@@ -81,6 +81,7 @@ class MockRoom {
       
       //receive_handler; in real life, its re doesn't happen here
       // _participant_list[nick].aux_data = user_data;
+      mock_logger.info("room size by server: " + to_string( _participant_list.size()), __FUNCTION__);
       broadcast("@<o>@JOIN@<o>@"+nick);
   }
   
@@ -90,9 +91,12 @@ class MockRoom {
   std::vector<std::string>  participant_list()  {
     std::vector<std::string> participant_nicks;
       for (std::map<std::string, MockParticipant>::iterator
-        cur_participant = _participant_list.begin();
-        cur_participant != _participant_list.end(); cur_participant++)
+             cur_participant = _participant_list.begin();
+           cur_participant != _participant_list.end();
+           cur_participant++) {
         participant_nicks.push_back((cur_participant->second).nick);
+        
+      };
 
       return participant_nicks;
   }

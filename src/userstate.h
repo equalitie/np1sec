@@ -152,6 +152,12 @@ class np1secUserState {
    *         mean that the successful leave false if process fails
    */
   bool shrink(std::string room_name, std::string leaving_user_id);
+
+  /** 
+   * called by the client when somebody else joins the room
+   * so we know how many people are in the room
+   */
+  void increment_room_size(std::string room_name);
   
   /**
    * Retrieve the session object associated with the given room name. To
