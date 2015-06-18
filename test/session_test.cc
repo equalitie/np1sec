@@ -137,8 +137,6 @@ void check_log_for_phrase(void* arg)
   ASSERT_TRUE(in.good());
   while (std::getline(in, log_line)) {
     found_phrase = found_phrase || log_line.find(catch_phrase) != std::string::npos;
-    if (log_line.find(catch_phrase) != std::string::npos)
-      std::cout << log_line << "********" << endl;
     
   }
   in.close();
@@ -146,41 +144,6 @@ void check_log_for_phrase(void* arg)
   ASSERT_TRUE(found_phrase);
 }
 
-TEST_F(SessionTest, test_ression_forward_secrecy)
-{
-  //first we need a username and we use it
-  //to sign in the room
-  string username = "sole-tester";
-  std::pair<ChatMocker*, string> mock_aux_data(&mock_server,username);
-  mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
-
-  np1secUserState* user_state = new np1secUserState(username, mockops);
-  user_state->init();
-
-  pair<np1secUserState*, ChatMocker*> user_server_state(user_state, &mock_server);
-
-  //client login and join
-  mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));
-  mock_server.join(mock_room_name, user_state->user_nick());
-
-  //we need to call this after every action
-  //receive your own key share and send confirmation
-  mock_server.receive();
-
-  // Write HEARTBEAT to `callback_log`
-  string catch_phrase = "RESESSION";
-  uint32_t timeout = mockops->c_session_life_span * 2;
-  pair<ChatMocker*, std::string>* encoded = new pair<ChatMocker*, std::string>(
-    &mock_server, catch_phrase);
-  logger.config(true, true, callback_log);
-  logger.info("waiting for " + to_string(timeout) + " millisecond for check_log callback to check the log....");
-    std::string* identifier = reinterpret_cast<std::string*>(
-  set_timer(check_log_for_phrase, encoded, timeout, encoded));
-  mock_server.dispatch_event_loop();
-  remove(callback_log.c_str());
-  delete identifier;
-  logger.config(true, false, "");
-}
 
 // TEST_F(SessionTest, test_heartbeat_timer)
 // {
@@ -234,13 +197,13 @@ TEST_F(SessionTest, test_ression_forward_secrecy)
 //   exit(0);
 // }
 
-TEST_F(SessionTest, test_cb_ack_not_received){
-  //Awaiting test frame
-}
+// TEST_F(SessionTest, test_cb_ack_not_received){
+//   //Awaiting test frame
+// }
 
-TEST_F(SessionTest, test_cb_send_ack){
-  //Awaiting test frame
-}
+// TEST_F(SessionTest, test_cb_send_ack){
+//   //Awaiting test frame
+// }
 
 /*TEST_F(SessionTest, test_add_message_to_transcript) {
  uint32_t id = 1;
@@ -752,10 +715,8 @@ TEST_F(SessionTest, test_concurrent_join) {
 }
 
 TEST_F(SessionTest, test_concurrent_join_leave) {
-  //return;
-  //first we need a username and we use it
-  //to sign in the room
-  return; //this test is not working cause chatmocker number of particiants
+
+  //this test is not working with 3 participants cause chatmocker number of particiants
   //is comming from the server while everything else is based on messages
   //so from client side.
   //to make it work is that the number of participant also should come from
@@ -783,9 +744,17 @@ TEST_F(SessionTest, test_concurrent_join_leave) {
   np1secUserState* charlie_state = new np1secUserState(charlie, &charlie_mockops);
   charlie_state->init();
 
+  np1secAppOps david_mockops = *mockops;
+  string david = "david";
+  std::pair<ChatMocker*, string> mock_aux_david_data(&mock_server,david);
+  david_mockops.bare_sender_data = static_cast<void*>(&mock_aux_david_data);
+  np1secUserState* david_state = new np1secUserState(david, &david_mockops);
+  david_state->init();
+
   pair<np1secUserState*, ChatMocker*> alice_server_state(alice_state, &mock_server);
   pair<np1secUserState*, ChatMocker*> bob_server_state(bob_state, &mock_server);
   pair<np1secUserState*, ChatMocker*> charlie_server_state(charlie_state, &mock_server);
+  pair<np1secUserState*, ChatMocker*> david_server_state(david_state, &mock_server);
 
   //everybody signs in
   //alice
@@ -794,6 +763,8 @@ TEST_F(SessionTest, test_concurrent_join_leave) {
   mock_server.sign_in(bob, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&bob_server_state));
   //charlie
   mock_server.sign_in(charlie, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&charlie_server_state));
+  //david
+  mock_server.sign_in(david, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&david_server_state));
 
   //alice joins first
   mock_server.join(mock_room_name, alice_state->user_nick());
@@ -803,14 +774,54 @@ TEST_F(SessionTest, test_concurrent_join_leave) {
   
   //then bob joins
   mock_server.join(mock_room_name, bob_state->user_nick());
+  //receive the join requests and start reations
+  mock_server.receive();
+
   mock_server.join(mock_room_name, charlie_state->user_nick());
-  mock_server.leave(mock_room_name, bob_state->user_nick());
+  mock_server.join(mock_room_name, david_state->user_nick());
+  mock_server.leave(mock_room_name, charlie_state->user_nick());
 
   //receive the join requests and start reations
   mock_server.receive();
 
-  chat_mocker_np1sec_plugin_send(mock_room_name, "Happy concurrent join/leave!", &charlie_server_state);
+  chat_mocker_np1sec_plugin_send(mock_room_name, "Happy concurrent join/leave!", &david_server_state);
   
   mock_server.receive();
 
+}
+
+TEST_F(SessionTest, test_ression_forward_secrecy)
+{
+  //first we need a username and we use it
+  //to sign in the room
+  string username = "sole-tester";
+  std::pair<ChatMocker*, string> mock_aux_data(&mock_server,username);
+  mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
+
+  np1secUserState* user_state = new np1secUserState(username, mockops);
+  user_state->init();
+
+  pair<np1secUserState*, ChatMocker*> user_server_state(user_state, &mock_server);
+
+  //client login and join
+  mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));
+  mock_server.join(mock_room_name, user_state->user_nick());
+
+  //we need to call this after every action
+  //receive your own key share and send confirmation
+  mock_server.receive();
+
+  // Write HEARTBEAT to `callback_log`
+  string catch_phrase = "RESESSION";
+  uint32_t timeout = mockops->c_session_life_span * 2;
+  pair<ChatMocker*, std::string>* encoded = new pair<ChatMocker*, std::string>(
+    &mock_server, catch_phrase);
+  logger.config(true, true, callback_log);
+  logger.info("waiting for " + to_string(timeout) + " millisecond for check_log callback to check the log....");
+    std::string* identifier = reinterpret_cast<std::string*>(
+  set_timer(check_log_for_phrase, encoded, timeout, encoded));
+  mock_server.dispatch_event_loop();
+  remove(callback_log.c_str());
+  delete identifier;
+  logger.config(true, false, "");
 }
