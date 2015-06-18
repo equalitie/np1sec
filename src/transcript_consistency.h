@@ -59,7 +59,7 @@ struct AckTimerOps
               uint32_t message_parent_id)
   :session(session),
     participant(participant),
-    message_id(message_id)
+    message_id(message_parent_id)
   {}
   
 };
@@ -73,37 +73,37 @@ struct ParticipantConsistencyBlock {
 
 typedef std::vector<ParticipantConsistencyBlock> ConsistencyBlockVector;
 
-/**
- * Callback function to manage sending of heartbeats
- *
- */
-static void cb_send_heartbeat(void *arg);
+/* /\** */
+/*  * Callback function to manage sending of heartbeats */
+/*  * */
+/*  *\/ */
+/* static void cb_send_heartbeat(void *arg); */
 
-/**
- * Callback function to cause automatic sending of ack for 
- * received message
- *
- */
-static void cb_send_ack(void *arg);
+/* /\** */
+/*  * Callback function to cause automatic sending of ack for  */
+/*  * received message */
+/*  * */
+/*  *\/ */
+/* static void cb_send_ack(void *arg); */
 
-/**
- * Callback function to cause automatic warning if ack not
- * received for previously sent message
- *
- */
-static void cb_ack_not_received(void *arg);
+/* /\** */
+/*  * Callback function to cause automatic warning if ack not */
+/*  * received for previously sent message */
+/*  * */
+/*  *\/ */
+/* static void cb_ack_not_received(void *arg); */
 
-/**
- * The timer set upon of sending a message.
- * when this timer is timed out means that 
- * we haven't received our own message
- */
-static void cb_ack_not_sent(void* arg);
+/* /\** */
+/*  * The timer set upon of sending a message. */
+/*  * when this timer is timed out means that  */
+/*  * we haven't received our own message */
+/*  *\/ */
+/* static void cb_ack_not_sent(void* arg); */
 
-/**
- * when times out, the leaving user check 
- * all user's consistency before leaving
- */
-static void cb_leave(void *arg);
+/* /\** */
+/*  * when times out, the leaving user check  */
+/*  * all user's consistency before leaving */
+/*  *\/ */
+/* static void cb_leave(void *arg); */
 
 #endif

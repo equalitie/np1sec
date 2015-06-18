@@ -86,7 +86,7 @@ class Cryptic {
    *  not crypto task per se)
    *
    */
-  const gcry_sexp_t get_ephemeral_pub_key()
+  gcry_sexp_t get_ephemeral_pub_key() const
   {
     return ephemeral_pub_key;
   }
@@ -291,11 +291,11 @@ class  LongTermIDKey {
 
   KeyPair get_key_pair(){return key_pair;}
 
-  const np1secPublicKey get_public_key() {
+  np1secPublicKey get_public_key() const {
     return key_pair.second;
   }
 
-  const np1secPublicKey get_private_key() {
+  np1secPublicKey get_private_key() const {
     return key_pair.first;
   }
 

@@ -76,7 +76,7 @@ class MockRoom {
                                     std::string message,
                                     void* user_data), void* user_data) {
       _participant_list[nick].nick = nick;
-      _participant_list[nick].receive_handler = chat_mocker_np1sec_plugin_receive_handler;
+      _participant_list[nick].receive_handler = receive_handler;
       _participant_list[nick].aux_data = user_data;
       
       //receive_handler; in real life, its re doesn't happen here
@@ -141,7 +141,6 @@ class MockRoom {
       }
   }
 
-
 };
 
 // A simple timeout event manager
@@ -156,9 +155,10 @@ private:
 public:
   EventManager();
   EventManager(struct event_base* base);
-  std::string* add_timeout(event_callback_fn cb, void* arg, timeval* timeout);
+  std::string* add_timeout(event_callback_fn cb, void* arg, const timeval* timeout);
   struct event* get(std::string* identifier);
   int size();
+  void dispatch_event_loop();
   void end_event_loop();
   void remove_timeout(std::string* identifier);
 };
@@ -171,9 +171,10 @@ class ChatMocker {
  protected:
   std::map<std::string, MockRoom> rooms;
   std::map<std::string, MockParticipant> signed_in_participant;
+  const timeval c_check_receive_interval = {0, 10*1000} ;
+
   EventManager event_manager;
 
- public:
   /**
    * Initialize the event manager with a libevent event_base
    */
@@ -182,6 +183,7 @@ class ChatMocker {
     event_manager = EventManager(base);
   }
 
+ public:
   /**
    * End libevent's loop
    */
@@ -193,7 +195,7 @@ class ChatMocker {
   /**
    * Add a new timeout event to the event manager
    */
-  std::string* add_timeout(event_callback_fn cb, void* arg, timeval* timeout)
+  std::string* add_timeout(event_callback_fn cb, void* arg, const timeval* timeout)
   {
     return event_manager.add_timeout(cb, arg, timeout);
   }
@@ -276,7 +278,12 @@ class ChatMocker {
     for(auto it = rooms.begin(); it != rooms.end(); it++)
       it->second.receive();
   }
+
+  friend void check_receive_queue(evutil_socket_t fd, short what, void *arg);
   
+  void dispatch_event_loop();
+
 };
+
 
 #endif  // TEST_CHAT_MOCKER_H_

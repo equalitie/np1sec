@@ -207,12 +207,12 @@ class Participant {
   
  public:
   ParticipantId id;
-  np1secPublicKey long_term_pub_key = nullptr;
+  np1secPublicKey long_term_pub_key;
   np1secPublicKey ephemeral_key = nullptr;
   MessageId last_acked_message_id;
-  void* send_ack_timer;
+  void* send_ack_timer = nullptr;
   HashBlock raw_ephemeral_key = {};
-  HashBlock future_raw_ephemeral_key;
+  HashBlock future_raw_ephemeral_key = {};
   // MessageDigest message_digest;
 
   np1secKeyShare cur_keyshare;
@@ -236,8 +236,6 @@ class Participant {
 
   //Participant* thread_user_as_participant;
 
-  // np1secKeySHare future_key_share;
-
   //default copy constructor
   Participant(const Participant& rhs)
     :
@@ -245,9 +243,6 @@ class Participant {
     long_term_pub_key(rhs.long_term_pub_key),
     authenticated(rhs.authenticated),
     authed_to(rhs.authed_to),
-    //thread_user_crypto(rhs.thread_user_crypto),
-    //thread_user_as_participant(rhs.thread_user_as_participant),
-    send_ack_timer(nullptr),
     key_share_contributed(rhs.key_share_contributed),
     index(rhs.index)
     
@@ -333,20 +328,18 @@ class Participant {
    */
   Participant()
     : id(""),
-    ephemeral_key(nullptr),
-    authenticated(false),
-    authed_to(false)
+    long_term_pub_key(nullptr),
+    key_share_contributed(false)
       {
-        assert(0);
+        logger.abort("not suppose to actually use the default constructor of Participant class");
       }
     
  Participant(const UnauthenticatedParticipant& unauth_participant)
    :id(unauth_participant.participant_id),
+    long_term_pub_key(Cryptic::reconstruct_public_key_sexp(Cryptic::hash_to_string_buff(unauth_participant.participant_id.fingerprint))),
     authenticated(false),
     authed_to(false),
-    key_share_contributed(false),
-    long_term_pub_key(Cryptic::reconstruct_public_key_sexp(Cryptic::hash_to_string_buff(unauth_participant.participant_id.fingerprint))),
-    send_ack_timer(nullptr)
+    key_share_contributed(false)
     {
       set_ephemeral_key(unauth_participant.ephemeral_pub_key);
     }

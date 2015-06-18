@@ -379,10 +379,7 @@ std::string np1secMessage::create_in_session_msg(SessionId session_id,
                                                  uint32_t parent_id,
                                                  HashStdBlock transcript_chain_hash,
                                                  np1secMessageSubType message_sub_type,
-                                                 std::string user_message,
-                                                 HashStdBlock new_ephemeral_key,
-                                                 HashStdBlock new_share,
-                                                 const std::vector<std::string>& pstates
+                                                 std::string user_message
                                                  ) {
 
   if (!cryptic) //you can't make a user message without cryptic being set
@@ -394,7 +391,6 @@ std::string np1secMessage::create_in_session_msg(SessionId session_id,
   std::string base_message;
   //first we cook the meta part
 
-  char length[8];
   HashBlock buffer;
   gcry_randomize(buffer, c_hash_length, GCRY_STRONG_RANDOM);
 
@@ -413,24 +409,13 @@ std::string np1secMessage::create_in_session_msg(SessionId session_id,
     case LEAVE_MESSAGE:
       base_message += data_to_string((DTShort)message_sub_type);
 
+    case JUST_ACK:
+      //nothing more to be done
+      break;
+    
+
     }
   
-  if (new_ephemeral_key.size() == c_ephemeral_key_length) {
-    base_message += data_to_string((DTShort)EPHEMERAL_KEY);
-    base_message = new_ephemeral_key;
-  }
-
-  if (new_share.size() == c_hash_length) {
-    base_message += data_to_string((DTShort)KEY_SHARE);
-    base_message = new_ephemeral_key;
-  }
-
-  if (pstates.size()) {
-    base_message += data_to_string((DTShort)CONTRIBUTION_STATE);
-    std::string ustates = ustate_values(pstates);
-    base_message += ustates;
-  }
-
   sys_message = base_message;
   
   append_msg_end(true);
@@ -476,13 +461,15 @@ void np1secMessage::unwrap_in_session_message(std::string u_message) {
   //now we recover the TVs
   current_offset = move_offset_or_throw_up(signed_encrypted_part, current_offset, sizeof(DTHash));
   std::string sub_messages_remainder = signed_encrypted_part.substr(current_offset);
+
   //if the message has no TVs then it is just an ACK
-  np1secMessageSubType current_sub_message_type = JUST_ACK;
+  
   while(sub_messages_remainder.size()) {
     //message sub type hash: DTLength
     current_offset = move_offset_or_throw_up(sub_messages_remainder, 0, 0, sizeof(DTShort)); //just checking to have valid length
     np1secMessageSubType current_sub_message_type = static_cast<np1secMessageSubType>(string_to_short(&sub_messages_remainder[current_offset]));
     current_offset = move_offset_or_throw_up(sub_messages_remainder, current_offset, sizeof(DTShort));
+    
 
     switch(current_sub_message_type)
       {
@@ -501,9 +488,6 @@ void np1secMessage::unwrap_in_session_message(std::string u_message) {
         sub_messages_remainder = sub_messages_remainder.substr(current_offset);
         break;
 
-      case JUST_ACK: //Add nothing
-        break;
-
       default: //this is about in session forward secracy
         logger.warn("received a sub-message of type " + std::to_string(current_sub_message_type) + " but do not know what to do with it");
         //throw np1secNotImplementedException();
@@ -515,7 +499,7 @@ void np1secMessage::unwrap_in_session_message(std::string u_message) {
 
 }
 
-uint32_t np1secMessage::compute_message_id(std::string cur_message) {
+uint32_t np1secMessage::compute_message_id() const {
   return message_id;
 }
 
@@ -542,7 +526,6 @@ std::string np1secMessage::base64_decode(std::string message) {
 }
 
 std::string np1secMessage::sign_message(std::string message) {
-  gcry_error_t err;
   unsigned char *sigbuf = NULL;
   size_t siglen;
 

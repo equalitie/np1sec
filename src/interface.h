@@ -131,7 +131,7 @@ struct np1secAppOps {
    * should report if the participants is the only participant 
    * in the room
    */
-  bool (*am_i_alone)(std::string room_name, void* aux_data);
+  //bool (*am_i_alone)(std::string room_name, void* aux_data);
   
 };
 

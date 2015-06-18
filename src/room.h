@@ -132,17 +132,6 @@ class np1secRoom {
   np1secRoom() {
       assert(0);
   }
-
-  //Depricated: the approach of session factor is not working
-  //as some of request for new session (specifically leave)
-  //might come in encrypted format and as such the room
-  //has no idea about the new session. 
-  /* /\** */
-  /*  * When a join request is received, it create a session */
-  /*  * */
-  /*  *\/ */
-  /* np1secSession np1secRoom::session_factory(breeding_session, */
-  /*                                         join_message);
   
   /**
    * called by UserState, everytime the user trys to join a room

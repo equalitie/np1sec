@@ -33,7 +33,6 @@
 using namespace std;
 
 const std::string callback_log =  "callbackoutput.txt";
-const uint32_t five_seconds_mic = 5000000; // Microseconds
 
 class SessionTest : public ::testing::Test{
 
@@ -47,16 +46,24 @@ protected: //gtest needs the elements to be protocted
   string mock_room_name;
   
   virtual void SetUp() {
-    uint32_t ten_sec = 10000;
+  uint32_t hundred_mili_sec = 100;
+  uint32_t one_sec = 1000;
+  //uint32_t two_sec = 2000;
+  //uint32_t ten_sec = 10000;
 
-    mockops = new np1secAppOps(ten_sec, ten_sec, ten_sec, ten_sec);
+      // np1secAppOps(uint32_t ACK_GRACE_INTERVAL,
+      //          uint32_t REKEY_GRACE_INTERVAL,
+      //          uint32_t INTERACTION_GRACE_INTERVAL,
+      //          uint32_t BROADCAST_LATENCY)
+
+    mockops = new np1secAppOps(hundred_mili_sec, one_sec, hundred_mili_sec, hundred_mili_sec);
     mockops->send_bare = send_bare;
     mockops->join = new_session_announce;
     mockops->leave = new_session_announce;
     mockops->display_message = display_message;
     mockops->set_timer = set_timer;
     mockops->axe_timer = axe_timer;
-    mockops->am_i_alone = am_i_alone;
+    //mockops->am_i_alone = am_i_alone;
 
     // Gets information about the currently running test.
 // Do NOT delete the returned object - it's managed by the UnitTest class.
@@ -66,8 +73,7 @@ protected: //gtest needs the elements to be protocted
     mock_room_name = test_info->name();
     mock_room_name += "_room";
 
-    base = event_base_new();
-    mock_server.initialize_event_manager(base);
+    //mock_server.initialize_event_manager(base);
   // Configure the logger to write to `callback_log` for the sake of checking 
   };
   
@@ -75,47 +81,73 @@ protected: //gtest needs the elements to be protocted
 
 // Callback for set_timer
 // Checks that a line containing "HEARTBEAT" was written to the `callback_log` file.
-void check_heartbeat_log(void* arg)
-{
-  ChatMocker* server = reinterpret_cast<ChatMocker*>(arg);
-  std::ifstream in;
-  in.open(callback_log, std::ifstream::in);
-  std::string log_line;
-  bool found_heartbeat = false;
+// void check_heartbeat_log(void* arg)
+// {
+//   ChatMocker* server = reinterpret_cast<ChatMocker*>(arg);
+//   std::ifstream in;
+//   in.open(callback_log, std::ifstream::in);
+//   std::string log_line;
+//   bool found_heartbeat = false;
 
-  ASSERT_TRUE(in.good());
-  while (std::getline(in, log_line)) {
-    found_heartbeat = found_heartbeat || log_line.find("HEARTBEAT") != std::string::npos;
-  }
-  in.close();
-  server->end_event_loop();
-  ASSERT_TRUE(found_heartbeat);
-}
+//   ASSERT_TRUE(in.good());
+//   while (std::getline(in, log_line)) {
+//     found_heartbeat = found_heartbeat || log_line.find("HEARTBEAT") != std::string::npos;
+//   }
+//   in.close();
+//   server->end_event_loop();
+//   ASSERT_TRUE(found_heartbeat);
+// }
 
 // Callback for set_timer
 // Checks that `callback_log` does not exist. 
-void check_not_heartbeat_log(void* arg)
+// // void check_not_heartbeat_log(void* arg)
+// // {
+// //   ChatMocker* server = reinterpret_cast<ChatMocker*>(arg);
+// //   std::ifstream in;
+// //   in.open(callback_log, std::ifstream::in);
+// //   std::string log_line;
+// //   bool found_log_file = in.good();
+// //   server->end_event_loop();
+// //   ASSERT_FALSE(found_log_file);
+// // }
+
+// // A callback function that will always cause a test failure.
+// // Used to test that axe_timer prevents a queued timer event from firing.
+// void fail(void* arg)
+// {
+//   logger.error("fail() called despite axing of timer");
+//   ASSERT_TRUE(false);
+// }
+
+
+// Callback for set_timer
+// Checks that a line containing "HEARTBEAT" was written to the `callback_log` file.
+void check_log_for_phrase(void* arg)
 {
-  ChatMocker* server = reinterpret_cast<ChatMocker*>(arg);
+  std::pair<ChatMocker*, std::string>* server_and_phrase = reinterpret_cast<std::pair<ChatMocker*, std::string>*>(arg);
+  ChatMocker* server = server_and_phrase->first;
+  std::string catch_phrase = server_and_phrase->second;
   std::ifstream in;
-  in.open(callback_log, std::ifstream::in);
+  ASSERT_NO_THROW(in.open(callback_log, std::ifstream::in));
   std::string log_line;
-  bool found_log_file = in.good();
+  bool found_phrase = false;
+
+  logger.info("reading the log for catch phrase");
+
+  ASSERT_TRUE(in.good());
+  while (std::getline(in, log_line)) {
+    found_phrase = found_phrase || log_line.find(catch_phrase) != std::string::npos;
+    if (log_line.find(catch_phrase) != std::string::npos)
+      std::cout << log_line << "********" << endl;
+    
+  }
+  in.close();
   server->end_event_loop();
-  ASSERT_FALSE(found_log_file);
+  ASSERT_TRUE(found_phrase);
 }
 
-// A callback function that will always cause a test failure.
-// Used to test that axe_timer prevents a queued timer event from firing.
-void fail(void* arg)
+TEST_F(SessionTest, test_ression_forward_secrecy)
 {
-  logger.error("fail() called despite axing of timer");
-  ASSERT_TRUE(false);
-}
-
-TEST_F(SessionTest, test_heartbeat_timer)
-{
-  return;
   //first we need a username and we use it
   //to sign in the room
   string username = "sole-tester";
@@ -135,37 +167,72 @@ TEST_F(SessionTest, test_heartbeat_timer)
   //receive your own key share and send confirmation
   mock_server.receive();
 
-  //receive your own confirmation
-  mock_server.receive(); //no need actually
-
   // Write HEARTBEAT to `callback_log`
-  logger.config(true, true, callback_log);
-  logger.info("Writing HEARTBEAT\n");
-  logger.config(true, false, "");
-  uint32_t timeout = mockops->c_heartbeating_interval * 10;
+  string catch_phrase = "RESESSION";
+  uint32_t timeout = mockops->c_session_life_span * 2;
   pair<ChatMocker*, std::string>* encoded = new pair<ChatMocker*, std::string>(
-    &mock_server, "");
-  logger.info("Setting check_heartbeat_log callback");
-  std::string* identifier = reinterpret_cast<std::string*>(
-    set_timer(check_heartbeat_log, &mock_server, timeout, encoded));
-  event_base_dispatch(base);
+    &mock_server, catch_phrase);
+  logger.config(true, true, callback_log);
+  logger.info("waiting for " + to_string(timeout) + " millisecond for check_log callback to check the log....");
+    std::string* identifier = reinterpret_cast<std::string*>(
+  set_timer(check_log_for_phrase, encoded, timeout, encoded));
+  mock_server.dispatch_event_loop();
   remove(callback_log.c_str());
-  // Give the `fail` callback a little more time, in case axing takes some time.
-  logger.info("Setting fail callback");
-  identifier = reinterpret_cast<std::string*>(
-    set_timer(fail, nullptr, timeout * 9, encoded));
-  // Although slightly superfluous, we add a timer to verify that the log file
-  // doesn't exist for the purpose of testing that axe_timer leaves other events.
-  logger.info("Setting check_not_heartbeat_log callback");
-  std::string* identifier2 = reinterpret_cast<std::string*>(
-    set_timer(check_not_heartbeat_log, &mock_server, timeout, encoded));
-  logger.info("Dispatching the event base");
-  event_base_dispatch(base);
-  logger.info("Axing the fail callback");
-  axe_timer(identifier, encoded);
   delete identifier;
-  delete identifier2;
+  logger.config(true, false, "");
 }
+
+// TEST_F(SessionTest, test_heartbeat_timer)
+// {
+//   //first we need a username and we use it
+//   //to sign in the room
+//   string username = "sole-tester";
+//   std::pair<ChatMocker*, string> mock_aux_data(&mock_server,username);
+//   mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
+
+//   np1secUserState* user_state = new np1secUserState(username, mockops);
+//   user_state->init();
+
+//   pair<np1secUserState*, ChatMocker*> user_server_state(user_state, &mock_server);
+
+//   //client login and join
+//   mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));
+//   mock_server.join(mock_room_name, user_state->user_nick());
+
+//   //we need to call this after every action
+//   //receive your own key share and send confirmation
+//   mock_server.receive();
+
+//   // Write HEARTBEAT to `callback_log`
+//   logger.config(true, true, callback_log);
+//   logger.info("Writing HEARTBEAT\n");
+//   logger.config(true, false, "");
+//   uint32_t timeout = mockops->c_heartbeating_interval * 10;
+//   pair<ChatMocker*, std::string>* encoded = new pair<ChatMocker*, std::string>(
+//     &mock_server, "");
+//   logger.info("Setting check_heartbeat_log callback");
+//   std::string* identifier = reinterpret_cast<std::string*>(
+//     set_timer(check_heartbeat_log, &mock_server, timeout, encoded));
+//   event_base_dispatch(base);
+//   remove(callback_log.c_str());
+//   // Give the `fail` callback a little more time, in case axing takes some time.
+//   logger.info("Setting fail callback");
+//   identifier = reinterpret_cast<std::string*>(
+//     set_timer(fail, nullptr, timeout * 9, encoded));
+//   // Although slightly superfluous, we add a timer to verify that the log file
+//   // doesn't exist for the purpose of testing that axe_timer leaves other events.
+//   logger.info("Setting check_not_heartbeat_log callback");
+//   std::string* identifier2 = reinterpret_cast<std::string*>(
+//     set_timer(check_not_heartbeat_log, &mock_server, timeout, encoded));
+//   logger.info("Dispatching the event base");
+//   event_base_dispatch(base);
+//   logger.info("Axing the fail callback");
+//   axe_timer(identifier, encoded);
+//   delete identifier;
+//   delete identifier2;
+
+//   exit(0);
+// }
 
 TEST_F(SessionTest, test_cb_ack_not_received){
   //Awaiting test frame
@@ -625,51 +692,6 @@ TEST_F(SessionTest, test_immature_leave_from_2p_conv) {
   mock_server.receive();
   
 }
-
-// static void
-// cb_timeout(void *arg)
-// {
-//   event_base_loopexit((event_base*)arg, 0);
-
-// }
-
-// // TEST_F(SessionTest, test_in_session_forward_secrecy)
-// // {
-// //   //first we need a username and we use it
-// //   //to sign in the room
-// //   string username = "sole-tester";
-// //   std::pair<ChatMocker*, string> mock_aux_data(&mock_server,username);
-// //   mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
-
-// //   np1secUserState* user_state = new np1secUserState(username, mockops);
-// //   user_state->init();
-
-// //   pair<np1secUserState*, ChatMocker*> user_server_state(user_state, &mock_server);
-
-// //   //client login and join
-// //   mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));
-// //   mock_server.join(mock_room_name, user_state->user_nick());
-
-// //   //we need to call this after every action
-// //   //receive your own key share and send confirmation
-// //   mock_server.receive();
-
-// //   //receive your own confirmation
-// //   mock_server.receive(); //no need actually
- 
-// //   // Configure the logger to write to `callback_log` for the sake of checking that it is written to
-// //   // in the heartbeat test
-// //   logger.config(true, true, callback_log);    
-// //   uint32_t timeout = mockops->c_session_life_span * 2 * 1000; // Convert to microseconds
-// //   pair<ChatMocker*, std::string>* encoded = new pair<ChatMocker*, std::string>(&mock_server, ""); 
-// //   //std::string* identifier = reinterpret_cast<std::string*>(set_timer(check_new_session_log, nullptr, timeout, encoded));
-
-  
-// //   // Delete `callback_log`
-// //   remove(callback_log.c_str());
-// //   delete identifier;
-// //   // TODO - Test that callbacks don't fire when stopped
-// // }
 
 TEST_F(SessionTest, test_concurrent_join) {
   //return;

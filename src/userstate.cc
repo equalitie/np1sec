@@ -28,8 +28,8 @@ using namespace std;
 
 np1secUserState::np1secUserState(std::string name, np1secAppOps *ops,
                                  uint8_t* key_pair)
-  : ops(ops),
-    myself(nullptr)
+  :     myself(nullptr),
+        ops(ops)
 {
   if (key_pair) {
     logger.info("intitiating UserState with pre-generated key pair");
@@ -109,7 +109,7 @@ bool np1secUserState::join_room(std::string room_name,
       chatrooms[room_name].try_rejoin();      
     }
     catch (np1secInvalidRoomException& e) {
-      logger.warn("alreay in the\ room. need to leave the room before rejoining it.");
+      logger.warn("alreay in the room. need to leave the room before rejoining it.");
       return false;
     }
     
@@ -156,7 +156,7 @@ void np1secUserState::leave_room(std::string room_name) {
  * @return true in case initiating the leave was successful. This does not
  *         mean that the successful leave false if process fails
  */
-bool np1secUserState::shrink(std::string room_name, std::string leaving_user_id)
+void np1secUserState::shrink(std::string room_name, std::string leaving_user_id)
 {
   //if there is no room, it was a mistake to give us the message
   if (chatrooms.find(room_name) == chatrooms.end()) {
@@ -189,6 +189,9 @@ void np1secUserState::receive_handler(std::string room_name,
   try {
     np1secMessage received(received_message, nullptr); //so no decryption key here
     received.sender_nick = sender_nickname;
+    //in case the transport is providing the message id (if it is zero means to
+    //trust the global order
+    received.message_id = message_id;
 
   //if there is no room, it was a mistake to give us the message
     logger.assert_or_die(chatrooms.find(room_name) != chatrooms.end(), "np1sec can not receive messages from room " + room_name + " to which has not been informed to join");
@@ -202,7 +205,7 @@ void np1secUserState::receive_handler(std::string room_name,
 
 }
 
-bool np1secUserState::send_handler(std::string room_name,
+void np1secUserState::send_handler(std::string room_name,
                                    std::string plain_message) {
   logger.assert_or_die(chatrooms.find(room_name) != chatrooms.end(), "np1sec can not send messages to room " + room_name + " to which has not been informed to join");
   try {

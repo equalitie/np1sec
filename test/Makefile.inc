@@ -27,17 +27,17 @@ libnp1sec_test_LDFLAGS = \
 
 # Integration tests
 
-noinst_PROGRAMS += xmpp_test
+# noinst_PROGRAMS += xmpp_test
 
-xmpp_test_SOURCES = test/xmpp_test.cpp
+# xmpp_test_SOURCES = test/xmpp_test.cpp
 
-xmpp_test_LDADD = \
-	$(PURPLE_LIBS) \
-	libnp1sec.la
+# xmpp_test_LDADD = \
+# 	$(PURPLE_LIBS) \
+# 	libnp1sec.la
 
-xmpp_test_CPPFLAGS = \
-	$(PURPLE_CFLAGS) \
-	-I$(srcdir)/src
+# xmpp_test_CPPFLAGS = \
+# 	$(PURPLE_CFLAGS) \
+# 	-I$(srcdir)/src
 
 # gtest
 

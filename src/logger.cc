@@ -144,7 +144,7 @@ void Logger::log(log_level_t level, std::string msg, std::string function_name, 
 
 void Logger::silly(std::string msg, std::string function_name, std::string user_nick)
 {
-  log(SILLY, msg, user_nick);
+  log(SILLY, msg, function_name, user_nick);
 }
 
 void Logger::debug(std::string msg, std::string function_name, std::string user_nick)
