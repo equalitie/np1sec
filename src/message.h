@@ -164,9 +164,9 @@ class np1secMessage {
     JUST_ACK,
     USER_MESSAGE,
     LEAVE_MESSAGE,
-    EPHEMERAL_KEY,
-    KEY_SHARE,
-    CONTRIBUTION_STATE
+    //EPHEMERAL_KEY,
+    //KEY_SHARE,
+    //CONTRIBUTION_STATE
   };
 
   np1secMessageType message_type;
@@ -289,10 +289,7 @@ class np1secMessage {
                                     uint32_t parent_id,
                                     HashStdBlock transcript_chain_hash,
                                     np1secMessageSubType message_sub_type,
-                                    std::string user_message = "",
-                                    HashStdBlock new_ephemeral_key = "",
-                                    HashStdBlock new_share = "",
-                                    const std::vector<std::string>& pstates = std::vector<std::string>()
+                                    std::string user_message = ""
                                     );
 
 
@@ -307,7 +304,7 @@ class np1secMessage {
    * Compute a unique globally ordered id from the time stamped message,
    * ultimately this function should be overridable by the client.
    */
-  uint32_t compute_message_id(std::string cur_message);
+  uint32_t compute_message_id() const;
 
   /**
    * This function is responsible for sending of bare messages

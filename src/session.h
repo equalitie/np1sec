@@ -128,23 +128,25 @@ typedef uint8_t np1secBareMessage[];
  */
 class np1secSession {
  protected:
-  Cryptic cryptic;
-  Cryptic future_cryptic;
-  HashBlock hashed_id;
-
   np1secUserState *us;
   std::string room_name;
-
-  //TODO: To keep track of why the session is created and if it is
-  //still relevant
-  std::list<RaisonDEtre> raisons_detre;
-  //temprorary solution to replace raisons_detre
-  np1secMessage* conceiving_message = nullptr;
 
   //TODO:: we should probably delete this and just directly use UserState->myself
   //no reason to copy the same thing for every session.
   ParticipantId myself; //to keep the nickname and the long term id key
   //these are necessary to send join request
+
+  Cryptic cryptic;
+  Cryptic future_cryptic;
+  HashBlock hashed_id;
+
+
+  //TODO: To keep track of why the session is created and if it is
+  //still relevant
+  std::list<RaisonDEtre> raisons_detre;
+  //temprorary solution to replace raisons_detre
+  //np1secMessage* conceiving_message = nullptr;
+
   size_t my_index;
   
   /**
@@ -270,16 +272,14 @@ class np1secSession {
   HashBlock session_key;
   HashBlock session_confirmation;
 
-  void* heartbeat_timer = nullptr;
   void* send_ack_timer = nullptr;
   void* farewell_deadline_timer = nullptr;
   void* rejoin_timer = nullptr;
   void* session_life_timer = nullptr;
 
-
-  MessageId last_received_message_id;
-  MessageId own_message_counter; //sent message counter
-  MessageId leave_parent;
+  MessageId last_received_message_id = 0;
+  MessageId own_message_counter = 0; //sent message counter
+  MessageId leave_parent = 0;
   //Depricated in favor of raison detr.
   //tree structure seems to be insufficient. because
   //sid only encode the session structure but not
@@ -858,24 +858,6 @@ class np1secSession {
    */
   np1secMessage::np1secMessageSubType forward_secrecy_load_type();
     
-  /**
-    * Construct and start timers for sending heartbeat messages
-    *
-    */
-  void restart_heartbeat_timer();
-
-  //This really doesn't make sense because we create a sessien based on
-  //join request
-  /* /\** */
-  /*  * Should be called by userstate when the user wants to join a new room */
-  /*  * */
-  /*  * @parma long_term_id_key the key pair of joining party is need for  */
-  /*  *        deniable authentication */
-  /*  * */
-  /*  * @return return true if the first stage of join is completed successfully */
-  /*  *\/ */
-  /* bool join(LongTermIDKey long_term_id_key); */
-
  public:
   /**
    * access function for state

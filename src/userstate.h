@@ -114,9 +114,8 @@ class np1secUserState {
    * @param room_name the chat room name
    * @param plain_message unencrypted message needed to be send securely
    *
-   * @return true in case of success, false in case of failure
    */
-  bool send_handler(std::string room_name, std::string plain_message);
+  void send_handler(std::string room_name, std::string plain_message);
 
   /**
    * The client need to call this function whenever a message is received. This
@@ -148,10 +147,16 @@ class np1secUserState {
    * @param room_name the chat room name
    * @param leaving_user_id is the id that the leaving user is using in the room.
    *
-   * @return true in case initiating the leave was successful. This does not
+   * throw an exception if the user isn't in the room. no exception doesn't
    *         mean that the successful leave false if process fails
    */
-  bool shrink(std::string room_name, std::string leaving_user_id);
+  void shrink(std::string room_name, std::string leaving_user_id);
+
+  /** 
+   * called by the client when somebody else joins the room
+   * so we know how many people are in the room
+   */
+  void increment_room_size(std::string room_name);
   
   /**
    * Retrieve the session object associated with the given room name. To

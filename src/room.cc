@@ -31,7 +31,7 @@ np1secRoom::np1secRoom(std::string room_name, np1secUserState* user_state, std::
   : name(room_name), user_state(user_state), user_in_room_state(JOINING)
 {
   np1sec_ephemeral_crypto.init(); //generate intitial ephemeral keys for join
-  original_room_size = participants_in_the_room.size();
+  room_size = participants_in_the_room.size();
 
   join();
 
@@ -79,9 +79,11 @@ void np1secRoom::solitary_join() {
  */
 void np1secRoom::join() {
   logger.assert_or_die(user_in_room_state == JOINING, "only can be called in joining stage", __FUNCTION__, user_state->myself->nickname); //no double join but we need a
-  logger.assert_or_die(original_room_size, "being in an empty room is a logical contradition", __FUNCTION__, user_state->myself->nickname);
+  logger.assert_or_die(room_size, "being in an empty room is a logical contradition", __FUNCTION__, user_state->myself->nickname);
 
-  if (original_room_size == 1) {
+  logger.info("currently " + std::to_string(room_size) + " partcipants in the room", __FUNCTION__, user_state->myself->nickname);
+  //if ((user_state->ops->am_i_alone)(name, user_state->ops->bare_sender_data)) {
+  if (room_size == 1) {
     logger.info("creating room " + name + "...", __FUNCTION__, user_state->myself->nickname);
     solitary_join();
 
@@ -109,6 +111,10 @@ void np1secRoom::try_rejoin() {
   //you don't need to retry sole-joining as it is
   //a deterministic process 
   if (user_in_room_state == JOINING) {
+    //we need to kill everything already is in progress
+    for(SessionMap::iterator session_it = session_universe.begin(); session_it != session_universe.end(); session_it++)
+        session_it->second.commit_suicide();
+
     join();
 
   } else {
@@ -506,9 +512,21 @@ void np1secRoom::leave() {
 
 }
 
+/**
+ * called by user state when somebody else joins the
+ * the room to keep track of the room size
+ */
+void np1secRoom::increment_size() {
+    room_size++;
+    logger.info("currently " + std::to_string(room_size) + " partcipants in the room", __FUNCTION__, user_state->myself->nickname);
+
+}
+
 void np1secRoom::shrink(std::string leaving_nick) {
+  //room_size--;
+  logger.info("currently " + std::to_string(room_size) + " partcipants in the room", __FUNCTION__, user_state->myself->nickname);
   if (user_in_room_state == JOINING) {
-    original_room_size--;
+    logger.info("somebody left, before we can join, starting from the begining", __FUNCTION__);
     try_rejoin(); //it helps because although the active session
     //of current occupants still contatins the leaver, the new
     //session will be born without zombies

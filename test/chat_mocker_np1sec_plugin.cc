@@ -74,6 +74,7 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
         logger.error(joining_nick + " failed to join room" + room_name);
       }
     } else {
+      user_server_state->first->increment_room_size(room_name);
       //we don't need to react, (we can, the protocol doesn't stop us
       //but we are lazy and we react to the join request sent by the joiner
       // user_server_state->first->receive_handler(room_name,
@@ -183,6 +184,8 @@ typedef void (*timeout_callback)(void*);
 
 void intermediate_cb(evutil_socket_t fd, short what, void* arg)
 {
+  (void) fd; (void) what;
+  
   auto fn_and_data = reinterpret_cast<pair<timeout_callback, void*>*>(arg);
   fn_and_data->first(fn_and_data->second);
 }
@@ -197,8 +200,8 @@ void* set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t int
   ChatMocker* chat_server = (reinterpret_cast<pair<ChatMocker*, std::string>*>(data))->first;
   pair<timeout_callback, void*>* my_data = new pair<timeout_callback, void*>(timer_callback, opdata);
   struct timeval timeout;
-  timeout.tv_sec = 0;
-  timeout.tv_usec = (long)interval;
+  timeout.tv_sec = interval / 1000;
+  timeout.tv_usec = (long)(interval % 1000) * 1000;
   std::string* s = chat_server->add_timeout(intermediate_cb, my_data, &timeout);
   return s;
 }
@@ -218,3 +221,10 @@ void axe_timer(void* identifier, void* data)
   cout << sender_nickname << "Securely joined: " << endl;
   
   }*/
+
+// bool am_i_alone(std::string room_name, void* aux_data) {
+//   ChatMocker* chat_server = (static_cast<pair<ChatMocker*, std::string>*>(aux_data))->first;
+//   exit(0);
+//   return (!(chat_server->participant_list(room_name).size() > 1));
+  
+// }

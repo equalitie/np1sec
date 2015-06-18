@@ -46,7 +46,7 @@ TEST_F(CryptTest, test_hash) {
   char *buf = new char[c_hash_length*2+1];
   char *ind = buf;
   for (uint i = 0; i < c_hash_length; i++) {
-    snprintf(ind, sizeof(ind), "%02x", res[i]);
+    snprintf(ind, sizeof(char)*3, "%02x", res[i]);
     ind += 2;
   }
   ASSERT_EQ(exp, buf);
@@ -64,14 +64,13 @@ TEST_F(CryptTest, test_encrypt_decrypt) {
 
 
 TEST_F(CryptTest, test_sign_verify) {
-  gcry_error_t err;
   Cryptic cryptic;
   std::string test_text = "This is a string to be encrypted";
   unsigned char *sigbuf = NULL;
   size_t siglen;
   unsigned int no_trial = 10;
   cryptic.init();
-  for(int i = 0; i <no_trial; i++) {
+  for(unsigned int i = 0; i <no_trial; i++) {
     test_text = "This is a string to be encrypted" + std::to_string(i);
     ASSERT_NO_THROW(cryptic.sign(&sigbuf, &siglen, test_text));
     ASSERT_TRUE(cryptic.verify(test_text, sigbuf, cryptic.get_ephemeral_pub_key()));}

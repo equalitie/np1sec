@@ -38,6 +38,7 @@ bool compare_creation_priority(const  RaisonDEtre& lhs, const RaisonDEtre& rhs)
 
 void cb_re_session(void *arg) {
   np1secSession* session = (static_cast<np1secSession*>(arg));
+  logger.info("RESESSION: forward secrecy ratcheting", __FUNCTION__, session->myself.nickname);
 
   np1secSession* new_child_session = new np1secSession(np1secSession::PEER, session->us, session->room_name, &session->future_cryptic, session->future_participants());
 
@@ -53,25 +54,13 @@ void cb_re_session(void *arg) {
   session->session_life_timer = nullptr;
   
 }
-
-//We are actually not using heartbeat as we start a new
-//session when we need to heartbeat instead
-void cb_send_heartbeat(void *arg) {
-  np1secSession* session = (static_cast<np1secSession*>(arg));
-  //if we are alive
-  logger.assert_or_die(session->my_state != np1secSession::DEAD, "live timer corresponds to a dead session, haven't commited suicide properly", __FUNCTION__, session->myself.nickname);
-  
-  logger.info("HEARTBEAT", __FUNCTION__, session->myself.nickname);
-  session->send("", session->forward_secrecy_load_type());
-  session->restart_heartbeat_timer();
-
-}
                          
 void cb_ack_not_received(void *arg) {
   // Construct message for ack
   AckTimerOps* ack_timer_ops = static_cast<AckTimerOps*>(arg);
 
-  logger.assert_or_die(ack_timer_ops->session->my_state != np1secSession::DEAD, "live timer corresponds to a dead session, haven't commited suicide properly", __FUNCTION__, ack_timer_ops->session->myself.nickname);
+  if (ack_timer_ops->session->my_state == np1secSession::DEAD)
+    logger.warn("live timer corresponds to a dead session, haven't commited suicide properly", __FUNCTION__, ack_timer_ops->session->myself.nickname);
 
   std::string ack_failure_message = ack_timer_ops->participant->id.nickname + " failed to ack";
   ack_timer_ops->session->us->ops->display_message(ack_timer_ops->session->room_name, "np1sec directive", ack_failure_message, ack_timer_ops->session->us);
@@ -87,11 +76,12 @@ void cb_send_ack(void *arg) {
   // Construct message with p.id
   np1secSession* session = (static_cast<np1secSession*>(arg));
 
-  logger.assert_or_die(session->my_state != np1secSession::DEAD, "live timer corresponds to a dead session, haven't commited suicide properly", __FUNCTION__, session->myself.nickname);
+  if (session->my_state == np1secSession::DEAD)
+    logger.warn("live timer corresponds to a dead session, haven't commited suicide properly", __FUNCTION__, session->myself.nickname);
 
   session->send_ack_timer = nullptr;
 
-  logger.info("long time, no messeg...acknowledging received messages", __FUNCTION__, session->myself.nickname);
+  logger.info("long time, no messege acknowledging received messages", __FUNCTION__, session->myself.nickname);
   
   session->send("", session->forward_secrecy_load_type());
 
@@ -106,7 +96,8 @@ void cb_ack_not_sent(void* arg) {
   // Construct message with p.id
   AckTimerOps* ack_timer_ops = static_cast<AckTimerOps*>(arg);
 
-   logger.assert_or_die(ack_timer_ops->session->my_state != np1secSession::DEAD, "live timer corresponds to a dead session, haven't commited suicide properly", __FUNCTION__, ack_timer_ops->session->myself.nickname);
+  if (ack_timer_ops->session->my_state == np1secSession::DEAD)
+    logger.warn("live timer corresponds to a dead session, haven't commited suicide properly", __FUNCTION__, ack_timer_ops->session->myself.nickname);
 
   std::string ack_failure_message = "we did not receive our own sent message";
   ack_timer_ops->session->us->ops->display_message(ack_timer_ops->session->room_name, "np1sec directive", ack_failure_message, ack_timer_ops->session->us);
@@ -187,15 +178,13 @@ np1secSession::np1secSession(np1secSessionConceiverCondition conceiver,
                              )
   : us(us),
     room_name(room_name),
-    cryptic(*current_ephemeral_crypto),
     myself(*us->myself),
-    heartbeat_timer(nullptr),
+    cryptic(*current_ephemeral_crypto),
     participants(current_participants),
-    parental_participants(parent_plist),
-    conceiving_message(&(*conceiving_message)) //forcing copying, we need a fresh copy
+    parental_participants(parent_plist)
+    //conceiving_message(&(*conceiving_message)) //forcing copying, we need a fresh copy
 {
   engrave_state_machine_graph();
-  
 
   logger.info("constructing new session for room " + room_name + " with " + to_string(participants.size()) + " participants", __FUNCTION__, myself.nickname);
 
@@ -378,8 +367,10 @@ std::string np1secSession::secret_share_on(int32_t side)
 
 void np1secSession::group_enc() {
   HashBlock hbr, hbl;
-  memcpy(hbr, Cryptic::strbuff_to_hash(secret_share_on(c_my_right)), sizeof(HashBlock));
-  memcpy(hbl, Cryptic::strbuff_to_hash(secret_share_on(c_my_left)), sizeof(HashBlock));
+  HashStdBlock sr = secret_share_on(c_my_right);
+  HashStdBlock sl = secret_share_on(c_my_left);
+  memcpy(hbr, Cryptic::strbuff_to_hash(sr), sizeof(HashBlock));
+  memcpy(hbl, Cryptic::strbuff_to_hash(sl), sizeof(HashBlock));
 
   for (unsigned i=0; i < sizeof(HashBlock); i++) {
     hbr[i] ^= hbl[i];
@@ -392,11 +383,10 @@ void np1secSession::group_enc() {
 void np1secSession::group_dec() {
 
   std::vector<std::string> all_r(peers.size());
-  HashBlock last_hbr;
 
   HashBlock hbr;
-  memcpy(hbr, Cryptic::strbuff_to_hash(secret_share_on(c_my_right)), sizeof(HashBlock));
-  size_t my_right = (my_index+c_my_right) % peers.size();
+  HashStdBlock sr = secret_share_on(c_my_right);
+  memcpy(hbr, Cryptic::strbuff_to_hash(sr), sizeof(HashBlock));
   all_r[my_index] = Cryptic::hash_to_string_buff(hbr);
 
   for (uint32_t counter = 0; counter < peers.size(); counter++) {
@@ -757,11 +747,16 @@ RoomAction np1secSession::init_a_session_with_plist(np1secMessage received_messa
     throw np1secInvalidParticipantException();
   }    
 
-  if (!received_message.verify_message(Cryptic::reconstruct_public_key_sexp(Cryptic::hash_to_string_buff(participants[received_message.sender_nick].future_raw_ephemeral_key))))
+  np1secPublicKey temp_future_pub_key = Cryptic::reconstruct_public_key_sexp(Cryptic::hash_to_string_buff(participants[received_message.sender_nick].future_raw_ephemeral_key));
+                                                                             
+  if (!received_message.verify_message(temp_future_pub_key))
     {
+      Cryptic::release_crypto_resource(temp_future_pub_key);
       logger.warn("failed to verify signature of PARTICIPANT_INFO message.");
       throw np1secAuthenticationException();
     }
+  
+  Cryptic::release_crypto_resource(temp_future_pub_key);
 
   ParticipantMap live_participants = participants_list_to_map(received_message.get_session_view());
   
@@ -1044,15 +1039,6 @@ void np1secSession::leave() {
   farewell_deadline_timer = us->ops->set_timer(
     cb_leave, this, us->ops->c_inactive_ergo_non_sum_interval, us->ops->bare_sender_data);
   my_state = LEAVE_REQUESTED;
-
-}
-
-void np1secSession::restart_heartbeat_timer() {
-  if (heartbeat_timer)
-    us->ops->axe_timer(heartbeat_timer, us->ops->bare_sender_data);
-  
-  heartbeat_timer = us->ops->set_timer(
-    cb_send_heartbeat, this, us->ops->c_heartbeating_interval, us->ops->bare_sender_data);
 
 }
 
@@ -1356,15 +1342,12 @@ ParticipantMap np1secSession::delta_plist()
  */
 void np1secSession::commit_suicide() {
   //we try to send a last ack, if it fails no big deal
-  if (heartbeat_timer) us->ops->axe_timer(heartbeat_timer, us->ops->bare_sender_data);
   if (farewell_deadline_timer) us->ops->axe_timer(farewell_deadline_timer, us->ops->bare_sender_data);
   if (send_ack_timer) us->ops->axe_timer(send_ack_timer, us->ops->bare_sender_data);
 
   if (rejoin_timer) us->ops->axe_timer(rejoin_timer, us->ops->bare_sender_data);
 
   if (session_life_timer) us->ops->axe_timer(session_life_timer, us->ops->bare_sender_data);
-
-  heartbeat_timer = farewell_deadline_timer = send_ack_timer = nullptr;
 
   for(auto& cur_block: received_transcript_chain)
     for(auto& cur_participant: cur_block.second)
@@ -1397,5 +1380,6 @@ void np1secSession::commit_suicide() {
 }
 
 np1secSession::~np1secSession() {
+  commit_suicide(); //just to kill all timers
 }
 

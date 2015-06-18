@@ -35,6 +35,8 @@ void* set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t int
 
 void axe_timer(void* to_be_defused_timer, void* data);
 
+bool am_i_alone(std::string room_name, void* aux_data);
+
 /**
  * Receive the messages from chat mocker, interpret the message and
  * call the approperiate function from userstate class  of npsec1 

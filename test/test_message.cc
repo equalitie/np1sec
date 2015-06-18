@@ -61,11 +61,6 @@ TEST_F(MessageTest, test_user_message){
 
   cryptic.init();
 
-  std::vector<std::string> pstates = {"test_pstate_1", "test_pstate_2"};
-  np1secUserState* user_state = new np1secUserState("test", &ops);
-
-
-  
   memcpy(sid, base.c_str(), sizeof(HashBlock) );
   memcpy(transcript_chain_hash, base.c_str(), sizeof(HashBlock) );
   session_id.set(sid);
