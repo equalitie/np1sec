@@ -525,6 +525,10 @@ TEST_F(SessionTest, test_three_party_chat) {
   //and receive it
   mock_server.receive();
 
+  chat_mocker_np1sec_plugin_send(mock_room_name, "Hey Charlie! I love you!", &bob_server_state);
+  //and receive it
+  mock_server.receive();
+
   delete alice_state;
   delete bob_state;
   delete charlie_state;
