@@ -27,7 +27,7 @@
 #include "src/session.h"
 #include "src/message.h"
 
-Logger logger(INFO);
+Logger logger(DEBUG);
 
 void Logger::initiate_textual_conversions() {
   state_to_text[np1secSession::NONE] = "NONE";

@@ -153,7 +153,7 @@ void np1secUserState::leave_room(std::string room_name) {
  * @param room_name the chat room name
  * @param leaving_user_id is the id that the leaving user is using in the room.
  *
- * @return true in case initiating the leave was successful. This does not
+ * throw an exception if the user isn't in the room. no exception doesn't
  *         mean that the successful leave false if process fails
  */
 void np1secUserState::shrink(std::string room_name, std::string leaving_user_id)
@@ -185,7 +185,7 @@ void np1secUserState::receive_handler(std::string room_name,
                                       std::string sender_nickname,
                                       std::string received_message,
                                       uint32_t message_id) {
-  logger.info("receiving message...", __FUNCTION__, myself->nickname);
+  logger.debug("receiving message...", __FUNCTION__, myself->nickname);
   try {
     np1secMessage received(received_message, nullptr); //so no decryption key here
     received.sender_nick = sender_nickname;

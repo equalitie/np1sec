@@ -38,6 +38,8 @@ bool compare_creation_priority(const  RaisonDEtre& lhs, const RaisonDEtre& rhs)
 
 void cb_re_session(void *arg) {
   np1secSession* session = (static_cast<np1secSession*>(arg));
+  logger.assert_or_die(session->my_state != np1secSession::DEAD,"postmortem racheting?");
+
   logger.info("RESESSION: forward secrecy ratcheting", __FUNCTION__, session->myself.nickname);
 
   np1secSession* new_child_session = new np1secSession(np1secSession::PEER, session->us, session->room_name, &session->future_cryptic, session->future_participants());
@@ -60,7 +62,7 @@ void cb_ack_not_received(void *arg) {
   AckTimerOps* ack_timer_ops = static_cast<AckTimerOps*>(arg);
 
   if (ack_timer_ops->session->my_state == np1secSession::DEAD)
-    logger.warn("live timer corresponds to a dead session, haven't commited suicide properly", __FUNCTION__, ack_timer_ops->session->myself.nickname);
+    logger.debug("postmortem consistency chcek", __FUNCTION__, ack_timer_ops->session->myself.nickname);
 
   std::string ack_failure_message = ack_timer_ops->participant->id.nickname + " failed to ack";
   ack_timer_ops->session->us->ops->display_message(ack_timer_ops->session->room_name, "np1sec directive", ack_failure_message, ack_timer_ops->session->us);
@@ -77,13 +79,13 @@ void cb_send_ack(void *arg) {
   np1secSession* session = (static_cast<np1secSession*>(arg));
 
   if (session->my_state == np1secSession::DEAD)
-    logger.warn("live timer corresponds to a dead session, haven't commited suicide properly", __FUNCTION__, session->myself.nickname);
+    logger.debug("postmortem consistency chcek", __FUNCTION__, session->myself.nickname);
 
   session->send_ack_timer = nullptr;
 
-  logger.info("long time, no messege acknowledging received messages", __FUNCTION__, session->myself.nickname);
+  logger.debug("long time, no messege! acknowledging received messages", __FUNCTION__, session->myself.nickname);
   
-  session->send("", session->forward_secrecy_load_type());
+  session->send("", np1secMessage::JUST_ACK);
 
 }
 
@@ -97,7 +99,7 @@ void cb_ack_not_sent(void* arg) {
   AckTimerOps* ack_timer_ops = static_cast<AckTimerOps*>(arg);
 
   if (ack_timer_ops->session->my_state == np1secSession::DEAD)
-    logger.warn("live timer corresponds to a dead session, haven't commited suicide properly", __FUNCTION__, ack_timer_ops->session->myself.nickname);
+    logger.debug("postmortem consistency chcek", __FUNCTION__, ack_timer_ops->session->myself.nickname);
 
   std::string ack_failure_message = "we did not receive our own sent message";
   ack_timer_ops->session->us->ops->display_message(ack_timer_ops->session->room_name, "np1sec directive", ack_failure_message, ack_timer_ops->session->us);
@@ -129,7 +131,7 @@ void cb_rejoin(void *arg) {
   auto session_room = session->us->chatrooms.find(session->room_name);
   logger.assert_or_die(session_room != session->us->chatrooms.end(), "the room which the ssession belongs you has disappeared", __FUNCTION__, session->myself.nickname);
 
-  logger.info("joining session timed out, trying to rejoin", __FUNCTION__, session->myself.nickname);
+  logger.debug("joining session timed out, trying to rejoin", __FUNCTION__, session->myself.nickname);
   
   session_room->second.try_rejoin();
 
@@ -523,7 +525,7 @@ void np1secSession::send_view_auth_and_share(string joiner_id) {
     throw;
   }
   
-  logger.info("sending participant info message");
+  logger.debug("sending participant info message");
   outboundmessage.send(room_name, us);
 
 }
@@ -540,7 +542,7 @@ RoomAction np1secSession::state_handler(np1secMessage received_message)
 {
   logger.info("handling state: " + logger.state_to_text[my_state] + " message_type:" + logger.message_type_to_text[received_message.message_type], __FUNCTION__, myself.nickname);
   if (!this->np1secFSMGraphTransitionMatrix[my_state][received_message.message_type]) {
-    logger.warn("lose state transitor, don't know where to go on FSM. ignoring message",  __FUNCTION__, myself.nickname);
+    logger.debug("lose state transitor, don't know where to go on FSM. ignoring message",  __FUNCTION__, myself.nickname);
   
   } else {
     //JOIN_REQUEST has no singnature
@@ -800,7 +802,7 @@ RoomAction np1secSession::shrink(std::string leaving_nick)
   if (leaver == participants.end()) {
     logger.warn("participant " + leaving_nick + " is not part of the active session of the room " + room_name + " from which they are trying to leave, already parted?");
   } else if (zombies.find(leaving_nick) != zombies.end()) {//we haven already shrunk and made a session 
-    logger.info("shrunk session for leaving user " + leaving_nick + " has already been generated. nothing to do", __FUNCTION__, myself.nickname);
+    logger.debug("shrunk session for leaving user " + leaving_nick + " has already been generated. nothing to do", __FUNCTION__, myself.nickname);
   } else { //shrink now
     //if everything is ok add the leaver to the zombie list and make a
     //session without zombies
@@ -1021,9 +1023,9 @@ void np1secSession::leave() {
   //if you are the only person in the session then
   //just leave
   //TODO:: is it good to call the ops directly?
-  logger.info("leaving the session", __FUNCTION__, myself.nickname);
+  logger.debug("leaving the session", __FUNCTION__, myself.nickname);
   if (participants.size() == 1) {
-    logger.info("last person in the session, not waiting for farewell", __FUNCTION__, myself.nickname);
+    logger.debug("last person in the session, not waiting for farewell", __FUNCTION__, myself.nickname);
 
     logger.assert_or_die(my_index == 0 && peers.size() == 1, "peers is not sync with participants");
     peers.pop_back();
@@ -1032,7 +1034,7 @@ void np1secSession::leave() {
   }
 
   //otherwise, inform others in the room about your leaving the room
-  logger.info("informing other, waiting for farewell", __FUNCTION__, myself.nickname);  
+  logger.debug("informing other, waiting for farewell", __FUNCTION__, myself.nickname);  
   leave_parent = last_received_message_id;
   send("", np1secMessage::LEAVE_MESSAGE);
 
@@ -1097,9 +1099,10 @@ void np1secSession::stop_timer_send() {
 void np1secSession::stop_timer_receive(std::string acknowledger_id, MessageId message_id) {
 
   for(MessageId i = participants[acknowledger_id].last_acked_message_id + 1; i <= message_id; i++) {
+    if (received_transcript_chain[message_id][participants[acknowledger_id].index].consistency_timer)
       us->ops->axe_timer(received_transcript_chain[message_id][participants[acknowledger_id].index].consistency_timer,
-      us->ops->bare_sender_data);
-      received_transcript_chain[message_id][participants[acknowledger_id].index].consistency_timer = nullptr;
+                         us->ops->bare_sender_data);
+    received_transcript_chain[message_id][participants[acknowledger_id].index].consistency_timer = nullptr;
   }
 
   participants[acknowledger_id].last_acked_message_id = message_id;
@@ -1132,10 +1135,12 @@ void np1secSession::perform_received_consisteny_tasks(np1secMessage received_mes
 {
   //defuse the "I didn't get my own message timer 
   if (received_message.sender_nick == myself.nickname) {
-    logger.info("own ctr of received message: "+ to_string(own_message_counter), __FUNCTION__, myself.nickname);
-    logger.assert_or_die(sent_transcript_chain.find(received_message.sender_message_id) != sent_transcript_chain.end(), "received a message from myself that never send with valid signature. stolen key?", __FUNCTION__, myself.nickname); //if the signature isn't failed and we don't have record of sending this then something is terribly wrong; only non-bug explanation is that somebody might have stolen our key and faking messages 
-    us->ops->axe_timer(
-      sent_transcript_chain[received_message.sender_message_id].consistency_timer, us->ops->bare_sender_data);
+    logger.debug("own ctr of received message: "+ to_string(own_message_counter), __FUNCTION__, myself.nickname);
+    logger.assert_or_die(sent_transcript_chain.find(received_message.sender_message_id) != sent_transcript_chain.end(), "received a message from myself that never send with valid signature. stolen key?", __FUNCTION__, myself.nickname); //if the signature isn't failed and we don't have record of sending this then something is terribly wrong; only non-bug explanation is that somebody might have stolen our key and faking messages
+    if (sent_transcript_chain[received_message.sender_message_id].consistency_timer) //the timer might legitemately has been killed due to suicide
+      us->ops->axe_timer(
+                         sent_transcript_chain[received_message.sender_message_id].consistency_timer,
+                         us->ops->bare_sender_data);
     sent_transcript_chain[received_message.sender_message_id].consistency_timer = nullptr;
   }
 
@@ -1222,7 +1227,7 @@ void np1secSession::send(std::string message, np1secMessage::np1secMessageSubTyp
   }
 
   np1secMessage outbound(&cryptic);
-  logger.info("own ctr before send: " + to_string(own_message_counter), __FUNCTION__, myself.nickname);
+  logger.debug("own ctr before send: " + to_string(own_message_counter), __FUNCTION__, myself.nickname);
 
   outbound.create_in_session_msg(session_id, 
                                  my_index,
@@ -1240,8 +1245,6 @@ void np1secSession::send(std::string message, np1secMessage::np1secMessageSubTyp
   //if everything went well add the counter
   own_message_counter++;
   
-  logger.info("own ctr after send: " + to_string(own_message_counter), __FUNCTION__, myself.nickname);
-
   update_send_transcript_chain(own_message_counter, outbound.compute_hash());
   // As we're sending a new message we are no longer required to ack
   // any received messages
@@ -1289,7 +1292,7 @@ np1secSession::StateAndAction np1secSession::receive(np1secMessage encrypted_mes
       else if ((received_message.message_sub_type == np1secMessage::USER_MESSAGE)) {
         us->ops->display_message(room_name, participants[peers[received_message.sender_index]].id.nickname, received_message.user_message, us->ops->bare_sender_data);
       }
-      else if ((received_message.message_sub_type == np1secMessage::LEAVE_MESSAGE) && (received_message.sender_nick != myself.nickname))  {
+      else if ((received_message.message_sub_type == np1secMessage::LEAVE_MESSAGE) && (received_message.sender_nick != myself.nickname) && my_state != DEAD)  {
         return send_farewell_and_reshare(received_message);
       }
     
@@ -1301,15 +1304,6 @@ np1secSession::StateAndAction np1secSession::receive(np1secMessage encrypted_mes
 
   return StateAndAction(my_state, c_no_room_action);
 
-}
-
-/**
- * Decides what load to include in the current message
- */
-np1secMessage::np1secMessageSubType np1secSession::forward_secrecy_load_type()
-{
-  return np1secMessage::JUST_ACK;
-  //throw np1secNotImplementedException();
 }
 
 /**
@@ -1349,6 +1343,11 @@ void np1secSession::commit_suicide() {
 
   if (session_life_timer) us->ops->axe_timer(session_life_timer, us->ops->bare_sender_data);
 
+  farewell_deadline_timer = nullptr;
+  send_ack_timer = nullptr;
+  rejoin_timer = nullptr;
+  session_life_timer = nullptr;
+
   for(auto& cur_block: received_transcript_chain)
     for(auto& cur_participant: cur_block.second)
       if(cur_participant.consistency_timer) {
@@ -1362,24 +1361,27 @@ void np1secSession::commit_suicide() {
       cur_block.second.consistency_timer = nullptr;
     }
 
-  try {
-    //we try to send one last ack
-    if (my_state == IN_SESSION)
-      send("", np1secMessage::JUST_ACK); //no point to send FS loads as the sessio
+  // try {
+  //   //we try to send one last ack, why?
+  //   if (my_state == IN_SESSION)
+  //     send("", np1secMessage::JUST_ACK); //no point to send FS loads as the session
 
-  } catch (exception& e) {
-    logger.warn("failed sending pre-destruction consistency check.");
-    logger.warn(e.what(), __FUNCTION__, myself.nickname);
-    //just for test, I don't think we should bother anybody with
-    //this
-    //throw e;
-  }
+  // } catch (exception& e) {
+  //   logger.warn("failed sending pre-destruction consistency check.");
+  //   logger.warn(e.what(), __FUNCTION__, myself.nickname);
+  //   //just for test, I don't think we should bother anybody with
+  //   //this
+  //   //throw e;
+  // }
 
   my_state = DEAD;
 
 }
 
 np1secSession::~np1secSession() {
-  commit_suicide(); //just to kill all timers
+  //commit_suicide(); //just to kill all timers
+  //we can't commit suicide because our copy constructor
+  //copy the session and its destruction shouldn't
+  //mean that the session as concept is destructed
 }
 

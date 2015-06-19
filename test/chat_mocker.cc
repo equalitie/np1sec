@@ -25,7 +25,7 @@
 #include "src/common.h"
 #include "test/chat_mocker.h"
 
-Logger mock_logger(INFO);
+Logger mock_logger(DEBUG);
 
 void check_receive_queue(evutil_socket_t fd, short what, void *arg)
 {
@@ -85,7 +85,7 @@ void EventManager::remove_timeout(std::string* identifier)
     bool event_deleted = evtimer_del(evt) == 0;
     //bool event_deleted = event_del(evt) == 0;
     if (event_deleted) {
-      mock_logger.info("Event with id " + *identifier + " deleted successfully.");
+      mock_logger.debug("Event with id " + *identifier + " deleted successfully.");
     } else {
       mock_logger.warn("Event with id " + *identifier + " not deleted!");
     }

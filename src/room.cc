@@ -81,7 +81,7 @@ void np1secRoom::join() {
   logger.assert_or_die(user_in_room_state == JOINING, "only can be called in joining stage", __FUNCTION__, user_state->myself->nickname); //no double join but we need a
   logger.assert_or_die(room_size, "being in an empty room is a logical contradition", __FUNCTION__, user_state->myself->nickname);
 
-  logger.info("currently " + std::to_string(room_size) + " partcipants in the room", __FUNCTION__, user_state->myself->nickname);
+  logger.debug("currently " + std::to_string(room_size) + " partcipants in the room", __FUNCTION__, user_state->myself->nickname);
   //if ((user_state->ops->am_i_alone)(name, user_state->ops->bare_sender_data)) {
   if (room_size == 1) {
     logger.info("creating room " + name + "...", __FUNCTION__, user_state->myself->nickname);
@@ -186,7 +186,7 @@ void np1secRoom::receive_handler(np1secMessage received_message)
   // - Confirmed: move session.
 
   if (user_in_room_state == JOINING) {
-    logger.info("in JOINING state", __FUNCTION__, user_state->myself->nickname);
+    logger.debug("in JOINING state", __FUNCTION__, user_state->myself->nickname);
     if (received_message.has_sid()) {
       auto message_session = session_universe.find(received_message.session_id.get_as_stringbuff());
       if (message_session != session_universe.end() && (message_session->second.get_state() != np1secSession::DEAD)) {
@@ -217,7 +217,7 @@ void np1secRoom::receive_handler(np1secMessage received_message)
             //these are going to die by themselves
           for(auto& cur_session : session_universe)
             if (cur_session.second.get_state() != np1secSession::DEAD && cur_session.second.nobody_confirmed()) {
-              logger.info("somebody else is confirming session, need to rejoin", __FUNCTION__, user_state->myself->nickname);
+              logger.debug("somebody else is confirming session, need to rejoin", __FUNCTION__, user_state->myself->nickname);
               cur_session.second.commit_suicide(); //we know the action is either death or nothing in both case we don't need to do anything
             }
 
@@ -229,7 +229,7 @@ void np1secRoom::receive_handler(np1secMessage received_message)
     //else just ignore it, it is probably another user's join that we don't
     //care.
   } else if (user_in_room_state == CURRENT_USER) {
-    logger.info("in CURRENT_USER state", __FUNCTION__, user_state->myself->nickname);
+    logger.debug("in CURRENT_USER state", __FUNCTION__, user_state->myself->nickname);
     //if we are current user we must have active_session
     logger.assert_or_die(active_session.get() && session_universe.find(active_session.get_as_stringbuff()) != session_universe.end(), "CURRENT_USER without active session! something doesn't make sense");
     if (received_message.has_sid()) {
@@ -269,7 +269,7 @@ void np1secRoom::receive_handler(np1secMessage received_message)
       }
     } //has sid or not
 
-    logger.info("room state: " + to_string(user_in_room_state) + " requested action: " + to_string(action_to_take.action_type), __FUNCTION__, user_state->myself->nickname); //just for test to make sure we don't end up here
+    logger.debug("room state: " + to_string(user_in_room_state) + " requested action: " + to_string(action_to_take.action_type), __FUNCTION__, user_state->myself->nickname); //just for test to make sure we don't end up here
     
     //if the action resulted in new session we need to add it to session universe
     if (action_to_take.action_type == RoomAction::NEW_SESSION                                                                              || action_to_take.action_type == RoomAction::NEW_PRIORITY_SESSION) { //TODO:: we need to delete a dead session probably
@@ -382,7 +382,7 @@ void np1secRoom::activate_session(SessionId newly_activated_session)
  */
 void np1secRoom::stale_in_limbo_sessions_presume_heir(SessionId new_successor)
 {
-  logger.info("changing the next session in activation line", __FUNCTION__, user_state->myself->nickname);
+  logger.debug("changing the next session in activation line", __FUNCTION__, user_state->myself->nickname);
   //make new parent the one breed new sessions from now on
   next_in_activation_line = new_successor;
 
@@ -427,13 +427,13 @@ void np1secRoom::refresh_stale_in_limbo_sessions(SessionId new_parent_session_id
     //update: in favor of simplicity we are having a nonbroadcasting creation
     //so we can create and kill sessions with not so much problem
     if ((session_it->second.get_state() != np1secSession::DEAD) && (session_it->second.get_state() != np1secSession::IN_SESSION) && (session_it->second.session_id.get_as_stringbuff() != new_parent_session_id.get_as_stringbuff())) { //basically only the stale sessions, we can make that explicit
-      logger.info("refreshing " + logger.state_to_text[session_it->second.get_state()] + " session with: " + participants_to_string(session_it->second.participants) + " as new active session has: " + participants_to_string(new_parent_session->second.future_participants()), __FUNCTION__, user_state->myself->nickname);
+      logger.debug("refreshing " + logger.state_to_text[session_it->second.get_state()] + " session with: " + participants_to_string(session_it->second.participants) + " as new active session has: " + participants_to_string(new_parent_session->second.future_participants()), __FUNCTION__, user_state->myself->nickname);
 
       session_it->second.commit_suicide();
       //np1secSession *born_session = nullptr;
       ParticipantMap new_participant_list = session_it->second.delta_plist() + new_parent_session->second.future_participants();
 
-      logger.info("creating new session in limbo with participants: " + participants_to_string(new_participant_list),__FUNCTION__, user_state->myself->nickname);
+      logger.debug("creating new session in limbo with participants: " + participants_to_string(new_participant_list),__FUNCTION__, user_state->myself->nickname);
         //*born_session  = session_it->second + session_universe[active_session.get_as_stringbuff()];
       //check if the session already exists
       SessionId to_be_born_session_id(new_participant_list);
@@ -448,7 +448,14 @@ void np1secRoom::refresh_stale_in_limbo_sessions(SessionId new_parent_session_id
           logger.error(e.what());
         }
     //}
+    } else if (session_it->second.get_state() == np1secSession::DEAD) {
+      SessionMap::iterator to_erase = session_it; //TODO: is it the best way? we still not sure what to do with dead session
+      session_it++;
+      session_universe.erase(to_erase);
     }
+  
+      
+   
   }
 
   //now merge the refreshed sessions
@@ -507,7 +514,7 @@ void np1secRoom::leave() {
     //if you have confirmed your session or not. However, as long as
     //the session hasn't been started then we don't need to check for
     //consistency. In any case we can just let it shrink
-    logger.info("nothing to do; leaving from a room we haven't joined");
+    logger.debug("nothing to do; leaving from a room we haven't joined");
   }
 
 }
@@ -518,15 +525,15 @@ void np1secRoom::leave() {
  */
 void np1secRoom::increment_size() {
     room_size++;
-    logger.info("currently " + std::to_string(room_size) + " partcipants in the room", __FUNCTION__, user_state->myself->nickname);
+    logger.debug("currently " + std::to_string(room_size) + " partcipants in the room", __FUNCTION__, user_state->myself->nickname);
 
 }
 
 void np1secRoom::shrink(std::string leaving_nick) {
   //room_size--;
-  logger.info("currently " + std::to_string(room_size) + " partcipants in the room", __FUNCTION__, user_state->myself->nickname);
+  logger.debug("currently " + std::to_string(room_size) + " partcipants in the room", __FUNCTION__, user_state->myself->nickname);
   if (user_in_room_state == JOINING) {
-    logger.info("somebody left, before we can join, starting from the begining", __FUNCTION__);
+    logger.debug("somebody left, before we can join, starting from the begining", __FUNCTION__);
     try_rejoin(); //it helps because although the active session
     //of current occupants still contatins the leaver, the new
     //session will be born without zombies
@@ -615,7 +622,7 @@ void np1secRoom::shrink(std::string leaving_nick) {
       } else {
         //Already FAREWELLED: TODO you should check the zombie list actually
         logger.assert_or_die(action_to_take.action_type == RoomAction::NO_ACTION, "shrink should result in priority session or nothing"); //sanity check
-        logger.info("no need to shrink. Already farewelled.");
+        logger.debug("no need to shrink. Already farewelled.");
         //otherwise we already have made the
         //shrank session don't worry about it
       }

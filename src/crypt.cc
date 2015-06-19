@@ -476,7 +476,7 @@ bool Cryptic::verify(std::string plain_text,
   gcry_sexp_release(sigs);
   gcry_sexp_release(datas);
   if (err == GPG_ERR_NO_ERROR) {
-    logger.info("good signature", __FUNCTION__);
+    logger.debug("good signature", __FUNCTION__);
     return true;
     
   }else if ( err == GPG_ERR_BAD_SIGNATURE ) {

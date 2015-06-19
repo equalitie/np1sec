@@ -230,7 +230,7 @@ void np1secMessage::unwrap_generic_message(std::string b64ed_message) {
   message_type = (np1secMessageType)(*reinterpret_cast<DTByte*>(&message[c_message_type_offset]));
 
   size_t current_offset = c_message_type_offset + sizeof(DTByte);
-  logger.info("received message of type " + logger.message_type_to_text[message_type], __FUNCTION__);
+  logger.debug("received message of type " + logger.message_type_to_text[message_type], __FUNCTION__);
   
   switch (message_type)
     {
@@ -546,11 +546,11 @@ std::string np1secMessage::sign_message(std::string message) {
 
 bool np1secMessage::verify_message(np1secPublicKey sender_ephemeral_key) {
   if (cryptic->verify(signed_message, (unsigned char*)signature.c_str(), sender_ephemeral_key)) {
-    logger.info("massage bears a valid signature from " + sender_nick, __FUNCTION__);
+    logger.debug("massage bears a valid signature from " + sender_nick, __FUNCTION__);
     return true;
   }
 
-  logger.info("signature doesn't correspond to the ephemeral key provided by " + sender_nick, __FUNCTION__);
+  logger.warn("signature doesn't correspond to the ephemeral key provided by " + sender_nick, __FUNCTION__);
   return false;
 
 }

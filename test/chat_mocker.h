@@ -81,7 +81,7 @@ class MockRoom {
       
       //receive_handler; in real life, its re doesn't happen here
       // _participant_list[nick].aux_data = user_data;
-      mock_logger.info("room size by server: " + to_string( _participant_list.size()), __FUNCTION__);
+      mock_logger.debug("room size by server: " + to_string( _participant_list.size()), __FUNCTION__);
       broadcast("@<o>@JOIN@<o>@"+nick);
   }
   
@@ -121,7 +121,7 @@ class MockRoom {
     std::string leaving_nick;
     while (!message_queue.empty())
       {
-        mock_logger.info(name + " received message: ", message_queue.front(),__FUNCTION__);
+        mock_logger.debug(name + " received message: ", message_queue.front(),__FUNCTION__);
         for (std::map<std::string, MockParticipant>::iterator
                cur_participant = _participant_list.begin();
              cur_participant != _participant_list.end() && !_participant_list.empty(); cur_participant++) {

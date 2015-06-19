@@ -398,7 +398,7 @@ class np1secSession {
     
     std::vector<std::string>::iterator my_entry = std::find(peers.begin(), peers.end(), myself.nickname);
     if (my_entry == peers.end()) {
-      logger.info("the message wasn't meant to us", __FUNCTION__, myself.nickname);
+      logger.debug("the message wasn't meant to us", __FUNCTION__, myself.nickname);
       throw np1secInvalidRoomException(); //The idea is that if we got an invalid room
       //then we don't go for creating session;
     }
@@ -823,6 +823,9 @@ class np1secSession {
     //If it is in session and it is an in session message, then need to receive it
     //by the session first
     np1secFSMGraphTransitionMatrix[IN_SESSION][np1secMessage::IN_SESSION_MESSAGE] = &np1secSession::receive;
+
+    //DEAD session should be allowed to decrypt a message is aimed at though it shouldn't take any action based on it
+    np1secFSMGraphTransitionMatrix[DEAD][np1secMessage::IN_SESSION_MESSAGE] = &np1secSession::receive;
 
     //Leave should have priority over join because the leaving user
     //is not gonna confirm the session and as such the join will
