@@ -845,7 +845,7 @@ TEST_F(SessionTest, test_concurrent_join_leave) {
 
 }
 
-TEST_F(SessionTest, test_ression_forward_secrecy)
+TEST_F(SessionTest, test_resession_forward_secrecy)
 {
   //first we need a username and we use it
   //to sign in the room

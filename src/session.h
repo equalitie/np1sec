@@ -52,6 +52,7 @@ class np1secRoom;
 /*  *  */
 /*  * */
 /*  *\/ */
+
 class RoomAction { 
    //historically RoomAction was the way to inform chat client about */
    //actions, however we decided the main tool for action transmission */

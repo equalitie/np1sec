@@ -35,7 +35,7 @@
 //create by other sessions and handed to the room.
 
 //Should we point to a session or store the session itself?
-typedef std::map<std::string, np1secSession> SessionMap;
+typedef std::map<std::string, np1secSession*> SessionMap;
 
 /**
  * Manage all sessions associated to a room, this is follow the concurrent 
@@ -132,7 +132,24 @@ class np1secRoom {
   np1secRoom() {
       assert(0);
   }
-  
+
+  //we need to deep copy the session_universe
+  np1secRoom(const np1secRoom& rhs)
+    : name(rhs.name), //room name given in creation by user_state
+    user_state(rhs.user_state),
+    myself(rhs.myself),
+    room_size(rhs.room_size),
+    user_in_room_state(rhs.user_in_room_state),
+    np1sec_ephemeral_crypto(rhs.np1sec_ephemeral_crypto),
+    active_session(rhs.active_session),
+    next_in_activation_line(rhs.next_in_activation_line)
+      {
+        logger.debug("copying room object");
+        for(auto& cur_session: rhs.session_universe) {
+          np1secSession* new_copy = new np1secSession(*cur_session.second);
+          session_universe[new_copy->session_id.get_as_stringbuff()] = new_copy;
+        }
+    }
   /**
    * called by UserState, everytime the user trys to join a room
    * it just simply send a join message to the room.
@@ -207,6 +224,11 @@ class np1secRoom {
    * in the room's session map
    */
   void insert_session(np1secSession* new_session);
+
+  /**
+   * Destructor need to clean up the session universe
+   */
+  ~np1secRoom();
 
 };    
 

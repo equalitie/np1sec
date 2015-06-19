@@ -62,14 +62,14 @@ void np1secRoom::solitary_join() {
   //                                    user_state,
   //                                    name);
   
-  np1secSession sole_joiner_session(np1secSession::CREATOR,
+  np1secSession* sole_joiner_session = new np1secSession(np1secSession::CREATOR,
                                       user_state,
                                       name,
                                       &np1sec_ephemeral_crypto,
                                       participants);
   
 
-  session_universe.insert(pair<string, np1secSession>(sole_joiner_session.my_session_id().get_as_stringbuff(), sole_joiner_session));
+  session_universe.insert(pair<string, np1secSession*>(sole_joiner_session->my_session_id().get_as_stringbuff(), sole_joiner_session));
   
 }
 
@@ -113,7 +113,7 @@ void np1secRoom::try_rejoin() {
   if (user_in_room_state == JOINING) {
     //we need to kill everything already is in progress
     for(SessionMap::iterator session_it = session_universe.begin(); session_it != session_universe.end(); session_it++)
-        session_it->second.commit_suicide();
+        session_it->second->commit_suicide();
 
     join();
 
@@ -181,7 +181,7 @@ void np1secRoom::receive_handler(np1secMessage received_message)
   // - Orphant CONFIRMATION: Should only be send for one session at the time. Hence if you receive a confirmation, which is not for one of your limbo session, any limbo session which does not have a confirmation will die, though you need to check signature.
 
   // - Current user:
-  // - SHRINK: make a session with removed all zombies, update all limbos parent to the new session: that's how leave is prioritize over join and resssion.
+  // - SHRINK: make a session with removed all zombies, update all limbos parent to the new session: that's how leave is prioritize over join and resession.
   // - KEY_GENERATED: updated limbos, send confirmation.
   // - Confirmed: move session.
 
@@ -189,8 +189,8 @@ void np1secRoom::receive_handler(np1secMessage received_message)
     logger.debug("in JOINING state", __FUNCTION__, user_state->myself->nickname);
     if (received_message.has_sid()) {
       auto message_session = session_universe.find(received_message.session_id.get_as_stringbuff());
-      if (message_session != session_universe.end() && (message_session->second.get_state() != np1secSession::DEAD)) {
-        action_to_take = message_session->second.state_handler(received_message);
+      if (message_session != session_universe.end() && (message_session->second->get_state() != np1secSession::DEAD)) {
+        action_to_take = message_session->second->state_handler(received_message);
       } else {
         //we are only interested in PARTICIANT_INFO and SESSION_CONFIRMATION (they means death to unconfirmed sessions)
         if (received_message.message_type == np1secMessage::PARTICIPANTS_INFO) {
@@ -200,10 +200,11 @@ void np1secRoom::receive_handler(np1secMessage received_message)
             if (new_session->get_state() != np1secSession::DEAD) {
               //we need to get rid of old session if it is dead
               //till we get a reviving mechanisim
-              if (message_session != session_universe.end() && (message_session->second.get_state() == np1secSession::DEAD)) {
+              if (message_session != session_universe.end() && (message_session->second->get_state() == np1secSession::DEAD)) {
+                delete message_session->second;
                 session_universe.erase(message_session->first);
               }
-              session_universe.emplace(pair<string, np1secSession>(received_message.session_id.get_as_stringbuff(), *new_session));
+              session_universe.insert(pair<string, np1secSession*>(received_message.session_id.get_as_stringbuff(), new_session));
             }
           } catch(std::exception& e) {
             logger.warn(e.what(), __FUNCTION__, user_state->myself->nickname);
@@ -216,9 +217,9 @@ void np1secRoom::receive_handler(np1secMessage received_message)
             //if we have sent a confirmation then what? still we die
             //these are going to die by themselves
           for(auto& cur_session : session_universe)
-            if (cur_session.second.get_state() != np1secSession::DEAD && cur_session.second.nobody_confirmed()) {
+            if (cur_session.second->get_state() != np1secSession::DEAD && cur_session.second->nobody_confirmed()) {
               logger.debug("somebody else is confirming session, need to rejoin", __FUNCTION__, user_state->myself->nickname);
-              cur_session.second.commit_suicide(); //we know the action is either death or nothing in both case we don't need to do anything
+              cur_session.second->commit_suicide(); //we know the action is either death or nothing in both case we don't need to do anything
             }
 
             
@@ -235,16 +236,16 @@ void np1secRoom::receive_handler(np1secMessage received_message)
     if (received_message.has_sid()) {
       if (session_universe.find(Cryptic::hash_to_string_buff(received_message.session_id.get())) != session_universe.end()) {
         try {
-          action_to_take = session_universe[received_message.session_id.get_as_stringbuff()].state_handler(received_message);
+          action_to_take = session_universe[received_message.session_id.get_as_stringbuff()]->state_handler(received_message);
         } catch(std::exception& e) {
           logger.error(e.what(), __FUNCTION__, user_state->myself->nickname);
         }
       } else if (received_message.message_type == np1secMessage::PARTICIPANTS_INFO && //only participant info can ignate new session (in case we just joined and we missed the another user join request)
-                 session_universe[active_session.get_as_stringbuff()].get_state() != np1secSession::LEAVE_REQUESTED) { // we haven't generated this session, so we could be leaving, we have
+                 session_universe[active_session.get_as_stringbuff()]->get_state() != np1secSession::LEAVE_REQUESTED) { // we haven't generated this session, so we could be leaving, we have
         //it could be result of join requests we didn't receive cause we were
         //joining, if we are part of it then we should make a session for it
         try {
-          action_to_take = session_universe[next_in_activation_line.get_as_stringbuff()].init_a_session_with_plist(received_message);
+          action_to_take = session_universe[next_in_activation_line.get_as_stringbuff()]->init_a_session_with_plist(received_message);
         } catch(std::exception& e) {
           logger.error(e.what(), __FUNCTION__, user_state->myself->nickname);
         }
@@ -254,7 +255,7 @@ void np1secRoom::receive_handler(np1secMessage received_message)
     } else  {//no sid, it should be a join message, verify and send to active session
       if (received_message.message_type == np1secMessage::JOIN_REQUEST) {
         try {
-          action_to_take = session_universe[next_in_activation_line.get_as_stringbuff()].state_handler(received_message);
+          action_to_take = session_universe[next_in_activation_line.get_as_stringbuff()]->state_handler(received_message);
         } catch(std::exception& e) {
           logger.error(e.what(), __FUNCTION__, user_state->myself->nickname);
         }
@@ -273,7 +274,7 @@ void np1secRoom::receive_handler(np1secMessage received_message)
     
     //if the action resulted in new session we need to add it to session universe
     if (action_to_take.action_type == RoomAction::NEW_SESSION                                                                              || action_to_take.action_type == RoomAction::NEW_PRIORITY_SESSION) { //TODO:: we need to delete a dead session probably
-      session_universe.emplace(pair<string, np1secSession>(action_to_take.bred_session->my_session_id().get_as_stringbuff(),*(action_to_take.bred_session)));
+      session_universe.insert(pair<string, np1secSession*>(action_to_take.bred_session->my_session_id().get_as_stringbuff(), action_to_take.bred_session));
     }
 
     if (action_to_take.action_type == RoomAction::NEW_PRIORITY_SESSION || action_to_take.action_type == RoomAction::PRESUME_HEIR) {
@@ -293,8 +294,8 @@ void np1secRoom::receive_handler(np1secMessage received_message)
     auto message_session = session_universe.find(received_message.session_id.get_as_stringbuff());
     if (message_session != session_universe.end()) {
       if (active_session.get_as_stringbuff() != received_message.session_id.get_as_stringbuff()) {
-        if (message_session->second.get_state() == np1secSession::IN_SESSION) {
-          user_state->ops->join(name, message_session->second.peers, user_state->ops->bare_sender_data);
+        if (message_session->second->get_state() == np1secSession::IN_SESSION) {
+          user_state->ops->join(name, message_session->second->peers, user_state->ops->bare_sender_data);
           activate_session(received_message.session_id.get());
         }
       }
@@ -355,8 +356,11 @@ void np1secRoom::activate_session(SessionId newly_activated_session)
   if (dying_session.get()) {
     logger.assert_or_die(newly_activated_session == next_in_activation_line, "some illigitimate session got activated", __FUNCTION__);
 
-    session_universe[active_session.get_as_stringbuff()].commit_suicide();
     refresh_stale_in_limbo_sessions(newly_activated_session);
+    //killing the active session after refreshing other sessions
+    //will keep in the universe stash till next round of session move
+    //to be earased. this help us to decrypt any message on the way
+    session_universe[active_session.get_as_stringbuff()]->commit_suicide();
   }
   else {
     user_in_room_state = CURRENT_USER; //in case it is our first session
@@ -387,8 +391,8 @@ void np1secRoom::stale_in_limbo_sessions_presume_heir(SessionId new_successor)
   next_in_activation_line = new_successor;
 
   for(SessionMap::iterator session_it = session_universe.begin(); session_it != session_universe.end(); session_it++) {
-    if ((session_it->second.get_state() != np1secSession::DEAD) && (session_it->second.get_state() != np1secSession::IN_SESSION) && (!(session_it->second.session_id == new_successor))) {
-      session_it->second.stale_me();
+    if ((session_it->second->get_state() != np1secSession::DEAD) && (session_it->second->get_state() != np1secSession::IN_SESSION) && (!(session_it->second->session_id == new_successor))) {
+      session_it->second->stale_me();
     }
   }
   
@@ -406,7 +410,7 @@ void np1secRoom::refresh_stale_in_limbo_sessions(SessionId new_parent_session_id
   auto new_parent_session = session_universe.find(new_parent_session_id.get_as_stringbuff());
   //make sure the new parent actually exists
   logger.assert_or_die(new_parent_session != session_universe.end(), "new parental session doesn't exists in the session universe", __FUNCTION__, user_state->myself->nickname);
-  logger.assert_or_die(new_parent_session->second.get_state() != np1secSession::DEAD, "can't breed out of a dead parent",__FUNCTION__, user_state->myself->nickname);
+  logger.assert_or_die(new_parent_session->second->get_state() != np1secSession::DEAD, "can't breed out of a dead parent",__FUNCTION__, user_state->myself->nickname);
   
   SessionMap refreshed_sessions;
   for(SessionMap::iterator session_it = session_universe.begin(); session_it != session_universe.end(); session_it++) {
@@ -426,12 +430,12 @@ void np1secRoom::refresh_stale_in_limbo_sessions(SessionId new_parent_session_id
     
     //update: in favor of simplicity we are having a nonbroadcasting creation
     //so we can create and kill sessions with not so much problem
-    if ((session_it->second.get_state() != np1secSession::DEAD) && (session_it->second.get_state() != np1secSession::IN_SESSION) && (session_it->second.session_id.get_as_stringbuff() != new_parent_session_id.get_as_stringbuff())) { //basically only the stale sessions, we can make that explicit
-      logger.debug("refreshing " + logger.state_to_text[session_it->second.get_state()] + " session with: " + participants_to_string(session_it->second.participants) + " as new active session has: " + participants_to_string(new_parent_session->second.future_participants()), __FUNCTION__, user_state->myself->nickname);
+    if ((session_it->second->get_state() != np1secSession::DEAD) && (session_it->second->get_state() != np1secSession::IN_SESSION) && (session_it->second->session_id.get_as_stringbuff() != new_parent_session_id.get_as_stringbuff())) { //basically only the stale sessions, we can make that explicit
+      logger.debug("refreshing " + logger.state_to_text[session_it->second->get_state()] + " session with: " + participants_to_string(session_it->second->participants) + " as new active session has: " + participants_to_string(new_parent_session->second->future_participants()), __FUNCTION__, user_state->myself->nickname);
 
-      session_it->second.commit_suicide();
+      session_it->second->commit_suicide();
       //np1secSession *born_session = nullptr;
-      ParticipantMap new_participant_list = session_it->second.delta_plist() + new_parent_session->second.future_participants();
+      ParticipantMap new_participant_list = session_it->second->delta_plist() + new_parent_session->second->future_participants();
 
       logger.debug("creating new session in limbo with participants: " + participants_to_string(new_participant_list),__FUNCTION__, user_state->myself->nickname);
         //*born_session  = session_it->second + session_universe[active_session.get_as_stringbuff()];
@@ -440,17 +444,18 @@ void np1secRoom::refresh_stale_in_limbo_sessions(SessionId new_parent_session_id
 
       //if (session_universe.find(to_be_born_session_id.get_as_stringbuff()) == session_universe.end()) {
       try {
-        refreshed_sessions.insert(pair<string, np1secSession>(to_be_born_session_id.get_as_stringbuff(), np1secSession(np1secSession::ACCEPTOR, user_state,
+        refreshed_sessions.insert(pair<string, np1secSession*>(to_be_born_session_id.get_as_stringbuff(), new np1secSession(np1secSession::ACCEPTOR, user_state,
                                                                                                                        name,
-                                                                                                                       &new_parent_session->second.future_cryptic,                                                                                                                       new_participant_list,
-                                                                                                                       new_parent_session->second.future_participants())));
+                                                                                                                       &new_parent_session->second->future_cryptic,                                                                                                                       new_participant_list,
+                                                                                                                       new_parent_session->second->future_participants())));
         } catch(std::exception& e) {
           logger.error(e.what());
         }
     //}
-    } else if (session_it->second.get_state() == np1secSession::DEAD) {
+    } else if (session_it->second->get_state() == np1secSession::DEAD) { //anything that was dead before
       SessionMap::iterator to_erase = session_it; //TODO: is it the best way? we still not sure what to do with dead session
       session_it++;
+      delete to_erase->second;
       session_universe.erase(to_erase);
     }
   
@@ -475,7 +480,7 @@ void np1secRoom::refresh_stale_in_limbo_sessions(SessionId new_parent_session_id
 void np1secRoom::send_user_message(std::string plain_message)
 {
   if (active_session.get()) {
-    session_universe[active_session.get_as_stringbuff()].send(plain_message, np1secMessage::USER_MESSAGE);
+    session_universe[active_session.get_as_stringbuff()]->send(plain_message, np1secMessage::USER_MESSAGE);
   } else {
     logger.error("trying to send message to a room " + name +  " with no active session", __FUNCTION__, user_state->myself->nickname);
     throw np1secInvalidRoomException();
@@ -505,7 +510,7 @@ void np1secRoom::send_user_message(std::string plain_message)
 void np1secRoom::leave() {
   if (user_in_room_state == CURRENT_USER) { 
     if (active_session.get()) {
-      session_universe[active_session.get_as_stringbuff()].leave();//send leave and start leave timer
+      session_universe[active_session.get_as_stringbuff()]->leave();//send leave and start leave timer
     }
     //else do nothing basically TODO::somebody should throw out the room though
   }
@@ -546,7 +551,7 @@ void np1secRoom::shrink(std::string leaving_nick) {
     auto active_session_element = session_universe.find(active_session.get_as_stringbuff());
     logger.assert_or_die(active_session_element != session_universe.end(), "Internal error: the active session is not in session universe.");
 
-    np1secSession& active_np1sec_session = active_session_element->second;
+    np1secSession* active_np1sec_session = active_session_element->second;
 
     //if (active_np1sec_session.my_state != np1secSession::FAREWELLED) {
     //alternatively we can just check the state of active_session and if 
@@ -610,14 +615,16 @@ void np1secRoom::shrink(std::string leaving_nick) {
     //so we try to shrink it anyway, if the user is already zombied
     //we do nothing.
     try {
-      auto action_to_take = active_np1sec_session.shrink(leaving_nick);
+      auto action_to_take = active_np1sec_session->shrink(leaving_nick);
       if (action_to_take.action_type == RoomAction::NEW_PRIORITY_SESSION) {
         auto old_shrank_session = session_universe.find(action_to_take.bred_session->my_session_id().get_as_stringbuff());
         if (old_shrank_session != session_universe.end()) {
           //if (old_shrank_session->second.my_state = np1sec::DEAD) { //should we check and erease only if DEAD?
+          old_shrank_session->second->commit_suicide();
+          delete old_shrank_session->second;
           session_universe.erase(old_shrank_session->first);
         }
-        session_universe.emplace(pair<string, np1secSession>(action_to_take.bred_session->my_session_id().get_as_stringbuff(),*(action_to_take.bred_session)));
+        session_universe.insert(pair<string, np1secSession*>(action_to_take.bred_session->my_session_id().get_as_stringbuff(), action_to_take.bred_session));
         stale_in_limbo_sessions_presume_heir(action_to_take.bred_session->my_session_id());
       } else {
         //Already FAREWELLED: TODO you should check the zombie list actually
@@ -644,16 +651,26 @@ void np1secRoom::insert_session(np1secSession* new_session) {
 
   auto old_session = session_universe.find(new_session->my_session_id().get_as_stringbuff());
   if (old_session != session_universe.end()) {
-    if (old_session->second.get_state() != np1secSession::DEAD) {
+    if (old_session->second->get_state() != np1secSession::DEAD) {
       logger.warn("trying to erase a live session? killing the session..." , __FUNCTION__, user_state->myself->nickname); //we need to check and commit suicide in case it is alive
-      old_session->second.commit_suicide();
+      old_session->second->commit_suicide();
+      delete old_session->second;
       session_universe.erase(old_session->first);
     }
   }
 
-  session_universe.emplace(pair<string, np1secSession>(new_session->my_session_id().get_as_stringbuff(),*(new_session)));
+  session_universe.emplace(pair<string, np1secSession*>(new_session->my_session_id().get_as_stringbuff(),new_session));
   
 }
 
-
-
+/**
+ * Destructor need to clean up the session universe
+ */
+np1secRoom::~np1secRoom() {
+  for(auto& cur_session: session_universe) {
+    cur_session.second->commit_suicide();
+    delete cur_session.second;
+    session_universe.erase(cur_session.first);
+  }
+  
+}
