@@ -93,7 +93,7 @@ bool np1secUserState::join_room(std::string room_name,
   if (chatrooms.find(room_name) == chatrooms.end()) {
     //room creation triger joining
     try {
-      chatrooms.insert(pair<string, np1secRoom>(room_name, np1secRoom(room_name, this, participants_in_the_room)));
+      chatrooms.emplace(room_name, np1secRoom(room_name, this, participants_in_the_room));
     } catch(std::exception& e) {
       logger.error(e.what(), __FUNCTION__, myself->nickname);
       logger.error("unable to join the room", __FUNCTION__, myself->nickname);

@@ -239,9 +239,7 @@ np1secSession::np1secSession(np1secSessionConceiverCondition conceiver,
   //common ritual after getting the participants filled up (or down) as requested
   if (conceiver == CREATOR) {
     send_view_auth_and_share();
-    rejoin_timer = us->ops->set_timer(cb_rejoin, this, us->ops->c_unresponsive_ergo_non_sum_interval, us->ops->bare_sender_data);
-
-    
+    arm_rejoin_timer();
   }else if (conceiver == JOINER) {
     logger.assert_or_die(conceiving_message, "conceiving message missing to create new session", __FUNCTION__, myself.nickname);
     np1secMessage to_send  = *conceiving_message;
@@ -249,10 +247,7 @@ np1secSession::np1secSession(np1secSessionConceiverCondition conceiver,
     verify_peers_signature(to_send); //check message authenticity before going forward
     joiner_send_auth_and_share();
     my_state = auth_and_reshare(to_send).first;
-
-    rejoin_timer = us->ops->set_timer(
-    cb_rejoin, this, us->ops->c_unresponsive_ergo_non_sum_interval, us->ops->bare_sender_data);
-
+    arm_rejoin_timer();
   }
   else if (conceiver == ACCEPTOR) {
     string joiner_id;
@@ -1048,7 +1043,7 @@ void np1secSession::leave() {
  * When we receive a message we set a timer so to check that
  * everybody else has received the same message
  */
-void np1secSession::start_ack_timers(np1secMessage received_message) {
+void np1secSession::start_ack_timers(const np1secMessage& received_message) {
   for (ParticipantMap::iterator it = participants.begin();
        it != participants.end();
        ++it) {
@@ -1070,30 +1065,48 @@ void np1secSession::start_ack_timers(np1secMessage received_message) {
   }
 }
 
+// void np1secSession::start_conditional_send_ack_timer() {
+//   //if there is already an ack timer 
+//   //then that will take care of acking 
+//   //for us as well
+  
+// }
+
 /**
- * When we send a message we start a timer to make sure that we'll
- * receive the message from the server
+ * When we receive a message we start a timer to make sure that we'll
+ * send an ack if we haven't send any message
  */
-void np1secSession::start_conditional_send_ack_timer() {
-  //if there is already an ack timer 
-  //then that will take care of acking 
-  //for us as well
+void np1secSession::start_acking_timer() {
   if (!send_ack_timer) {
+    logger.debug("arming send ack timer01");
     send_ack_timer = us->ops->set_timer(cb_send_ack, this, us->ops->c_ack_interval, us->ops->bare_sender_data);
   }
-  
+  // for (std::map<std::string, Participant>::iterator
+  //      it = participants.begin();
+  //      it != participants.end();
+  //      ++it) {
+  //   if ((*it).second.send_ack_timer) {
+  //     us->ops->axe_timer((*it).second.send_ack_timer, us->ops->bare_sender_data);
+  //     (*it).second.send_ack_timer = nullptr;
+  //   }
+  // }
 }
 
-void np1secSession::stop_timer_send() {
-  for (std::map<std::string, Participant>::iterator
-       it = participants.begin();
-       it != participants.end();
-       ++it) {
-    if ((*it).second.send_ack_timer) {
-      us->ops->axe_timer((*it).second.send_ack_timer, us->ops->bare_sender_data);
-      send_ack_timer = nullptr;
-    }
+void np1secSession::stop_acking_timer() {
+  if (send_ack_timer) {
+    logger.debug("disarming send ack timer01");
+    us->ops->axe_timer(send_ack_timer, us->ops->bare_sender_data);
+    send_ack_timer = nullptr;
   }
+  // for (std::map<std::string, Participant>::iterator
+  //      it = participants.begin();
+  //      it != participants.end();
+  //      ++it) {
+  //   if ((*it).second.send_ack_timer) {
+  //     us->ops->axe_timer((*it).second.send_ack_timer, us->ops->bare_sender_data);
+  //     (*it).second.send_ack_timer = nullptr;
+  //   }
+  // }
 }
 
 void np1secSession::stop_timer_receive(std::string acknowledger_id, MessageId message_id) {
@@ -1137,14 +1150,18 @@ void np1secSession::perform_received_consisteny_tasks(np1secMessage received_mes
   if (received_message.sender_nick == myself.nickname) {
     logger.debug("own ctr of received message: "+ to_string(own_message_counter), __FUNCTION__, myself.nickname);
     logger.assert_or_die(sent_transcript_chain.find(received_message.sender_message_id) != sent_transcript_chain.end(), "received a message from myself that never send with valid signature. stolen key?", __FUNCTION__, myself.nickname); //if the signature isn't failed and we don't have record of sending this then something is terribly wrong; only non-bug explanation is that somebody might have stolen our key and faking messages
-    if (sent_transcript_chain[received_message.sender_message_id].consistency_timer) //the timer might legitemately has been killed due to suicide
+    if (sent_transcript_chain[received_message.sender_message_id].consistency_timer) {//the timer might legitemately has been killed due to suicide
       us->ops->axe_timer(
                          sent_transcript_chain[received_message.sender_message_id].consistency_timer,
                          us->ops->bare_sender_data);
-    sent_transcript_chain[received_message.sender_message_id].consistency_timer = nullptr;
+      sent_transcript_chain[received_message.sender_message_id].consistency_timer = nullptr;}
+
   }
 
   add_message_to_transcript(received_message.final_whole_message, received_message.message_id);
+
+  //it needs to be called after add as it assumes it is already added
+  start_ack_timers(received_message);
 
 }
 
@@ -1247,15 +1264,8 @@ void np1secSession::send(std::string message, np1secMessage::np1secMessageSubTyp
   
   update_send_transcript_chain(own_message_counter, outbound.compute_hash());
   // As we're sending a new message we are no longer required to ack
-  // any received messages
-  stop_timer_send();
-
-  if (message_type == np1secMessage::USER_MESSAGE)  {
-    // We create a set of times for all other peers for acks we expect for
-    // our sent message
-    start_conditional_send_ack_timer(); //If you are overwritng
-    //timers then you need plan of recourse.
-  }
+  // any received messages till we receive a new message
+  stop_acking_timer();
   
 }
 
@@ -1291,6 +1301,9 @@ np1secSession::StateAndAction np1secSession::receive(np1secMessage encrypted_mes
       //if it is user message, display content
       else if ((received_message.message_sub_type == np1secMessage::USER_MESSAGE)) {
         us->ops->display_message(room_name, participants[peers[received_message.sender_index]].id.nickname, received_message.user_message, us->ops->bare_sender_data);
+
+        start_acking_timer(); //if we don't send any message for a while we'll
+        //ack all messages
       }
       else if ((received_message.message_sub_type == np1secMessage::LEAVE_MESSAGE) && (received_message.sender_nick != myself.nickname) && my_state != DEAD)  {
         return send_farewell_and_reshare(received_message);
@@ -1336,12 +1349,42 @@ ParticipantMap np1secSession::delta_plist()
  */
 void np1secSession::commit_suicide() {
   //we try to send a last ack, if it fails no big deal
+
+  disarm_all_timers();
+  my_state = DEAD;
+
+}
+
+/**
+ * stop all timers
+ */
+void np1secSession::disarm_all_timers() {
   if (farewell_deadline_timer) us->ops->axe_timer(farewell_deadline_timer, us->ops->bare_sender_data);
   if (send_ack_timer) us->ops->axe_timer(send_ack_timer, us->ops->bare_sender_data);
 
   if (rejoin_timer) us->ops->axe_timer(rejoin_timer, us->ops->bare_sender_data);
 
   if (session_life_timer) us->ops->axe_timer(session_life_timer, us->ops->bare_sender_data);
+
+  for(auto& cur_block: received_transcript_chain)
+    for(auto& cur_participant: cur_block.second)
+      if(cur_participant.consistency_timer) {
+        us->ops->axe_timer(cur_participant.consistency_timer, us->ops->bare_sender_data);
+      }
+
+  for(auto& cur_block: sent_transcript_chain)
+    if (cur_block.second.consistency_timer) {
+      us->ops->axe_timer(cur_block.second.consistency_timer, us->ops->bare_sender_data);
+    }
+
+  clear_all_timers();
+
+}
+
+/**
+ * stop all timers
+ */
+void np1secSession::clear_all_timers() {
 
   farewell_deadline_timer = nullptr;
   send_ack_timer = nullptr;
@@ -1350,32 +1393,21 @@ void np1secSession::commit_suicide() {
 
   for(auto& cur_block: received_transcript_chain)
     for(auto& cur_participant: cur_block.second)
-      if(cur_participant.consistency_timer) {
-        us->ops->axe_timer(cur_participant.consistency_timer, us->ops->bare_sender_data);
         cur_participant.consistency_timer = nullptr;
-      }
 
   for(auto& cur_block: sent_transcript_chain)
-    if (cur_block.second.consistency_timer) {
-      us->ops->axe_timer(cur_block.second.consistency_timer, us->ops->bare_sender_data);
       cur_block.second.consistency_timer = nullptr;
-    }
 
-  // try {
-  //   //we try to send one last ack, why?
-  //   if (my_state == IN_SESSION)
-  //     send("", np1secMessage::JUST_ACK); //no point to send FS loads as the session
+}
 
-  // } catch (exception& e) {
-  //   logger.warn("failed sending pre-destruction consistency check.");
-  //   logger.warn(e.what(), __FUNCTION__, myself.nickname);
-  //   //just for test, I don't think we should bother anybody with
-  //   //this
-  //   //throw e;
-  // }
-
-  my_state = DEAD;
-
+/**
+ * tells if rejoin is active
+ */
+void np1secSession::arm_rejoin_timer() {
+    logger.assert_or_die(!rejoin_timer, "no re-arming the rejoin timer!", __FUNCTION__, myself.nickname); //we shouldn't rearm rejoin timer
+    logger.debug("arming rejoin timer, in case we can't join successfully",__FUNCTION__, myself.nickname);
+      rejoin_timer = us->ops->set_timer(cb_rejoin, this, us->ops->c_unresponsive_ergo_non_sum_interval, us->ops->bare_sender_data);
+      
 }
 
 np1secSession::~np1secSession() {

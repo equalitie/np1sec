@@ -249,17 +249,20 @@ class np1secSession {
    * Generate acknowledgement timers for all other participants
    *
    */
-  void start_ack_timers(np1secMessage received_message);
+  void start_ack_timers(const np1secMessage& received_message);
 
   /**
     * Construct and start timers for acking received messages
-    *
     */
-  void start_conditional_send_ack_timer();
+  void start_acking_timer();
+
+  /**
+   * disarm acking timer because we sent a message
+   */
+  void stop_acking_timer();
 
   /**
    * End ack timer on for given acknowledgeing participants
-   *
    */
   void stop_timer_receive(std::string acknowledger_id, MessageId message_id);
 
@@ -273,10 +276,10 @@ class np1secSession {
   HashBlock session_key;
   HashBlock session_confirmation;
 
-  void* send_ack_timer = nullptr;
-  void* farewell_deadline_timer = nullptr;
-  void* rejoin_timer = nullptr;
-  void* session_life_timer = nullptr;
+  void* send_ack_timer = nullptr; //to send an ack to acknowledge all messages up to now
+  void* farewell_deadline_timer = nullptr; //wait till you get everybody's hash to check before leave actually
+  void* rejoin_timer = nullptr; //try to rejoin
+  void* session_life_timer = nullptr; //start new session with the same participant but different keys
 
   MessageId last_received_message_id = 0;
   MessageId own_message_counter = 0; //sent message counter
@@ -867,6 +870,17 @@ class np1secSession {
    * access function for state
    */
   np1secSessionState get_state() {return my_state;}
+
+  /**
+   * tells if rejoin is active
+   */
+  bool is_rejoin_timer_active() {return (rejoin_timer != nullptr);};
+
+  
+  /**
+   * tells if rejoin is active
+   */
+  void arm_rejoin_timer();
   
   /**
    * Received the pre-processed message and based on the state
@@ -888,11 +902,22 @@ class np1secSession {
   void commit_suicide();
 
   /**
+   * stops all timers
+   */
+  void disarm_all_timers();
+
+  /**
+   * nullify the timers because they are not valid
+   * instead of this we need a respectable constructor
+   */
+  void clear_all_timers();
+
+  /**
    * same as suicide but it is marked so its list be used later
    */
   void stale_me()
   {
-    commit_suicide();
+    disarm_all_timers();
     my_state = STALE;
   }
 

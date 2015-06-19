@@ -51,9 +51,9 @@ EventManager::EventManager(struct event_base* base)
 
 std::string EventManager::next_identifier()
 {
-  int elements = size();
+  uid++;
   std::stringstream stream;
-  stream << std::setfill('0') << std::setw(sizeof(int) * 2) << std::hex << elements;
+  stream << std::setfill('0') << std::setw(sizeof(int) * 2) << std::hex << uid;
   return stream.str();
 }
 
@@ -92,6 +92,7 @@ void EventManager::remove_timeout(std::string* identifier)
     timers.erase(*identifier);
   } else {
     mock_logger.warn("trying to delete none-existing timer", __FUNCTION__);
+    mock_logger.warn(*identifier);
   }
 }
 

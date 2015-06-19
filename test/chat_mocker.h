@@ -152,6 +152,8 @@ private:
   
   std::string next_identifier();
 
+  unsigned long long uid = 0;
+
 public:
   EventManager();
   EventManager(struct event_base* base);

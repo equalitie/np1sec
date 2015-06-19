@@ -147,6 +147,11 @@ class np1secRoom {
         logger.debug("copying room object");
         for(auto& cur_session: rhs.session_universe) {
           np1secSession* new_copy = new np1secSession(*cur_session.second);
+          //if rejoin timer is still active we need to activate in the copy
+          new_copy->clear_all_timers(); //it doesn't make sense to copy the
+          //timer as they have pointer to the session
+          if (cur_session.second->is_rejoin_timer_active())
+            new_copy->arm_rejoin_timer();
           session_universe[new_copy->session_id.get_as_stringbuff()] = new_copy;
         }
     }
