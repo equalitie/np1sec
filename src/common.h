@@ -41,8 +41,6 @@ extern "C" {
   #include "gcrypt.h"
 }
 
-const unsigned long SIZE_T_CEILING = pow(2,30);
-
 typedef uint32_t MessageId;
 typedef gcry_sexp_t np1secPrivateKey;
 typedef gcry_sexp_t np1secPublicKey;
