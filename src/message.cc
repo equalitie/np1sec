@@ -538,6 +538,7 @@ std::string np1secMessage::sign_message(std::string message) {
   }
 
   std::string signature(reinterpret_cast<char*>(sigbuf), siglen);
+  delete[] sigbuf;
 
   return signature;
   

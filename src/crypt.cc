@@ -367,7 +367,7 @@ void Cryptic::sign(unsigned char **sigp, size_t *siglenp,
   size_t nr, ns;
   const uint32_t magic_number = 64, half_magic_number = 32;
 
-  *sigp = (unsigned char*) xmalloc(magic_number);
+  *sigp = new unsigned char[magic_number];
 
   err = gcry_sexp_build(&plain_sexp, NULL,
                           "(data"

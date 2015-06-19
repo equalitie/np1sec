@@ -72,7 +72,10 @@ TEST_F(CryptTest, test_sign_verify) {
   for(unsigned int i = 0; i <no_trial; i++) {
     test_text = "This is a string to be encrypted" + std::to_string(i);
     ASSERT_NO_THROW(cryptic.sign(&sigbuf, &siglen, test_text));
-    ASSERT_TRUE(cryptic.verify(test_text, sigbuf, cryptic.get_ephemeral_pub_key()));}
+    ASSERT_TRUE(cryptic.verify(test_text, sigbuf, cryptic.get_ephemeral_pub_key()));
+    delete[] sigbuf;
+    sigbuf = NULL;
+  }
 }
 
 TEST_F(CryptTest, test_teddh_test) {
