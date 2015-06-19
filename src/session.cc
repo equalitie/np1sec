@@ -24,6 +24,8 @@
 #include "src/exceptions.h"
 #include "src/userstate.h"
 
+namespace np1sec {
+
 /**
  * To be used in std::sort to sort the particpant list
  * in a way that is consistent way between all participants
@@ -1414,3 +1416,4 @@ np1secSession::~np1secSession() {
   //mean that the session as concept is destructed
 }
 
+} // namespace np1sec

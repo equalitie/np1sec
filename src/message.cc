@@ -26,6 +26,8 @@
 #include "src/userstate.h"
 #include "src/exceptions.h"
 
+namespace np1sec {
+
 /**
  *  return the apporperiate string buffer which contains the data
  *  in data
@@ -578,4 +580,7 @@ std::string np1secMessage::decrypt_message(std::string encrypted_message) {
 
 np1secMessage::~np1secMessage() {
 }
+
+} // namespace np1sec
+
 #endif  // SRC_MESSAGE_CC_

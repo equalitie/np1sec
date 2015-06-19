@@ -28,6 +28,8 @@
 #include "src/participant.h"
 #include "src/session_id.h"
 
+namespace np1sec {
+
 class np1secUserState;
 
 class np1secMessage {
@@ -414,5 +416,7 @@ class np1secMessage {
   HashStdBlock compute_hash();
 
 };
+
+} // namespace np1sec
 
 #endif  // SRC_MESSAGE_H_

@@ -20,6 +20,8 @@
 #include "userstate.h"
 #include "src/room.h"
 
+namespace np1sec {
+
 /**
  * constructor: sets room name, make the user status joing 
  * by default.
@@ -681,3 +683,6 @@ np1secRoom::~np1secRoom() {
   }
   
 }
+
+} // namespace np1sec
+

@@ -26,6 +26,8 @@
 #include "test/chat_mocker.h"
 #include "test/chat_mocker_np1sec_plugin.h"
 
+using namespace np1sec;
+
 class MessageTest : public ::testing::Test{
   
 protected: //gtest needs the elements to be protocted

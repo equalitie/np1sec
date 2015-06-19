@@ -35,6 +35,8 @@
 
 #include "src/transcript_consistency.h"
 
+namespace np1sec {
+
 class np1secUserState;
 class np1secSession;
 class np1secRoom;
@@ -1060,5 +1062,7 @@ class np1secSession {
   friend np1secRoom;
 
 };
+
+} // namespace np1sec
 
 #endif  // SRC_SESSION_H_

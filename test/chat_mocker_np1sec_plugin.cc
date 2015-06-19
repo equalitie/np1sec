@@ -35,6 +35,7 @@
 #include "src/common.h"
 
 using namespace std;
+using namespace np1sec;
 
 void chat_mocker_np1sec_plugin_join(std::string room_name,
                                         void* aux_data)

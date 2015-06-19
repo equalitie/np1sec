@@ -30,6 +30,8 @@ extern "C" {
   #include "gcrypt.h"
 }
 
+namespace np1sec {
+
 typedef gcry_sexp_t np1secAsymmetricKey;
 
 typedef HashBlock np1secKeyShare;
@@ -351,5 +353,7 @@ class  LongTermIDKey {
 
 
 const int c_np1sec_hash = gcry_md_algos::GCRY_MD_SHA256;
+
+} // namespace np1sec
 
 #endif  // SRC_CRYPT_H_

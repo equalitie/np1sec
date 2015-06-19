@@ -41,6 +41,8 @@ extern "C" {
   #include "gcrypt.h"
 }
 
+namespace np1sec {
+
 typedef uint32_t MessageId;
 typedef gcry_sexp_t np1secPrivateKey;
 typedef gcry_sexp_t np1secPublicKey;
@@ -78,5 +80,7 @@ const std::string c_subfield_delim(":"); //needed by ParticipantId defined in in
 
 // Global logger
 extern Logger logger;
+
+} // namespace np1sec
 
 #endif  // SRC_COMMON_H_

@@ -23,6 +23,8 @@
 #include "contrib/gtest/include/gtest/gtest.h"
 #include "src/logger.h"
 
+using namespace np1sec;
+
 const std::string log_file = "testlog.txt";
 
 class LoggerTest : public ::testing::Test {};

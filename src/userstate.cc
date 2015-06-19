@@ -24,6 +24,8 @@
 #include "src/interface.h"
 #include "src/userstate.h"
 
+namespace np1sec {
+
 np1secUserState::np1secUserState(std::string name, np1secAppOps *ops,
                                  uint8_t* key_pair)
   :     myself(nullptr),
@@ -215,5 +217,7 @@ void np1secUserState::send_handler(std::string room_name,
     logger.warn("unable to send  message to " + room_name, __FUNCTION__, myself->nickname );
   }
 }
+
+} // namespace np1sec
 
 #endif  // SRC_USERSTATE_CC_

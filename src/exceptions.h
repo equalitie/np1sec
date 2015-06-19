@@ -21,6 +21,8 @@
 
 #include <exception>
 
+namespace np1sec {
+
 class np1secSessionStateException: public std::exception                               
 {                                                                 
    virtual const char* what() const throw()                        
@@ -123,6 +125,8 @@ class np1secNotImplementedException : public std::exception                     
    {                                                               
      return "Not Implemented";                               
    }                                                               
- };                                   
+ };
+
+} // namespace np1sec
 
 #endif  // SRC_EXCEPTIONS_H_

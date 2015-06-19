@@ -30,6 +30,8 @@
 #include "src/exceptions.h"
 #include "src/logger.h"
 
+namespace np1sec {
+
 gcry_error_t Cryptic::hash(const void *buffer, size_t buffer_len, HashBlock hb,
                   bool secure) {
   gcry_error_t err = 0;
@@ -595,4 +597,7 @@ Cryptic::~Cryptic()
     gcry_sexp_release(ephemeral_prv_key);
     
 }
+
+} // namespace np1sec
+
 #endif  // SRC_CRYPT_CC_

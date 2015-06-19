@@ -20,6 +20,8 @@
 
 #include "src/participant.h"
 
+namespace np1sec {
+
 std::string participants_to_string(const ParticipantMap& plist)
 {
   std::string string_plist;
@@ -151,3 +153,4 @@ ParticipantMap operator-(const ParticipantMap& lhs, const ParticipantMap& rhs)
   
 }
 
+} // namespace np1sec
