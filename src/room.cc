@@ -20,8 +20,6 @@
 #include "userstate.h"
 #include "src/room.h"
 
-using namespace std;
-
 /**
  * constructor: sets room name, make the user status joing 
  * by default.
@@ -49,7 +47,7 @@ void np1secRoom::solitary_join() {
   //UnauthenticatedParticipantList session_view;
   ParticipantMap participants;
   
-  participants.insert( pair<string,Participant> (user_state->myself->nickname, Participant(UnauthenticatedParticipant(*(user_state->myself), Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()),true))));
+  participants.insert( std::pair<std::string,Participant> (user_state->myself->nickname, Participant(UnauthenticatedParticipant(*(user_state->myself), Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()),true))));
 
   SessionId empty_session_id;
   // np1secMessage solitary_joiner_info(empty_session_id,
@@ -69,7 +67,7 @@ void np1secRoom::solitary_join() {
                                       participants);
   
 
-  session_universe.insert(pair<string, np1secSession*>(sole_joiner_session->my_session_id().get_as_stringbuff(), sole_joiner_session));
+  session_universe.insert(std::pair<std::string, np1secSession*>(sole_joiner_session->my_session_id().get_as_stringbuff(), sole_joiner_session));
   
 }
 
@@ -204,7 +202,7 @@ void np1secRoom::receive_handler(np1secMessage received_message)
                 delete message_session->second;
                 session_universe.erase(message_session->first);
               }
-              session_universe.insert(pair<string, np1secSession*>(received_message.session_id.get_as_stringbuff(), new_session));
+              session_universe.emplace(std::pair<std::string, np1secSession*>(received_message.session_id.get_as_stringbuff(), new_session));
             }
           } catch(std::exception& e) {
             logger.warn(e.what(), __FUNCTION__, user_state->myself->nickname);
@@ -265,16 +263,16 @@ void np1secRoom::receive_handler(np1secMessage received_message)
         // //to thread user as participant is not valid anymore. This is obviously digusting
         // //we need a respectable copy constructor for np1secSession
       } else {
-        logger.error("Invalid state-less message, of type " + to_string(received_message.message_type) +" only session-less message allowed is JOIN_REQUEST of type "+ to_string(np1secMessage::JOIN_REQUEST), __FUNCTION__, user_state->myself->nickname);
+        logger.error("Invalid state-less message, of type " + std::to_string(received_message.message_type) +" only session-less message allowed is JOIN_REQUEST of type "+ std::to_string(np1secMessage::JOIN_REQUEST), __FUNCTION__, user_state->myself->nickname);
         throw np1secInvalidDataException();
       }
     } //has sid or not
 
-    logger.debug("room state: " + to_string(user_in_room_state) + " requested action: " + to_string(action_to_take.action_type), __FUNCTION__, user_state->myself->nickname); //just for test to make sure we don't end up here
+    logger.info("room state: " + std::to_string(user_in_room_state) + " requested action: " + std::to_string(action_to_take.action_type), __FUNCTION__, user_state->myself->nickname); //just for test to make sure we don't end up here
     
     //if the action resulted in new session we need to add it to session universe
     if (action_to_take.action_type == RoomAction::NEW_SESSION                                                                              || action_to_take.action_type == RoomAction::NEW_PRIORITY_SESSION) { //TODO:: we need to delete a dead session probably
-      session_universe.insert(pair<string, np1secSession*>(action_to_take.bred_session->my_session_id().get_as_stringbuff(), action_to_take.bred_session));
+      session_universe.emplace(std::pair<std::string, np1secSession*>(action_to_take.bred_session->my_session_id().get_as_stringbuff(), action_to_take.bred_session));
     }
 
     if (action_to_take.action_type == RoomAction::NEW_PRIORITY_SESSION || action_to_take.action_type == RoomAction::PRESUME_HEIR) {
@@ -444,7 +442,9 @@ void np1secRoom::refresh_stale_in_limbo_sessions(SessionId new_parent_session_id
 
       //if (session_universe.find(to_be_born_session_id.get_as_stringbuff()) == session_universe.end()) {
       try {
-        refreshed_sessions.insert(pair<string, np1secSession*>(to_be_born_session_id.get_as_stringbuff(), new np1secSession(np1secSession::ACCEPTOR, user_state,
+        // XXX/redwire
+        // This is an awfully fishy use of `new`!!!
+        refreshed_sessions.insert(std::pair<std::string, np1secSession*>(to_be_born_session_id.get_as_stringbuff(), new np1secSession(np1secSession::ACCEPTOR, user_state,
                                                                                                                        name,
                                                                                                                        &new_parent_session->second->future_cryptic,                                                                                                                       new_participant_list,
                                                                                                                        new_parent_session->second->future_participants())));
@@ -628,7 +628,7 @@ void np1secRoom::shrink(std::string leaving_nick) {
           delete old_shrank_session->second;
           session_universe.erase(old_shrank_session->first);
         }
-        session_universe.insert(pair<string, np1secSession*>(action_to_take.bred_session->my_session_id().get_as_stringbuff(), action_to_take.bred_session));
+        session_universe.emplace(std::pair<std::string, np1secSession*>(action_to_take.bred_session->my_session_id().get_as_stringbuff(), action_to_take.bred_session));
         stale_in_limbo_sessions_presume_heir(action_to_take.bred_session->my_session_id());
       } else {
         //Already FAREWELLED: TODO you should check the zombie list actually
@@ -663,7 +663,7 @@ void np1secRoom::insert_session(np1secSession* new_session) {
     }
   }
 
-  session_universe.emplace(pair<string, np1secSession*>(new_session->my_session_id().get_as_stringbuff(),new_session));
+  session_universe.emplace(std::pair<std::string, np1secSession*>(new_session->my_session_id().get_as_stringbuff(), new_session));
   
 }
 

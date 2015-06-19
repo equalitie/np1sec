@@ -24,8 +24,6 @@
 #include "src/interface.h"
 #include "src/userstate.h"
 
-using namespace std;
-
 np1secUserState::np1secUserState(std::string name, np1secAppOps *ops,
                                  uint8_t* key_pair)
   :     myself(nullptr),
