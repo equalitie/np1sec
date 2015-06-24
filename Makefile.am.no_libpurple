@@ -1,0 +1,31 @@
+ACLOCAL_AMFLAGS = -I m4
+
+AM_CPPFLAGS = -I. -I$(srcdir)/src \
+	-I$(srcdir)/contrib/gtest/include \
+	$(LIBGCRYPT_CFLAGS) \
+	$(LIBEVENT_CFLAGS)
+
+noinst_LTLIBRARIES =
+noinst_PROGRAMS =
+
+TESTS =
+
+lib_LTLIBRARIES = libnp1sec.la
+
+libnp1sec_la_SOURCES = \
+	src/common.cc \
+	src/crypt.cc \
+	src/logger.cc \
+	src/base64.cc \
+	src/message.cc \
+	src/participant.cc \
+	src/session.cc \
+	src/room.cc \
+	src/userstate.cc
+
+libnp1sec_la_LIBADD = \
+	$(LIBGCRYPT_LIBS) \
+	$(LIBEVENT_LIBS)
+
+include test/Makefile.inc.no-libpurple
+include Makefile.am.lint
