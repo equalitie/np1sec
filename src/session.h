@@ -19,8 +19,6 @@
 #ifndef SRC_SESSION_H_
 #define SRC_SESSION_H_
 
-#include <event2/event.h>
-
 #include <iostream>
 #include <map>
 #include <string>

@@ -143,28 +143,6 @@ class MockRoom {
 
 };
 
-// A simple timeout event manager
-class EventManager
-{
-private:
-  std::map<std::string, struct event*> timers;
-  struct event_base* base;
-  
-  std::string next_identifier();
-
-  unsigned long long uid = 0;
-
-public:
-  EventManager();
-  EventManager(struct event_base* base);
-  std::string* add_timeout(event_callback_fn cb, void* arg, const timeval* timeout);
-  struct event* get(std::string* identifier);
-  int size();
-  void dispatch_event_loop();
-  void end_event_loop();
-  void remove_timeout(std::string* identifier);
-};
-
 /**
    This client simulate both client and server.
    as everythnig happens locally
@@ -175,39 +153,27 @@ class ChatMocker {
   std::map<std::string, MockParticipant> signed_in_participant;
   const timeval c_check_receive_interval = {0, 10*1000} ;
 
-  EventManager event_manager;
-
-  /**
-   * Initialize the event manager with a libevent event_base
-   */
-  void initialize_event_manager(struct event_base* base)
-  {
-    event_manager = EventManager(base);
-  }
 
  public:
   /**
-   * End libevent's loop
+   * does nothing return null. just a place holder
    */
-  void end_event_loop()
+  virtual std::string* add_timeout(event_callback_fn cb, void* arg, const timeval* timeout)
   {
-    event_manager.end_event_loop();
+    (void) cb;
+    (void) arg;
+    (void) timeout;
+    
+    return nullptr;
   }
 
   /**
-   * Add a new timeout event to the event manager
+   * does nothing
    */
-  std::string* add_timeout(event_callback_fn cb, void* arg, const timeval* timeout)
+  virtual void remove_timeout(std::string* identifier)
   {
-    return event_manager.add_timeout(cb, arg, timeout);
-  }
-
-  /**
-   * Remove a timeout event from the event manager
-   */
-  void remove_timeout(std::string* identifier)
-  {
-    event_manager.remove_timeout(identifier);
+    (void) identifier;
+    return;
   }
 
   /**
@@ -280,10 +246,6 @@ class ChatMocker {
     for(auto it = rooms.begin(); it != rooms.end(); it++)
       it->second.receive();
   }
-
-  friend void check_receive_queue(evutil_socket_t fd, short what, void *arg);
-  
-  void dispatch_event_loop();
 
 };
 

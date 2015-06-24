@@ -22,7 +22,6 @@
 #include <string>
 #include <list>
 #include <map>
-#include <event2/event.h>
 
 #include "exceptions.h"
 #include "src/crypt.h"
@@ -53,7 +52,6 @@ struct ParticipantId
 
   /**
    *  constructor
-   *
    */
   ParticipantId(std::string nickname, std::string fingerprint_strbuff)
   :nickname(nickname)

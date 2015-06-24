@@ -27,5 +27,5 @@ libnp1sec_la_LIBADD = \
 	$(LIBGCRYPT_LIBS) \
 	$(LIBEVENT_LIBS)
 
-include test/Makefile.inc.no-libpurple
+include test/Makefile.inc.emscripten
 include Makefile.am.lint
