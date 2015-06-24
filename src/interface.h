@@ -29,6 +29,8 @@
 
 #include "src/crypt.h"
 
+typedef void (*timeout_callback)(void*);
+
 /**
  * Calls from np1sec to the application.
  */

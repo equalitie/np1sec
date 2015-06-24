@@ -14,7 +14,6 @@ extern "C" {
 #include <iostream>
 #include <iomanip>
 #include <sstream>
-#include <event2/event.h>
 
 #include "src/logger.h"
 using namespace std;
@@ -151,16 +150,13 @@ class ChatMocker {
  protected:
   std::map<std::string, MockRoom> rooms;
   std::map<std::string, MockParticipant> signed_in_participant;
-  const timeval c_check_receive_interval = {0, 10*1000} ;
-
 
  public:
   /**
    * does nothing return null. just a place holder
    */
-  virtual std::string* add_timeout(event_callback_fn cb, void* arg, const timeval* timeout)
+  virtual std::string* add_timeout(void* arg, const uint32_t timeout)
   {
-    (void) cb;
     (void) arg;
     (void) timeout;
     

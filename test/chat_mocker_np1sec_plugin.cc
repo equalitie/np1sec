@@ -180,16 +180,6 @@ void display_message(std::string room_name, std::string sender_nickname, std::st
   
 }
 
-typedef void (*timeout_callback)(void*);
-
-void intermediate_cb(evutil_socket_t fd, short what, void* arg)
-{
-  (void) fd; (void) what;
-  
-  auto fn_and_data = reinterpret_cast<pair<timeout_callback, void*>*>(arg);
-  fn_and_data->first(fn_and_data->second);
-}
-
 // Add a timeout callback to the ChatMocker server provided
 // timer_callback - The callback to call with the provided opdata
 // opdata         - The data to call timer_callback with
@@ -199,10 +189,7 @@ void* set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t int
 {
   ChatMocker* chat_server = (reinterpret_cast<pair<ChatMocker*, std::string>*>(data))->first;
   pair<timeout_callback, void*>* my_data = new pair<timeout_callback, void*>(timer_callback, opdata);
-  struct timeval timeout;
-  timeout.tv_sec = interval / 1000;
-  timeout.tv_usec = (long)(interval % 1000) * 1000;
-  std::string* s = chat_server->add_timeout(intermediate_cb, my_data, &timeout);
+  std::string* s = chat_server->add_timeout(my_data, interval);
   return s;
 }
 

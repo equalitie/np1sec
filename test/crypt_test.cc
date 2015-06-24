@@ -16,8 +16,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <gcrypt.h>
-
 #include "contrib/gtest/include/gtest/gtest.h"
 #include "src/crypt.h"
 

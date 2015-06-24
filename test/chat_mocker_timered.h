@@ -35,6 +35,8 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name,
                                                void* aux_data);
 
 
+void intermediate_cb(evutil_socket_t fd, short what, void* arg);
+
 // A simple timeout event manager
 class EventManager
 {
@@ -87,9 +89,13 @@ class ChatMockerTimered : public ChatMocker {
   /**
    * Add a new timeout event to the event manager
    */
-  virtual std::string* add_timeout(event_callback_fn cb, void* arg, const timeval* timeout)
+  virtual std::string* add_timeout(void* arg, const uint32_t interval)
   {
-    return event_manager.add_timeout(cb, arg, timeout);
+    struct timeval timeout;
+    timeout.tv_sec = interval / 1000;
+    timeout.tv_usec = (long)(interval % 1000) * 1000;
+
+    return event_manager.add_timeout(intermediate_cb, arg, &timeout);
   }
 
   /**

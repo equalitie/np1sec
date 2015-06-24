@@ -25,6 +25,14 @@
 #include "src/common.h"
 #include "test/chat_mocker_timered.h" 
 
+void intermediate_cb(evutil_socket_t fd, short what, void* arg)
+{
+  (void) fd; (void) what;
+  
+  auto fn_and_data = reinterpret_cast<pair<timeout_callback, void*>*>(arg);
+  fn_and_data->first(fn_and_data->second);
+}
+
 void check_receive_queue(evutil_socket_t fd, short what, void *arg)
 {
   (void) fd; (void) what;
