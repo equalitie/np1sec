@@ -1,11 +1,15 @@
 # Unit tests
 
-noinst_PROGRAMS += libnp1sec_test
+bin_PROGRAMS += libnp1sec_test
 
 TESTS += libnp1sec_test
 
+GTEST_SOURCES = \
+	contrib/gtest/src/gtest_main.cc \
+	contrib/gtest/src/gtest-all.cc
+
 libnp1sec_test_SOURCES = \
-	test/main.cc \
+    $(GTEST_SOURCES) \
 	test/crypt_test.cc \
 	test/test_logger.cc \
 	test/chat_mocker.cc \
@@ -15,7 +19,8 @@ libnp1sec_test_SOURCES = \
 
 libnp1sec_test_CPPFLAGS = \
 	-I$(top_srcdir)/${GTEST_BASE} \
-	-I$(top_srcdir)/${GTEST_INCLUDE}
+	-I$(top_srcdir)/${GTEST_INCLUDE} \
+    -Dgtest_disable_pthreads=ON
 
 libnp1sec_test_LDADD = \
 	libnp1sec.la \

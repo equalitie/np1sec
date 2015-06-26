@@ -98,8 +98,15 @@ class np1secMessage {
   }
 
   uint16_t string_to_short(const char* data) {
-    return uint16_t(*reinterpret_cast<const uint16_t*>(data));
+    //there is a bug in emscripten which makes this value wrong
+    //return uint16_t(*reinterpret_cast<const uint16_t*>(data));
+    //so we have to explicitly make it
+    return uint16_t(((unsigned)data[0])+ 256*(unsigned)data[1]);
   }
+
+  /* uint16_t string_to_short(const char* data) { */
+  /*   return uint16_t(*reinterpret_cast<const uint16_t*>(data)); */
+  /* } */
 
   uint8_t string_to_byte(const char* data) {
     return uint8_t(*reinterpret_cast<const uint8_t*>(data));

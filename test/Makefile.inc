@@ -4,8 +4,13 @@ noinst_PROGRAMS += libnp1sec_test
 
 TESTS += libnp1sec_test
 
+GTEST_SOURCES = \
+	contrib/gtest/src/gtest_main.cc \
+	contrib/gtest/src/gtest-all.cc
+
+#	test/main.cc
 libnp1sec_test_SOURCES = \
-	test/main.cc \
+    $(GTEST_SOURCES) \
 	test/crypt_test.cc \
 	test/test_logger.cc \
 	test/chat_mocker.cc \
@@ -25,7 +30,8 @@ libnp1sec_test_LDADD = \
 	$(LIBEVENT_LIBS)
 
 libnp1sec_test_LDFLAGS = \
-	$(top_srcdir)/${GTEST_BASE}/lib/libgtest.la $(PTHREAD)
+	 $(PTHREAD)
+#     $(top_srcdir)/${GTEST_BASE}/lib/libgtest.la
 
 # Integration tests
 

@@ -413,7 +413,7 @@ void np1secRoom::refresh_stale_in_limbo_sessions(SessionId new_parent_session_id
   logger.assert_or_die(new_parent_session->second->get_state() != np1secSession::DEAD, "can't breed out of a dead parent",__FUNCTION__, user_state->myself->nickname);
   
   SessionMap refreshed_sessions;
-  for(SessionMap::iterator session_it = session_universe.begin(); session_it != session_universe.end(); session_it++) {
+  for(SessionMap::iterator session_it = session_universe.begin(); session_it != session_universe.end(); /*session_it++ we do it in the for case by case (due to erasing)*/) {
     //first we need to check if such a session in limbo currently exists
     //if it exists, that mean the joining user has already started the
     //negotiotion with the sesssion and there is no need to update the
@@ -451,12 +451,16 @@ void np1secRoom::refresh_stale_in_limbo_sessions(SessionId new_parent_session_id
         } catch(std::exception& e) {
           logger.error(e.what());
         }
+      session_it++;
+
     //}
     } else if (session_it->second->get_state() == np1secSession::DEAD) { //anything that was dead before
       SessionMap::iterator to_erase = session_it; //TODO: is it the best way? we still not sure what to do with dead session
       session_it++;
       delete to_erase->second;
       session_universe.erase(to_erase);
+    } else {
+      session_it++;
     }
   
       
@@ -670,7 +674,10 @@ np1secRoom::~np1secRoom() {
   for(auto& cur_session: session_universe) {
     cur_session.second->commit_suicide();
     delete cur_session.second;
-    session_universe.erase(cur_session.first);
+    //session_universe.erase(cur_session.first);
+    //we don't need to erase
+    //the session universe destuctro is gonna be called right after us
+    //and erasing makes the iterator go crazy
   }
   
 }
