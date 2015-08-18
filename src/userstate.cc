@@ -1,4 +1,4 @@
-/**
+v/**
  * Multiparty Off-the-Record Messaging library
  * Copyright (C) 2014, eQualit.ie
  *
@@ -26,7 +26,9 @@
 
 using namespace std;
 
-/** In principal, the client should be aware of all exception reported to the userstate. */
+/** The client only calls functions in np1secUserState. As such, the client need to handle exception (or false return values) that is resulted from these calls. In most situation, handling simply means to inform the user about the failure.
+
+    In principal, the client should be aware of all exception reported to the userstate.*/
 
 /**
  * 
