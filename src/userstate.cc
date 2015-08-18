@@ -26,6 +26,18 @@
 
 using namespace std;
 
+/** In principal, the client should be aware of all exception reported to the userstate. */
+
+/**
+ * 
+ * Exceptions: 
+ * 
+ * If we are not able to make the UserState Object mostly because the 
+ * long term key has wrong format, the client need to know that the 
+ * creation of  the user state object had failed. However, as the
+ * constructor is not able to return value, our only option is
+ * to throw an exception.
+ */
 np1secUserState::np1secUserState(std::string name, np1secAppOps *ops,
                                  uint8_t* key_pair)
   :     myself(nullptr),
@@ -62,6 +74,13 @@ np1secUserState::~np1secUserState() {
 
 }
 
+/**
+ * Exceptions:
+ * 
+ * If the generation of the long term key fails, mainly due to lack
+ * of randomness, then the client need to be informed that we are not
+ * able to connect to any room in this situation.
+ */
 bool np1secUserState::init() {
   if (long_term_key_pair.is_initiated()) {
     return true;
@@ -79,6 +98,21 @@ bool np1secUserState::init() {
   
 }
 
+/**
+ *
+ *  Exceptions:
+ *
+ *  This function initiating the join process, even if it ends successful *  ly it doesn't mean that we have joined the room as join is a multi
+ *  round process.
+ *
+ *  The intiation can fails only if our crypto values have problem. 
+ *  or the network conditino makes sending the initiation message 
+ *  impossible. the inititation message only contains the long term
+ *  and ephemeral public keys.
+ *
+ *  Another condition which can make the failure of join inititation
+ *  is that if we are already has joined a session in this room.  
+ */
 bool np1secUserState::join_room(std::string room_name,
                                 std::vector<std::string> participants_in_the_room) {
   //we can't join without id key
@@ -134,6 +168,9 @@ void np1secUserState::increment_room_size(std::string room_name)
  * function.
  * 
  * @param room_name the chat room name to leave from
+ *
+ * Exception: If the client asks us to leave a room that we haven't 
+ * join, then we have to inform the client about its mistake.
  */
 void np1secUserState::leave_room(std::string room_name) {
   //if there is no room, it was a mistake to give us the message
@@ -153,8 +190,9 @@ void np1secUserState::leave_room(std::string room_name) {
  * @param room_name the chat room name
  * @param leaving_user_id is the id that the leaving user is using in the room.
  *
+ * Exception:
  * throw an exception if the user isn't in the room. no exception doesn't
- *         mean that the successful leave false if process fails
+ *         mean that the successful 
  */
 void np1secUserState::shrink(std::string room_name, std::string leaving_user_id)
 {
@@ -179,7 +217,15 @@ void np1secUserState::shrink(std::string room_name, std::string leaving_user_id)
  *  The most important thing that user state message handler
  *  does is to 
  *      - Process the unencrypted part of the message.
- *      - decide which room should handle the message using the room name
+ *      - decide which room should handle the message using the room 
+ *        name
+ *  
+ *  Exception:
+ *  Failure of digesting a message, due to be encrypted by an 
+ *  unknown key or a manipulated message need to be reported
+ *  to the client, to warn the user about it, but the client
+ *  can't do much more about it.
+ *  
  */
 void np1secUserState::receive_handler(std::string room_name,
                                       std::string sender_nickname,
@@ -205,6 +251,14 @@ void np1secUserState::receive_handler(std::string room_name,
 
 }
 
+/**
+ * Exception:
+ * 
+ * send can fails due to the fact that the client tries to send a 
+ * a message to a room that the user haven't joined (join processes)
+ * has not ended successfully.
+ *
+ */
 void np1secUserState::send_handler(std::string room_name,
                                    std::string plain_message) {
   logger.assert_or_die(chatrooms.find(room_name) != chatrooms.end(), "np1sec can not send messages to room " + room_name + " to which has not been informed to join");
