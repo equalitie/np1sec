@@ -1,4 +1,4 @@
-v/**
+/**
  * Multiparty Off-the-Record Messaging library
  * Copyright (C) 2014, eQualit.ie
  *
