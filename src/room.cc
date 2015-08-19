@@ -204,7 +204,7 @@ void np1secRoom::receive_handler(np1secMessage received_message)
                 delete message_session->second;
                 session_universe.erase(message_session->first);
               }
-              session_universe.emplace(std::pair<std::string, np1secSession*>(received_message.session_id.get_as_stringbuff(), new_session));
+              session_universe.insert(std::pair<std::string, np1secSession*>(received_message.session_id.get_as_stringbuff(), new_session));
             }
           } catch(std::exception& e) {
             logger.warn(e.what(), __FUNCTION__, user_state->myself->nickname);
@@ -270,11 +270,11 @@ void np1secRoom::receive_handler(np1secMessage received_message)
       }
     } //has sid or not
 
-    logger.info("room state: " + std::to_string(user_in_room_state) + " requested action: " + std::to_string(action_to_take.action_type), __FUNCTION__, user_state->myself->nickname); //just for test to make sure we don't end up here
+    logger.debug("room state: " + std::to_string(user_in_room_state) + " requested action: " + std::to_string(action_to_take.action_type), __FUNCTION__, user_state->myself->nickname); //just for test to make sure we don't end up here
     
     //if the action resulted in new session we need to add it to session universe
     if (action_to_take.action_type == RoomAction::NEW_SESSION                                                                              || action_to_take.action_type == RoomAction::NEW_PRIORITY_SESSION) { //TODO:: we need to delete a dead session probably
-      session_universe.emplace(std::pair<std::string, np1secSession*>(action_to_take.bred_session->my_session_id().get_as_stringbuff(), action_to_take.bred_session));
+      session_universe.insert(std::pair<std::string, np1secSession*>(action_to_take.bred_session->my_session_id().get_as_stringbuff(), action_to_take.bred_session));
     }
 
     if (action_to_take.action_type == RoomAction::NEW_PRIORITY_SESSION || action_to_take.action_type == RoomAction::PRESUME_HEIR) {
@@ -630,7 +630,7 @@ void np1secRoom::shrink(std::string leaving_nick) {
           delete old_shrank_session->second;
           session_universe.erase(old_shrank_session->first);
         }
-        session_universe.emplace(std::pair<std::string, np1secSession*>(action_to_take.bred_session->my_session_id().get_as_stringbuff(), action_to_take.bred_session));
+        session_universe.insert(std::pair<std::string, np1secSession*>(action_to_take.bred_session->my_session_id().get_as_stringbuff(), action_to_take.bred_session));
         stale_in_limbo_sessions_presume_heir(action_to_take.bred_session->my_session_id());
       } else {
         //Already FAREWELLED: TODO you should check the zombie list actually

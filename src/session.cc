@@ -1148,6 +1148,7 @@ void np1secSession::perform_received_consisteny_tasks(np1secMessage received_mes
 {
   //defuse the "I didn't get my own message timer 
   if (received_message.sender_nick == myself.nickname) {
+    logger.debug("own ctr of received message: " + std::to_string(own_message_counter), __FUNCTION__, myself.nickname);
     if (sent_transcript_chain[received_message.sender_message_id].consistency_timer) {//the timer might legitemately has been killed due to suicide
       us->ops->axe_timer(
                          sent_transcript_chain[received_message.sender_message_id].consistency_timer,
@@ -1242,7 +1243,7 @@ void np1secSession::send(std::string message, np1secMessage::np1secMessageSubTyp
   }
 
   np1secMessage outbound(&cryptic);
-  logger.info("own ctr before send: " + std::to_string(own_message_counter), __FUNCTION__, myself.nickname);
+  logger.debug("own ctr before send: " + std::to_string(own_message_counter), __FUNCTION__, myself.nickname);
 
   outbound.create_in_session_msg(session_id, 
                                  my_index,
