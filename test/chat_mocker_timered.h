@@ -19,10 +19,10 @@ extern "C" {
 #include "src/logger.h"
 #include "test/chat_mocker.h"
 using namespace std;
+using namespace np1sec;
 
 #ifndef TEST_CHAT_MOCKER_TIMERED_H_
 #define TEST_CHAT_MOCKER_TIMERED_H_
-
 extern Logger mock_logger;
 
 /**
