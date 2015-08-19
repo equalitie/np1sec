@@ -368,6 +368,9 @@ void Cryptic::sign(unsigned char **sigp, size_t *siglenp,
   const uint32_t magic_number = 64, half_magic_number = 32;
 
   *sigp = new unsigned char[magic_number];
+  if (sigp == nullptr) {
+    logger.abort("Failed to allocate memory.");
+  }
 
   err = gcry_sexp_build(&plain_sexp, NULL,
                           "(data"
