@@ -30,7 +30,7 @@
 #include "src/exceptions.h"
 #include "src/logger.h"
 
-using namespace std;
+namespace np1sec {
 
 gcry_error_t Cryptic::hash(const void *buffer, size_t buffer_len, HashBlock hb,
                   bool secure) {
@@ -275,7 +275,7 @@ void Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey p
 
   gcry_sexp_t triple_dh_sexp[3] = {};
   uint8_t* feed_to_hash_buffer = NULL;
-  string token_concat;
+  std::string token_concat;
 
   gcry_sexp_t my_long_term_secret_scaler = gcry_sexp_nth(gcry_sexp_find_token(my_long_term_key, "a", 0),1);
   gcry_sexp_t my_ephemeral_secret_scaler = gcry_sexp_nth(gcry_sexp_find_token(ephemeral_key, "a", 0),1);
@@ -367,7 +367,10 @@ void Cryptic::sign(unsigned char **sigp, size_t *siglenp,
   size_t nr, ns;
   const uint32_t magic_number = 64, half_magic_number = 32;
 
-  *sigp = (unsigned char*) xmalloc(magic_number);
+  *sigp = new unsigned char[magic_number];
+  if (sigp == nullptr) {
+    logger.abort("Failed to allocate memory.");
+  }
 
   err = gcry_sexp_build(&plain_sexp, NULL,
                           "(data"
@@ -437,7 +440,7 @@ void Cryptic::sign(unsigned char **sigp, size_t *siglenp,
 
  err:
   if (*sigp) delete[] *sigp;
-  logger.error("Failure: " + (string)gcry_strsource(err) + ": " + (string)gcry_strerror(err));
+  logger.error("Failure: " + (std::string)gcry_strsource(err) + ": " + (std::string)gcry_strerror(err));
   throw np1secCryptoException();
 
 }
@@ -481,7 +484,7 @@ bool Cryptic::verify(std::string plain_text,
     
   }else if ( err == GPG_ERR_BAD_SIGNATURE ) {
     logger.warn("failed to verify signed blobed", __FUNCTION__);
-    logger.warn("Failure: " + (string)gcry_strsource(err) + "/" + (string)gcry_strerror(err), __FUNCTION__);
+    logger.warn("Failure: " + (std::string)gcry_strsource(err) + "/" + (std::string)gcry_strerror(err), __FUNCTION__);
     return false;
   }  else {
     logger.error("verification computation failed", __FUNCTION__);
@@ -490,7 +493,7 @@ bool Cryptic::verify(std::string plain_text,
     
  err:
   logger.error(plain_text, __FUNCTION__);
-  logger.error("Failure: " + (string)gcry_strsource(err) + ": " + (string)gcry_strerror(err), __FUNCTION__);
+  logger.error("Failure: " + (std::string)gcry_strsource(err) + ": " + (std::string)gcry_strerror(err), __FUNCTION__);
   throw np1secCryptoException();
   
 }
@@ -516,7 +519,7 @@ gcry_cipher_hd_t Cryptic::OpenCipher() {
 
  err:
   if (hd) gcry_cipher_close(hd);
-  logger.error("Failure: " + (string)gcry_strsource(err) + ": " + (string)gcry_strerror(err), __FUNCTION__);
+  logger.error("Failure: " + (std::string)gcry_strsource(err) + ": " + (std::string)gcry_strerror(err), __FUNCTION__);
   throw np1secCryptoException();
   
 }
@@ -550,7 +553,7 @@ std::string Cryptic::Encrypt(std::string plain_text) {
 
  err:
   if (hd) gcry_cipher_close(hd);
-  logger.error("Failure: " + (string)gcry_strsource(err) + ": " + (string)gcry_strerror(err));
+  logger.error("Failure: " + (std::string)gcry_strsource(err) + ": " + (std::string)gcry_strerror(err));
   throw np1secCryptoException();
  
 }
@@ -582,7 +585,7 @@ std::string Cryptic::Decrypt(std::string encrypted_text) {
 
  err:
   if (hd) gcry_cipher_close(hd);
-  logger.error("Failure: " + (string)gcry_strsource(err) + ": " + (string)gcry_strerror(err));
+  logger.error("Failure: " + (std::string)gcry_strsource(err) + ": " + (std::string)gcry_strerror(err));
   throw np1secCryptoException();
 
 }
@@ -594,4 +597,7 @@ Cryptic::~Cryptic()
     gcry_sexp_release(ephemeral_prv_key);
     
 }
+
+} // namespace np1sec
+
 #endif  // SRC_CRYPT_CC_

@@ -62,6 +62,8 @@ VERSION HISTORY:
 /* libotr headers */
 #include "base64.h"
 
+namespace np1sec {
+
 /*
 ** Translation Table as described in RFC1113
 */
@@ -236,3 +238,5 @@ int otrl_base64_otr_decode(const char *msg, unsigned char **bufp,
 
     return 0;
 }
+
+} // namespace np1sec

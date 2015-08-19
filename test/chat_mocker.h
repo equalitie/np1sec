@@ -21,7 +21,7 @@ using namespace std;
 #ifndef TEST_CHAT_MOCKER_H_
 #define TEST_CHAT_MOCKER_H_
 
-extern Logger mock_logger;
+extern np1sec::Logger mock_logger;
 
 /**
    This class store the information about different participants

@@ -27,6 +27,8 @@
 #ifndef SRC_LOGGER_H_
 #define SRC_LOGGER_H_
 
+namespace np1sec {
+
 // Standard log levels, ascending order of specificity.
 enum log_level_t {
   SILLY,
@@ -78,11 +80,6 @@ public:
 
 };
 
+} // namespace np1sec
+
 #endif  // SRC_LOGGER_H_
-
-
-
-
-
-
-

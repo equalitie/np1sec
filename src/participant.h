@@ -26,6 +26,8 @@
 #include "exceptions.h"
 #include "src/crypt.h"
 
+namespace np1sec {
+
 /**
    Participant id
    
@@ -384,6 +386,8 @@ ParticipantMap operator-(const ParticipantMap& lhs, const ParticipantMap& rhs);
  * of the participant suitable for printing out
  */
 std::string participants_to_string(const ParticipantMap& plist);
+
+} // namespace np1sec
 
 #endif  // SRC_PARTICIPANT_H_
 

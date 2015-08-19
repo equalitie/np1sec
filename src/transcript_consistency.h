@@ -20,6 +20,8 @@
 //this header files contains the structure needed for transcript consistency
 //check it moved out of session.h to make the code easier to read and follow
 
+namespace np1sec {
+
 class np1secUserState;
 class np1secSession;
 
@@ -105,5 +107,7 @@ typedef std::vector<ParticipantConsistencyBlock> ConsistencyBlockVector;
 /*  * all user's consistency before leaving */
 /*  *\/ */
 /* static void cb_leave(void *arg); */
+
+} // namespace np1sec
 
 #endif

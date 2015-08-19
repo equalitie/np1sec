@@ -30,6 +30,8 @@
 #include "src/session.h"
 #include "src/message.h"
 
+namespace np1sec {
+
 //The type that keep the set of all sessions associated with this room
 //It really need to be a pointer, because the sessions are mostly
 //create by other sessions and handed to the room.
@@ -238,5 +240,7 @@ class np1secRoom {
 };    
 
 typedef std::map<std::string, np1secSession*> session_room_map;
+
+} // namespace np1sec
 
 #endif //SRC_ROOM_H_

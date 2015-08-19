@@ -30,8 +30,8 @@ libnp1sec_test_LDADD = \
 	$(LIBEVENT_LIBS)
 
 libnp1sec_test_LDFLAGS = \
-	 $(PTHREAD)
-#     $(top_srcdir)/${GTEST_BASE}/lib/libgtest.la
+	$(PTHREAD)
+	  $(top_builddir)/${GTEST_BASE}/lib/libgtest.la $(PTHREAD)
 
 # Integration tests
 

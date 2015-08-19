@@ -16,8 +16,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <gcrypt.h>
+#include <sstream>
+
 #include "contrib/gtest/include/gtest/gtest.h"
 #include "src/crypt.h"
+
+using namespace np1sec;
 
 const unsigned char SESSION_KEY[] = {
   0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe, 0x2b, 0x73, 0xae, 0xf0,
@@ -41,14 +46,12 @@ TEST_F(CryptTest, test_hash) {
   gcry_error_t err = Cryptic::hash(reinterpret_cast<const void *>(str.c_str()),
                           3, res, false);
   EXPECT_FALSE(err);
-  char *buf = new char[c_hash_length*2+1];
-  char *ind = buf;
-  for (uint i = 0; i < c_hash_length; i++) {
-    snprintf(ind, sizeof(char)*3, "%02x", res[i]);
-    ind += 2;
+  std::stringstream buf;
+  buf << std::hex << std::internal << std::setfill('0');
+  for (size_t i = 0; i < c_hash_length; i++) {
+    buf << std::setw(2) << static_cast<uint>(res[i]);
   }
-  ASSERT_EQ(exp, buf);
-  free(buf);
+  ASSERT_EQ(exp, buf.str());
   delete[] res;
 }
 
@@ -71,7 +74,10 @@ TEST_F(CryptTest, test_sign_verify) {
   for(unsigned int i = 0; i <no_trial; i++) {
     test_text = "This is a string to be encrypted" + std::to_string(i);
     ASSERT_NO_THROW(cryptic.sign(&sigbuf, &siglen, test_text));
-    ASSERT_TRUE(cryptic.verify(test_text, sigbuf, cryptic.get_ephemeral_pub_key()));}
+    ASSERT_TRUE(cryptic.verify(test_text, sigbuf, cryptic.get_ephemeral_pub_key()));
+    delete[] sigbuf;
+    sigbuf = NULL;
+  }
 }
 
 TEST_F(CryptTest, test_teddh_test) {

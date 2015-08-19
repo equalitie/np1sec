@@ -24,7 +24,7 @@
 #include "src/exceptions.h"
 #include "src/userstate.h"
 
-using namespace std;
+namespace np1sec {
 
 /**
  * To be used in std::sort to sort the particpant list
@@ -188,12 +188,12 @@ np1secSession::np1secSession(np1secSessionConceiverCondition conceiver,
 {
   engrave_state_machine_graph();
 
-  logger.info("constructing new session for room " + room_name + " with " + to_string(participants.size()) + " participants", __FUNCTION__, myself.nickname);
+  logger.info("constructing new session for room " + room_name + " with " + std::to_string(participants.size()) + " participants", __FUNCTION__, myself.nickname);
 
   //Joiner is the only one who can't compute session id at creation so we
   //need give them a specail treatement
   if (conceiver == JOINER) {
-    logger.assert_or_die(conceiving_message && conceiving_message->message_type == np1secMessage::PARTICIPANTS_INFO, "wrong message type is provided to the joiner " + myself.nickname + " to establish a session. Message type " + to_string(np1secMessage::PARTICIPANTS_INFO) + " was expected but type " + to_string(conceiving_message->message_type)+ " was provided.", __FUNCTION__, myself.nickname);
+    logger.assert_or_die(conceiving_message && conceiving_message->message_type == np1secMessage::PARTICIPANTS_INFO, "wrong message type is provided to the joiner " + myself.nickname + " to establish a session. Message type " + std::to_string(np1secMessage::PARTICIPANTS_INFO) + " was expected but type " + std::to_string(conceiving_message->message_type)+ " was provided.", __FUNCTION__, myself.nickname);
     my_state = JOIN_REQUESTED;
 
     populate_participants_and_peers(conceiving_message->get_session_view());
@@ -207,7 +207,7 @@ np1secSession::np1secSession(np1secSessionConceiverCondition conceiver,
     case ACCEPTOR:
       {
         if (conceiving_message) {
-          logger.assert_or_die( (conceiving_message->message_type == np1secMessage::JOIN_REQUEST || conceiving_message->message_type == np1secMessage::PARTICIPANTS_INFO), "Acceptor message should be of type " +  logger.message_type_to_text[np1secMessage::JOIN_REQUEST] + " or " + logger.message_type_to_text[np1secMessage::PARTICIPANTS_INFO] + " but message type of " + to_string(conceiving_message->message_type)+ " was provided.", __FUNCTION__, myself.nickname);
+          logger.assert_or_die( (conceiving_message->message_type == np1secMessage::JOIN_REQUEST || conceiving_message->message_type == np1secMessage::PARTICIPANTS_INFO), "Acceptor message should be of type " + logger.message_type_to_text[np1secMessage::JOIN_REQUEST] + " or " + logger.message_type_to_text[np1secMessage::PARTICIPANTS_INFO] + " but message type of " + std::to_string(conceiving_message->message_type)+ " was provided.", __FUNCTION__, myself.nickname);
           //raisons_detre.push_back(RaisonDEtre(RaisonDEtre::JOIN, UnauthenticatedParticipant(conceiving_message->joiner_info).participant_id));
         }                       
         break;
@@ -227,7 +227,7 @@ np1secSession::np1secSession(np1secSessionConceiverCondition conceiver,
       break;
       
     default:
-      logger.abort("wrong conceiver type: " + to_string(conceiver), __FUNCTION__, myself.nickname);
+      logger.abort("wrong conceiver type: " + std::to_string(conceiver), __FUNCTION__, myself.nickname);
 
     } //switch
 
@@ -250,7 +250,7 @@ np1secSession::np1secSession(np1secSessionConceiverCondition conceiver,
     arm_rejoin_timer();
   }
   else if (conceiver == ACCEPTOR) {
-    string joiner_id;
+    std::string joiner_id;
     if (conceiving_message && conceiving_message->message_type == np1secMessage::JOIN_REQUEST) {
       joiner_id =  UnauthenticatedParticipant(conceiving_message->joiner_info).participant_id.nickname;
     } else if (!delta_plist().empty()) {
@@ -303,7 +303,7 @@ void np1secSession::setup_session_view(np1secMessage session_view_message) {
 
 void np1secSession::compute_session_confirmation()
 {
-  string to_be_hashed = Cryptic::hash_to_string_buff(session_key);
+  std::string to_be_hashed = Cryptic::hash_to_string_buff(session_key);
   to_be_hashed += myself.nickname;
 
   Cryptic::hash(to_be_hashed, session_confirmation);
@@ -312,7 +312,7 @@ void np1secSession::compute_session_confirmation()
 
 void np1secSession::account_for_session_and_key_consistency()
 {
-  string to_be_hashed = Cryptic::hash_to_string_buff(session_key);
+  std::string to_be_hashed = Cryptic::hash_to_string_buff(session_key);
   to_be_hashed += session_id.get_as_stringbuff();
 
   HashBlock key_sid_hash;
@@ -331,7 +331,7 @@ bool np1secSession::validate_session_confirmation(np1secMessage confirmation_mes
   //set the future ephemeral key for the user
   memcpy(participants[confirmation_message.sender_nick].future_raw_ephemeral_key, confirmation_message.next_session_ephemeral_key.data(), c_ephemeral_key_length);
 
-  string to_be_hashed = Cryptic::hash_to_string_buff(session_key);
+  std::string to_be_hashed = Cryptic::hash_to_string_buff(session_key);
   to_be_hashed += confirmation_message.sender_nick;
 
   Cryptic::hash(to_be_hashed, expected_hash);
@@ -420,7 +420,7 @@ bool np1secSession::everybody_authenticated_and_contributed()
 
 bool np1secSession::everybody_confirmed()
 {
-  for(vector<bool>::iterator it = confirmed_peers.begin(); it != confirmed_peers.end(); it++)
+  for(std::vector<bool>::iterator it = confirmed_peers.begin(); it != confirmed_peers.end(); it++)
     if (!(*it))
       return false;
 
@@ -430,7 +430,7 @@ bool np1secSession::everybody_confirmed()
 
 bool np1secSession::nobody_confirmed()
 {
-  for(vector<bool>::iterator it = confirmed_peers.begin(); it != confirmed_peers.end(); it++)
+  for(std::vector<bool>::iterator it = confirmed_peers.begin(); it != confirmed_peers.end(); it++)
     if ((*it))
       return false;
 
@@ -460,7 +460,7 @@ void np1secSession::joiner_send_auth_and_share() {
 
   outbound.create_joiner_auth_msg(session_id,
                                 auth_batch,
-                                string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)));
+                                std::string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)));
   outbound.send(room_name, us);
 
 }
@@ -479,7 +479,7 @@ void np1secSession::send_new_share_message() {
   np1secMessage outboundmessage(&cryptic);
 
   outboundmessage.create_group_share_msg(session_id,
-                                         string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)));
+                                         std::string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)));
 
   outboundmessage.send(room_name, us);
 
@@ -492,7 +492,7 @@ void np1secSession::send_new_share_message() {
     and others
 i    sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), kc, z_joiner
 */
-void np1secSession::send_view_auth_and_share(string joiner_id) {
+void np1secSession::send_view_auth_and_share(std::string joiner_id) {
   logger.assert_or_die(session_id.get(), "can not share view  when session id is missing");
   group_enc(); //compute my share for group key
 
@@ -512,8 +512,8 @@ void np1secSession::send_view_auth_and_share(string joiner_id) {
   try {
     outboundmessage.create_participant_info_msg(session_id,
                                                 session_view_list,
-                                                string(reinterpret_cast<char*>(cur_auth_token), sizeof(HashBlock)),
-                                                string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)));
+                                                std::string(reinterpret_cast<char*>(cur_auth_token), sizeof(HashBlock)),
+                                                std::string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)));
 
   } catch(np1secCryptoException()) {
     logger.error("unable to create participant info message due to cryptographic failure");
@@ -677,7 +677,7 @@ np1secSession::StateAndAction np1secSession::init_a_session_with_new_user(np1sec
 
   RoomAction new_session_action;
   
-  logger.assert_or_die(received_message.message_type == np1secMessage::JOIN_REQUEST, "wrong message type is provided to the accetpor " + myself.nickname + " to establish a session. Message type " + to_string(np1secMessage::JOIN_REQUEST) + " was expected but type " + to_string(received_message.message_type) + " was provided.");
+  logger.assert_or_die(received_message.message_type == np1secMessage::JOIN_REQUEST, "wrong message type is provided to the accetpor " + myself.nickname + " to establish a session. Message type " + std::to_string(np1secMessage::JOIN_REQUEST) + " was expected but type " + std::to_string(received_message.message_type) + " was provided.");
 
   UnauthenticatedParticipant  joiner(received_message.joiner_info);
   //each id can only join once but it might be zombied out so we need
@@ -688,7 +688,7 @@ np1secSession::StateAndAction np1secSession::init_a_session_with_new_user(np1sec
   ParticipantMap live_participants = future_participants();
   if (live_participants.find(joiner.participant_id.nickname) == live_participants.end()) {
     logger.info("creating a session with new participant " + joiner.participant_id.nickname);
-    live_participants.insert(pair<string,Participant> (joiner.participant_id.nickname, Participant(joiner)));
+    live_participants.insert(std::pair<std::string,Participant> (joiner.participant_id.nickname, Participant(joiner)));
 
     np1secSession* new_child_session = new np1secSession(ACCEPTOR, us, room_name, &future_cryptic, live_participants, future_participants(), &received_message);
 
@@ -1148,14 +1148,13 @@ void np1secSession::perform_received_consisteny_tasks(np1secMessage received_mes
 {
   //defuse the "I didn't get my own message timer 
   if (received_message.sender_nick == myself.nickname) {
-    logger.debug("own ctr of received message: "+ to_string(own_message_counter), __FUNCTION__, myself.nickname);
-    logger.assert_or_die(sent_transcript_chain.find(received_message.sender_message_id) != sent_transcript_chain.end(), "received a message from myself that never send with valid signature. stolen key?", __FUNCTION__, myself.nickname); //if the signature isn't failed and we don't have record of sending this then something is terribly wrong; only non-bug explanation is that somebody might have stolen our key and faking messages
+    logger.debug("own ctr of received message: " + std::to_string(own_message_counter), __FUNCTION__, myself.nickname);
     if (sent_transcript_chain[received_message.sender_message_id].consistency_timer) {//the timer might legitemately has been killed due to suicide
       us->ops->axe_timer(
                          sent_transcript_chain[received_message.sender_message_id].consistency_timer,
                          us->ops->bare_sender_data);
-      sent_transcript_chain[received_message.sender_message_id].consistency_timer = nullptr;}
-
+      sent_transcript_chain[received_message.sender_message_id].consistency_timer = nullptr;
+    }
   }
 
   add_message_to_transcript(received_message.final_whole_message, received_message.message_id);
@@ -1175,7 +1174,7 @@ void np1secSession::check_parent_message_consistency(np1secMessage received_mess
 
   if (received_transcript_chain[received_message.parent_id][my_index].transcript_hash != received_transcript_chain[received_message.parent_id][participants[received_message.sender_nick].index].transcript_hash)
     {
-      std::string consistency_failure_message = received_message.sender_nick  + " transcript doesn't match ours as of " + to_string(received_message.parent_id);
+      std::string consistency_failure_message = received_message.sender_nick  + " transcript doesn't match ours as of " + std::to_string(received_message.parent_id);
       us->ops->display_message(room_name, "np1sec directive", consistency_failure_message, us);
       logger.error(consistency_failure_message, __FUNCTION__, myself.nickname);
     }
@@ -1229,7 +1228,7 @@ void np1secSession::add_message_to_transcript(std::string message,
 
   if (received_transcript_chain.find(message_id) == received_transcript_chain.end()) {
     ConsistencyBlockVector chain_block(participants.size());
-    received_transcript_chain.insert(pair<MessageId, ConsistencyBlockVector>(message_id, chain_block));
+    received_transcript_chain.insert(std::pair<MessageId, ConsistencyBlockVector>(message_id, chain_block));
   }
   
   (received_transcript_chain[message_id])[my_index].transcript_hash = Cryptic::hash_to_string_buff(hb);
@@ -1244,7 +1243,7 @@ void np1secSession::send(std::string message, np1secMessage::np1secMessageSubTyp
   }
 
   np1secMessage outbound(&cryptic);
-  logger.debug("own ctr before send: " + to_string(own_message_counter), __FUNCTION__, myself.nickname);
+  logger.debug("own ctr before send: " + std::to_string(own_message_counter), __FUNCTION__, myself.nickname);
 
   outbound.create_in_session_msg(session_id, 
                                  my_index,
@@ -1262,6 +1261,8 @@ void np1secSession::send(std::string message, np1secMessage::np1secMessageSubTyp
   //if everything went well add the counter
   own_message_counter++;
   
+  logger.info("own ctr after send: " + std::to_string(own_message_counter), __FUNCTION__, myself.nickname);
+
   update_send_transcript_chain(own_message_counter, outbound.compute_hash());
   // As we're sending a new message we are no longer required to ack
   // any received messages till we receive a new message
@@ -1378,7 +1379,6 @@ void np1secSession::disarm_all_timers() {
     }
 
   clear_all_timers();
-
 }
 
 /**
@@ -1417,3 +1417,4 @@ np1secSession::~np1secSession() {
   //mean that the session as concept is destructed
 }
 
+} // namespace np1sec

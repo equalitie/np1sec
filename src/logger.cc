@@ -27,6 +27,8 @@
 #include "src/session.h"
 #include "src/message.h"
 
+namespace np1sec {
+
 Logger logger(DEBUG);
 
 void Logger::initiate_textual_conversions() {
@@ -185,3 +187,5 @@ void Logger::assert_or_die(bool expr, std::string failure_message, std::string f
     abort(failure_message, function_name, user_nick);
   
 }
+
+} // namespace np1sec

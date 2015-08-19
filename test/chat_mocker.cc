@@ -25,5 +25,7 @@
 #include "src/common.h"
 #include "test/chat_mocker.h"
 
+using namespace np1sec;
+
 Logger mock_logger(DEBUG);
 

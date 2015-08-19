@@ -182,3 +182,6 @@ Makefile.in
 
 #test residues
 testlog.txt
+
+# VIM swap files
+.*.swp

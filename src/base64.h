@@ -21,6 +21,8 @@
 #ifndef __B64_H__
 #define __B64_H__
 
+namespace np1sec {
+
 #include <stdlib.h>
 
 /* Base64 encodes blocks of this many bytes: */
@@ -68,5 +70,7 @@ char *otrl_base64_otr_encode(const unsigned char *buf, size_t buflen);
  */
 int otrl_base64_otr_decode(const char *msg, unsigned char **bufp,
 	size_t *lenp);
+
+} // namespace np1sec
 
 #endif

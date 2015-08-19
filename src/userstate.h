@@ -26,11 +26,12 @@
 #include "src/crypt.h"
 #include "src/interface.h"
 
-class np1secUserState;
-
 #include "src/room.h"
 #include "src/session.h"
 
+namespace np1sec {
+
+class np1secUserState;
 typedef std::map<std::string, np1secRoom> RoomMap;
 
 /**
@@ -170,5 +171,7 @@ class np1secUserState {
 
   ~np1secUserState();
 };
+
+} // namespace np1sec
 
 #endif  // SRC_USERSTATE_H_

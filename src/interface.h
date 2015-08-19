@@ -29,6 +29,9 @@
 
 #include "src/crypt.h"
 
+
+namespace np1sec {
+
 typedef void (*timeout_callback)(void*);
 
 /**
@@ -136,5 +139,7 @@ struct np1secAppOps {
   //bool (*am_i_alone)(std::string room_name, void* aux_data);
   
 };
+
+} // namespace np1sec
 
 #endif  // SRC_INTERFACE_H_

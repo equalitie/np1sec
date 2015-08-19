@@ -23,6 +23,8 @@
 #include "src/participant.h"
 #include "src/crypt.h"
 
+namespace np1sec {
+
 class SessionId
 {
  protected:
@@ -94,5 +96,7 @@ class SessionId
     return (is_set == rhs.is_set && !Cryptic::compare_hash(session_id_raw, rhs.session_id_raw));
   }
 };
+
+} // namespace np1sec
 
 #endif

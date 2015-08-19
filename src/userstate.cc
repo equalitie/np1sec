@@ -1,4 +1,4 @@
-v/**
+/**
  * Multiparty Off-the-Record Messaging library
  * Copyright (C) 2014, eQualit.ie
  *
@@ -24,7 +24,7 @@ v/**
 #include "src/interface.h"
 #include "src/userstate.h"
 
-using namespace std;
+namespace np1sec {
 
 /** The client only calls functions in np1secUserState. As such, the client need to handle exception (or false return values) that is resulted from these calls. In most situation, handling simply means to inform the user about the failure.
 
@@ -273,5 +273,7 @@ void np1secUserState::send_handler(std::string room_name,
     logger.warn("unable to send  message to " + room_name, __FUNCTION__, myself->nickname );
   }
 }
+
+} // namespace np1sec
 
 #endif  // SRC_USERSTATE_CC_

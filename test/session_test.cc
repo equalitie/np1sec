@@ -31,6 +31,7 @@
 #include "test/chat_mocker_np1sec_plugin.h"
 
 using namespace std;
+using namespace np1sec;
 
 const std::string callback_log =  "callbackoutput.txt";
 
