@@ -1300,7 +1300,7 @@ np1secSession::StateAndAction np1secSession::receive(np1secMessage encrypted_mes
         }
       }
       //if it is user message, display content
-      else if ((received_message.message_sub_type == np1secMessage::USER_MESSAGE)) {
+      else if (received_message.message_sub_type == np1secMessage::USER_MESSAGE) {
         us->ops->display_message(room_name, participants[peers[received_message.sender_index]].id.nickname, received_message.user_message, us->ops->bare_sender_data);
 
         start_acking_timer(); //if we don't send any message for a while we'll
