@@ -28,57 +28,59 @@
 
 using namespace np1sec;
 
-class MessageTest : public ::testing::Test{
-  
-protected: //gtest needs the elements to be protocted
-  //First we need to run a chatserver but this is always the case so I'm making
-  //class to setup chat server
-  ChatMocker mock_server;
-  struct np1secAppOps mockops;
+class MessageTest : public ::testing::Test
+{
 
-  virtual void SetUp() {
-    mockops.send_bare = send_bare;
-    mockops.join = new_session_announce;
-    mockops.leave = new_session_announce;
-  };
+  protected: // gtest needs the elements to be protocted
+    // First we need to run a chatserver but this is always the case so I'm making
+    // class to setup chat server
+    ChatMocker mock_server;
+    struct np1secAppOps mockops;
+
+    virtual void SetUp()
+    {
+        mockops.send_bare = send_bare;
+        mockops.join = new_session_announce;
+        mockops.leave = new_session_announce;
+    };
 };
 
-TEST_F(MessageTest, test_compute_message_id) {
-}
+TEST_F(MessageTest, test_compute_message_id) {}
 
-TEST_F(MessageTest, test_user_message){
+TEST_F(MessageTest, test_user_message)
+{
 
-  std::string room_name = "test_room_name";
-  std::string sender_id;
-  std::string user_message = "This is a test message";
-  std::string meta_load = "load";
-  HashBlock sid, transcript_chain_hash;
-  SessionId session_id;
-  Cryptic cryptic;
-  np1secAppOps ops;
-  HashBlock hb;
+    std::string room_name = "test_room_name";
+    std::string sender_id;
+    std::string user_message = "This is a test message";
+    std::string meta_load = "load";
+    HashBlock sid, transcript_chain_hash;
+    SessionId session_id;
+    Cryptic cryptic;
+    np1secAppOps ops;
+    HashBlock hb;
 
-  Cryptic::hash("mydummyhash", hb);
-  std::string base  = Cryptic::hash_to_string_buff(hb);
+    Cryptic::hash("mydummyhash", hb);
+    std::string base = Cryptic::hash_to_string_buff(hb);
 
-  cryptic.init();
+    cryptic.init();
 
-  memcpy(sid, base.c_str(), sizeof(HashBlock) );
-  memcpy(transcript_chain_hash, base.c_str(), sizeof(HashBlock) );
-  session_id.set(sid);
+    memcpy(sid, base.c_str(), sizeof(HashBlock));
+    memcpy(transcript_chain_hash, base.c_str(), sizeof(HashBlock));
+    session_id.set(sid);
 
-  np1secMessage outbound(&cryptic);
+    np1secMessage outbound(&cryptic);
 
-  // outbound.create_user_msg(session_id,
-  //                          user_state->myself->nickname,
-  //                          user_message,
-  //                          np1secMessage::USER_MESSAGE,
-  //                          transcript_chain_hash,
-  //                          np1secLoadFlag::NO_LOAD,
-  //                          meta_load,
-  //                          pstates);
+    // outbound.create_user_msg(session_id,
+    //                          user_state->myself->nickname,
+    //                          user_message,
+    //                          np1secMessage::USER_MESSAGE,
+    //                          transcript_chain_hash,
+    //                          np1secLoadFlag::NO_LOAD,
+    //                          meta_load,
+    //                          pstates);
 
-  // ASSERT_EQ(true, false);
+    // ASSERT_EQ(true, false);
 }
 /*
 TEST_F(MessageTest, test_join_auth){
@@ -87,26 +89,28 @@ TEST_F(MessageTest, test_join_auth){
   UnauthenticatedParticipantList session_view_list;
   HashBlock sid;
   SessionId session_id;
-  HashBlock cur_auth_token; 
+  HashBlock cur_auth_token;
   np1secKeyShare cur_keyshare;
 
   memcpy(sid, base.c_str(), sizeof(HashBlock) );
   memcpy(cur_auth_token, base.c_str(), sizeof(HashBlock) );
   memcpy(cur_keyshare, base.c_str(), sizeof(HashBlock) );
   session_id.set(sid);
- 
+
   np1secAppOps joiner_mockops = mockops;
-  std::string joiner = "joiner";                                                         
-  std::pair<ChatMocker*, std::string> mock_aux_joiner_data(&mock_server,joiner);         
-  joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);      
-  np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);     
-  //They can use the same mock up as they are using the same mock server            
+  std::string joiner = "joiner";
+  std::pair<ChatMocker*, std::string> mock_aux_joiner_data(&mock_server,joiner);
+  joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
+  np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);
+  //They can use the same mock up as they are using the same mock server
   joiner_state->init();
 
   Cryptic np1sec_ephemeral_crypto;
   np1sec_ephemeral_crypto.init();
 
-  UnauthenticatedParticipant test_participant(*(joiner_state->myself),Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()), true); 
+  UnauthenticatedParticipant
+test_participant(*(joiner_state->myself),Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()),
+true);
 
   session_view_list.push_back(test_participant);
 
@@ -135,19 +139,21 @@ TEST_F(MessageTest, test_participant_info){
   memcpy(sid, base.c_str(), sizeof(HashBlock) );
   memcpy(cur_keyshare, base.c_str(), sizeof(HashBlock) );
   session_id.set(sid);
- 
+
   np1secAppOps joiner_mockops = mockops;
-  std::string joiner = "joiner";                                                         
-  std::pair<ChatMocker*, std::string> mock_aux_joiner_data(&mock_server,joiner);         
-  joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);      
-  np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);     
-  //They can use the same mock up as they are using the same mock server            
+  std::string joiner = "joiner";
+  std::pair<ChatMocker*, std::string> mock_aux_joiner_data(&mock_server,joiner);
+  joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
+  np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);
+  //They can use the same mock up as they are using the same mock server
   joiner_state->init();
 
   Cryptic np1sec_ephemeral_crypto;
   np1sec_ephemeral_crypto.init();
 
-  UnauthenticatedParticipant test_participant(*(joiner_state->myself),Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()), true); 
+  UnauthenticatedParticipant
+test_participant(*(joiner_state->myself),Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()),
+true);
 
   session_view_list.push_back(test_participant);
 
@@ -171,7 +177,7 @@ TEST_F(MessageTest, test_session_confirmation){
   UnauthenticatedParticipantList session_view_list;
   HashBlock sid;
   SessionId session_id;
-  HashBlock cur_auth_token; 
+  HashBlock cur_auth_token;
   np1secKeyShare cur_keyshare;
 
 
@@ -179,19 +185,21 @@ TEST_F(MessageTest, test_session_confirmation){
   memcpy(cur_auth_token, base.c_str(), sizeof(HashBlock) );
   memcpy(cur_keyshare, base.c_str(), sizeof(HashBlock) );
   session_id.set(sid);
- 
+
   np1secAppOps joiner_mockops = mockops;
-  std::string joiner = "joiner";                                                         
-  std::pair<ChatMocker*, std::string> mock_aux_joiner_data(&mock_server,joiner);         
-  joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);      
-  np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);     
-  //They can use the same mock up as they are using the same mock server            
+  std::string joiner = "joiner";
+  std::pair<ChatMocker*, std::string> mock_aux_joiner_data(&mock_server,joiner);
+  joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
+  np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);
+  //They can use the same mock up as they are using the same mock server
   joiner_state->init();
 
   Cryptic np1sec_ephemeral_crypto;
   np1sec_ephemeral_crypto.init();
 
-  UnauthenticatedParticipant test_participant(*(joiner_state->myself),Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()), true); 
+  UnauthenticatedParticipant
+test_participant(*(joiner_state->myself),Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()),
+true);
 
   session_view_list.push_back(test_participant);
 
@@ -212,29 +220,31 @@ TEST_F(MessageTest, test_session_confirmation){
 TEST_F(MessageTest, test_join_request) {
 
   std::string room_name = "test_room_name";
-  
+
   np1secAppOps joiner_mockops = mockops;
-  std::string joiner = "joiner";                                                         
-  std::pair<ChatMocker*, std::string> mock_aux_joiner_data(&mock_server,joiner);         
-  joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);      
-  np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);     
-  //They can use the same mock up as they are using the same mock server            
+  std::string joiner = "joiner";
+  std::pair<ChatMocker*, std::string> mock_aux_joiner_data(&mock_server,joiner);
+  joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
+  np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);
+  //They can use the same mock up as they are using the same mock server
   joiner_state->init();
 
   Cryptic np1sec_ephemeral_crypto;
   np1sec_ephemeral_crypto.init();
 
-  UnauthenticatedParticipant test_participant(*(joiner_state->myself),Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()), true); 
+  UnauthenticatedParticipant
+test_participant(*(joiner_state->myself),Cryptic::public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()),
+true);
 
 
   np1secMessage join_message
   join_message.create_join_request_msg(joiner_state);
-  
 
-  np1secMessage received_join(join_message.sys_message, 
+
+  np1secMessage received_join(join_message.sys_message,
                               nullptr,
                               joiner_state,
-                              room_name);  
+                              room_name);
 
 
   ASSERT_EQ(join_message.message_type, received_join.message_type);

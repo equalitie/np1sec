@@ -18,7 +18,7 @@
 
 /**
    This is a mock/simulator of a multi party chat protocol runing on the
-   same machine for the purpose of testing np1sec 
+   same machine for the purpose of testing np1sec
  */
 
 #include "src/userstate.h"
@@ -28,4 +28,3 @@
 using namespace np1sec;
 
 Logger mock_logger(DEBUG);
-

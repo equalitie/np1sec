@@ -17,60 +17,52 @@
  */
 #ifndef SRC_TRANSCRIPT_CONSISTENCY_H_
 #define SRC_TRANSCRIPT_CONSISTENCY_H_
-//this header files contains the structure needed for transcript consistency
-//check it moved out of session.h to make the code easier to read and follow
+// this header files contains the structure needed for transcript consistency
+// check it moved out of session.h to make the code easier to read and follow
 
-namespace np1sec {
+namespace np1sec
+{
 
 class np1secUserState;
 class np1secSession;
 
-class MessageDigest {
- public:
-  HashBlock digest;
-  uint32_t message_id;
+class MessageDigest
+{
+  public:
+    HashBlock digest;
+    uint32_t message_id;
 
-  void update(std::string new_message);
+    void update(std::string new_message);
 
-  /**
-   * Compute a unique globally ordered id from the time stamped message,
-   * ultimately this function should be overridable by the client.
-   */
-  uint32_t compute_message_id(std::string cur_message);
-  
+    /**
+     * Compute a unique globally ordered id from the time stamped message,
+     * ultimately this function should be overridable by the client.
+     */
+    uint32_t compute_message_id(std::string cur_message);
 };
 
 /**
  * Structure for ops data for waiting timer for receiving ack
  * from other participants
  */
-struct AckTimerOps
-{
-  np1secSession* session;
-  Participant* participant;
-  MessageId message_id;
+struct AckTimerOps {
+    np1secSession* session;
+    Participant* participant;
+    MessageId message_id;
 
-    AckTimerOps()
-    :session(nullptr),
-    participant(nullptr)
-{}; //This is to make [] of map
-  //working, but soon we'll move to another type
-    
-  AckTimerOps(np1secSession* session,
-              Participant* participant,
-              uint32_t message_parent_id)
-  :session(session),
-    participant(participant),
-    message_id(message_parent_id)
-  {}
-  
+    AckTimerOps() : session(nullptr), participant(nullptr){}; // This is to make [] of map
+    // working, but soon we'll move to another type
+
+    AckTimerOps(np1secSession* session, Participant* participant, uint32_t message_parent_id)
+        : session(session), participant(participant), message_id(message_parent_id)
+    {
+    }
 };
 
 struct ParticipantConsistencyBlock {
-  HashStdBlock transcript_hash;
-  void* consistency_timer;
-  AckTimerOps ack_timer_ops;
-
+    HashStdBlock transcript_hash;
+    void* consistency_timer;
+    AckTimerOps ack_timer_ops;
 };
 
 typedef std::vector<ParticipantConsistencyBlock> ConsistencyBlockVector;

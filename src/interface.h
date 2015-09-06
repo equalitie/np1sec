@@ -16,7 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 /**
- * This file should be included by the client to use develop the interface 
+ * This file should be included by the client to use develop the interface
  * between np1sec and the client.
  *
  * See test/chat_mocker_np1sec_plugin.h/.cc  example
@@ -29,8 +29,8 @@
 
 #include "src/crypt.h"
 
-
-namespace np1sec {
+namespace np1sec
+{
 
 typedef void (*timeout_callback)(void*);
 
@@ -38,108 +38,95 @@ typedef void (*timeout_callback)(void*);
  * Calls from np1sec to the application.
  */
 struct np1secAppOps {
-  // Data that is passed to send_bare
-  uint32_t c_heartbeating_interval;
-  uint32_t c_session_life_span;
-  uint32_t c_inactive_ergo_non_sum_interval;
-  uint32_t c_unresponsive_ergo_non_sum_interval;
-  uint32_t c_ack_interval;
-  uint32_t c_consistency_failure_interval;
-  uint32_t c_send_receive_interval;
+    // Data that is passed to send_bare
+    uint32_t c_heartbeating_interval;
+    uint32_t c_session_life_span;
+    uint32_t c_inactive_ergo_non_sum_interval;
+    uint32_t c_unresponsive_ergo_non_sum_interval;
+    uint32_t c_ack_interval;
+    uint32_t c_consistency_failure_interval;
+    uint32_t c_send_receive_interval;
 
-  np1secAppOps() {};
-  
-  np1secAppOps(uint32_t ACK_GRACE_INTERVAL,
-               uint32_t REKEY_GRACE_INTERVAL,
-               uint32_t INTERACTION_GRACE_INTERVAL,
-               uint32_t BROADCAST_LATENCY)
-  : c_heartbeating_interval(REKEY_GRACE_INTERVAL / 2 + 2*(BROADCAST_LATENCY)),
-    c_session_life_span(REKEY_GRACE_INTERVAL + 2*(BROADCAST_LATENCY)),
-    c_unresponsive_ergo_non_sum_interval(INTERACTION_GRACE_INTERVAL + 2*(BROADCAST_LATENCY)),
-    c_ack_interval(ACK_GRACE_INTERVAL),
-    c_consistency_failure_interval(ACK_GRACE_INTERVAL + 2*(BROADCAST_LATENCY)),
-    c_send_receive_interval(INTERACTION_GRACE_INTERVAL + 2*(BROADCAST_LATENCY))
-  {
-  }
-  
-  void* bare_sender_data = NULL;
-  /**
-   * It is called by np1sec whenever the protocol needs to send meta data
-   * messages (key exchange, etc) which are not initiated by a message from
-   * the user.
-   *  
-   * @param data is member variable bare_sender_data which is passed to the 
-   *             function in case any auxilary data is needed
-   *
-   * 
-   */
-  void (*send_bare)(std::string room_name,
-                    std::string message,
-                    void* data);
+    np1secAppOps(){};
 
-  // TODO(vmon): Why do we need to join a room?
-  // We can call back when join or leave is completed but
-  // then also we need a call back when other people
-  // join the room or leave that's why we have room
-  // action as the return of the receive handlere
+    np1secAppOps(uint32_t ACK_GRACE_INTERVAL, uint32_t REKEY_GRACE_INTERVAL, uint32_t INTERACTION_GRACE_INTERVAL,
+                 uint32_t BROADCAST_LATENCY)
+        : c_heartbeating_interval(REKEY_GRACE_INTERVAL / 2 + 2 * (BROADCAST_LATENCY)),
+          c_session_life_span(REKEY_GRACE_INTERVAL + 2 * (BROADCAST_LATENCY)),
+          c_unresponsive_ergo_non_sum_interval(INTERACTION_GRACE_INTERVAL + 2 * (BROADCAST_LATENCY)),
+          c_ack_interval(ACK_GRACE_INTERVAL),
+          c_consistency_failure_interval(ACK_GRACE_INTERVAL + 2 * (BROADCAST_LATENCY)),
+          c_send_receive_interval(INTERACTION_GRACE_INTERVAL + 2 * (BROADCAST_LATENCY))
+    {
+    }
 
-  //The problem is that some of the actions are
-  //not message dependent like fail to ping for example.
-  
-  /** 
-   * inform the app that someone (including the user themselves) 
-   * join a room or a coversation left the room.
-   */
-  void (*join)(std::string room_name,
-               //std::string joiner_nickname,
-               std::vector<std::string> plist,
-               void* aux_data);
+    void* bare_sender_data = NULL;
+    /**
+     * It is called by np1sec whenever the protocol needs to send meta data
+     * messages (key exchange, etc) which are not initiated by a message from
+     * the user.
+     *
+     * @param data is member variable bare_sender_data which is passed to the
+     *             function in case any auxilary data is needed
+     *
+     *
+     */
+    void (*send_bare)(std::string room_name, std::string message, void* data);
 
-  /** 
-   * inform the app that someone (including the user themself) left  
-   a room or a coversation, for other p ui purpose
-   */
-   void (*leave)(std::string room_name,
-                 std::vector<std::string> plist,
-                 void* aux_data);
+    // TODO(vmon): Why do we need to join a room?
+    // We can call back when join or leave is completed but
+    // then also we need a call back when other people
+    // join the room or leave that's why we have room
+    // action as the return of the receive handlere
 
-  /**
-   * Asks the app to display a message in the room
-   */
-  void (*display_message)(std::string room_name,
-                          std::string sender_nick,
-                          std::string message,
-                          void* aux_data);
+    // The problem is that some of the actions are
+    // not message dependent like fail to ping for example.
 
-  /**
-   * confirm the association of nickname and public key
-   */
-  void (*validate_long_term_key)(std::string nickname,
-                          np1secPublicKey fingerprint,
-                          void* aux_data);
+    /**
+     * inform the app that someone (including the user themselves)
+     * join a room or a coversation left the room.
+     */
+    void (*join)(std::string room_name,
+                 // std::string joiner_nickname,
+                 std::vector<std::string> plist, void* aux_data);
 
-  /**
-   * it needs to set a timer which calls timer_callback function after 
-   * interval
-   * 
-   * @return a handle to the timer as void* which can be sent to axe_timer
-   *         to delete the timer
-   */
-  void* (*set_timer)(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval, void* data);
+    /**
+     * inform the app that someone (including the user themself) left
+     a room or a coversation, for other p ui purpose
+     */
+    void (*leave)(std::string room_name, std::vector<std::string> plist, void* aux_data);
 
-  /**
-   * should deactiave to_be_defused timer
-   */
-  void (*axe_timer)(void* to_be_defused_timer, void* data);
+    /**
+     * Asks the app to display a message in the room
+     */
+    void (*display_message)(std::string room_name, std::string sender_nick, std::string message, void* aux_data);
 
-  /**
-   * should report if the participants is the only participant 
-   * in the room
-   */
-  //bool (*am_i_alone)(std::string room_name, void* aux_data);
-  
+    /**
+     * confirm the association of nickname and public key
+     */
+    void (*validate_long_term_key)(std::string nickname, np1secPublicKey fingerprint, void* aux_data);
+
+    /**
+     * it needs to set a timer which calls timer_callback function after
+     * interval
+     *
+     * @return a handle to the timer as void* which can be sent to axe_timer
+     *         to delete the timer
+     */
+    void* (*set_timer)(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval, void* data);
+
+    /**
+     * should deactiave to_be_defused timer
+     */
+    void (*axe_timer)(void* to_be_defused_timer, void* data);
+
+    /**
+     * should report if the participants is the only participant
+     * in the room
+     */
+    // bool (*am_i_alone)(std::string room_name, void* aux_data);
 };
 
 } // namespace np1sec
 
-#endif  // SRC_INTERFACE_H_
+#endif // SRC_INTERFACE_H_

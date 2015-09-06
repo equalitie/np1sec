@@ -21,112 +21,74 @@
 
 #include <exception>
 
-namespace np1sec {
+namespace np1sec
+{
 
-class np1secSessionStateException: public std::exception                               
-{                                                                 
-   virtual const char* what() const throw()                        
-   {                                                               
-     return "Invalid session state";                               
-   }
+class np1secSessionStateException : public std::exception
+{
+    virtual const char* what() const throw() { return "Invalid session state"; }
 };
 
-class np1secMessageFormatException : public std::exception                               
-{                                                                 
-   virtual const char* what() const throw()                        
-   {                                                               
-     return "Invalid message format";                               
-   }                                                               
- };                                   
+class np1secMessageFormatException : public std::exception
+{
+    virtual const char* what() const throw() { return "Invalid message format"; }
+};
 
-class np1secVersionMismatchException : public std::exception                               
-{                                                                 
-   virtual const char* what() const throw()                        
-   {                                                               
-     return "Invalid protocol version";                               
-   }                                                               
- };                                   
+class np1secVersionMismatchException : public std::exception
+{
+    virtual const char* what() const throw() { return "Invalid protocol version"; }
+};
 
-class np1secMessageSignatureException : public std::exception                               
-{                                                                 
-   virtual const char* what() const throw()                        
-   {                                                               
-     return "Signature failed verification";                               
-   }                                                               
- };                                   
+class np1secMessageSignatureException : public std::exception
+{
+    virtual const char* what() const throw() { return "Signature failed verification"; }
+};
 
+class np1secCryptoException : public std::exception
+{
+    virtual const char* what() const throw() { return "Crypto error"; }
+};
 
-class np1secCryptoException : public std::exception                               
-{                                                                 
-   virtual const char* what() const throw()                        
-   {                                                               
-     return "Crypto error";                               
-   }                                                               
-};                                   
+class np1secInsufficientCredentialException : public std::exception
+{
+    virtual const char* what() const throw() { return "Insufficient credentials"; }
+};
 
-class np1secInsufficientCredentialException : public std::exception                               
-{                                                                 
-   virtual const char* what() const throw()                        
-   {                                                               
-     return "Insufficient credentials";                               
-   }                                                               
- };                                   
+class np1secAuthenticationException : public std::exception
+{
+    virtual const char* what() const throw() { return "Authentication failure"; }
+};
 
-class np1secAuthenticationException : public std::exception                               
-{                                                                 
-   virtual const char* what() const throw()                        
-   {                                                               
-     return "Authentication failure";                               
-   }                                                               
-};                                   
+class np1secInvalidDataException : public std::exception
+{
+    virtual const char* what() const throw() { return "Data doesn't match expected value"; }
+};
 
-class np1secInvalidDataException : public std::exception                               
-{                                                                 
-   virtual const char* what() const throw()                        
-   {                                                               
-     return "Data doesn't match expected value";                               
-   }                                                               
- };                                   
+class np1secInvalidRoomException : public std::exception
+{
+    virtual const char* what() const throw() { return "Invalid room"; }
+};
 
-class np1secInvalidRoomException : public std::exception                               
-{                                                                 
-   virtual const char* what() const throw()                        
-   {                                                               
-     return "Invalid room";                               
-   }                                                               
- };                                   
+class np1secInvalidSessionStateException : public std::exception
+{
+    virtual const char* what() const throw() { return "Invalid session state"; }
+};
 
-class np1secInvalidSessionStateException : public std::exception                               
-{                                                                 
-   virtual const char* what() const throw()                        
-   {                                                               
-     return "Invalid session state";                               
-   }                                                               
- };                                   
+class np1secDoubleJoinException : public std::exception
+{
+    virtual const char* what() const throw() { return "A nickname tried to join a room twice"; }
+};
 
-class np1secDoubleJoinException : public std::exception                               
-{                                                                 
-   virtual const char* what() const throw()                        
-   {                                                               
-     return "A nickname tried to join a room twice";                               
-   }                                                               
-};                                   
+class np1secInvalidParticipantException : public std::exception
+{
+    virtual const char* what() const throw() { return "Invalid Participant"; }
+};
 
-class np1secInvalidParticipantException : public std::exception                               
-{                                                                 
-   virtual const char* what() const throw()                        
-   {                                                               
-     return "Invalid Participant";                               
-   }                                                               
-};                                   
-
-class np1secNotImplementedException : public std::exception                             {                                                                 
-   virtual const char* what() const throw()                        
-   {                                                               
-     return "Not Implemented";                               
-   }                                                               
- };
+class np1secNotImplementedException : public std::exception
+{
+    virtual const char* what() const throw() { return "Not Implemented"; }
+};
 
 } // namespace np1sec
 
-#endif  // SRC_EXCEPTIONS_H_
+#endif // SRC_EXCEPTIONS_H_

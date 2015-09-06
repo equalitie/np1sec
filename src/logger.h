@@ -27,59 +27,53 @@
 #ifndef SRC_LOGGER_H_
 #define SRC_LOGGER_H_
 
-namespace np1sec {
+namespace np1sec
+{
 
 // Standard log levels, ascending order of specificity.
-enum log_level_t {
-  SILLY,
-  DEBUG,
-  VERBOSE,
-  INFO,
-  WARN,
-  ERROR,
-  ABORT
-};
+enum log_level_t { SILLY, DEBUG, VERBOSE, INFO, WARN, ERROR, ABORT };
 
 const log_level_t default_log_level = DEBUG;
 
-class Logger {
-protected:
-  log_level_t threshold;
-  bool log_to_stderr;
-  bool log_to_file;
-  std::string log_filename;
-  std::ofstream log_file;
+class Logger
+{
+  protected:
+    log_level_t threshold;
+    bool log_to_stderr;
+    bool log_to_file;
+    std::string log_filename;
+    std::ofstream log_file;
 
-public:
-  std::string state_to_text[0xFF];//TOTAL_NO_OF_STATES
-  std::string message_type_to_text[0xFF];//TOTAL_NO_OF_MESSAGE_TYPE];
+  public:
+    std::string state_to_text[0xFF]; // TOTAL_NO_OF_STATES
+    std::string message_type_to_text[0xFF]; // TOTAL_NO_OF_MESSAGE_TYPE];
 
-  //put name on states and message types
-  void initiate_textual_conversions();
- 
-  // Constructor sets an initial threshold
-  Logger(log_level_t threshold);
-  // Destructor closes an open log file
-  ~Logger();
+    // put name on states and message types
+    void initiate_textual_conversions();
 
-  // Get the current log file name
-  std::string current_log_file() { return log_filename; }
+    // Constructor sets an initial threshold
+    Logger(log_level_t threshold);
+    // Destructor closes an open log file
+    ~Logger();
 
-  void config(bool log_stderr, bool log_file, std::string fname);
-  void set_threshold(log_level_t level);
-  void log(log_level_t level, std::string msg, std::string function_name = "", std::string user_nick = "");
-  void silly(std::string msg, std::string function_name = "", std::string user_nick = "");
-  void debug(std::string msg, std::string function_name = "", std::string user_nick = "");
-  void verbose(std::string msg, std::string function_name = "", std::string user_nick = "");
-  void info(std::string msg, std::string function_name = "", std::string user_nick = "");
-  void warn(std::string msg, std::string function_name = "", std::string user_nick = "");
-  void error(std::string msg, std::string function_name = "", std::string user_nick = "");
-  void abort(std::string msg, std::string function_name = "", std::string user_nick = "");
-  
-  void assert_or_die(bool expr, std::string failure_message, std::string function_name = "", std::string user_nick = "");
+    // Get the current log file name
+    std::string current_log_file() { return log_filename; }
 
+    void config(bool log_stderr, bool log_file, std::string fname);
+    void set_threshold(log_level_t level);
+    void log(log_level_t level, std::string msg, std::string function_name = "", std::string user_nick = "");
+    void silly(std::string msg, std::string function_name = "", std::string user_nick = "");
+    void debug(std::string msg, std::string function_name = "", std::string user_nick = "");
+    void verbose(std::string msg, std::string function_name = "", std::string user_nick = "");
+    void info(std::string msg, std::string function_name = "", std::string user_nick = "");
+    void warn(std::string msg, std::string function_name = "", std::string user_nick = "");
+    void error(std::string msg, std::string function_name = "", std::string user_nick = "");
+    void abort(std::string msg, std::string function_name = "", std::string user_nick = "");
+
+    void assert_or_die(bool expr, std::string failure_message, std::string function_name = "",
+                       std::string user_nick = "");
 };
 
 } // namespace np1sec
 
-#endif  // SRC_LOGGER_H_
+#endif // SRC_LOGGER_H_

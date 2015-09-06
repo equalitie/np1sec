@@ -20,18 +20,18 @@
 
 #include "src/participant.h"
 
-namespace np1sec {
+namespace np1sec
+{
 
 std::string participants_to_string(const ParticipantMap& plist)
 {
-  std::string string_plist;
-  for(auto& cur_participant : plist)
-    string_plist += ", " + cur_participant.first;
+    std::string string_plist;
+    for (auto& cur_participant : plist)
+        string_plist += ", " + cur_participant.first;
 
-  string_plist.erase(0,2);
+    string_plist.erase(0, 2);
 
-  return string_plist;
-  
+    return string_plist;
 }
 
 /**
@@ -40,56 +40,22 @@ std::string participants_to_string(const ParticipantMap& plist)
  */
 bool sort_by_long_term_pub_key(const np1secAsymmetricKey lhs, const np1secAsymmetricKey rhs)
 {
-  return Cryptic::public_key_to_stringbuff(lhs) < Cryptic::public_key_to_stringbuff(rhs);
-
+    return Cryptic::public_key_to_stringbuff(lhs) < Cryptic::public_key_to_stringbuff(rhs);
 }
 
 /**
  * operator < needed by map class not clear why but it doesn't compile
  * It first does nick name check then public key check. in reality
- * public key check is not needed as the nickname are supposed to be 
+ * public key check is not needed as the nickname are supposed to be
  * unique (that is why nickname is more approperiate for sorting than
  * public key)
  */
 bool operator<(const Participant& lhs, const Participant& rhs)
 {
-  if (lhs.id.nickname < rhs.id.nickname) return true;
+    if (lhs.id.nickname < rhs.id.nickname)
+        return true;
 
-  return sort_by_long_term_pub_key(lhs.long_term_pub_key, rhs.long_term_pub_key);
-  
-}
- 
-/**
- * Generate the approperiate authentication token check its equality
- * to authenticate the alleged participant
- *
- * @param auth_token authentication token received as a message
- * @param authenicator_id running thread user id  //TODO 
- *  can give it to youget rid of this as thread_user_as_partcipant 
- * @param thread_user_id_key the key (pub & prive) of the user running the 
- *        thread
- * 
- * @return true if peer's authenticity could be established
- */
-void Participant::be_authenticated(const std::string authenticator_id, const HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto) {
-  compute_p2p_private(thread_user_id_key, thread_user_crypto);
-
-  std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
-  to_be_hashed+= authenticator_id;
-  HashBlock regenerated_auth_token;
-
-  Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), regenerated_auth_token);
-
-  if (Cryptic::compare_hash(regenerated_auth_token, auth_token)) {
-      logger.warn("participant " + id.nickname + " failed TDH authentication");
-      throw np1secAuthenticationException();
-  } else {
-    this->authenticated = true;
-    
-  }
-
-  
- 
+    return sort_by_long_term_pub_key(lhs.long_term_pub_key, rhs.long_term_pub_key);
 }
 
 /**
@@ -97,21 +63,53 @@ void Participant::be_authenticated(const std::string authenticator_id, const Has
  * to authenticate the alleged participant
  *
  * @param auth_token authentication token received as a message
- * @param thread_user_id_key the key (pub & prive) of the user running the 
+ * @param authenicator_id running thread user id  //TODO
+ *  can give it to youget rid of this as thread_user_as_partcipant
+ * @param thread_user_id_key the key (pub & prive) of the user running the
  *        thread
- * 
+ *
  * @return true if peer's authenticity could be established
  */
-void Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto) {
+void Participant::be_authenticated(const std::string authenticator_id, const HashBlock auth_token,
+                                   const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto)
+{
+    compute_p2p_private(thread_user_id_key, thread_user_crypto);
 
-  compute_p2p_private(thread_user_id_key, thread_user_crypto);
+    std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
+    to_be_hashed += authenticator_id;
+    HashBlock regenerated_auth_token;
 
-  std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
-  to_be_hashed += id.id_to_stringbuffer(); //the question is that why should we include the public
-  //key here?
-  
-  Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), auth_token);
+    Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), regenerated_auth_token);
 
+    if (Cryptic::compare_hash(regenerated_auth_token, auth_token)) {
+        logger.warn("participant " + id.nickname + " failed TDH authentication");
+        throw np1secAuthenticationException();
+    } else {
+        this->authenticated = true;
+    }
+}
+
+/**
+ * Generate the approperiate authentication token check its equality
+ * to authenticate the alleged participant
+ *
+ * @param auth_token authentication token received as a message
+ * @param thread_user_id_key the key (pub & prive) of the user running the
+ *        thread
+ *
+ * @return true if peer's authenticity could be established
+ */
+void Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key,
+                                  Cryptic* thread_user_crypto)
+{
+
+    compute_p2p_private(thread_user_id_key, thread_user_crypto);
+
+    std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
+    to_be_hashed += id.id_to_stringbuffer(); // the question is that why should we include the public
+    // key here?
+
+    Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), auth_token);
 }
 
 /**
@@ -121,8 +119,8 @@ void Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKe
  */
 void Participant::compute_p2p_private(np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto)
 {
-  thread_user_crypto->triple_ed_dh(ephemeral_key, long_term_pub_key, thread_user_id_key, sort_by_long_term_pub_key(this->long_term_pub_key, thread_user_id_key), &p2p_key);
-                      
+    thread_user_crypto->triple_ed_dh(ephemeral_key, long_term_pub_key, thread_user_id_key,
+                                     sort_by_long_term_pub_key(this->long_term_pub_key, thread_user_id_key), &p2p_key);
 }
 
 /**
@@ -130,11 +128,10 @@ void Participant::compute_p2p_private(np1secAsymmetricKey thread_user_id_key, Cr
  */
 ParticipantMap operator+(const ParticipantMap& lhs, const ParticipantMap& rhs)
 {
-  ParticipantMap result(lhs);
+    ParticipantMap result(lhs);
 
-  result.insert(rhs.begin(), rhs.end());
-  return result;
-  
+    result.insert(rhs.begin(), rhs.end());
+    return result;
 }
 
 /**
@@ -142,15 +139,11 @@ ParticipantMap operator+(const ParticipantMap& lhs, const ParticipantMap& rhs)
  */
 ParticipantMap operator-(const ParticipantMap& lhs, const ParticipantMap& rhs)
 {
-  ParticipantMap difference;
+    ParticipantMap difference;
 
-  std::set_difference(
-    lhs.begin(), lhs.end(),
-    rhs.begin(), rhs.end(),
-    std::inserter(difference, difference.end()));
+    std::set_difference(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), std::inserter(difference, difference.end()));
 
-  return difference;
-  
+    return difference;
 }
 
 } // namespace np1sec

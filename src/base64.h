@@ -21,7 +21,8 @@
 #ifndef __B64_H__
 #define __B64_H__
 
-namespace np1sec {
+namespace np1sec
+{
 
 #include <stdlib.h>
 
@@ -32,9 +33,8 @@ namespace np1sec {
 
 /* An encoded block of length encoded_len can turn into a maximum of
  * this many decoded bytes: */
-#define OTRL_B64_MAX_DECODED_SIZE(encoded_len) \
-    (((encoded_len + OTRL_B64_ENCODED_LEN - 1) / OTRL_B64_ENCODED_LEN) \
-	* OTRL_B64_DECODED_LEN)
+#define OTRL_B64_MAX_DECODED_SIZE(encoded_len)                                                                         \
+    (((encoded_len + OTRL_B64_ENCODED_LEN - 1) / OTRL_B64_ENCODED_LEN) * OTRL_B64_DECODED_LEN)
 
 /*
  * base64 encode data.  Insert no linebreaks or whitespace.
@@ -42,8 +42,7 @@ namespace np1sec {
  * The buffer base64data must contain at least ((datalen+2)/3)*4 bytes of
  * space.  This function will return the number of bytes actually used.
  */
-size_t otrl_base64_encode(char *base64data, const unsigned char *data,
-	size_t datalen);
+size_t otrl_base64_encode(char* base64data, const unsigned char* data, size_t datalen);
 
 /*
  * base64 decode data.  Skip non-base64 chars, and terminate at the
@@ -53,14 +52,13 @@ size_t otrl_base64_encode(char *base64data, const unsigned char *data,
  * of space.  This function will return the number of bytes actually
  * used.
  */
-size_t otrl_base64_decode(unsigned char *data, const char *base64data,
-	size_t base64len);
+size_t otrl_base64_decode(unsigned char* data, const char* base64data, size_t base64len);
 
 /*
  * Base64-encode a block of data, stick "?OTR:" and "." around it, and
  * return the result, or NULL in the event of a memory error.
  */
-char *otrl_base64_otr_encode(const unsigned char *buf, size_t buflen);
+char* otrl_base64_otr_encode(const unsigned char* buf, size_t buflen);
 
 /*
  * Base64-decode the portion of the given message between "?OTR:" and
@@ -68,8 +66,7 @@ char *otrl_base64_otr_encode(const unsigned char *buf, size_t buflen);
  * The caller must free() the result.  Return 0 on success, -1 on a
  * memory error, or -2 on invalid input.
  */
-int otrl_base64_otr_decode(const char *msg, unsigned char **bufp,
-	size_t *lenp);
+int otrl_base64_otr_decode(const char* msg, unsigned char** bufp, size_t* lenp);
 
 } // namespace np1sec
 

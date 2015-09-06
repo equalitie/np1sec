@@ -32,51 +32,51 @@
 
 using namespace std;
 
-const std::string callback_log =  "callbackoutput.txt";
+const std::string callback_log = "callbackoutput.txt";
 
-class TimeredSessionTest : public ::testing::Test{
+class TimeredSessionTest : public ::testing::Test
+{
 
-protected: //gtest needs the elements to be protocted
-  //First we need to run a chatserver but this is always the case so I'm making
-  //class to setup chat server
-  ChatMockerTimered mock_server;
-  np1secAppOps* mockops;
-  struct event_base* base;
+  protected: // gtest needs the elements to be protocted
+    // First we need to run a chatserver but this is always the case so I'm making
+    // class to setup chat server
+    ChatMockerTimered mock_server;
+    np1secAppOps* mockops;
+    struct event_base* base;
 
-  string mock_room_name;
-  
-  virtual void SetUp() {
-  uint32_t hundred_mili_sec = 100;
-  uint32_t one_sec = 1000;
-  //uint32_t two_sec = 2000;
-  //uint32_t ten_sec = 10000;
+    string mock_room_name;
 
-      // np1secAppOps(uint32_t ACK_GRACE_INTERVAL,
-      //          uint32_t REKEY_GRACE_INTERVAL,
-      //          uint32_t INTERACTION_GRACE_INTERVAL,
-      //          uint32_t BROADCAST_LATENCY)
+    virtual void SetUp()
+    {
+        uint32_t hundred_mili_sec = 100;
+        uint32_t one_sec = 1000;
+        // uint32_t two_sec = 2000;
+        // uint32_t ten_sec = 10000;
 
-    mockops = new np1secAppOps(hundred_mili_sec, one_sec, hundred_mili_sec, hundred_mili_sec);
-    mockops->send_bare = send_bare;
-    mockops->join = new_session_announce;
-    mockops->leave = new_session_announce;
-    mockops->display_message = display_message;
-    mockops->set_timer = set_timer;
-    mockops->axe_timer = axe_timer;
-    //mockops->am_i_alone = am_i_alone;
+        // np1secAppOps(uint32_t ACK_GRACE_INTERVAL,
+        //          uint32_t REKEY_GRACE_INTERVAL,
+        //          uint32_t INTERACTION_GRACE_INTERVAL,
+        //          uint32_t BROADCAST_LATENCY)
 
-    // Gets information about the currently running test.
-// Do NOT delete the returned object - it's managed by the UnitTest class.
-    const ::testing::TestInfo* const test_info =
-      ::testing::UnitTest::GetInstance()->current_test_info();
-    
-    mock_room_name = test_info->name();
-    mock_room_name += "_room";
+        mockops = new np1secAppOps(hundred_mili_sec, one_sec, hundred_mili_sec, hundred_mili_sec);
+        mockops->send_bare = send_bare;
+        mockops->join = new_session_announce;
+        mockops->leave = new_session_announce;
+        mockops->display_message = display_message;
+        mockops->set_timer = set_timer;
+        mockops->axe_timer = axe_timer;
+        // mockops->am_i_alone = am_i_alone;
 
-    //mock_server.initialize_event_manager(base);
-  // Configure the logger to write to `callback_log` for the sake of checking 
-  };
-  
+        // Gets information about the currently running test.
+        // Do NOT delete the returned object - it's managed by the UnitTest class.
+        const ::testing::TestInfo* const test_info = ::testing::UnitTest::GetInstance()->current_test_info();
+
+        mock_room_name = test_info->name();
+        mock_room_name += "_room";
+
+        // mock_server.initialize_event_manager(base);
+        // Configure the logger to write to `callback_log` for the sake of checking
+    };
 };
 
 // Callback for set_timer
@@ -99,7 +99,7 @@ protected: //gtest needs the elements to be protocted
 // }
 
 // Callback for set_timer
-// Checks that `callback_log` does not exist. 
+// Checks that `callback_log` does not exist.
 // // void check_not_heartbeat_log(void* arg)
 // // {
 // //   ChatMocker* server = reinterpret_cast<ChatMocker*>(arg);
@@ -119,31 +119,29 @@ protected: //gtest needs the elements to be protocted
 //   ASSERT_TRUE(false);
 // }
 
-
 // Callback for set_timer
 // Checks that a line containing "HEARTBEAT" was written to the `callback_log` file.
 void check_log_for_phrase(void* arg)
 {
-  std::pair<ChatMockerTimered*, std::string>* server_and_phrase = reinterpret_cast<std::pair<ChatMockerTimered*, std::string>*>(arg);
-  ChatMockerTimered* server = server_and_phrase->first;
-  std::string catch_phrase = server_and_phrase->second;
-  std::ifstream in;
-  ASSERT_NO_THROW(in.open(callback_log, std::ifstream::in));
-  std::string log_line;
-  bool found_phrase = false;
+    std::pair<ChatMockerTimered*, std::string>* server_and_phrase =
+        reinterpret_cast<std::pair<ChatMockerTimered*, std::string>*>(arg);
+    ChatMockerTimered* server = server_and_phrase->first;
+    std::string catch_phrase = server_and_phrase->second;
+    std::ifstream in;
+    ASSERT_NO_THROW(in.open(callback_log, std::ifstream::in));
+    std::string log_line;
+    bool found_phrase = false;
 
-  logger.info("reading the log for catch phrase");
+    logger.info("reading the log for catch phrase");
 
-  ASSERT_TRUE(in.good());
-  while (std::getline(in, log_line)) {
-    found_phrase = found_phrase || log_line.find(catch_phrase) != std::string::npos;
-    
-  }
-  in.close();
-  server->end_event_loop();
-  ASSERT_TRUE(found_phrase);
+    ASSERT_TRUE(in.good());
+    while (std::getline(in, log_line)) {
+        found_phrase = found_phrase || log_line.find(catch_phrase) != std::string::npos;
+    }
+    in.close();
+    server->end_event_loop();
+    ASSERT_TRUE(found_phrase);
 }
-
 
 // TEST_F(SessionTest, test_heartbeat_timer)
 // {
@@ -205,7 +203,6 @@ void check_log_for_phrase(void* arg)
 //   //Awaiting test frame
 // }
 
-
 /*TEST_F(SessionTest, test_start_ack_timers) {
   //Gen participant list
   Participant p;
@@ -213,10 +210,10 @@ void check_log_for_phrase(void* arg)
   session.start_ack_timers();
   //Check timer is present for given participant
   map<Participant, struct event>::iterator it = session.awaiting_ack.find(p.id);
- 
+
   ASSERT_NE(it, session.awaiting_ack.end());
 
-} 
+}
 
 TEST_F(SessionTest, test_receive_ack_timer) {
 
@@ -256,37 +253,35 @@ TEST_F(SessionTest, test_stop_timer_receive) {
 
 TEST_F(TimeredSessionTest, test_resession_forward_secrecy)
 {
-  //first we need a username and we use it
-  //to sign in the room
-  string username = "sole-tester";
-  std::pair<ChatMocker*, string> mock_aux_data(&mock_server,username);
-  mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
+    // first we need a username and we use it
+    // to sign in the room
+    string username = "sole-tester";
+    std::pair<ChatMocker*, string> mock_aux_data(&mock_server, username);
+    mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
 
-  np1secUserState user_state(username, mockops);
-  user_state.init();
+    np1secUserState user_state(username, mockops);
+    user_state.init();
 
-  pair<np1secUserState*, ChatMocker*> user_server_state(&user_state, &mock_server);
+    pair<np1secUserState*, ChatMocker*> user_server_state(&user_state, &mock_server);
 
-  //client login and join
-  mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));
-  mock_server.join(mock_room_name, user_state.user_nick());
+    // client login and join
+    mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));
+    mock_server.join(mock_room_name, user_state.user_nick());
 
-  //we need to call this after every action
-  //receive your own key share and send confirmation
-  mock_server.receive();
+    // we need to call this after every action
+    // receive your own key share and send confirmation
+    mock_server.receive();
 
-  // Write HEARTBEAT to `callback_log`
-  string catch_phrase = "RESESSION";
-  uint32_t timeout = mockops->c_session_life_span * 2;
-  pair<ChatMocker*, std::string>* encoded = new pair<ChatMocker*, std::string>(
-    &mock_server, catch_phrase);
-  logger.config(true, true, callback_log);
-  logger.info("waiting for " + to_string(timeout) + " millisecond for check_log callback to check the log....");
-    std::string* identifier = reinterpret_cast<std::string*>(
-  set_timer(check_log_for_phrase, encoded, timeout, encoded));
-  mock_server.dispatch_event_loop();
-  remove(callback_log.c_str());
-  delete identifier;
-  logger.config(true, false, "");
-
+    // Write HEARTBEAT to `callback_log`
+    string catch_phrase = "RESESSION";
+    uint32_t timeout = mockops->c_session_life_span * 2;
+    pair<ChatMocker*, std::string>* encoded = new pair<ChatMocker*, std::string>(&mock_server, catch_phrase);
+    logger.config(true, true, callback_log);
+    logger.info("waiting for " + to_string(timeout) + " millisecond for check_log callback to check the log....");
+    std::string* identifier =
+        reinterpret_cast<std::string*>(set_timer(check_log_for_phrase, encoded, timeout, encoded));
+    mock_server.dispatch_event_loop();
+    remove(callback_log.c_str());
+    delete identifier;
+    logger.config(true, false, "");
 }

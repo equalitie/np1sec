@@ -46,7 +46,7 @@ protected:
   {
     base = event_base_new();
     mock_server.initialize_event_manager(base);
-    appops = new np1secAppOps(five_seconds_mil, five_seconds_mil, five_seconds_mil, five_seconds_mil); 
+    appops = new np1secAppOps(five_seconds_mil, five_seconds_mil, five_seconds_mil, five_seconds_mil);
     // Create a dummy keypair consisting of all 0s.
     uint8_t* keypair = malloc(sizeof(uint8_t) * 64);
     for (int i = 0; i < 64; i++) {

@@ -23,78 +23,75 @@
 #include "src/participant.h"
 #include "src/crypt.h"
 
-namespace np1sec {
+namespace np1sec
+{
 
 class SessionId
 {
- protected:
-  HashBlock session_id_raw;
-  bool is_set;
+  protected:
+    HashBlock session_id_raw;
+    bool is_set;
 
- public:
-  SessionId(const HashBlock sid)
-    :is_set(true)
+  public:
+    SessionId(const HashBlock sid) : is_set(true) { memcpy(session_id_raw, sid, sizeof(HashBlock)); }
+
+    SessionId() : is_set(false) {}
+
+    SessionId(ParticipantMap& plist) { compute(plist); }
+
+    // copy constructor: do we need one?
+    /* SessionId(SessionId& lhs) { */
+    /*   std::memcpy(session_id_raw, lhs.session_id_raw, sizeof(HashBlock)); */
+    /*   is_set = lhs.is_set; */
+    /* } */
+
+    void set(const HashBlock sid)
     {
-      memcpy(session_id_raw, sid, sizeof(HashBlock));
+        // only one time is possible
+        // sanity check: You can only compute session id once
+        assert(!is_set);
+        memcpy(session_id_raw, sid, sizeof(HashBlock));
+        is_set = true;
     }
 
-  SessionId()
-   :is_set(false) {
-  }
+    /**
+     * given a plist it compute the session id of a session
+     * which has that plist as participants
+     */
+    void compute(ParticipantMap& plist)
+    {
+        assert(plist.size());
 
-  SessionId(ParticipantMap& plist) {
-    compute(plist);
-  }
+        std::string session_id_blob;
+        for (auto it = plist.begin(); it != plist.end(); ++it) {
+            Participant& p = it->second;
+            UnauthenticatedParticipant uap(p.id, Cryptic::hash_to_string_buff(p.raw_ephemeral_key), p.authenticated);
+            session_id_blob += uap.unauthed_participant_to_stringbuffer();
+            session_id_blob.erase(session_id_blob.size() - 1); // dropping authentication info
+        }
 
-  // copy constructor: do we need one?
-  /* SessionId(SessionId& lhs) { */
-  /*   std::memcpy(session_id_raw, lhs.session_id_raw, sizeof(HashBlock)); */
-  /*   is_set = lhs.is_set; */
-  /* } */
-
-  void set(const HashBlock sid)
-  {
-    //only one time is possible
-    //sanity check: You can only compute session id once
-    assert(!is_set);
-    memcpy(session_id_raw, sid, sizeof(HashBlock));
-    is_set = true;
-    
-  }
-
-  /**
-   * given a plist it compute the session id of a session 
-   * which has that plist as participants
-   */
-  void compute(ParticipantMap& plist)
-  {
-    assert(plist.size());
-
-    std::string session_id_blob;
-    for (auto it = plist.begin(); it != plist.end(); ++it) {
-      Participant& p = it->second;
-      UnauthenticatedParticipant uap(p.id, Cryptic::hash_to_string_buff(p.raw_ephemeral_key), p.authenticated);
-      session_id_blob += uap.unauthed_participant_to_stringbuffer();
-      session_id_blob.erase(session_id_blob.size()-1); //dropping authentication info
+        HashStdBlock sid = Cryptic::hash(session_id_blob);
+        memcpy(session_id_raw, sid.data(), sizeof(HashBlock));
+        is_set = true;
     }
 
-    HashStdBlock sid =  Cryptic::hash(session_id_blob);
-    memcpy(session_id_raw, sid.data(), sizeof(HashBlock));
-    is_set = true;
+    uint8_t* get()
+    {
+        if (is_set)
+            return session_id_raw;
+        else
+            return nullptr;
+    }
 
-  }
-  
-  uint8_t* get() {
-    if (is_set) return session_id_raw; else return nullptr;
-  }
+    std::string get_as_stringbuff()
+    {
+        return (is_set) ? std::string(reinterpret_cast<const char*>(session_id_raw), sizeof(HashBlock)) : std::string();
+    }
 
-  std::string get_as_stringbuff() {
-    return (is_set) ? std::string(reinterpret_cast<const char*>(session_id_raw), sizeof(HashBlock)) : std::string();
-  }
-
-  bool operator==(const SessionId& rhs) {
-    return (is_set == rhs.is_set && !Cryptic::compare_hash(session_id_raw, rhs.session_id_raw));
-  }
+    bool operator==(const SessionId& rhs)
+    {
+        return (is_set == rhs.is_set && !Cryptic::compare_hash(session_id_raw, rhs.session_id_raw));
+    }
 };
 
 } // namespace np1sec
