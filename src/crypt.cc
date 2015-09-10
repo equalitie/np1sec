@@ -25,10 +25,14 @@
 
 #include <cstdio>
 #include <string>
+#include <gcrypt.h>
 
 #include "src/crypt.h"
 #include "src/exceptions.h"
 #include "src/logger.h"
+#include "common.h"
+#include "crypt.h"
+#include "exceptions.h"
 
 namespace np1sec
 {
