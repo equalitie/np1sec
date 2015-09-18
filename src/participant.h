@@ -102,6 +102,14 @@ struct ParticipantId {
     }
 
     /**
+     * Destructor
+     */
+    ~ParticipantId()
+    {
+      secure_wipe(fingerprint, c_fingerprint_length);
+    }
+
+    /**
      * Access function when the finger print is added later
      */
     void set_fingerprint(std::string fingerprint_strbuff)
@@ -329,6 +337,12 @@ class Participant
         // release gcrypt stuff
         Cryptic::release_crypto_resource(this->ephemeral_key);
         Cryptic::release_crypto_resource(this->long_term_pub_key);
+        // TODO - Verify with Vmon that these are necessary
+        secure_wipe(ephemeral_key, c_hash_length);
+        secure_wipe(raw_ephemeral_key, c_hash_length);
+        secure_wipe(future_raw_ephemeral_key, c_hash_length);
+        secure_wipe(cur_keyshare, c_hash_length);
+        secure_wipe(p2p_key, c_hash_length);
     }
 };
 

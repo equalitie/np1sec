@@ -218,8 +218,9 @@ err:
 
 void Cryptic::release_crypto_resource(gcry_sexp_t crypto_resource)
 {
-    if (crypto_resource)
+    if (crypto_resource) {
         gcry_sexp_release(crypto_resource);
+    }
 }
 
 gcry_sexp_t Cryptic::copy_crypto_resource(gcry_sexp_t crypto_resource)
@@ -569,6 +570,7 @@ Cryptic::~Cryptic()
     gcry_sexp_release(ephemeral_key);
     gcry_sexp_release(ephemeral_pub_key);
     gcry_sexp_release(ephemeral_prv_key);
+    secure_wipe(session_key, c_hash_length);
 }
 
 } // namespace np1sec

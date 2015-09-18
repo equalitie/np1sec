@@ -42,7 +42,7 @@ typedef std::map<std::string, np1secRoom> RoomMap;
 class np1secUserState
 {
   public:
-    // TOOD: protoct these guys
+    // TODO: protect these guys
     ParticipantId* myself;
     LongTermIDKey long_term_key_pair; // private and public key
     // np1secAsymmetricKey long_term_pub_key;

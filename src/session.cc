@@ -1453,6 +1453,11 @@ void np1secSession::arm_rejoin_timer()
 
 np1secSession::~np1secSession()
 {
+    // TODO - Verify with Vmon which of these are necessary
+    secure_wipe(session_key_secret_share, c_hash_length);
+    secure_wipe(session_key, c_hash_length);
+    secure_wipe(session_confirmation, c_hash_length);
+
     // commit_suicide(); //just to kill all timers
     // we can't commit suicide because our copy constructor
     // copy the session and its destruction shouldn't
