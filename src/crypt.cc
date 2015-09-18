@@ -61,7 +61,10 @@ done:
     return err;
 }
 
-Cryptic::Cryptic() { assert(!gcry_md_test_algo(c_np1sec_hash)); }
+Cryptic::Cryptic()
+{
+    memset(session_key, 0, c_hash_length);
+}
 
 bool Cryptic::generate_key_pair(np1secAsymmetricKey* generated_key)
 {
@@ -336,7 +339,7 @@ leave:
     for (int i = 0; i < 3; i++)
         gcry_sexp_release(triple_dh_sexp[i]);
 
-    delete feed_to_hash_buffer;
+    delete[] feed_to_hash_buffer;
 
     if (failed)
         throw np1secCryptoException();
@@ -571,6 +574,7 @@ Cryptic::~Cryptic()
     gcry_sexp_release(ephemeral_pub_key);
     gcry_sexp_release(ephemeral_prv_key);
     secure_wipe(session_key, c_hash_length);
+    logger.debug("Wiped session_key from Cryptic instance");
 }
 
 } // namespace np1sec

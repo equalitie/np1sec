@@ -98,21 +98,28 @@ TEST_F(SessionTest, test_init)
     string username = "sole-tester";
     std::pair<ChatMocker*, string> mock_aux_data(&mock_server, username);
     mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
+    logger.debug("Set bare_sender_data");
 
     np1secUserState user_state(username, mockops);
     ASSERT_TRUE(user_state.init());
+    logger.debug("Initialized user_state");
 
     pair<np1secUserState*, ChatMocker*> user_server_state(&user_state, &mock_server);
 
     // client login and join
+    logger.debug("Signing in");
     mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));
+    logger.debug("Joining");
     mock_server.join(mock_room_name, user_state.user_nick());
+    logger.debug("Successfully joined");
 
     // we need to call this after every action
     // receive your own key share and send confirmation
+    logger.debug("Receiving 1...");
     mock_server.receive();
 
     // receive your own confirmation
+    logger.debug("Receiving 2...");
     mock_server.receive(); // no need actually
 
     /*UnauthenticatedParticipantList participants_in_the_room;

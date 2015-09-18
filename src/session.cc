@@ -1457,6 +1457,9 @@ np1secSession::~np1secSession()
     secure_wipe(session_key_secret_share, c_hash_length);
     secure_wipe(session_key, c_hash_length);
     secure_wipe(session_confirmation, c_hash_length);
+    logger.debug("Wiped session_key_secret_share from Session");
+    logger.debug("Wiped session_key from Session");
+    logger.debug("Wiped session_confirmation from Session");
 
     // commit_suicide(); //just to kill all timers
     // we can't commit suicide because our copy constructor

@@ -61,6 +61,7 @@ TEST_F(CryptTest, test_hash)
 TEST_F(CryptTest, test_encrypt_decrypt)
 {
     Cryptic cryptic;
+    cryptic.init();
     std::string test_text = "This is a string to be encrypted";
     std::string enc_text = cryptic.Encrypt(test_text.c_str());
     std::string dec_text = cryptic.Decrypt(enc_text);

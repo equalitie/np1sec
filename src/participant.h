@@ -107,6 +107,7 @@ struct ParticipantId {
     ~ParticipantId()
     {
       secure_wipe(fingerprint, c_fingerprint_length);
+      logger.debug("Wiping fingerprint from ParticipantID");
     }
 
     /**
@@ -338,11 +339,16 @@ class Participant
         Cryptic::release_crypto_resource(this->ephemeral_key);
         Cryptic::release_crypto_resource(this->long_term_pub_key);
         // TODO - Verify with Vmon that these are necessary
-        secure_wipe(ephemeral_key, c_hash_length);
-        secure_wipe(raw_ephemeral_key, c_hash_length);
-        secure_wipe(future_raw_ephemeral_key, c_hash_length);
+        //secure_wipe(ephemeral_key, c_hash_length);
+        //secure_wipe(raw_ephemeral_key, c_hash_length);
+        //secure_wipe(future_raw_ephemeral_key, c_hash_length);
         secure_wipe(cur_keyshare, c_hash_length);
         secure_wipe(p2p_key, c_hash_length);
+        //logger.debug("Wiped ephemeral_key from Participant");
+        //logger.debug("Wiped raw_ephemeral_key from Participant");
+        //logger.debug("Wiped cur_keyshare from Participant");
+        logger.debug("Wiped future_raw_ephemeral_key from Participant");
+        logger.debug("Wiped p2p_key from Participant");
     }
 };
 
