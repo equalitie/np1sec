@@ -159,7 +159,22 @@ class Cryptic
         return hash_to_string_buff(hb);
     }
 
-    static int compare_hash(const HashBlock rhs, const HashBlock lhs) { return memcmp(rhs, lhs, sizeof(HashBlock)); }
+    /**
+     * Compares two hashblocks, returning 0 if the two are equal, to be consistent with
+     * memcmp, or 1 if they are unequal.
+     * @param {HashBlock} lhs - The first hashblock
+     * @param {HashBlock} rhs - The hashblock to compare the first against
+     * @return 0 if the two hashblocks are equal, else 1
+     */
+    static int compare_hash(const HashBlock rhs, const HashBlock lhs)
+    {
+      char equal = 0;
+      size_t to_compare = sizeof(HashBlock);
+      for (unsigned int i = 0; i < to_compare; i++) {
+        equal |= lhs[i] ^ rhs[i];
+      }
+      return equal;
+    }
 
     static std::string hash_to_string_buff(const HashBlock hash_block)
     {
