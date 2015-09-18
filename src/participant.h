@@ -212,12 +212,12 @@ class Participant
     np1secPublicKey ephemeral_key = nullptr;
     MessageId last_acked_message_id;
     void* send_ack_timer = nullptr;
-    HashBlock raw_ephemeral_key = {};
-    HashBlock future_raw_ephemeral_key = {};
+    edCurvePublicKey raw_ephemeral_key = {};
+    edCurvePublicKey future_raw_ephemeral_key = {};
     // MessageDigest message_digest;
 
     np1secKeyShare cur_keyshare;
-    HashBlock p2p_key = {};
+    np1secSymmetricKey p2p_key = {};
     bool authenticated = false;
     bool authed_to = false;
     bool key_share_contributed;
@@ -245,9 +245,9 @@ class Participant
     {
         long_term_pub_key = Cryptic::copy_crypto_resource(rhs.long_term_pub_key);
         set_ephemeral_key(rhs.raw_ephemeral_key);
-        memcpy(future_raw_ephemeral_key, rhs.future_raw_ephemeral_key, sizeof(HashBlock));
-        memcpy(p2p_key, rhs.p2p_key, sizeof(HashBlock));
-        memcpy(cur_keyshare, rhs.cur_keyshare, sizeof(HashBlock));
+        memcpy(future_raw_ephemeral_key, rhs.future_raw_ephemeral_key, sizeof(edCurvePublicKey));
+        memcpy(p2p_key, rhs.p2p_key, sizeof(np1secSymmetricKey));
+        memcpy(cur_keyshare, rhs.cur_keyshare, sizeof(np1secKeyShare));
     }
 
     enum ForwardSecracyContribution { NONE, EPHEMERAL, KEY_SHARE };
@@ -265,11 +265,11 @@ class Participant
     /**
      * crypto material access functions
      */
-    void set_ephemeral_key(const HashBlock raw_ephemeral_key)
+    void set_ephemeral_key(const edCurvePublicKey raw_ephemeral_key)
     {
         Cryptic::release_crypto_resource(this->ephemeral_key);
         // delete [] this->raw_ephemeral_key; doesn't make sense to delete const length array
-        memcpy(this->raw_ephemeral_key, raw_ephemeral_key, sizeof(HashBlock));
+        memcpy(this->raw_ephemeral_key, raw_ephemeral_key, sizeof(edCurvePublicKey));
         ephemeral_key = Cryptic::reconstruct_public_key_sexp(
             std::string(reinterpret_cast<const char*>(raw_ephemeral_key), c_ephemeral_key_length));
     }
@@ -278,9 +278,9 @@ class Participant
      * store the encrypted keyshare and set the contributed flag true
      *
      */
-    void set_key_share(const HashBlock new_key_share)
+    void set_key_share(const np1secKeyShare new_key_share)
     {
-        memcpy(this->cur_keyshare, new_key_share, sizeof(HashBlock));
+        memcpy(this->cur_keyshare, new_key_share, sizeof(np1secKeyShare));
         key_share_contributed = true;
     }
 
@@ -299,7 +299,7 @@ class Participant
      *
      * throw an exception in case it fails
      */
-    void authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key,
+    void authenticate_to(Token auth_token, const np1secAsymmetricKey thread_user_id_key,
                          Cryptic* thread_user_crypto);
 
     /**
@@ -310,7 +310,7 @@ class Participant
      *
      * throw and exception if authentication fails
      */
-    void be_authenticated(std::string authenicator_id, const HashBlock auth_token,
+    void be_authenticated(std::string authenicator_id, const Token auth_token,
                           np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
 
     /**

@@ -276,6 +276,7 @@ class np1secSession
      */
     void stop_timer_send();
     SessionId session_id;
+    // TODO - Move these into the Cryptic class where appropriate
     HashBlock session_key_secret_share;
     HashBlock session_key;
     HashBlock session_confirmation;

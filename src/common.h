@@ -66,6 +66,8 @@ typedef uint8_t DTByte;
 typedef uint16_t DTShort;
 typedef uint32_t DTLength;
 typedef HashBlock DTHash;
+typedef HashBlock Token;
+typedef HashBlock edCurvePublicKey;
 
 enum np1secLoadFlag { NO_LOAD, NEW_EPHEMERAL_KEY, LEAVE, NEW_SECRET_SHARE };
 

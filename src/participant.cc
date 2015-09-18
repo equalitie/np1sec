@@ -70,14 +70,14 @@ bool operator<(const Participant& lhs, const Participant& rhs)
  *
  * @return true if peer's authenticity could be established
  */
-void Participant::be_authenticated(const std::string authenticator_id, const HashBlock auth_token,
+void Participant::be_authenticated(const std::string authenticator_id, const Token auth_token,
                                    const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto)
 {
     compute_p2p_private(thread_user_id_key, thread_user_crypto);
 
     std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
     to_be_hashed += authenticator_id;
-    HashBlock regenerated_auth_token;
+    Token regenerated_auth_token;
 
     Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), regenerated_auth_token);
 
@@ -99,7 +99,7 @@ void Participant::be_authenticated(const std::string authenticator_id, const Has
  *
  * @return true if peer's authenticity could be established
  */
-void Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key,
+void Participant::authenticate_to(Token auth_token, const np1secAsymmetricKey thread_user_id_key,
                                   Cryptic* thread_user_crypto)
 {
 

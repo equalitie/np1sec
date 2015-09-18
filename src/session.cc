@@ -453,7 +453,7 @@ void np1secSession::joiner_send_auth_and_share()
 {
     group_enc(); // compute my share for group key
 
-    HashBlock cur_auth_token;
+    Token cur_auth_token;
     std::string auth_batch;
 
     for (uint32_t i = 0; i < peers.size(); i++) {
@@ -461,7 +461,7 @@ void np1secSession::joiner_send_auth_and_share()
             participants[peers[i]].authenticate_to(cur_auth_token, us->long_term_key_pair.get_key_pair().first,
                                                    &cryptic);
             auth_batch.append(reinterpret_cast<char*>(&i), sizeof(uint32_t));
-            auth_batch.append(reinterpret_cast<char*>(cur_auth_token), sizeof(HashBlock));
+            auth_batch.append(reinterpret_cast<char*>(cur_auth_token), sizeof(Token));
         }
     }
 
@@ -469,7 +469,7 @@ void np1secSession::joiner_send_auth_and_share()
 
     outbound.create_joiner_auth_msg(
         session_id, auth_batch,
-        std::string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)));
+        std::string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(np1secKeyShare)));
     outbound.send(room_name, us);
 }
 
@@ -489,7 +489,7 @@ void np1secSession::send_new_share_message()
 
     outboundmessage.create_group_share_msg(
         session_id,
-        std::string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)));
+        std::string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(np1secKeyShare)));
 
     outboundmessage.send(room_name, us);
 }
@@ -506,7 +506,7 @@ void np1secSession::send_view_auth_and_share(std::string joiner_id)
     logger.assert_or_die(session_id.get(), "can not share view  when session id is missing");
     group_enc(); // compute my share for group key
 
-    HashBlock cur_auth_token;
+    Token cur_auth_token;
     if (!joiner_id.empty()) {
         if (participants.find(joiner_id) == participants.end()) {
             logger.error("can't authenticate to non-member joining participant " + joiner_id, __FUNCTION__,
@@ -522,8 +522,8 @@ void np1secSession::send_view_auth_and_share(std::string joiner_id)
 
     try {
         outboundmessage.create_participant_info_msg(
-            session_id, session_view_list, std::string(reinterpret_cast<char*>(cur_auth_token), sizeof(HashBlock)),
-            std::string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(HashBlock)));
+            session_id, session_view_list, std::string(reinterpret_cast<char*>(cur_auth_token), sizeof(Token)),
+            std::string(reinterpret_cast<char*>(participants[myself.nickname].cur_keyshare), sizeof(np1secKeyShare)));
 
     } catch (np1secCryptoException()) {
         logger.error("unable to create participant info message due to cryptographic failure");

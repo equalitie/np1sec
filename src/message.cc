@@ -28,6 +28,8 @@
 namespace np1sec
 {
 
+typedef HashBlock MessageBuffer;
+
 /**
  *  return the apporperiate string buffer which contains the data
  *  in data
@@ -375,7 +377,7 @@ std::string np1secMessage::create_in_session_msg(SessionId session_id, uint32_t 
     std::string base_message;
     // first we cook the meta part
 
-    HashBlock buffer;
+    MessageBuffer buffer;
     gcry_randomize(buffer, c_hash_length, GCRY_STRONG_RANDOM);
 
     base_message = data_to_string(sender_index);

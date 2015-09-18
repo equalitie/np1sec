@@ -259,7 +259,7 @@ gcry_sexp_t Cryptic::copy_crypto_resource(gcry_sexp_t crypto_resource)
  * @return true if succeeds otherwise false
  */
 void Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey peer_long_term_key,
-                           np1secAsymmetricKey my_long_term_key, bool peer_is_first, HashBlock* teddh_token)
+                           np1secAsymmetricKey my_long_term_key, bool peer_is_first, Token* teddh_token)
 {
     gcry_error_t err = 0;
     bool failed = true;
@@ -327,7 +327,7 @@ void Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey p
     token_concat.copy(reinterpret_cast<char*>(feed_to_hash_buffer), token_concat.size());
 
     if (teddh_token == NULL)
-        teddh_token = new HashBlock[1]; // so stupid!!!
+        teddh_token = new Token[1]; // so stupid!!!
 
     hash(feed_to_hash_buffer, token_concat.size(), *teddh_token, true);
 

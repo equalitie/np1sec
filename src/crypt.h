@@ -64,7 +64,7 @@ class Cryptic
     static const gcry_mpi_format NP1SEC_BLOB_OUT_FORMAT = GCRYMPI_FMT_USG;
 
   public:
-    void set_session_key(const HashBlock session_key)
+    void set_session_key(const np1secSymmetricKey session_key)
     {
         memcpy(this->session_key, session_key, sizeof(np1secSymmetricKey));
     }
@@ -233,7 +233,7 @@ class Cryptic
      * throw an exception  if the operation fails, true on success
      */
     void triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey peer_long_term_key,
-                      np1secAsymmetricKey my_long_term_key, bool peer_is_first, HashBlock* teddh_token);
+                      np1secAsymmetricKey my_long_term_key, bool peer_is_first, Token* teddh_token);
 
     /**
      * Given a valid std:string sign the string using the sessions
