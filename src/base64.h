@@ -63,7 +63,7 @@ char* otrl_base64_otr_encode(const unsigned char* buf, size_t buflen);
 /*
  * Base64-decode the portion of the given message between "?OTR:" and
  * ".".  Set *bufp to the decoded data, and set *lenp to its length.
- * The caller must free() the result.  Return 0 on success, -1 on a
+ * The caller must delete the result.  Return 0 on success, -1 on a
  * memory error, or -2 on invalid input.
  */
 int otrl_base64_otr_decode(const char* msg, unsigned char** bufp, size_t* lenp);

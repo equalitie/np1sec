@@ -491,14 +491,14 @@ void np1secMessage::send(std::string room_name, np1secUserState* us)
 std::string np1secMessage::base64_encode(std::string message)
 {
     char* buf = otrl_base64_otr_encode((unsigned char*)message.c_str(), message.size());
-    if (buf == NULL)
+    if (buf == nullptr)
         throw std::bad_alloc();
 
     // XXX/yawning: I hope nothing sensitive is ever encoded this way, otherwise
-    // buf needs to be cleansed before free().
+    // buf needs to be cleansed before deleting.
 
     std::string ret = std::string(buf);
-    free(buf);
+    delete buf;
     return ret;
 }
 
@@ -511,10 +511,10 @@ std::string np1secMessage::base64_decode(std::string message)
         throw std::bad_alloc();
 
     // XXX/yawning: I hope nothing sensitive is ever decoded this way, otherwise
-    // buf needs to be cleansed before free().
+    // buf needs to be cleansed before deleting.
 
     std::string ret = std::string(reinterpret_cast<const char*>(buf), len);
-    free(buf);
+    delete buf;
     return ret;
 }
 

@@ -192,7 +192,7 @@ size_t otrl_base64_decode(unsigned char* data, const char* base64data, size_t ba
 /*
  * Base64-encode a block of data, stick "?OTR:" and "." around it, and
  * return the result, or NULL in the event of a memory error.  The
- * caller must free() the return value.
+ * caller must delete the return value.
  */
 char* otrl_base64_otr_encode(const unsigned char* buf, size_t buflen)
 {
@@ -201,12 +201,12 @@ char* otrl_base64_otr_encode(const unsigned char* buf, size_t buflen)
 
     /* Make the base64-encoding. */
     base64len = ((buflen + 2) / 3) * 4;
-    base64buf = (char*)malloc(base64len + 1);
-    if (base64buf == NULL) {
-        return NULL;
+    base64buf = new char[base64len + 1];
+    if (base64buf == nullptr) {
+        return nullptr;
     }
     otrl_base64_encode(base64buf, buf, buflen);
-    base64buf[base64len + 1] = '\0';
+    base64buf[base64len] = '\0';
 
     return base64buf;
 }
@@ -214,7 +214,7 @@ char* otrl_base64_otr_encode(const unsigned char* buf, size_t buflen)
 /*
  * Base64-decode the portion of the given message between "?OTR:" and
  * ".".  Set *bufp to the decoded data, and set *lenp to its length.
- * The caller must free() the result.  Return 0 on success, -1 on a
+ * The caller must delete the result.  Return 0 on success, -1 on a
  * memory error, or -2 on invalid input.
  */
 int otrl_base64_otr_decode(const char* msg, unsigned char** bufp, size_t* lenp)
@@ -225,8 +225,8 @@ int otrl_base64_otr_decode(const char* msg, unsigned char** bufp, size_t* lenp)
     msglen = strlen(msg);
 
     rawlen = OTRL_B64_MAX_DECODED_SIZE(msglen); /* maximum possible */
-    rawmsg = (unsigned char*)malloc(rawlen);
-    if (!rawmsg && rawlen > 0) {
+    rawmsg = new unsigned char[rawlen];
+    if ((rawmsg == nullptr || !rawmsg) && rawlen > 0) {
         return -1;
     }
 
