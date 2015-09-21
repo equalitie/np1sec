@@ -40,7 +40,7 @@ std::string participants_to_string(const ParticipantMap& plist)
  */
 bool sort_by_long_term_pub_key(const np1secAsymmetricKey lhs, const np1secAsymmetricKey rhs)
 {
-    return Cryptic::public_key_to_stringbuff(lhs) < Cryptic::public_key_to_stringbuff(rhs);
+    return public_key_to_stringbuff(lhs) < public_key_to_stringbuff(rhs);
 }
 
 /**
@@ -79,9 +79,9 @@ void Participant::be_authenticated(const std::string authenticator_id, const Tok
     to_be_hashed += authenticator_id;
     Token regenerated_auth_token;
 
-    Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), regenerated_auth_token);
+    hash(to_be_hashed.c_str(), to_be_hashed.size(), regenerated_auth_token);
 
-    if (Cryptic::compare_hash(regenerated_auth_token, auth_token)) {
+    if (compare_hash(regenerated_auth_token, auth_token)) {
         logger.warn("participant " + id.nickname + " failed TDH authentication");
         throw np1secAuthenticationException();
     } else {
@@ -109,7 +109,7 @@ void Participant::authenticate_to(Token auth_token, const np1secAsymmetricKey th
     to_be_hashed += id.id_to_stringbuffer(); // the question is that why should we include the public
     // key here?
 
-    Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), auth_token);
+    hash(to_be_hashed.c_str(), to_be_hashed.size(), auth_token);
 }
 
 /**

@@ -51,7 +51,7 @@ np1secUserState::np1secUserState(std::string name, np1secAppOps* ops, uint8_t* k
         // we also populate our id key to send it to other
         // during join.
         try {
-            myself = new ParticipantId(name, Cryptic::public_key_to_stringbuff(long_term_key_pair.get_public_key()));
+            myself = new ParticipantId(name, public_key_to_stringbuff(long_term_key_pair.get_public_key()));
         } catch (std::exception& e) {
             logger.error("failed to initiate user state with provided key " + (std::string)(e.what()));
 
@@ -90,7 +90,7 @@ bool np1secUserState::init()
     logger.info("generating long term key for participant " + myself->nickname);
     try {
         long_term_key_pair.generate();
-        myself->set_fingerprint(Cryptic::public_key_to_stringbuff(long_term_key_pair.get_public_key()));
+        myself->set_fingerprint(public_key_to_stringbuff(long_term_key_pair.get_public_key()));
         return true;
     } catch (np1secCryptoException& crypto_exception) {
         logger.error("failed to generate long term key for participant " + myself->nickname);

@@ -314,22 +314,22 @@ void np1secSession::setup_session_view(np1secMessage session_view_message)
 
 void np1secSession::compute_session_confirmation()
 {
-    std::string to_be_hashed = Cryptic::hash_to_string_buff(session_key);
+    std::string to_be_hashed = hash_to_string_buff(session_key);
     to_be_hashed += myself.nickname;
 
-    Cryptic::hash(to_be_hashed, session_confirmation);
+    hash(to_be_hashed, session_confirmation);
 }
 
 void np1secSession::account_for_session_and_key_consistency()
 {
-    std::string to_be_hashed = Cryptic::hash_to_string_buff(session_key);
+    std::string to_be_hashed = hash_to_string_buff(session_key);
     to_be_hashed += session_id.get_as_stringbuff();
 
     HashBlock key_sid_hash;
-    Cryptic::hash(to_be_hashed, key_sid_hash);
+    hash(to_be_hashed, key_sid_hash);
 
     last_received_message_id = 0; // key confirmation is the first message
-    add_message_to_transcript(Cryptic::hash_to_string_buff(key_sid_hash), last_received_message_id);
+    add_message_to_transcript(hash_to_string_buff(key_sid_hash), last_received_message_id);
 }
 
 bool np1secSession::validate_session_confirmation(np1secMessage confirmation_message)
@@ -340,12 +340,12 @@ bool np1secSession::validate_session_confirmation(np1secMessage confirmation_mes
     memcpy(participants[confirmation_message.sender_nick].future_raw_ephemeral_key,
            confirmation_message.next_session_ephemeral_key.data(), c_ephemeral_key_length);
 
-    std::string to_be_hashed = Cryptic::hash_to_string_buff(session_key);
+    std::string to_be_hashed = hash_to_string_buff(session_key);
     to_be_hashed += confirmation_message.sender_nick;
 
-    Cryptic::hash(to_be_hashed, expected_hash);
+    hash(to_be_hashed, expected_hash);
 
-    return !(Cryptic::compare_hash(
+    return !(compare_hash(
         expected_hash, reinterpret_cast<const uint8_t*>(confirmation_message.session_key_confirmation.c_str())));
 }
 
@@ -365,11 +365,11 @@ std::string np1secSession::secret_share_on(int32_t side)
     assert(participants[peers[my_neighbour]].ephemeral_key);
     participants[peers[my_neighbour]].compute_p2p_private(us->long_term_key_pair.get_key_pair().first, &cryptic);
 
-    Cryptic::hash(Cryptic::hash_to_string_buff(participants[peers[my_neighbour]].p2p_key) +
+    hash(hash_to_string_buff(participants[peers[my_neighbour]].p2p_key) +
                       session_id.get_as_stringbuff(),
                   hb, true);
 
-    return Cryptic::hash_to_string_buff(hb);
+    return hash_to_string_buff(hb);
 }
 
 void np1secSession::group_enc()
@@ -377,8 +377,8 @@ void np1secSession::group_enc()
     HashBlock hbr, hbl;
     HashStdBlock sr = secret_share_on(c_my_right);
     HashStdBlock sl = secret_share_on(c_my_left);
-    memcpy(hbr, Cryptic::strbuff_to_hash(sr), sizeof(HashBlock));
-    memcpy(hbl, Cryptic::strbuff_to_hash(sl), sizeof(HashBlock));
+    memcpy(hbr, strbuff_to_hash(sr), sizeof(HashBlock));
+    memcpy(hbl, strbuff_to_hash(sl), sizeof(HashBlock));
 
     for (unsigned i = 0; i < sizeof(HashBlock); i++) {
         hbr[i] ^= hbl[i];
@@ -394,14 +394,14 @@ void np1secSession::group_dec()
 
     HashBlock hbr;
     HashStdBlock sr = secret_share_on(c_my_right);
-    memcpy(hbr, Cryptic::strbuff_to_hash(sr), sizeof(HashBlock));
-    all_r[my_index] = Cryptic::hash_to_string_buff(hbr);
+    memcpy(hbr, strbuff_to_hash(sr), sizeof(HashBlock));
+    all_r[my_index] = hash_to_string_buff(hbr);
 
     for (uint32_t counter = 0; counter < peers.size(); counter++) {
         // memcpy(all_r[my_right], last_hbr, sizeof(HashBlock));
         size_t current_peer = (my_index + counter) % peers.size();
         size_t peer_on_the_right = (current_peer + 1) % peers.size();
-        all_r[current_peer] = Cryptic::hash_to_string_buff(hbr);
+        all_r[current_peer] = hash_to_string_buff(hbr);
         for (unsigned i = 0; i < sizeof(HashBlock); i++) {
             hbr[i] ^= participants[peers[peer_on_the_right]].cur_keyshare[i];
         }
@@ -414,7 +414,7 @@ void np1secSession::group_dec()
     }
 
     to_hash += session_id.get_as_stringbuff();
-    Cryptic::hash(to_hash.c_str(), to_hash.size(), session_key, true);
+    hash(to_hash.c_str(), to_hash.size(), session_key, true);
     cryptic.set_session_key(session_key);
 }
 
@@ -630,7 +630,7 @@ np1secSession::StateAndAction np1secSession::confirm_or_resession(np1secMessage 
     // This function is never called because
     // if sid is the same mark the participant as confirmed
     // receiving mismatch sid basically means rejoin
-    if (Cryptic::compare_hash(received_message.session_id.get(), session_id.get())) {
+    if (compare_hash(received_message.session_id.get(), session_id.get())) {
         if (validate_session_confirmation(received_message))
             confirmed_peers[participants[received_message.sender_nick].index] = true;
         else {
@@ -764,16 +764,16 @@ RoomAction np1secSession::init_a_session_with_plist(np1secMessage received_messa
         throw np1secInvalidParticipantException();
     }
 
-    np1secPublicKey temp_future_pub_key = Cryptic::reconstruct_public_key_sexp(
-        Cryptic::hash_to_string_buff(participants[received_message.sender_nick].future_raw_ephemeral_key));
+    np1secPublicKey temp_future_pub_key = reconstruct_public_key_sexp(
+        hash_to_string_buff(participants[received_message.sender_nick].future_raw_ephemeral_key));
 
     if (!received_message.verify_message(temp_future_pub_key)) {
-        Cryptic::release_crypto_resource(temp_future_pub_key);
+        release_crypto_resource(temp_future_pub_key);
         logger.warn("failed to verify signature of PARTICIPANT_INFO message.");
         throw np1secAuthenticationException();
     }
 
-    Cryptic::release_crypto_resource(temp_future_pub_key);
+    release_crypto_resource(temp_future_pub_key);
 
     ParticipantMap live_participants = participants_list_to_map(received_message.get_session_view());
 
@@ -787,7 +787,7 @@ RoomAction np1secSession::init_a_session_with_plist(np1secMessage received_messa
     for (auto& cur_participant : live_participants) {
         if (participants.find(cur_participant.second.id.nickname) != participants.end()) {
             cur_participant.second.authenticated =
-                !Cryptic::compare_hash(participants[cur_participant.second.id.nickname].future_raw_ephemeral_key,
+                !compare_hash(participants[cur_participant.second.id.nickname].future_raw_ephemeral_key,
                                        cur_participant.second.raw_ephemeral_key);
         } else {
             cur_participant.second.authenticated = false;
@@ -882,11 +882,11 @@ np1secSession::StateAndAction np1secSession::confirm_auth_add_update_share_repo(
     if (received_message.message_type == np1secMessage::JOINER_AUTH) {
         if (received_message.authentication_table.find(my_index) != received_message.authentication_table.end())
             participants[received_message.sender_nick].be_authenticated(
-                myself.id_to_stringbuffer(), Cryptic::strbuff_to_hash(received_message.authentication_table[my_index]),
+                myself.id_to_stringbuffer(), strbuff_to_hash(received_message.authentication_table[my_index]),
                 us->long_term_key_pair.get_key_pair().first, &cryptic);
     }
 
-    participants[received_message.sender_nick].set_key_share(Cryptic::strbuff_to_hash(received_message.z_sender));
+    participants[received_message.sender_nick].set_key_share(strbuff_to_hash(received_message.z_sender));
 
     return send_session_confirmation_if_everybody_is_contributed();
     // else { //assuming the message is PARTICIPANT_INFO from other in
@@ -913,8 +913,8 @@ np1secSession::StateAndAction np1secSession::send_session_confirmation_if_everyb
         np1secMessage outboundmessage(&cryptic);
 
         outboundmessage.create_session_confirmation_msg(
-            session_id, Cryptic::hash_to_string_buff(session_confirmation),
-            Cryptic::public_key_to_stringbuff(future_cryptic.get_ephemeral_pub_key()));
+            session_id, hash_to_string_buff(session_confirmation),
+            public_key_to_stringbuff(future_cryptic.get_ephemeral_pub_key()));
 
         outboundmessage.send(room_name, us);
 
@@ -1165,8 +1165,8 @@ void np1secSession::stop_timer_receive(std::string acknowledger_id, MessageId me
 void np1secSession::update_send_transcript_chain(MessageId own_message_id, std::string message)
 {
     HashBlock hb;
-    Cryptic::hash(message, hb, true);
-    sent_transcript_chain[own_message_id].transcript_hash = Cryptic::hash_to_string_buff(hb);
+    hash(message, hb, true);
+    sent_transcript_chain[own_message_id].transcript_hash = hash_to_string_buff(hb);
     sent_transcript_chain[own_message_id].ack_timer_ops = AckTimerOps(this, nullptr, own_message_id);
 
     sent_transcript_chain[own_message_id].consistency_timer =
@@ -1262,14 +1262,14 @@ void np1secSession::add_message_to_transcript(std::string message, MessageId mes
         pointlessconversion = message;
     }
 
-    Cryptic::hash(pointlessconversion, hb);
+    hash(pointlessconversion, hb);
 
     if (received_transcript_chain.find(message_id) == received_transcript_chain.end()) {
         ConsistencyBlockVector chain_block(participants.size());
         received_transcript_chain.insert(std::pair<MessageId, ConsistencyBlockVector>(message_id, chain_block));
     }
 
-    (received_transcript_chain[message_id])[my_index].transcript_hash = Cryptic::hash_to_string_buff(hb);
+    (received_transcript_chain[message_id])[my_index].transcript_hash = hash_to_string_buff(hb);
     received_transcript_chain[message_id][my_index].consistency_timer = nullptr;
 }
 

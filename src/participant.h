@@ -64,7 +64,7 @@ struct ParticipantId {
 
     ParticipantId(std::string nickname, np1secAsymmetricKey fingerprint_sexp)
     {
-        std::string fingerprint_strbuff(Cryptic::retrieve_result(fingerprint_sexp));
+        std::string fingerprint_strbuff(retrieve_result(fingerprint_sexp));
         ParticipantId(nickname, fingerprint_strbuff);
     }
 
@@ -243,7 +243,7 @@ class Participant
           authed_to(rhs.authed_to), key_share_contributed(rhs.key_share_contributed), index(rhs.index)
 
     {
-        long_term_pub_key = Cryptic::copy_crypto_resource(rhs.long_term_pub_key);
+        long_term_pub_key = copy_crypto_resource(rhs.long_term_pub_key);
         set_ephemeral_key(rhs.raw_ephemeral_key);
         memcpy(future_raw_ephemeral_key, rhs.future_raw_ephemeral_key, sizeof(edCurvePublicKey));
         memcpy(p2p_key, rhs.p2p_key, sizeof(np1secSymmetricKey));
@@ -267,10 +267,10 @@ class Participant
      */
     void set_ephemeral_key(const edCurvePublicKey raw_ephemeral_key)
     {
-        Cryptic::release_crypto_resource(this->ephemeral_key);
+        release_crypto_resource(this->ephemeral_key);
         // delete [] this->raw_ephemeral_key; doesn't make sense to delete const length array
         memcpy(this->raw_ephemeral_key, raw_ephemeral_key, sizeof(edCurvePublicKey));
-        ephemeral_key = Cryptic::reconstruct_public_key_sexp(
+        ephemeral_key = reconstruct_public_key_sexp(
             std::string(reinterpret_cast<const char*>(raw_ephemeral_key), c_ephemeral_key_length));
     }
 
@@ -325,8 +325,8 @@ class Participant
 
     Participant(const UnauthenticatedParticipant& unauth_participant)
         : id(unauth_participant.participant_id),
-          long_term_pub_key(Cryptic::reconstruct_public_key_sexp(
-              Cryptic::hash_to_string_buff(unauth_participant.participant_id.fingerprint))),
+          long_term_pub_key(reconstruct_public_key_sexp(
+              hash_to_string_buff(unauth_participant.participant_id.fingerprint))),
           authenticated(false), authed_to(false), key_share_contributed(false)
     {
         set_ephemeral_key(unauth_participant.ephemeral_pub_key);
@@ -336,8 +336,8 @@ class Participant
     ~Participant()
     {
         // release gcrypt stuff
-        Cryptic::release_crypto_resource(this->ephemeral_key);
-        Cryptic::release_crypto_resource(this->long_term_pub_key);
+        release_crypto_resource(this->ephemeral_key);
+        release_crypto_resource(this->long_term_pub_key);
         // TODO - Verify with Vmon that these are necessary
         //secure_wipe(ephemeral_key, c_hash_length);
         //secure_wipe(raw_ephemeral_key, c_hash_length);

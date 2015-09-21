@@ -65,12 +65,12 @@ class SessionId
         std::string session_id_blob;
         for (auto it = plist.begin(); it != plist.end(); ++it) {
             Participant& p = it->second;
-            UnauthenticatedParticipant uap(p.id, Cryptic::hash_to_string_buff(p.raw_ephemeral_key), p.authenticated);
+            UnauthenticatedParticipant uap(p.id, hash_to_string_buff(p.raw_ephemeral_key), p.authenticated);
             session_id_blob += uap.unauthed_participant_to_stringbuffer();
             session_id_blob.erase(session_id_blob.size() - 1); // dropping authentication info
         }
 
-        HashStdBlock sid = Cryptic::hash(session_id_blob);
+        HashStdBlock sid = hash(session_id_blob);
         memcpy(session_id_raw, sid.data(), sizeof(HashBlock));
         is_set = true;
     }
@@ -90,7 +90,7 @@ class SessionId
 
     bool operator==(const SessionId& rhs)
     {
-        return (is_set == rhs.is_set && !Cryptic::compare_hash(session_id_raw, rhs.session_id_raw));
+        return (is_set == rhs.is_set && !compare_hash(session_id_raw, rhs.session_id_raw));
     }
 };
 

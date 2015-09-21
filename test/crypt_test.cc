@@ -47,7 +47,7 @@ TEST_F(CryptTest, test_hash)
         "ba7816bf8f01cfea414140de5dae2223"
         "b00361a396177a9cb410ff61f20015ad";
     uint8_t* res = new HashBlock;
-    gcry_error_t err = Cryptic::hash(reinterpret_cast<const void*>(str.c_str()), 3, res, false);
+    gcry_error_t err = hash(reinterpret_cast<const void*>(str.c_str()), 3, res, false);
     EXPECT_FALSE(err);
     std::stringstream buf;
     buf << std::hex << std::internal << std::setfill('0');
@@ -91,8 +91,8 @@ TEST_F(CryptTest, test_teddh_test)
     np1secAsymmetricKey alice_long_term_key = NULL;
     np1secAsymmetricKey bob_long_term_key = NULL;
 
-    ASSERT_TRUE(Cryptic::generate_key_pair(&alice_long_term_key));
-    ASSERT_TRUE(Cryptic::generate_key_pair(&bob_long_term_key));
+    ASSERT_TRUE(generate_key_pair(&alice_long_term_key));
+    ASSERT_TRUE(generate_key_pair(&bob_long_term_key));
 
     // Extract just the public key to hand over to the peer
     np1secPublicKey alice_long_term_pub_key = gcry_sexp_find_token(alice_long_term_key, "public-key", 0);

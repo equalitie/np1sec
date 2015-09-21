@@ -37,7 +37,22 @@
 namespace np1sec
 {
 
-gcry_error_t Cryptic::hash(const void* buffer, size_t buffer_len, HashBlock hb, bool secure)
+gcry_error_t hash(const void* buffer, size_t buffer_len, HashBlock hb)
+{
+    return hash(buffer, buffer_len, hb, true);
+}
+
+gcry_error_t hash(const std::string string_buffer, HashBlock hb)
+{
+    return hash(string_buffer, hb, true);
+}
+
+HashStdBlock hash(const std::string string_buffer)
+{
+    return hash(string_buffer, true);
+}
+
+gcry_error_t hash(const void* buffer, size_t buffer_len, HashBlock hb, bool secure)
 {
     gcry_error_t err = 0;
     gcry_md_hd_t digest = nullptr;
@@ -66,7 +81,7 @@ Cryptic::Cryptic()
     memset(session_key, 0, c_hash_length);
 }
 
-bool Cryptic::generate_key_pair(np1secAsymmetricKey* generated_key)
+bool generate_key_pair(np1secAsymmetricKey* generated_key)
 {
     /* Generate a new Ed25519 key pair. */
     gcry_error_t err = 0;
@@ -130,12 +145,68 @@ err:
     throw np1secCryptoException();
 }
 
-gcry_sexp_t Cryptic::get_public_key(np1secAsymmetricKey key_pair)
+std::string hash_to_string_buff(const HashBlock hash_block)
+{
+    return std::string(reinterpret_cast<const char*>(hash_block), sizeof(HashBlock));
+}
+
+/**
+ * cast the string hash to unit8_t* dies if the size isn't correct
+ * the buffer is only valid as long as the HashStdBlock is valid
+ */
+const uint8_t* strbuff_to_hash(std::string& hash_block_buffer)
+{
+    logger.assert_or_die(hash_block_buffer.size() == sizeof(HashBlock), "Hash block doesn't have std size");
+    return reinterpret_cast<const uint8_t*>(hash_block_buffer.c_str());
+}
+
+/**
+ * the given public key need to be explicitly released
+ */
+np1secPublicKey extract_public_key(const np1secAsymmetricKey complete_key)
+{
+    return gcry_sexp_find_token(complete_key, "public-key", 0);
+}
+
+/**
+ * Compares two hashblocks, returning 0 if the two are equal, to be consistent with
+ * memcmp, or 1 if they are unequal.
+ * @param {HashBlock} lhs - The first hashblock
+ * @param {HashBlock} rhs - The hashblock to compare the first against
+ * @return 0 if the two hashblocks are equal, else 1
+ */
+int compare_hash(const HashBlock rhs, const HashBlock lhs)
+{
+    char equal = 0;
+    size_t to_compare = sizeof(HashBlock);
+    for (unsigned int i = 0; i < to_compare; i++) {
+        equal |= lhs[i] ^ rhs[i];
+    }
+    return equal;
+}
+
+
+HashStdBlock hash(const std::string string_buffer, bool secure = true)
+{
+    HashBlock hb;
+    gcry_error_t err = hash(string_buffer.c_str(), string_buffer.size(), hb, secure);
+    if (err) {
+        throw np1secCryptoException();
+    }
+    return hash_to_string_buff(hb);
+}
+
+gcry_error_t hash(const std::string string_buffer, HashBlock hb, bool secure = true)
+{
+    return hash(string_buffer.c_str(), string_buffer.size(), hb, secure);
+}
+
+gcry_sexp_t get_public_key(np1secAsymmetricKey key_pair)
 {
     return gcry_sexp_find_token(key_pair, "public-key", 0);
 }
 
-std::string Cryptic::public_key_to_stringbuff(np1secAsymmetricKey public_key)
+std::string public_key_to_stringbuff(np1secAsymmetricKey public_key)
 {
     gcry_sexp_t q_of_pub_key = gcry_sexp_find_token(public_key, "q", 0);
     if (!q_of_pub_key)
@@ -147,7 +218,7 @@ std::string Cryptic::public_key_to_stringbuff(np1secAsymmetricKey public_key)
     return pubkey_blob;
 }
 
-std::string Cryptic::retrieve_result(gcry_sexp_t text_sexp)
+std::string retrieve_result(gcry_sexp_t text_sexp)
 {
 
     size_t buffer_size;
@@ -163,14 +234,14 @@ std::string Cryptic::retrieve_result(gcry_sexp_t text_sexp)
     return result;
 }
 
-gcry_sexp_t Cryptic::convert_to_sexp(std::string text)
+gcry_sexp_t convert_to_sexp(std::string text)
 {
     gcry_error_t err = 0;
     gcry_sexp_t new_sexp;
 
     err = gcry_sexp_new(&new_sexp, text.c_str(), text.size(), 1);
     if (err) {
-        logger.error("Cryptic::convert_to_sexp failed to convert plain_text to gcry_sexp_t", __FUNCTION__);
+        logger.error("convert_to_sexp failed to convert plain_text to gcry_sexp_t", __FUNCTION__);
         logger.error(std::string("Failure: ") + gcry_strsource(err) + "/" + gcry_strerror(err), __FUNCTION__);
         throw np1secCryptoException();
     }
@@ -200,7 +271,7 @@ gcry_sexp_t Cryptic::convert_to_sexp(std::string text)
 [close]
 [close]
  */
-np1secAsymmetricKey Cryptic::reconstruct_public_key_sexp(const std::string pub_key_block)
+np1secAsymmetricKey reconstruct_public_key_sexp(const std::string pub_key_block)
 {
     gcry_error_t err = 0;
     np1secAsymmetricKey public_key_sexp = nullptr;
@@ -219,14 +290,14 @@ err:
     return nullptr;
 }
 
-void Cryptic::release_crypto_resource(gcry_sexp_t crypto_resource)
+void release_crypto_resource(gcry_sexp_t crypto_resource)
 {
     if (crypto_resource) {
         gcry_sexp_release(crypto_resource);
     }
 }
 
-gcry_sexp_t Cryptic::copy_crypto_resource(gcry_sexp_t crypto_resource)
+gcry_sexp_t copy_crypto_resource(gcry_sexp_t crypto_resource)
 {
     gcry_sexp_t copied_resource;
     gcry_error_t err = gcry_sexp_build(&copied_resource, NULL, "%S", crypto_resource);

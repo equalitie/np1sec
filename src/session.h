@@ -388,7 +388,7 @@ class np1secSession
         UnauthenticatedParticipantList session_view;
         for (size_t i = 0; i < peers.size(); i++) {
             session_view.push_back(UnauthenticatedParticipant(
-                participants[peers[i]].id, Cryptic::hash_to_string_buff(participants[peers[i]].raw_ephemeral_key),
+                participants[peers[i]].id, hash_to_string_buff(participants[peers[i]].raw_ephemeral_key),
                 participants[peers[i]].authenticated));
         }
 
