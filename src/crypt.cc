@@ -23,6 +23,7 @@
 #ifndef SRC_CRYPT_CC_
 #define SRC_CRYPT_CC_
 
+#include <iostream>
 #include <cstdio>
 #include <string>
 #include <gcrypt.h>
@@ -233,7 +234,6 @@ std::string retrieve_result(gcry_sexp_t text_sexp)
     std::string result(buffer, buffer_size);
     return result;
 }
-
 gcry_sexp_t convert_to_sexp(std::string text)
 {
     gcry_error_t err = 0;
@@ -345,7 +345,6 @@ void Cryptic::triple_ed_dh(PublicKey peer_ephemeral_key, PublicKey peer_long_ter
     // initiating the to be encrypted 1
 
     gcry_sexp_t triple_dh_sexp[3] = {};
-    uint8_t* feed_to_hash_buffer = NULL;
     std::string token_concat;
 
     gcry_sexp_t my_long_term_secret_scaler = gcry_sexp_nth(gcry_sexp_find_token(my_long_term_key, "a", 0), 1);
@@ -384,23 +383,25 @@ void Cryptic::triple_ed_dh(PublicKey peer_ephemeral_key, PublicKey peer_long_ter
         goto leave;
     }
 
+    uint8_t buffer[c_tdh_point_length * 3]; // 65 bytes are written in our call to gcry_sexp_nth_data
     for (int i = 0; i < 3; i++) {
         gcry_sexp_t cur_tdh_point = gcry_sexp_find_token(triple_dh_sexp[i], "s", 0);
         if (!cur_tdh_point) {
             logger.error("teddh: failed to extract tdh token\n", __FUNCTION__);
             goto leave;
         }
-        token_concat += retrieve_result(cur_tdh_point);
+        size_t buffer_len;
+        const char* tmp_buffer;
+        tmp_buffer = gcry_sexp_nth_data(cur_tdh_point, 1, &buffer_len);
+        memcpy(buffer + (sizeof(uint8_t) * i * c_tdh_point_length), tmp_buffer, c_tdh_point_length);
         gcry_sexp_release(cur_tdh_point);
     }
-
-    feed_to_hash_buffer = new uint8_t[token_concat.size()];
-    token_concat.copy(reinterpret_cast<char*>(feed_to_hash_buffer), token_concat.size());
 
     if (teddh_token == NULL)
         teddh_token = new Token[1]; // so stupid!!!
 
-    hash(feed_to_hash_buffer, token_concat.size(), *teddh_token, true);
+    hash(buffer, c_tdh_point_length * 3, *teddh_token, true);
+    secure_wipe(buffer, c_tdh_point_length * 3);
 
     failed = false;
 
@@ -409,8 +410,6 @@ leave:
     gcry_sexp_release(my_ephemeral_secret_scaler);
     for (int i = 0; i < 3; i++)
         gcry_sexp_release(triple_dh_sexp[i]);
-
-    delete[] feed_to_hash_buffer;
 
     if (failed)
         throw CryptoException();

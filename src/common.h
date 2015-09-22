@@ -56,6 +56,9 @@ typedef std::pair<PrivateKey, PublicKey> KeyPair;
 const size_t c_hash_length = 32;
 const size_t c_signature_length = 64;
 
+// Number of bytes in a Triple DH point extracted in tiple_ed_dh.
+const size_t c_tdh_point_length = 65;
+
 typedef uint8_t HashBlock[c_hash_length];
 typedef std::string HashStdBlock; // This eventually gonna replace HashBlock,
 // mainly because StdHashBlock can be easily checked to see if it is initiated
