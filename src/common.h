@@ -45,9 +45,9 @@ namespace np1sec
 {
 
 typedef uint32_t MessageId;
-typedef gcry_sexp_t np1secPrivateKey;
-typedef gcry_sexp_t np1secPublicKey;
-typedef std::pair<np1secPrivateKey, np1secPublicKey> KeyPair;
+typedef gcry_sexp_t PrivateKey;
+typedef gcry_sexp_t PublicKey;
+typedef std::pair<PrivateKey, PublicKey> KeyPair;
 // TODO: it really makes sense that the public key is already stored in HashBlock
 // Format as we never use public key directly when we have the main
 // key and only use this to transmit it to others
@@ -69,7 +69,7 @@ typedef HashBlock DTHash;
 typedef HashBlock Token;
 typedef HashBlock edCurvePublicKey;
 
-enum np1secLoadFlag { NO_LOAD, NEW_EPHEMERAL_KEY, LEAVE, NEW_SECRET_SHARE };
+enum LoadFlag { NO_LOAD, NEW_EPHEMERAL_KEY, LEAVE, NEW_SECRET_SHARE };
 
 const std::string c_np1sec_protocol_name(":o3np1sec:");
 const DTShort c_np1sec_protocol_version = 0x0001;

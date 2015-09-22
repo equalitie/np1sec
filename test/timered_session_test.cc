@@ -41,7 +41,7 @@ class TimeredSessionTest : public ::testing::Test
     // First we need to run a chatserver but this is always the case so I'm making
     // class to setup chat server
     ChatMockerTimered mock_server;
-    np1secAppOps* mockops;
+    AppOps* mockops;
     struct event_base* base;
 
     string mock_room_name;
@@ -53,12 +53,12 @@ class TimeredSessionTest : public ::testing::Test
         // uint32_t two_sec = 2000;
         // uint32_t ten_sec = 10000;
 
-        // np1secAppOps(uint32_t ACK_GRACE_INTERVAL,
+        // AppOps(uint32_t ACK_GRACE_INTERVAL,
         //          uint32_t REKEY_GRACE_INTERVAL,
         //          uint32_t INTERACTION_GRACE_INTERVAL,
         //          uint32_t BROADCAST_LATENCY)
 
-        mockops = new np1secAppOps(hundred_mili_sec, one_sec, hundred_mili_sec, hundred_mili_sec);
+        mockops = new AppOps(hundred_mili_sec, one_sec, hundred_mili_sec, hundred_mili_sec);
         mockops->send_bare = send_bare;
         mockops->join = new_session_announce;
         mockops->leave = new_session_announce;
@@ -151,10 +151,10 @@ void check_log_for_phrase(void* arg)
 //   std::pair<ChatMocker*, string> mock_aux_data(&mock_server,username);
 //   mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
 
-//   np1secUserState* user_state = new np1secUserState(username, mockops);
+//   UserState* user_state = new UserState(username, mockops);
 //   user_state->init();
 
-//   pair<np1secUserState*, ChatMocker*> user_server_state(user_state, &mock_server);
+//   pair<UserState*, ChatMocker*> user_server_state(user_state, &mock_server);
 
 //   //client login and join
 //   mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));
@@ -259,10 +259,10 @@ TEST_F(TimeredSessionTest, test_resession_forward_secrecy)
     std::pair<ChatMocker*, string> mock_aux_data(&mock_server, username);
     mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
 
-    np1secUserState user_state(username, mockops);
+    UserState user_state(username, mockops);
     user_state.init();
 
-    pair<np1secUserState*, ChatMocker*> user_server_state(&user_state, &mock_server);
+    pair<UserState*, ChatMocker*> user_server_state(&user_state, &mock_server);
 
     // client login and join
     mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));

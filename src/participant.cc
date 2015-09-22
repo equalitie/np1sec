@@ -38,7 +38,7 @@ std::string participants_to_string(const ParticipantMap& plist)
  * To be used in std::sort to sort the particpant list
  * in a way that is consistent way between all participants
  */
-bool sort_by_long_term_pub_key(const np1secAsymmetricKey lhs, const np1secAsymmetricKey rhs)
+bool sort_by_long_term_pub_key(const AsymmetricKey lhs, const AsymmetricKey rhs)
 {
     return public_key_to_stringbuff(lhs) < public_key_to_stringbuff(rhs);
 }
@@ -71,7 +71,7 @@ bool operator<(const Participant& lhs, const Participant& rhs)
  * @return true if peer's authenticity could be established
  */
 void Participant::be_authenticated(const std::string authenticator_id, const Token auth_token,
-                                   const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto)
+                                   const AsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto)
 {
     compute_p2p_private(thread_user_id_key, thread_user_crypto);
 
@@ -83,7 +83,7 @@ void Participant::be_authenticated(const std::string authenticator_id, const Tok
 
     if (compare_hash(regenerated_auth_token, auth_token)) {
         logger.warn("participant " + id.nickname + " failed TDH authentication");
-        throw np1secAuthenticationException();
+        throw AuthenticationException();
     } else {
         this->authenticated = true;
     }
@@ -99,7 +99,7 @@ void Participant::be_authenticated(const std::string authenticator_id, const Tok
  *
  * @return true if peer's authenticity could be established
  */
-void Participant::authenticate_to(Token auth_token, const np1secAsymmetricKey thread_user_id_key,
+void Participant::authenticate_to(Token auth_token, const AsymmetricKey thread_user_id_key,
                                   Cryptic* thread_user_crypto)
 {
 
@@ -117,7 +117,7 @@ void Participant::authenticate_to(Token auth_token, const np1secAsymmetricKey th
  *
  * @return true on success
  */
-void Participant::compute_p2p_private(np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto)
+void Participant::compute_p2p_private(AsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto)
 {
     thread_user_crypto->triple_ed_dh(ephemeral_key, long_term_pub_key, thread_user_id_key,
                                      sort_by_long_term_pub_key(this->long_term_pub_key, thread_user_id_key), &p2p_key);

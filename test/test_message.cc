@@ -35,7 +35,7 @@ class MessageTest : public ::testing::Test
     // First we need to run a chatserver but this is always the case so I'm making
     // class to setup chat server
     ChatMocker mock_server;
-    struct np1secAppOps mockops;
+    struct AppOps mockops;
 
     virtual void SetUp()
     {
@@ -57,7 +57,7 @@ TEST_F(MessageTest, test_user_message)
     HashBlock sid, transcript_chain_hash;
     SessionId session_id;
     Cryptic cryptic;
-    np1secAppOps ops;
+    AppOps ops;
     HashBlock hb;
 
     np1sec::hash("mydummyhash", hb);
@@ -69,14 +69,14 @@ TEST_F(MessageTest, test_user_message)
     memcpy(transcript_chain_hash, base.c_str(), sizeof(HashBlock));
     session_id.set(sid);
 
-    np1secMessage outbound(&cryptic);
+    Message outbound(&cryptic);
 
     // outbound.create_user_msg(session_id,
     //                          user_state->myself->nickname,
     //                          user_message,
-    //                          np1secMessage::USER_MESSAGE,
+    //                          Message::USER_MESSAGE,
     //                          transcript_chain_hash,
-    //                          np1secLoadFlag::NO_LOAD,
+    //                          LoadFlag::NO_LOAD,
     //                          meta_load,
     //                          pstates);
 
@@ -97,11 +97,11 @@ TEST_F(MessageTest, test_join_auth){
   memcpy(cur_keyshare, base.c_str(), sizeof(HashBlock) );
   session_id.set(sid);
 
-  np1secAppOps joiner_mockops = mockops;
+  AppOps joiner_mockops = mockops;
   std::string joiner = "joiner";
   std::pair<ChatMocker*, std::string> mock_aux_joiner_data(&mock_server,joiner);
   joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
-  np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);
+  UserState* joiner_state = new UserState(joiner, &joiner_mockops);
   //They can use the same mock up as they are using the same mock server
   joiner_state->init();
 
@@ -114,12 +114,12 @@ true);
 
   session_view_list.push_back(test_participant);
 
-  np1secMessage outbound;
+  Message outbound;
   outbound.create_join_auth_msg(session_id,
                                 std::string(reinterpret_cast<char*>(cur_auth_token), sizeof(HashBlock))dd,
                                //z_sender?? std::string(reinterpret_cast<char*>(cur_keyshare), sizeof(HashBlock)));
 
-  np1secMessage inbound(outbound.sys_message,
+  Message inbound(outbound.sys_message,
                                nullptr,
                                joiner_state,
                                room_name);
@@ -140,11 +140,11 @@ TEST_F(MessageTest, test_participant_info){
   memcpy(cur_keyshare, base.c_str(), sizeof(HashBlock) );
   session_id.set(sid);
 
-  np1secAppOps joiner_mockops = mockops;
+  AppOps joiner_mockops = mockops;
   std::string joiner = "joiner";
   std::pair<ChatMocker*, std::string> mock_aux_joiner_data(&mock_server,joiner);
   joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
-  np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);
+  UserState* joiner_state = new UserState(joiner, &joiner_mockops);
   //They can use the same mock up as they are using the same mock server
   joiner_state->init();
 
@@ -157,13 +157,13 @@ true);
 
   session_view_list.push_back(test_participant);
 
-  np1secMessage outbound;
+  Message outbound;
 
   outbound.create_participant_info_msg(session_id,
                                        session_view_list,
                                        std::string(reinterpret_cast<char*>(cur_keyshare), sizeof(HashBlock)));
 
-  np1secMessage inbound(outbound.sys_message,
+  Message inbound(outbound.sys_message,
                                nullptr,
                                joiner_state,
                                room_name);
@@ -186,11 +186,11 @@ TEST_F(MessageTest, test_session_confirmation){
   memcpy(cur_keyshare, base.c_str(), sizeof(HashBlock) );
   session_id.set(sid);
 
-  np1secAppOps joiner_mockops = mockops;
+  AppOps joiner_mockops = mockops;
   std::string joiner = "joiner";
   std::pair<ChatMocker*, std::string> mock_aux_joiner_data(&mock_server,joiner);
   joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
-  np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);
+  UserState* joiner_state = new UserState(joiner, &joiner_mockops);
   //They can use the same mock up as they are using the same mock server
   joiner_state->init();
 
@@ -204,12 +204,12 @@ true);
   session_view_list.push_back(test_participant);
 
 
-  np1secMessage outbound;
+  Message outbound;
   outbound.create_session_confirmation_msg(session_id,
                                            session_view_list,
                                            sess_key_conf);
 
-  np1secMessage inbound(outbound.sys_message,
+  Message inbound(outbound.sys_message,
                                nullptr,
                                joiner_state,
                                room_name);
@@ -221,11 +221,11 @@ TEST_F(MessageTest, test_join_request) {
 
   std::string room_name = "test_room_name";
 
-  np1secAppOps joiner_mockops = mockops;
+  AppOps joiner_mockops = mockops;
   std::string joiner = "joiner";
   std::pair<ChatMocker*, std::string> mock_aux_joiner_data(&mock_server,joiner);
   joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
-  np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);
+  UserState* joiner_state = new UserState(joiner, &joiner_mockops);
   //They can use the same mock up as they are using the same mock server
   joiner_state->init();
 
@@ -237,11 +237,11 @@ test_participant(*(joiner_state->myself),public_key_to_stringbuff(np1sec_ephemer
 true);
 
 
-  np1secMessage join_message
+  Message join_message
   join_message.create_join_request_msg(joiner_state);
 
 
-  np1secMessage received_join(join_message.sys_message,
+  Message received_join(join_message.sys_message,
                               nullptr,
                               joiner_state,
                               room_name);
@@ -256,13 +256,13 @@ true);
 //   SessionID session_id = {1};
 //   std::string sender_id = "test_user";
 //   std::string user_message = "test message";
-//   np1secMessage::np1secMessageType message_type = np1secMessage::USER_MESSAGE;
+//   Message::MessageType message_type = Message::USER_MESSAGE;
 //   HashBlock* transcript_chain_hash = 0;
-//   np1secLoadFlag meta_load_flag = NO_LOAD;
+//   LoadFlag meta_load_flag = NO_LOAD;
 //   std::string meta_load = "";
 //   std::vector<std::string> pstates = {"1"};
 
-//   np1secMessage msg(session_id,
+//   Message msg(session_id,
 //                     sender_id,
 //                     user_message,
 //                     message_type,

@@ -38,7 +38,7 @@ namespace np1sec
 // create by other sessions and handed to the room.
 
 // Should we point to a session or store the session itself?
-typedef std::map<std::string, np1secSession*> SessionMap;
+typedef std::map<std::string, Session*> SessionMap;
 
 /**
  * Manage all sessions associated to a room, this is follow the concurrent
@@ -61,11 +61,11 @@ typedef std::map<std::string, np1secSession*> SessionMap;
  * - receive with non-existing sid -> generate a new session.
  *
  */
-class np1secRoom
+class Room
 {
   protected:
     std::string name; // room name given in creation by user_state
-    np1secUserState* user_state;
+    UserState* user_state;
     ParticipantId myself;
     size_t room_size = 0; // we only need keep track of
     // the room size till we become a current user. after that
@@ -86,7 +86,7 @@ class np1secRoom
 
     // list of sessions in limbo, they need to give birth to new
     // sessions in-limbo in case a user join or leave.
-    // std::list<np1secSession*> limbo; //no need for this limbo every
+    // std::list<Session*> limbo; //no need for this limbo every
     // session beside current session.
 
     SessionId active_session;
@@ -126,16 +126,16 @@ class np1secRoom
      * by default.
      *
      */
-    np1secRoom(std::string room_name, np1secUserState* user_state, std::vector<std::string> participants_in_the_room);
+    Room(std::string room_name, UserState* user_state, std::vector<std::string> participants_in_the_room);
 
     /**
      * bad constructor just for the sake of operator[] of chatrooms
      *
      */
-    np1secRoom() { assert(0); }
+    Room() { assert(0); }
 
     // we need to deep copy the session_universe
-    np1secRoom(const np1secRoom& rhs)
+    Room(const Room& rhs)
         : name(rhs.name), // room name given in creation by user_state
           user_state(rhs.user_state), myself(rhs.myself), room_size(rhs.room_size),
           user_in_room_state(rhs.user_in_room_state), np1sec_ephemeral_crypto(rhs.np1sec_ephemeral_crypto),
@@ -143,7 +143,7 @@ class np1secRoom
     {
         logger.debug("copying room object");
         for (auto& cur_session : rhs.session_universe) {
-            np1secSession* new_copy = new np1secSession(*cur_session.second);
+            Session* new_copy = new Session(*cur_session.second);
             // if rejoin timer is still active we need to activate in the copy
             new_copy->clear_all_timers(); // it doesn't make sense to copy the
             // timer as they have pointer to the session
@@ -189,7 +189,7 @@ class np1secRoom
      *
      *
      */
-    void receive_handler(np1secMessage received_message);
+    void receive_handler(Message received_message);
 
     /**
      *  sends user message given in plain text by the client to the
@@ -221,19 +221,19 @@ class np1secRoom
     void increment_size();
 
     /**
-     * for np1secSession when it breeds a new session specailly
+     * for Session when it breeds a new session specailly
      * in the forward secrecy timer to be able to insert it
      * in the room's session map
      */
-    void insert_session(np1secSession* new_session);
+    void insert_session(Session* new_session);
 
     /**
      * Destructor need to clean up the session universe
      */
-    ~np1secRoom();
+    ~Room();
 };
 
-typedef std::map<std::string, np1secSession*> session_room_map;
+typedef std::map<std::string, Session*> session_room_map;
 
 } // namespace np1sec
 

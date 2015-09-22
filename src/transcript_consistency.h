@@ -23,8 +23,8 @@
 namespace np1sec
 {
 
-class np1secUserState;
-class np1secSession;
+class UserState;
+class Session;
 
 class MessageDigest
 {
@@ -46,14 +46,14 @@ class MessageDigest
  * from other participants
  */
 struct AckTimerOps {
-    np1secSession* session;
+    Session* session;
     Participant* participant;
     MessageId message_id;
 
     AckTimerOps() : session(nullptr), participant(nullptr){}; // This is to make [] of map
     // working, but soon we'll move to another type
 
-    AckTimerOps(np1secSession* session, Participant* participant, uint32_t message_parent_id)
+    AckTimerOps(Session* session, Participant* participant, uint32_t message_parent_id)
         : session(session), participant(participant), message_id(message_parent_id)
     {
     }

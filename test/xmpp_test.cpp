@@ -76,7 +76,7 @@ static void signed_on(PurpleConnection* gc, gpointer null)
 static void process_sending_chat(PurpleAccount* account, char** message, int id, void* m)
 {
     UNUSED(account);
-    np1secUserState* user_state = reinterpret_cast<np1secUserState*>(m);
+    UserState* user_state = reinterpret_cast<UserState*>(m);
     std::string prefix = std::string("np1sec:");
     prefix.append(*message);
     free(*message);
@@ -92,7 +92,7 @@ static gboolean process_receiving_chat(PurpleAccount* account, char** sender, ch
     UNUSED(account);
     UNUSED(sender);
     UNUSED(flags);
-    np1secUserState* user_state = reinterpret_cast<np1secUserState*>(m);
+    UserState* user_state = reinterpret_cast<UserState*>(m);
     std::string prefix = std::string("np1sec:");
     prefix.append(*message);
     free(*message);
@@ -111,7 +111,7 @@ static void process_chat_join_failed(PurpleConnection* gc, GHashTable* component
 
 static void process_chat_joined(PurpleConversation* conv, void* m)
 {
-    np1secUserState* user_state = reinterpret_cast<np1secUserState*>(m);
+    UserState* user_state = reinterpret_cast<UserState*>(m);
     // todo: Arlo could you convert conv->chat to vector<string>
     std::vector<std::string> current_occupants;
     bool joined = user_state->join_room(conv->name, current_occupants);
@@ -136,7 +136,7 @@ static void process_chat_buddy_left(PurpleConversation* conv, const char* name, 
     printf("%s left the chat\n", name);
 }
 
-static void connect_to_signals(np1secUserState* user_state)
+static void connect_to_signals(UserState* user_state)
 {
     static int handle;
     void* conn_handle = purple_connections_get_handle();
@@ -311,9 +311,9 @@ int main(void)
     name[strlen(name) - 1] = 0; // strip the \n
 
     // here is the place to construct the user state
-    static np1secAppOps ops;
+    static AppOps ops;
 
-    np1secUserState* user_state = new np1secUserState(name, &ops);
+    UserState* user_state = new UserState(name, &ops);
     if (!user_state->init()) {
         fprintf(stderr, "Failed to initiate the userstate.\n");
         abort();

@@ -34,23 +34,23 @@ Logger logger(DEBUG);
 
 void Logger::initiate_textual_conversions()
 {
-    state_to_text[np1secSession::NONE] = "NONE";
-    state_to_text[np1secSession::JOIN_REQUESTED] = "JOIN_REQUESTED";
-    state_to_text[np1secSession::RE_SHARED] = "RE_SHARED";
-    state_to_text[np1secSession::GROUP_KEY_GENERATED] = "GROUP_KEY_GENERATED";
-    state_to_text[np1secSession::IN_SESSION] = "IN_SESSION";
-    state_to_text[np1secSession::LEAVE_REQUESTED] = "LEAVE_REQUESTED";
-    state_to_text[np1secSession::STALE] = "STALE";
-    state_to_text[np1secSession::DEAD] = "DEAD";
+    state_to_text[Session::NONE] = "NONE";
+    state_to_text[Session::JOIN_REQUESTED] = "JOIN_REQUESTED";
+    state_to_text[Session::RE_SHARED] = "RE_SHARED";
+    state_to_text[Session::GROUP_KEY_GENERATED] = "GROUP_KEY_GENERATED";
+    state_to_text[Session::IN_SESSION] = "IN_SESSION";
+    state_to_text[Session::LEAVE_REQUESTED] = "LEAVE_REQUESTED";
+    state_to_text[Session::STALE] = "STALE";
+    state_to_text[Session::DEAD] = "DEAD";
 
-    message_type_to_text[np1secMessage::UNKNOWN] = "UNKNOWN";
-    message_type_to_text[np1secMessage::JOIN_REQUEST] = "JOIN_REQUEST";
-    message_type_to_text[np1secMessage::PARTICIPANTS_INFO] = "PARTICIPANTS_INFO";
-    message_type_to_text[np1secMessage::JOINER_AUTH] = "JOINER_AUTH";
-    message_type_to_text[np1secMessage::GROUP_SHARE] = "GROUP_SHARE";
-    message_type_to_text[np1secMessage::SESSION_CONFIRMATION] = "SESSION_CONFIRMATION";
-    message_type_to_text[np1secMessage::IN_SESSION_MESSAGE] = "IN_SESSION_MESSAGE";
-    message_type_to_text[np1secMessage::INADMISSIBLE] = "INADMISSIBLE";
+    message_type_to_text[Message::UNKNOWN] = "UNKNOWN";
+    message_type_to_text[Message::JOIN_REQUEST] = "JOIN_REQUEST";
+    message_type_to_text[Message::PARTICIPANTS_INFO] = "PARTICIPANTS_INFO";
+    message_type_to_text[Message::JOINER_AUTH] = "JOINER_AUTH";
+    message_type_to_text[Message::GROUP_SHARE] = "GROUP_SHARE";
+    message_type_to_text[Message::SESSION_CONFIRMATION] = "SESSION_CONFIRMATION";
+    message_type_to_text[Message::IN_SESSION_MESSAGE] = "IN_SESSION_MESSAGE";
+    message_type_to_text[Message::INADMISSIBLE] = "INADMISSIBLE";
 }
 
 // Standard constructor

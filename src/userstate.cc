@@ -27,7 +27,7 @@
 namespace np1sec
 {
 
-/** The client only calls functions in np1secUserState. As such, the client need to handle exception (or false return
+/** The client only calls functions in UserState. As such, the client need to handle exception (or false return
    values) that is resulted from these calls. In most situation, handling simply means to inform the user about the
    failure.
 
@@ -43,7 +43,7 @@ namespace np1sec
  * constructor is not able to return value, our only option is
  * to throw an exception.
  */
-np1secUserState::np1secUserState(std::string name, np1secAppOps* ops, uint8_t* key_pair) : myself(nullptr), ops(ops)
+UserState::UserState(std::string name, AppOps* ops, uint8_t* key_pair) : myself(nullptr), ops(ops)
 {
     if (key_pair) {
         logger.info("intitiating UserState with pre-generated key pair");
@@ -68,7 +68,7 @@ np1secUserState::np1secUserState(std::string name, np1secAppOps* ops, uint8_t* k
     }
 }
 
-np1secUserState::~np1secUserState()
+UserState::~UserState()
 {
     delete myself;
     // long_term_key_pair destructor takes care of zeroising
@@ -82,7 +82,7 @@ np1secUserState::~np1secUserState()
  * of randomness, then the client need to be informed that we are not
  * able to connect to any room in this situation.
  */
-bool np1secUserState::init()
+bool UserState::init()
 {
     if (long_term_key_pair.is_initiated()) {
         return true;
@@ -92,7 +92,7 @@ bool np1secUserState::init()
         long_term_key_pair.generate();
         myself->set_fingerprint(public_key_to_stringbuff(long_term_key_pair.get_public_key()));
         return true;
-    } catch (np1secCryptoException& crypto_exception) {
+    } catch (CryptoException& crypto_exception) {
         logger.error("failed to generate long term key for participant " + myself->nickname);
         return false;
     }
@@ -114,13 +114,13 @@ bool np1secUserState::init()
  *  Another condition which can make the failure of join inititation
  *  is that if we are already has joined a session in this room.
  */
-bool np1secUserState::join_room(std::string room_name, std::vector<std::string> participants_in_the_room)
+bool UserState::join_room(std::string room_name, std::vector<std::string> participants_in_the_room)
 {
     // we can't join without id key
     if (!long_term_key_pair.is_initiated()) {
         logger.error(myself->nickname + "doesn't have sufficient credential to join room" + room_name +
                      ". Long term id key has not been initiated for " + myself->nickname);
-        throw np1secInsufficientCredentialException();
+        throw InsufficientCredentialException();
     }
 
     // we join the room, the room make a join session
@@ -129,7 +129,7 @@ bool np1secUserState::join_room(std::string room_name, std::vector<std::string> 
     if (chatrooms.find(room_name) == chatrooms.end()) {
         // room creation triger joining
         try {
-            chatrooms.emplace(room_name, np1secRoom(room_name, this, participants_in_the_room));
+            chatrooms.emplace(room_name, Room(room_name, this, participants_in_the_room));
         } catch (std::exception& e) {
             logger.error(e.what(), __FUNCTION__, myself->nickname);
             logger.error("unable to join the room", __FUNCTION__, myself->nickname);
@@ -143,7 +143,7 @@ bool np1secUserState::join_room(std::string room_name, std::vector<std::string> 
         // TODO:garbage collector for the room?
         try { // try rejoining
             chatrooms[room_name].try_rejoin();
-        } catch (np1secInvalidRoomException& e) {
+        } catch (InvalidRoomException& e) {
             logger.warn("alreay in the room. need to leave the room before rejoining it.");
             return false;
         }
@@ -152,7 +152,7 @@ bool np1secUserState::join_room(std::string room_name, std::vector<std::string> 
     return true;
 }
 
-void np1secUserState::increment_room_size(std::string room_name)
+void UserState::increment_room_size(std::string room_name)
 {
     // if the room is not made, we make it.
     if (chatrooms.find(room_name) != chatrooms.end()) {
@@ -170,13 +170,13 @@ void np1secUserState::increment_room_size(std::string room_name)
  * Exception: If the client asks us to leave a room that we haven't
  * join, then we have to inform the client about its mistake.
  */
-void np1secUserState::leave_room(std::string room_name)
+void UserState::leave_room(std::string room_name)
 {
     // if there is no room, it was a mistake to give us the message
     if (chatrooms.find(room_name) == chatrooms.end()) {
         logger.error("unable to leave from room " + room_name + ". user " + myself->nickname + " is not in the room",
                      __FUNCTION__, myself->nickname);
-        throw np1secInvalidRoomException();
+        throw InvalidRoomException();
     }
 
     chatrooms[room_name].leave();
@@ -192,12 +192,12 @@ void np1secUserState::leave_room(std::string room_name)
  * throw an exception if the user isn't in the room. no exception doesn't
  *         mean that the successful
  */
-void np1secUserState::shrink(std::string room_name, std::string leaving_user_id)
+void UserState::shrink(std::string room_name, std::string leaving_user_id)
 {
     // if there is no room, it was a mistake to give us the message
     if (chatrooms.find(room_name) == chatrooms.end()) {
         logger.error("unable to shrink room " + room_name + ". user " + myself->nickname + "is not in the room");
-        throw np1secInvalidRoomException();
+        throw InvalidRoomException();
     }
 
     // we really should start shrinking here. the other
@@ -223,12 +223,12 @@ void np1secUserState::shrink(std::string room_name, std::string leaving_user_id)
  *  can't do much more about it.
  *
  */
-void np1secUserState::receive_handler(std::string room_name, std::string sender_nickname, std::string received_message,
+void UserState::receive_handler(std::string room_name, std::string sender_nickname, std::string received_message,
                                       uint32_t message_id)
 {
     logger.debug("receiving message...", __FUNCTION__, myself->nickname);
     try {
-        np1secMessage received(received_message, nullptr); // so no decryption key here
+        Message received(received_message, nullptr); // so no decryption key here
         received.sender_nick = sender_nickname;
         // in case the transport is providing the message id (if it is zero means to
         // trust the global order
@@ -255,7 +255,7 @@ void np1secUserState::receive_handler(std::string room_name, std::string sender_
  * has not ended successfully.
  *
  */
-void np1secUserState::send_handler(std::string room_name, std::string plain_message)
+void UserState::send_handler(std::string room_name, std::string plain_message)
 {
     logger.assert_or_die(chatrooms.find(room_name) != chatrooms.end(), "np1sec can not send messages to room " +
                                                                            room_name +

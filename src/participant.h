@@ -62,7 +62,7 @@ struct ParticipantId {
         memcpy(fingerprint, fingerprint_strbuff.c_str(), fingerprint_strbuff.size());
     }
 
-    ParticipantId(std::string nickname, np1secAsymmetricKey fingerprint_sexp)
+    ParticipantId(std::string nickname, AsymmetricKey fingerprint_sexp)
     {
         std::string fingerprint_strbuff(retrieve_result(fingerprint_sexp));
         ParticipantId(nickname, fingerprint_strbuff);
@@ -85,7 +85,7 @@ struct ParticipantId {
         nickname = nick_fingerprint_strbuff.substr(0, nick_fingerprint_strbuff.size() - c_fingerprint_length);
         if ((nick_fingerprint_strbuff.size() - nickname.size()) != ParticipantId::c_fingerprint_length) {
             logger.error("can not convert string participant id", __FUNCTION__);
-            throw np1secMessageFormatException();
+            throw MessageFormatException();
         }
 
         std::string fingerprint_strbuff =
@@ -170,7 +170,7 @@ struct UnauthenticatedParticipant {
     {
         if (participant_id_and_ephmeralkey.size() < c_ephemeral_key_length + sizeof(DTByte)) {
             logger.error("can not convert string to unauthenticated participant", __FUNCTION__);
-            throw np1secMessageFormatException();
+            throw MessageFormatException();
         }
         std::string ephemeral_pub_key = participant_id_and_ephmeralkey.substr(participant_id_and_ephmeralkey.size() -
                                                                               c_ephemeral_key_length - sizeof(DTByte));
@@ -208,8 +208,8 @@ class Participant
 
   public:
     ParticipantId id;
-    np1secPublicKey long_term_pub_key;
-    np1secPublicKey ephemeral_key = nullptr;
+    PublicKey long_term_pub_key;
+    PublicKey ephemeral_key = nullptr;
     MessageId last_acked_message_id;
     void* send_ack_timer = nullptr;
     edCurvePublicKey raw_ephemeral_key = {};
@@ -289,7 +289,7 @@ class Participant
      *
      * throw an exception in case it fails
      */
-    void compute_p2p_private(np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
+    void compute_p2p_private(AsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
 
     /**
      * Generate the approperiate authentication token to send to the
@@ -299,7 +299,7 @@ class Participant
      *
      * throw an exception in case it fails
      */
-    void authenticate_to(Token auth_token, const np1secAsymmetricKey thread_user_id_key,
+    void authenticate_to(Token auth_token, const AsymmetricKey thread_user_id_key,
                          Cryptic* thread_user_crypto);
 
     /**
@@ -311,7 +311,7 @@ class Participant
      * throw and exception if authentication fails
      */
     void be_authenticated(std::string authenicator_id, const Token auth_token,
-                          np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
+                          AsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
 
     /**
      * default constructor
@@ -358,7 +358,7 @@ typedef std::map<std::string, Participant> ParticipantMap;
  * To be used in std::sort to sort the particpant list
  * in a way that is consistent way between all participants
  */
-bool sort_by_long_term_pub_key(const np1secAsymmetricKey lhs, const np1secAsymmetricKey rhs);
+bool sort_by_long_term_pub_key(const AsymmetricKey lhs, const AsymmetricKey rhs);
 
 /**
  * operator < needed by map class not clear why but it doesn't compile

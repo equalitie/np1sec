@@ -81,7 +81,7 @@ Cryptic::Cryptic()
     memset(session_key, 0, c_hash_length);
 }
 
-bool generate_key_pair(np1secAsymmetricKey* generated_key)
+bool generate_key_pair(AsymmetricKey* generated_key)
 {
     /* Generate a new Ed25519 key pair. */
     gcry_error_t err = 0;
@@ -101,7 +101,7 @@ bool generate_key_pair(np1secAsymmetricKey* generated_key)
 
 err:
     logger.error(std::string("Key failure: ") + gcry_strsource(err) + "/" + gcry_strerror(err), __FUNCTION__);
-    throw np1secCryptoException();
+    throw CryptoException();
     return false;
 }
 
@@ -125,7 +125,7 @@ bool Cryptic::init()
     if (!ephemeral_pub_key) {
         gcry_sexp_release(ephemeral_key);
         logger.error("failed to retrieve public key", __FUNCTION__);
-        throw np1secCryptoException();
+        throw CryptoException();
         return false;
     }
 
@@ -134,7 +134,7 @@ bool Cryptic::init()
         gcry_sexp_release(ephemeral_key);
         gcry_sexp_release(ephemeral_pub_key);
         logger.error("failed to retrieve private key", __FUNCTION__);
-        throw np1secCryptoException();
+        throw CryptoException();
         return false;
     }
 
@@ -142,7 +142,7 @@ bool Cryptic::init()
 
 err:
     logger.error(std::string("Key failure: ") + gcry_strsource(err) + "/" + gcry_strerror(err), __FUNCTION__);
-    throw np1secCryptoException();
+    throw CryptoException();
 }
 
 std::string hash_to_string_buff(const HashBlock hash_block)
@@ -163,7 +163,7 @@ const uint8_t* strbuff_to_hash(std::string& hash_block_buffer)
 /**
  * the given public key need to be explicitly released
  */
-np1secPublicKey extract_public_key(const np1secAsymmetricKey complete_key)
+PublicKey extract_public_key(const AsymmetricKey complete_key)
 {
     return gcry_sexp_find_token(complete_key, "public-key", 0);
 }
@@ -191,7 +191,7 @@ HashStdBlock hash(const std::string string_buffer, bool secure = true)
     HashBlock hb;
     gcry_error_t err = hash(string_buffer.c_str(), string_buffer.size(), hb, secure);
     if (err) {
-        throw np1secCryptoException();
+        throw CryptoException();
     }
     return hash_to_string_buff(hb);
 }
@@ -201,16 +201,16 @@ gcry_error_t hash(const std::string string_buffer, HashBlock hb, bool secure = t
     return hash(string_buffer.c_str(), string_buffer.size(), hb, secure);
 }
 
-gcry_sexp_t get_public_key(np1secAsymmetricKey key_pair)
+gcry_sexp_t get_public_key(AsymmetricKey key_pair)
 {
     return gcry_sexp_find_token(key_pair, "public-key", 0);
 }
 
-std::string public_key_to_stringbuff(np1secAsymmetricKey public_key)
+std::string public_key_to_stringbuff(AsymmetricKey public_key)
 {
     gcry_sexp_t q_of_pub_key = gcry_sexp_find_token(public_key, "q", 0);
     if (!q_of_pub_key)
-        throw np1secCryptoException();
+        throw CryptoException();
 
     std::string pubkey_blob = retrieve_result(q_of_pub_key);
     gcry_sexp_release(q_of_pub_key);
@@ -227,7 +227,7 @@ std::string retrieve_result(gcry_sexp_t text_sexp)
 
     if (!buffer_size) {
         logger.error("failed to convert s-expression to string", __FUNCTION__);
-        throw np1secCryptoException();
+        throw CryptoException();
     }
 
     std::string result(buffer, buffer_size);
@@ -243,7 +243,7 @@ gcry_sexp_t convert_to_sexp(std::string text)
     if (err) {
         logger.error("convert_to_sexp failed to convert plain_text to gcry_sexp_t", __FUNCTION__);
         logger.error(std::string("Failure: ") + gcry_strsource(err) + "/" + gcry_strerror(err), __FUNCTION__);
-        throw np1secCryptoException();
+        throw CryptoException();
     }
     return new_sexp;
 }
@@ -271,10 +271,10 @@ gcry_sexp_t convert_to_sexp(std::string text)
 [close]
 [close]
  */
-np1secAsymmetricKey reconstruct_public_key_sexp(const std::string pub_key_block)
+AsymmetricKey reconstruct_public_key_sexp(const std::string pub_key_block)
 {
     gcry_error_t err = 0;
-    np1secAsymmetricKey public_key_sexp = nullptr;
+    AsymmetricKey public_key_sexp = nullptr;
 
     err = gcry_sexp_build(&public_key_sexp, NULL, "(public-key (ecc (curve Ed25519) (flags eddsa) (q %b)))",
                           pub_key_block.size(), pub_key_block.data());
@@ -286,7 +286,7 @@ np1secAsymmetricKey reconstruct_public_key_sexp(const std::string pub_key_block)
 err:
     logger.error(std::string("failed to construct public key: ") + gcry_strsource(err) + "/" + gcry_strerror(err),
                  __FUNCTION__);
-    throw np1secCryptoException();
+    throw CryptoException();
     return nullptr;
 }
 
@@ -304,7 +304,7 @@ gcry_sexp_t copy_crypto_resource(gcry_sexp_t crypto_resource)
     if (err) {
         logger.error(std::string("failed to copy crypto resource: ") + gcry_strsource(err) + "/" + gcry_strerror(err),
                      __FUNCTION__);
-        throw np1secCryptoException();
+        throw CryptoException();
         return nullptr;
     }
 
@@ -329,8 +329,8 @@ gcry_sexp_t copy_crypto_resource(gcry_sexp_t crypto_resource)
  *
  * @return true if succeeds otherwise false
  */
-void Cryptic::triple_ed_dh(np1secPublicKey peer_ephemeral_key, np1secPublicKey peer_long_term_key,
-                           np1secAsymmetricKey my_long_term_key, bool peer_is_first, Token* teddh_token)
+void Cryptic::triple_ed_dh(PublicKey peer_ephemeral_key, PublicKey peer_long_term_key,
+                           AsymmetricKey my_long_term_key, bool peer_is_first, Token* teddh_token)
 {
     gcry_error_t err = 0;
     bool failed = true;
@@ -413,7 +413,7 @@ leave:
     delete[] feed_to_hash_buffer;
 
     if (failed)
-        throw np1secCryptoException();
+        throw CryptoException();
 };
 
 void Cryptic::sign(unsigned char** sigp, size_t* siglenp, std::string plain_text)
@@ -495,10 +495,10 @@ err:
     if (*sigp)
         delete[] * sigp;
     logger.error("Failure: " + (std::string)gcry_strsource(err) + ": " + (std::string)gcry_strerror(err));
-    throw np1secCryptoException();
+    throw CryptoException();
 }
 
-bool Cryptic::verify(std::string plain_text, const unsigned char* sigbuf, np1secPublicKey signer_ephemeral_pub_key)
+bool Cryptic::verify(std::string plain_text, const unsigned char* sigbuf, PublicKey signer_ephemeral_pub_key)
 {
     gcry_error_t err;
     gcry_sexp_t datas = nullptr, sigs = nullptr;
@@ -544,7 +544,7 @@ bool Cryptic::verify(std::string plain_text, const unsigned char* sigbuf, np1sec
 err:
     logger.error(plain_text, __FUNCTION__);
     logger.error("Failure: " + (std::string)gcry_strsource(err) + ": " + (std::string)gcry_strerror(err), __FUNCTION__);
-    throw np1secCryptoException();
+    throw CryptoException();
 }
 
 gcry_cipher_hd_t Cryptic::OpenCipher()
@@ -571,7 +571,7 @@ err:
     if (hd)
         gcry_cipher_close(hd);
     logger.error("Failure: " + (std::string)gcry_strsource(err) + ": " + (std::string)gcry_strerror(err), __FUNCTION__);
-    throw np1secCryptoException();
+    throw CryptoException();
 }
 
 std::string Cryptic::Encrypt(std::string plain_text)
@@ -605,7 +605,7 @@ err:
     if (hd)
         gcry_cipher_close(hd);
     logger.error("Failure: " + (std::string)gcry_strsource(err) + ": " + (std::string)gcry_strerror(err));
-    throw np1secCryptoException();
+    throw CryptoException();
 }
 
 std::string Cryptic::Decrypt(std::string encrypted_text)
@@ -636,7 +636,7 @@ err:
     if (hd)
         gcry_cipher_close(hd);
     logger.error("Failure: " + (std::string)gcry_strsource(err) + ": " + (std::string)gcry_strerror(err));
-    throw np1secCryptoException();
+    throw CryptoException();
 }
 
 Cryptic::~Cryptic()

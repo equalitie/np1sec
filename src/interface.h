@@ -37,7 +37,7 @@ typedef void (*timeout_callback)(void*);
 /**
  * Calls from np1sec to the application.
  */
-struct np1secAppOps {
+struct AppOps {
     // Data that is passed to send_bare
     uint32_t c_heartbeating_interval;
     uint32_t c_session_life_span;
@@ -47,9 +47,9 @@ struct np1secAppOps {
     uint32_t c_consistency_failure_interval;
     uint32_t c_send_receive_interval;
 
-    np1secAppOps(){};
+    AppOps(){};
 
-    np1secAppOps(uint32_t ACK_GRACE_INTERVAL, uint32_t REKEY_GRACE_INTERVAL, uint32_t INTERACTION_GRACE_INTERVAL,
+    AppOps(uint32_t ACK_GRACE_INTERVAL, uint32_t REKEY_GRACE_INTERVAL, uint32_t INTERACTION_GRACE_INTERVAL,
                  uint32_t BROADCAST_LATENCY)
         : c_heartbeating_interval(REKEY_GRACE_INTERVAL / 2 + 2 * (BROADCAST_LATENCY)),
           c_session_life_span(REKEY_GRACE_INTERVAL + 2 * (BROADCAST_LATENCY)),
@@ -104,7 +104,7 @@ struct np1secAppOps {
     /**
      * confirm the association of nickname and public key
      */
-    void (*validate_long_term_key)(std::string nickname, np1secPublicKey fingerprint, void* aux_data);
+    void (*validate_long_term_key)(std::string nickname, PublicKey fingerprint, void* aux_data);
 
     /**
      * it needs to set a timer which calls timer_callback function after

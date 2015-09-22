@@ -88,15 +88,15 @@ TEST_F(CryptTest, test_sign_verify)
 TEST_F(CryptTest, test_teddh_test)
 {
 
-    np1secAsymmetricKey alice_long_term_key = NULL;
-    np1secAsymmetricKey bob_long_term_key = NULL;
+    AsymmetricKey alice_long_term_key = NULL;
+    AsymmetricKey bob_long_term_key = NULL;
 
     ASSERT_TRUE(generate_key_pair(&alice_long_term_key));
     ASSERT_TRUE(generate_key_pair(&bob_long_term_key));
 
     // Extract just the public key to hand over to the peer
-    np1secPublicKey alice_long_term_pub_key = gcry_sexp_find_token(alice_long_term_key, "public-key", 0);
-    np1secPublicKey bob_long_term_pub_key = gcry_sexp_find_token(bob_long_term_key, "public-key", 0);
+    PublicKey alice_long_term_pub_key = gcry_sexp_find_token(alice_long_term_key, "public-key", 0);
+    PublicKey bob_long_term_pub_key = gcry_sexp_find_token(bob_long_term_key, "public-key", 0);
 
     ASSERT_TRUE(alice_long_term_pub_key && bob_long_term_pub_key);
     Cryptic alice_crypt, bob_crypt;
