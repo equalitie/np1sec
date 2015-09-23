@@ -72,6 +72,8 @@ void release_crypto_resource(gcry_sexp_t crypto_resource);
 
 gcry_sexp_t copy_crypto_resource(gcry_sexp_t crypto_resource);
 
+gcry_error_t hash(const HashBlock** superblob, size_t num_blocks, HashBlock to_write, bool secure);
+
 gcry_error_t hash(const void* buffer, size_t buffer_len, HashBlock hb);
 gcry_error_t hash(const void* buffer, size_t buffer_len, HashBlock hb, bool secure);
 

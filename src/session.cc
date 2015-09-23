@@ -353,10 +353,8 @@ bool Session::validate_session_confirmation(Message confirmation_message)
  * compute the right secret share
  * @param side  either c_my_right = 1 or c_my_left = 1
  */
-std::string Session::secret_share_on(int32_t side)
+void Session::secret_share_on(int32_t side, HashBlock hb)
 {
-    HashBlock hb;
-
     assert(side == c_my_left || side == c_my_right);
     uint32_t positive_side = side + ((side < 0) ? peers.size() : 0);
     unsigned int my_neighbour = (my_index + positive_side) % peers.size();
@@ -368,54 +366,49 @@ std::string Session::secret_share_on(int32_t side)
     hash(hash_to_string_buff(participants[peers[my_neighbour]].p2p_key) +
                       session_id.get_as_stringbuff(),
                   hb, true);
-
-    return hash_to_string_buff(hb);
 }
 
 void Session::group_enc()
 {
     HashBlock hbr, hbl;
-    HashStdBlock sr = secret_share_on(c_my_right);
-    HashStdBlock sl = secret_share_on(c_my_left);
-    memcpy(hbr, strbuff_to_hash(sr), sizeof(HashBlock));
-    memcpy(hbl, strbuff_to_hash(sl), sizeof(HashBlock));
+    secret_share_on(c_my_right, hbr);
+    secret_share_on(c_my_left, hbl);
 
     for (unsigned i = 0; i < sizeof(HashBlock); i++) {
         hbr[i] ^= hbl[i];
     }
 
     participants[myself.nickname].set_key_share(hbr);
+    secure_wipe(hbr, c_hash_length);
+    secure_wipe(hbl, c_hash_length);
 }
 
 void Session::group_dec()
 {
-
-    std::vector<std::string> all_r(peers.size());
-
     HashBlock hbr;
-    HashStdBlock sr = secret_share_on(c_my_right);
-    memcpy(hbr, strbuff_to_hash(sr), sizeof(HashBlock));
-    all_r[my_index] = hash_to_string_buff(hbr);
+    HashBlock all_r[peers.size() + 1];
+   
+    secret_share_on(c_my_right, hbr);
+    memcpy(all_r[my_index], hbr, c_hash_length);
 
     for (uint32_t counter = 0; counter < peers.size(); counter++) {
         // memcpy(all_r[my_right], last_hbr, sizeof(HashBlock));
         size_t current_peer = (my_index + counter) % peers.size();
         size_t peer_on_the_right = (current_peer + 1) % peers.size();
-        all_r[current_peer] = hash_to_string_buff(hbr);
+        memcpy(all_r[current_peer], hbr, c_hash_length);
         for (unsigned i = 0; i < sizeof(HashBlock); i++) {
             hbr[i] ^= participants[peers[peer_on_the_right]].cur_keyshare[i];
         }
     }
-    // assert(hbr[0]==reinterpret_cast<const uint8_t&>(all_r[my_index][0]));
-
-    std::string to_hash;
-    for (std::vector<std::string>::iterator it = all_r.begin(); it != all_r.end(); ++it) {
-        to_hash += (*it).c_str();
-    }
-
-    to_hash += session_id.get_as_stringbuff();
-    hash(to_hash.c_str(), to_hash.size(), session_key, true);
+    
+    memcpy(all_r[peers.size()], session_id.get(), c_hash_length);
+    hash(all_r, peers.size() + 1, session_key, true);
     cryptic.set_session_key(session_key);
+    
+    secure_wipe(hbr, c_hash_length);
+    for (size_t i = 0; i < peers.size() + 1; i++) {
+        secure_wipe(all_r[i], c_hash_length);
+    }
 }
 
 bool Session::everybody_authenticated_and_contributed()

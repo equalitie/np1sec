@@ -327,7 +327,7 @@ class Session
      * compute the right secret share
      * @param side  either c_my_right = 1 or c_my_left = 1
      */
-    std::string secret_share_on(int32_t side);
+    void secret_share_on(int32_t side, HashBlock hb);
 
     ParticipantMap participants_list_to_map(const UnauthenticatedParticipantList& session_view)
     {

@@ -38,6 +38,19 @@
 namespace np1sec
 {
 
+/**
+ * Hash an array of HashBlocks.
+ * @param {HashBlock*} superblob - A pointer to the first HashBlock in an array
+ * @param {size_t} num_blocks - The number of HashBlocks in the array (not the number of bytes!)
+ * @param {HashBlock} to_write - A HashBlock to write the result of the hash to
+ * @param {bool} secure - Whether the hash needs to be performed securely or not
+ */
+gcry_error_t hash(const HashBlock* superblob, size_t num_blocks, HashBlock to_write, bool secure)
+{
+    // Treat an array of HashBlocks as one giant blob to hash
+    return hash(superblob, c_hash_length * num_blocks, to_write, secure);
+}
+
 gcry_error_t hash(const void* buffer, size_t buffer_len, HashBlock hb)
 {
     return hash(buffer, buffer_len, hb, true);

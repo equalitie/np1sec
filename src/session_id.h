@@ -85,7 +85,11 @@ class SessionId
 
     std::string get_as_stringbuff()
     {
-        return (is_set) ? std::string(reinterpret_cast<const char*>(session_id_raw), sizeof(HashBlock)) : std::string();
+        if (is_set) {
+            return std::string(reinterpret_cast<const char*>(session_id_raw), sizeof(HashBlock));
+        } else {
+            return "";
+        }
     }
 
     bool operator==(const SessionId& rhs)
