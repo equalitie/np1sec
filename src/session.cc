@@ -363,9 +363,13 @@ void Session::secret_share_on(int32_t side, HashBlock hb)
     assert(participants[peers[my_neighbour]].ephemeral_key);
     participants[peers[my_neighbour]].compute_p2p_private(us->long_term_key_pair.get_key_pair().first, &cryptic);
 
-    hash(hash_to_string_buff(participants[peers[my_neighbour]].p2p_key) +
-                      session_id.get_as_stringbuff(),
-                  hb, true);
+    // compute p2p_key + session_id.session_id_raw
+    size_t num_bytes = c_hash_length + c_hash_length;
+    uint8_t bytes[num_bytes];
+    memcpy(bytes, participants[peers[my_neighbour]].p2p_key, c_hash_length);
+    memcpy(bytes + (sizeof(uint8_t) * c_hash_length), session_id.get(), c_hash_length);
+    hash((void*)bytes, num_bytes, hb, true);
+    secure_wipe(bytes, c_hash_length + c_hash_length);
 }
 
 void Session::group_enc()
