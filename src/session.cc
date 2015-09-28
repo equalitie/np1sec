@@ -625,40 +625,40 @@ np1secSession::StateAndAction np1secSession::auth_and_reshare(np1secMessage rece
    If the sid is different send a new join request
 
 */
-np1secSession::StateAndAction np1secSession::confirm_or_resession(np1secMessage received_message)
-{
-    // This function is never called because
-    // if sid is the same mark the participant as confirmed
-    // receiving mismatch sid basically means rejoin
-    if (Cryptic::compare_hash(received_message.session_id.get(), session_id.get())) {
-        if (validate_session_confirmation(received_message))
-            confirmed_peers[participants[received_message.sender_nick].index] = true;
-        else {
-            logger.warn(received_message.sender_nick +
-                            "failed to provid a valid session confirmation. confirmation ignored.",
-                        __FUNCTION__, myself.nickname);
-            // we just ignore the message instead I think
-            // I can throw something too.
-            return StateAndAction(my_state, RoomAction(RoomAction::NO_ACTION));
-        }
+// np1secSession::StateAndAction np1secSession::confirm_or_resession(np1secMessage received_message)
+// {
+//     // This function is never called because
+//     // if sid is the same mark the participant as confirmed
+//     // receiving mismatch sid basically means rejoin
+//     if (Cryptic::compare_hash(received_message.session_id.get(), session_id.get())) {
+//         if (validate_session_confirmation(received_message))
+//             confirmed_peers[participants[received_message.sender_nick].index] = true;
+//         else {
+//             logger.warn(received_message.sender_nick +
+//                             "failed to provid a valid session confirmation. confirmation ignored.",
+//                         __FUNCTION__, myself.nickname);
+//             // we just ignore the message instead I think
+//             // I can throw something too.
+//             return StateAndAction(my_state, RoomAction(RoomAction::NO_ACTION));
+//         }
 
-        if (everybody_confirmed()) {
-            // flush the raison d'etre because we have fullfield it
-            // raison_detre.clear();
-            return StateAndAction(IN_SESSION, RoomAction(RoomAction::NO_ACTION));
-        } else {
-            return StateAndAction(my_state, RoomAction(RoomAction::NO_ACTION));
-        }
+//         if (everybody_confirmed()) {
+//             // flush the raison d'etre because we have fullfield it
+//             // raison_detre.clear();
+//             return StateAndAction(IN_SESSION, RoomAction(RoomAction::NO_ACTION));
+//         } else {
+//             return StateAndAction(my_state, RoomAction(RoomAction::NO_ACTION));
+//         }
 
-    } else { // It is not ours, if we haven't received any confirmation then
-        // we should die
-        if (nobody_confirmed()) {
-            return StateAndAction(DEAD, RoomAction(RoomAction::NO_ACTION));
-        } else {
-            return StateAndAction(my_state, RoomAction(RoomAction::NO_ACTION));
-        }
-    }
-}
+//     } else { // It is not ours, if we haven't received any confirmation then
+//         // we should die
+//         if (nobody_confirmed()) {
+//             return StateAndAction(DEAD, RoomAction(RoomAction::NO_ACTION));
+//         } else {
+//             return StateAndAction(my_state, RoomAction(RoomAction::NO_ACTION));
+//         }
+//     }
+// }
 
 //*****JOINER state transitors END*****
 
