@@ -28,11 +28,13 @@
 namespace np1sec
 {
 
+typedef HashBlock MessageBuffer;
+
 /**
  *  return the apporperiate string buffer which contains the data
  *  in data
  */
-std::string np1secMessage::encode_opaque_data(const std::string& data)
+std::string Message::encode_opaque_data(const std::string& data)
 {
     std::string result(data_to_string(static_cast<const uint32_t>(data.size())));
     result += data;
@@ -44,11 +46,11 @@ std::string np1secMessage::encode_opaque_data(const std::string& data)
  *  return a pairs of strings, first with the opaque data (without length)
  *  second the rest of the string
  */
-std::pair<std::string, std::string> np1secMessage::decode_opaque_field(std::string opaque_data)
+std::pair<std::string, std::string> Message::decode_opaque_field(std::string opaque_data)
 {
     uint32_t opaque_string_size(*(reinterpret_cast<const uint32_t*>(opaque_data.data())));
     if (opaque_string_size > opaque_data.size())
-        throw np1secMessageFormatException();
+        throw MessageFormatException();
 
     std::string opaque_string_data(opaque_data.data() + sizeof(uint32_t), opaque_string_size);
     std::string the_rest = opaque_data.substr(opaque_string_data.size() + sizeof(uint32_t));
@@ -56,9 +58,9 @@ std::pair<std::string, std::string> np1secMessage::decode_opaque_field(std::stri
     return std::pair<std::string, std::string>(opaque_string_data, the_rest);
 }
 
-np1secMessage::np1secMessage(Cryptic* cryptic) : cryptic(cryptic) {}
+Message::Message(Cryptic* cryptic) : cryptic(cryptic) {}
 
-np1secMessage::np1secMessage(std::string raw_message, Cryptic* cryptic, size_t no_of_participants)
+Message::Message(std::string raw_message, Cryptic* cryptic, size_t no_of_participants)
     : cryptic(cryptic), no_of_participants(no_of_participants)
 {
     final_whole_message = raw_message;
@@ -70,22 +72,22 @@ np1secMessage::np1secMessage(std::string raw_message, Cryptic* cryptic, size_t n
  *         the list of participants with their ephemerals otherwise
  *         throw an exception
  */
-const UnauthenticatedParticipantList& np1secMessage::get_session_view()
+const UnauthenticatedParticipantList& Message::get_session_view()
 {
     if (message_type != PARTICIPANTS_INFO || session_view.empty())
-        throw np1secMessageFormatException();
+        throw MessageFormatException();
     // if the message is of participant info then session_view
     // get filled on construction
 
     return session_view;
 }
 
-std::string np1secMessage::session_view_as_string()
+std::string Message::session_view_as_string()
 {
 
     std::string output;
     if (!session_view.size()) // it is an invalid room
-        throw np1secInvalidRoomException();
+        throw InvalidRoomException();
 
     for (UnauthenticatedParticipantList::iterator it = session_view.begin(); it != session_view.end(); ++it) {
         output += encode_opaque_data((*it).unauthed_participant_to_stringbuffer());
@@ -94,7 +96,7 @@ std::string np1secMessage::session_view_as_string()
     return output;
 }
 
-void np1secMessage::string_to_session_view(std::string sv_string)
+void Message::string_to_session_view(std::string sv_string)
 {
     while (sv_string.size()) {
         std::pair<std::string, std::string> pid_and_rest = decode_opaque_field(sv_string);
@@ -103,7 +105,7 @@ void np1secMessage::string_to_session_view(std::string sv_string)
     }
 }
 
-void np1secMessage::create_participant_info_msg(SessionId session_id, UnauthenticatedParticipantList& session_view_list,
+void Message::create_participant_info_msg(SessionId session_id, UnauthenticatedParticipantList& session_view_list,
                                                 std::string key_confirmation, HashStdBlock z_sender)
 {
 
@@ -121,11 +123,11 @@ void np1secMessage::create_participant_info_msg(SessionId session_id, Unauthenti
     append_msg_end();
 }
 
-void np1secMessage::create_group_share_msg(SessionId session_id, std::string z_sender)
+void Message::create_group_share_msg(SessionId session_id, std::string z_sender)
 {
     // data verification
     if (!session_id.get())
-        throw np1secInvalidDataException();
+        throw InvalidDataException();
 
     this->message_type = GROUP_SHARE;
     this->session_id.set(session_id.get());
@@ -134,7 +136,7 @@ void np1secMessage::create_group_share_msg(SessionId session_id, std::string z_s
     append_msg_end();
 }
 
-void np1secMessage::create_session_confirmation_msg(SessionId session_id, std::string session_key_confirmation,
+void Message::create_session_confirmation_msg(SessionId session_id, std::string session_key_confirmation,
                                                     std::string next_session_ephemeral_key)
 {
     // data verification
@@ -146,7 +148,7 @@ void np1secMessage::create_session_confirmation_msg(SessionId session_id, std::s
     append_msg_end();
 }
 
-void np1secMessage::create_join_request_msg(UnauthenticatedParticipant joiner)
+void Message::create_join_request_msg(UnauthenticatedParticipant joiner)
 {
 
     this->message_type = JOIN_REQUEST;
@@ -156,7 +158,7 @@ void np1secMessage::create_join_request_msg(UnauthenticatedParticipant joiner)
     append_msg_end(false);
 }
 
-void np1secMessage::create_joiner_auth_msg(SessionId session_id, std::string key_confirmation, std::string z_sender)
+void Message::create_joiner_auth_msg(SessionId session_id, std::string key_confirmation, std::string z_sender)
 {
 
     // data verification
@@ -170,7 +172,7 @@ void np1secMessage::create_joiner_auth_msg(SessionId session_id, std::string key
     append_msg_end();
 }
 
-// void np1secMessage::create_farewell_msg(SessionId session_id,
+// void Message::create_farewell_msg(SessionId session_id,
 //                                         UnauthenticatedParticipantList& session_view_list,
 //                                         std::string z_sender) {
 
@@ -183,7 +185,7 @@ void np1secMessage::create_joiner_auth_msg(SessionId session_id, std::string key
 
 // }
 
-void np1secMessage::append_msg_end(bool need_to_be_signed)
+void Message::append_msg_end(bool need_to_be_signed)
 {
     std::string clear_message =
         data_to_string(c_np1sec_protocol_version) + data_to_string((DTByte)(this->message_type));
@@ -209,7 +211,7 @@ void np1secMessage::append_msg_end(bool need_to_be_signed)
     final_whole_message = sys_message;
 }
 
-void np1secMessage::unwrap_generic_message(std::string b64ed_message)
+void Message::unwrap_generic_message(std::string b64ed_message)
 {
     std::string message = base64_decode(b64ed_message);
 
@@ -218,9 +220,9 @@ void np1secMessage::unwrap_generic_message(std::string b64ed_message)
 
     // check version
     if (!check_version_validity(message))
-        throw np1secVersionMismatchException();
+        throw VersionMismatchException();
 
-    message_type = (np1secMessageType)(*reinterpret_cast<DTByte*>(&message[c_message_type_offset]));
+    message_type = (MessageType)(*reinterpret_cast<DTByte*>(&message[c_message_type_offset]));
 
     size_t current_offset = c_message_type_offset + sizeof(DTByte);
     logger.debug("received message of type " + logger.message_type_to_text[message_type], __FUNCTION__);
@@ -235,7 +237,7 @@ void np1secMessage::unwrap_generic_message(std::string b64ed_message)
         // the message should have
         // now we get the session id
         if (message.size() < current_offset + c_hash_length)
-            throw np1secMessageFormatException();
+            throw MessageFormatException();
 
         this->session_id.set(reinterpret_cast<uint8_t*>(&message[current_offset]));
         current_offset += c_hash_length;
@@ -253,7 +255,7 @@ void np1secMessage::unwrap_generic_message(std::string b64ed_message)
 
             // at least we need to have a signature size
             if (message.length() < current_offset + c_signature_length)
-                throw np1secMessageFormatException();
+                throw MessageFormatException();
 
             // we only store these values so the session later calls the verify function
             // because we don't keep track of the sender public key we are unable to
@@ -272,7 +274,7 @@ void np1secMessage::unwrap_generic_message(std::string b64ed_message)
                 key_confirmation = confirmation_and_share.first;
                 z_sender = confirmation_and_share.second;
                 if (z_sender.size() != c_hash_length)
-                    throw np1secMessageFormatException();
+                    throw MessageFormatException();
 
                 break;
             }
@@ -286,7 +288,7 @@ void np1secMessage::unwrap_generic_message(std::string b64ed_message)
 
                 z_sender = confirmation_and_share.second;
                 if (z_sender.size() != c_hash_length)
-                    throw np1secMessageFormatException();
+                    throw MessageFormatException();
 
                 break;
             }
@@ -294,7 +296,7 @@ void np1secMessage::unwrap_generic_message(std::string b64ed_message)
             case GROUP_SHARE:
                 z_sender = signed_message.substr(current_offset);
                 if (z_sender.size() != c_hash_length)
-                    throw np1secMessageFormatException();
+                    throw MessageFormatException();
 
                 break;
 
@@ -311,15 +313,15 @@ void np1secMessage::unwrap_generic_message(std::string b64ed_message)
 
             default:
                 // we exhausted all type possibility
-                throw np1secMessageFormatException();
+                throw MessageFormatException();
             }
         }
     }
 }
 
-std::string np1secMessage::ustate_values(std::vector<std::string> pstates)
+std::string Message::ustate_values(std::vector<std::string> pstates)
 {
-    // throw np1secNotImplementedException();
+    // throw NotImplementedException();
     std::string ustates;
     for (std::vector<std::string>::iterator it = pstates.begin(); it != pstates.end(); it++) {
         ustates += *it;
@@ -328,12 +330,12 @@ std::string np1secMessage::ustate_values(std::vector<std::string> pstates)
     return ustates;
 }
 
-void np1secMessage::build_authentication_table()
+void Message::build_authentication_table()
 {
     std::string remaining_confirmations = key_confirmation;
     while (remaining_confirmations.size()) {
         if (remaining_confirmations.size() < sizeof(DTLength) + sizeof(DTHash))
-            throw np1secMessageFormatException();
+            throw MessageFormatException();
 
         authentication_table.insert(std::pair<DTLength, std::string>(
             string_to_length(remaining_confirmations.data()),
@@ -361,13 +363,13 @@ void np1secMessage::build_authentication_table()
    TV 0 Length
    Leave
  */
-std::string np1secMessage::create_in_session_msg(SessionId session_id, uint32_t sender_index, uint32_t sender_own_id,
+std::string Message::create_in_session_msg(SessionId session_id, uint32_t sender_index, uint32_t sender_own_id,
                                                  uint32_t parent_id, HashStdBlock transcript_chain_hash,
-                                                 np1secMessageSubType message_sub_type, std::string user_message)
+                                                 MessageSubType message_sub_type, std::string user_message)
 {
 
     if (!cryptic) // you can't make a user message without cryptic being set
-        throw np1secInsufficientCredentialException();
+        throw InsufficientCredentialException();
 
     message_type = IN_SESSION_MESSAGE;
     logger.assert_or_die(session_id.get(), "can not create in-session message for id-less session");
@@ -375,14 +377,14 @@ std::string np1secMessage::create_in_session_msg(SessionId session_id, uint32_t 
     std::string base_message;
     // first we cook the meta part
 
-    HashBlock buffer;
+    MessageBuffer buffer;
     gcry_randomize(buffer, c_hash_length, GCRY_STRONG_RANDOM);
 
     base_message = data_to_string(sender_index);
     base_message += data_to_string(sender_own_id);
     base_message += data_to_string(parent_id);
     base_message += transcript_chain_hash;
-    base_message += Cryptic::hash_to_string_buff(buffer);
+    base_message += hash_to_string_buff(buffer);
 
     switch (message_sub_type) {
     case USER_MESSAGE:
@@ -404,13 +406,13 @@ std::string np1secMessage::create_in_session_msg(SessionId session_id, uint32_t 
     return final_whole_message;
 }
 
-void np1secMessage::unwrap_in_session_message(std::string u_message)
+void Message::unwrap_in_session_message(std::string u_message)
 {
     std::string encrypted_message, phased_message, temp_store;
 
     phased_message = decrypt_message(u_message);
     if (phased_message.size() < c_signature_length)
-        throw np1secMessageFormatException();
+        throw MessageFormatException();
 
     std::string signed_encrypted_part = phased_message.substr(0, phased_message.size() - c_signature_length);
     signed_message += signed_encrypted_part;
@@ -449,8 +451,8 @@ void np1secMessage::unwrap_in_session_message(std::string u_message)
         // message sub type hash: DTLength
         current_offset = move_offset_or_throw_up(sub_messages_remainder, 0, 0,
                                                  sizeof(DTShort)); // just checking to have valid length
-        np1secMessageSubType current_sub_message_type =
-            static_cast<np1secMessageSubType>(string_to_short(&sub_messages_remainder[current_offset]));
+        MessageSubType current_sub_message_type =
+            static_cast<MessageSubType>(string_to_short(&sub_messages_remainder[current_offset]));
         current_offset = move_offset_or_throw_up(sub_messages_remainder, current_offset, sizeof(DTShort));
 
         switch (current_sub_message_type) {
@@ -472,37 +474,37 @@ void np1secMessage::unwrap_in_session_message(std::string u_message)
         default: // this is about in session forward secracy
             logger.warn("received a sub-message of type " + std::to_string(current_sub_message_type) +
                         " but do not know what to do with it");
-            // throw np1secNotImplementedException();
+            // throw NotImplementedException();
         }
     };
 
     // message_id = compute_message_id(user_message);
 }
 
-uint32_t np1secMessage::compute_message_id() const { return message_id; }
+uint32_t Message::compute_message_id() const { return message_id; }
 
-void np1secMessage::send(std::string room_name, np1secUserState* us)
+void Message::send(std::string room_name, UserState* us)
 {
     us->ops->send_bare(room_name, sys_message, us->ops->bare_sender_data); // This is not cool
     // message just should ask us to send and then us is the only one which has
     // access to ops internals
 }
 
-std::string np1secMessage::base64_encode(std::string message)
+std::string Message::base64_encode(std::string message)
 {
     char* buf = otrl_base64_otr_encode((unsigned char*)message.c_str(), message.size());
-    if (buf == NULL)
+    if (buf == nullptr)
         throw std::bad_alloc();
 
     // XXX/yawning: I hope nothing sensitive is ever encoded this way, otherwise
-    // buf needs to be cleansed before free().
+    // buf needs to be cleansed before deleting.
 
     std::string ret = std::string(buf);
-    free(buf);
+    delete buf;
     return ret;
 }
 
-std::string np1secMessage::base64_decode(std::string message)
+std::string Message::base64_decode(std::string message)
 {
     unsigned char* buf = NULL;
     size_t len;
@@ -511,21 +513,21 @@ std::string np1secMessage::base64_decode(std::string message)
         throw std::bad_alloc();
 
     // XXX/yawning: I hope nothing sensitive is ever decoded this way, otherwise
-    // buf needs to be cleansed before free().
+    // buf needs to be cleansed before deleting.
 
     std::string ret = std::string(reinterpret_cast<const char*>(buf), len);
-    free(buf);
+    delete buf;
     return ret;
 }
 
-std::string np1secMessage::sign_message(std::string message)
+std::string Message::sign_message(std::string message)
 {
     unsigned char* sigbuf = NULL;
     size_t siglen;
 
     try {
         cryptic->sign(&sigbuf, &siglen, message);
-    } catch (np1secCryptoException& e) {
+    } catch (CryptoException& e) {
         logger.error("unable to sign the outgoing message");
         throw;
     }
@@ -536,7 +538,7 @@ std::string np1secMessage::sign_message(std::string message)
     return signature;
 }
 
-bool np1secMessage::verify_message(np1secPublicKey sender_ephemeral_key)
+bool Message::verify_message(PublicKey sender_ephemeral_key)
 {
     if (cryptic->verify(signed_message, (unsigned char*)signature.c_str(), sender_ephemeral_key)) {
         logger.debug("massage bears a valid signature from " + sender_nick, __FUNCTION__);
@@ -547,24 +549,24 @@ bool np1secMessage::verify_message(np1secPublicKey sender_ephemeral_key)
     return false;
 }
 
-std::string np1secMessage::encrypt_message(std::string signed_message) { return cryptic->Encrypt(signed_message); }
+std::string Message::encrypt_message(std::string signed_message) { return cryptic->Encrypt(signed_message); }
 
-HashStdBlock np1secMessage::compute_hash()
+HashStdBlock Message::compute_hash()
 {
     if (final_whole_message.length()) {
         HashBlock hb;
-        Cryptic::hash(final_whole_message, hb, true);
-        return Cryptic::hash_to_string_buff(hb);
+        hash(final_whole_message, hb, true);
+        return hash_to_string_buff(hb);
     } else
-        throw np1secInvalidDataException();
+        throw InvalidDataException();
 }
 
-std::string np1secMessage::decrypt_message(std::string encrypted_message)
+std::string Message::decrypt_message(std::string encrypted_message)
 {
     return cryptic->Decrypt(encrypted_message);
 }
 
-np1secMessage::~np1secMessage() {}
+Message::~Message() {}
 
 } // namespace np1sec
 

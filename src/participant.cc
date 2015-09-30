@@ -38,9 +38,9 @@ std::string participants_to_string(const ParticipantMap& plist)
  * To be used in std::sort to sort the particpant list
  * in a way that is consistent way between all participants
  */
-bool sort_by_long_term_pub_key(const np1secAsymmetricKey lhs, const np1secAsymmetricKey rhs)
+bool sort_by_long_term_pub_key(const AsymmetricKey lhs, const AsymmetricKey rhs)
 {
-    return Cryptic::public_key_to_stringbuff(lhs) < Cryptic::public_key_to_stringbuff(rhs);
+    return public_key_to_stringbuff(lhs) < public_key_to_stringbuff(rhs);
 }
 
 /**
@@ -70,20 +70,20 @@ bool operator<(const Participant& lhs, const Participant& rhs)
  *
  * @return true if peer's authenticity could be established
  */
-void Participant::be_authenticated(const std::string authenticator_id, const HashBlock auth_token,
-                                   const np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto)
+void Participant::be_authenticated(const std::string authenticator_id, const Token auth_token,
+                                   const AsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto)
 {
     compute_p2p_private(thread_user_id_key, thread_user_crypto);
 
     std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
     to_be_hashed += authenticator_id;
-    HashBlock regenerated_auth_token;
+    Token regenerated_auth_token;
 
-    Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), regenerated_auth_token);
+    hash(to_be_hashed.c_str(), to_be_hashed.size(), regenerated_auth_token);
 
-    if (Cryptic::compare_hash(regenerated_auth_token, auth_token)) {
+    if (compare_hash(regenerated_auth_token, auth_token)) {
         logger.warn("participant " + id.nickname + " failed TDH authentication");
-        throw np1secAuthenticationException();
+        throw AuthenticationException();
     } else {
         this->authenticated = true;
     }
@@ -99,7 +99,7 @@ void Participant::be_authenticated(const std::string authenticator_id, const Has
  *
  * @return true if peer's authenticity could be established
  */
-void Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key,
+void Participant::authenticate_to(Token auth_token, const AsymmetricKey thread_user_id_key,
                                   Cryptic* thread_user_crypto)
 {
 
@@ -109,7 +109,7 @@ void Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKe
     to_be_hashed += id.id_to_stringbuffer(); // the question is that why should we include the public
     // key here?
 
-    Cryptic::hash(to_be_hashed.c_str(), to_be_hashed.size(), auth_token);
+    hash(to_be_hashed.c_str(), to_be_hashed.size(), auth_token);
 }
 
 /**
@@ -117,7 +117,7 @@ void Participant::authenticate_to(HashBlock auth_token, const np1secAsymmetricKe
  *
  * @return true on success
  */
-void Participant::compute_p2p_private(np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto)
+void Participant::compute_p2p_private(AsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto)
 {
     thread_user_crypto->triple_ed_dh(ephemeral_key, long_term_pub_key, thread_user_id_key,
                                      sort_by_long_term_pub_key(this->long_term_pub_key, thread_user_id_key), &p2p_key);

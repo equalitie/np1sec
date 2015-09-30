@@ -24,67 +24,67 @@
 namespace np1sec
 {
 
-class np1secSessionStateException : public std::exception
+class SessionStateException : public std::exception
 {
     virtual const char* what() const throw() { return "Invalid session state"; }
 };
 
-class np1secMessageFormatException : public std::exception
+class MessageFormatException : public std::exception
 {
     virtual const char* what() const throw() { return "Invalid message format"; }
 };
 
-class np1secVersionMismatchException : public std::exception
+class VersionMismatchException : public std::exception
 {
     virtual const char* what() const throw() { return "Invalid protocol version"; }
 };
 
-class np1secMessageSignatureException : public std::exception
+class MessageSignatureException : public std::exception
 {
     virtual const char* what() const throw() { return "Signature failed verification"; }
 };
 
-class np1secCryptoException : public std::exception
+class CryptoException : public std::exception
 {
     virtual const char* what() const throw() { return "Crypto error"; }
 };
 
-class np1secInsufficientCredentialException : public std::exception
+class InsufficientCredentialException : public std::exception
 {
     virtual const char* what() const throw() { return "Insufficient credentials"; }
 };
 
-class np1secAuthenticationException : public std::exception
+class AuthenticationException : public std::exception
 {
     virtual const char* what() const throw() { return "Authentication failure"; }
 };
 
-class np1secInvalidDataException : public std::exception
+class InvalidDataException : public std::exception
 {
     virtual const char* what() const throw() { return "Data doesn't match expected value"; }
 };
 
-class np1secInvalidRoomException : public std::exception
+class InvalidRoomException : public std::exception
 {
     virtual const char* what() const throw() { return "Invalid room"; }
 };
 
-class np1secInvalidSessionStateException : public std::exception
+class InvalidSessionStateException : public std::exception
 {
     virtual const char* what() const throw() { return "Invalid session state"; }
 };
 
-class np1secDoubleJoinException : public std::exception
+class DoubleJoinException : public std::exception
 {
     virtual const char* what() const throw() { return "A nickname tried to join a room twice"; }
 };
 
-class np1secInvalidParticipantException : public std::exception
+class InvalidParticipantException : public std::exception
 {
     virtual const char* what() const throw() { return "Invalid Participant"; }
 };
 
-class np1secNotImplementedException : public std::exception
+class NotImplementedException : public std::exception
 {
     virtual const char* what() const throw() { return "Not Implemented"; }
 };

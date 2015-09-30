@@ -32,22 +32,22 @@
 namespace np1sec
 {
 
-class np1secUserState;
-typedef std::map<std::string, np1secRoom> RoomMap;
+class UserState;
+typedef std::map<std::string, Room> RoomMap;
 
 /**
  * Manages a user with long term identity for participating in a multiparty
  * chat sessions. It keeps track of sessions that user is participating in.
  */
-class np1secUserState
+class UserState
 {
   public:
-    // TOOD: protoct these guys
+    // TODO: protect these guys
     ParticipantId* myself;
     LongTermIDKey long_term_key_pair; // private and public key
-    // np1secAsymmetricKey long_term_pub_key;
+    // AsymmetricKey long_term_pub_key;
     RoomMap chatrooms;
-    np1secAppOps* ops;
+    AppOps* ops;
 
     /**
      * Constructor
@@ -57,7 +57,7 @@ class np1secUserState
      * @param key_pair the binary blob which contains the long term identity key
      *                 pair for ED25519.
      */
-    np1secUserState(std::string name, np1secAppOps* ops, uint8_t* key_pair = nullptr);
+    UserState(std::string name, AppOps* ops, uint8_t* key_pair = nullptr);
 
     bool init();
 
@@ -157,9 +157,9 @@ class np1secUserState
      *
      * @return the current session if it exists.
      */
-    np1secSession* retrieve_session(std::string room_name);
+    Session* retrieve_session(std::string room_name);
 
-    ~np1secUserState();
+    ~UserState();
 };
 
 } // namespace np1sec

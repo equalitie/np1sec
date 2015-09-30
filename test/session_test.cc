@@ -42,7 +42,7 @@ class SessionTest : public ::testing::Test
     // First we need to run a chatserver but this is always the case so I'm making
     // class to setup chat server
     ChatMocker mock_server;
-    np1secAppOps* mockops;
+    AppOps* mockops;
     struct event_base* base;
 
     string mock_room_name;
@@ -54,12 +54,12 @@ class SessionTest : public ::testing::Test
         // uint32_t two_sec = 2000;
         // uint32_t ten_sec = 10000;
 
-        // np1secAppOps(uint32_t ACK_GRACE_INTERVAL,
+        // AppOps(uint32_t ACK_GRACE_INTERVAL,
         //          uint32_t REKEY_GRACE_INTERVAL,
         //          uint32_t INTERACTION_GRACE_INTERVAL,
         //          uint32_t BROADCAST_LATENCY)
 
-        mockops = new np1secAppOps(hundred_mili_sec, one_sec, hundred_mili_sec, hundred_mili_sec);
+        mockops = new AppOps(hundred_mili_sec, one_sec, hundred_mili_sec, hundred_mili_sec);
         mockops->send_bare = send_bare;
         mockops->join = new_session_announce;
         mockops->leave = new_session_announce;
@@ -98,21 +98,28 @@ TEST_F(SessionTest, test_init)
     string username = "sole-tester";
     std::pair<ChatMocker*, string> mock_aux_data(&mock_server, username);
     mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
+    logger.debug("Set bare_sender_data");
 
-    np1secUserState user_state(username, mockops);
+    UserState user_state(username, mockops);
     ASSERT_TRUE(user_state.init());
+    logger.debug("Initialized user_state");
 
-    pair<np1secUserState*, ChatMocker*> user_server_state(&user_state, &mock_server);
+    pair<UserState*, ChatMocker*> user_server_state(&user_state, &mock_server);
 
     // client login and join
+    logger.debug("Signing in");
     mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));
+    logger.debug("Joining");
     mock_server.join(mock_room_name, user_state.user_nick());
+    logger.debug("Successfully joined");
 
     // we need to call this after every action
     // receive your own key share and send confirmation
+    logger.debug("Receiving 1...");
     mock_server.receive();
 
     // receive your own confirmation
+    logger.debug("Receiving 2...");
     mock_server.receive(); // no need actually
 
     /*UnauthenticatedParticipantList participants_in_the_room;
@@ -137,22 +144,22 @@ TEST_F(SessionTest, test_second_join)
     // to sign in the room
     // return;
     string creator = "creator";
-    np1secAppOps creator_mockops = *mockops;
+    AppOps creator_mockops = *mockops;
     std::pair<ChatMocker*, string> mock_aux_creator_data(&mock_server, creator);
     creator_mockops.bare_sender_data = static_cast<void*>(&mock_aux_creator_data);
-    np1secUserState creator_state(creator, &creator_mockops);
+    UserState creator_state(creator, &creator_mockops);
     creator_state.init();
 
-    np1secAppOps joiner_mockops = *mockops;
+    AppOps joiner_mockops = *mockops;
     string joiner = "joiner";
     std::pair<ChatMocker*, string> mock_aux_joiner_data(&mock_server, joiner);
     joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
-    np1secUserState joiner_state(joiner, &joiner_mockops);
+    UserState joiner_state(joiner, &joiner_mockops);
     // They can use the same mock up as they are using the same mock server
     joiner_state.init();
 
-    pair<np1secUserState*, ChatMocker*> creator_server_state(&creator_state, &mock_server);
-    pair<np1secUserState*, ChatMocker*> joiner_server_state(&joiner_state, &mock_server);
+    pair<UserState*, ChatMocker*> creator_server_state(&creator_state, &mock_server);
+    pair<UserState*, ChatMocker*> joiner_server_state(&joiner_state, &mock_server);
 
     // everybody signs in
     // creator
@@ -187,10 +194,10 @@ TEST_F(SessionTest, test_solitary_talk)
     string username = "sole-tester";
     std::pair<ChatMocker*, string> mock_aux_data(&mock_server, username);
     mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
-    np1secUserState* user_state = new np1secUserState(username, mockops);
+    UserState* user_state = new UserState(username, mockops);
     user_state->init();
 
-    pair<np1secUserState*, ChatMocker*> user_server_state(user_state, &mock_server);
+    pair<UserState*, ChatMocker*> user_server_state(user_state, &mock_server);
 
     // client login and join
     mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));
@@ -216,22 +223,22 @@ TEST_F(SessionTest, test_join_talk)
     // first we need a username and we use it
     // to sign in the room
     string creator = "creator";
-    np1secAppOps creator_mockops = *mockops;
+    AppOps creator_mockops = *mockops;
     std::pair<ChatMocker*, string> mock_aux_creator_data(&mock_server, creator);
     creator_mockops.bare_sender_data = static_cast<void*>(&mock_aux_creator_data);
-    np1secUserState creator_state(creator, &creator_mockops);
+    UserState creator_state(creator, &creator_mockops);
     creator_state.init();
 
-    np1secAppOps joiner_mockops = *mockops;
+    AppOps joiner_mockops = *mockops;
     string joiner = "joiner";
     std::pair<ChatMocker*, string> mock_aux_joiner_data(&mock_server, joiner);
     joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
-    np1secUserState joiner_state(joiner, &joiner_mockops);
+    UserState joiner_state(joiner, &joiner_mockops);
     // They can use the same mock up as they are using the same mock server
     joiner_state.init();
 
-    pair<np1secUserState*, ChatMocker*> creator_server_state(&creator_state, &mock_server);
-    pair<np1secUserState*, ChatMocker*> joiner_server_state(&joiner_state, &mock_server);
+    pair<UserState*, ChatMocker*> creator_server_state(&creator_state, &mock_server);
+    pair<UserState*, ChatMocker*> joiner_server_state(&joiner_state, &mock_server);
 
     // everybody signs in
     // creator
@@ -273,30 +280,30 @@ TEST_F(SessionTest, test_three_party_chat)
     // first we need a username and we use it
     // to sign in the room
     string alice = "alice";
-    np1secAppOps alice_mockops = *mockops;
+    AppOps alice_mockops = *mockops;
     std::pair<ChatMocker*, string> mock_aux_alice_data(&mock_server, alice);
     alice_mockops.bare_sender_data = static_cast<void*>(&mock_aux_alice_data);
-    np1secUserState* alice_state = new np1secUserState(alice, &alice_mockops);
+    UserState* alice_state = new UserState(alice, &alice_mockops);
     alice_state->init();
 
-    np1secAppOps bob_mockops = *mockops;
+    AppOps bob_mockops = *mockops;
     string bob = "bob";
     std::pair<ChatMocker*, string> mock_aux_bob_data(&mock_server, bob);
     bob_mockops.bare_sender_data = static_cast<void*>(&mock_aux_bob_data);
-    np1secUserState* bob_state = new np1secUserState(bob, &bob_mockops);
+    UserState* bob_state = new UserState(bob, &bob_mockops);
     // They can use the same mock up as they are using the same mock server
     bob_state->init();
 
-    np1secAppOps charlie_mockops = *mockops;
+    AppOps charlie_mockops = *mockops;
     string charlie = "charlie";
     std::pair<ChatMocker*, string> mock_aux_charlie_data(&mock_server, charlie);
     charlie_mockops.bare_sender_data = static_cast<void*>(&mock_aux_charlie_data);
-    np1secUserState* charlie_state = new np1secUserState(charlie, &charlie_mockops);
+    UserState* charlie_state = new UserState(charlie, &charlie_mockops);
     charlie_state->init();
 
-    pair<np1secUserState*, ChatMocker*> alice_server_state(alice_state, &mock_server);
-    pair<np1secUserState*, ChatMocker*> bob_server_state(bob_state, &mock_server);
-    pair<np1secUserState*, ChatMocker*> charlie_server_state(charlie_state, &mock_server);
+    pair<UserState*, ChatMocker*> alice_server_state(alice_state, &mock_server);
+    pair<UserState*, ChatMocker*> bob_server_state(bob_state, &mock_server);
+    pair<UserState*, ChatMocker*> charlie_server_state(charlie_state, &mock_server);
 
     // everybody signs in
     // alice
@@ -352,10 +359,10 @@ TEST_F(SessionTest, test_ten_party_chat)
     const unsigned int total_no_participants = 10;
 
     string participant_base_name = "p";
-    np1secAppOps participant_mockops[total_no_participants];
+    AppOps participant_mockops[total_no_participants];
     std::pair<ChatMocker*, string> mock_aux_participant_data[total_no_participants];
-    np1secUserState* participant_state[total_no_participants];
-    pair<np1secUserState*, ChatMocker*> participant_server_state[total_no_participants];
+    UserState* participant_state[total_no_participants];
+    pair<UserState*, ChatMocker*> participant_server_state[total_no_participants];
 
     for (unsigned int i = 0; i < total_no_participants; i++) {
         std::string cur_participant_name = participant_base_name + std::to_string(i);
@@ -363,10 +370,10 @@ TEST_F(SessionTest, test_ten_party_chat)
         mock_aux_participant_data[i] = std::pair<ChatMocker*, string>(&mock_server, cur_participant_name);
         participant_mockops[i].bare_sender_data = static_cast<void*>(&mock_aux_participant_data[i]);
         ;
-        participant_state[i] = new np1secUserState(cur_participant_name, &participant_mockops[i]);
+        participant_state[i] = new UserState(cur_participant_name, &participant_mockops[i]);
         participant_state[i]->init();
 
-        participant_server_state[i] = pair<np1secUserState*, ChatMocker*>(participant_state[i], &mock_server);
+        participant_server_state[i] = pair<UserState*, ChatMocker*>(participant_state[i], &mock_server);
 
         mock_server.sign_in(cur_participant_name, chat_mocker_np1sec_plugin_receive_handler,
                             static_cast<void*>(&participant_server_state[i]));
@@ -388,10 +395,10 @@ TEST_F(SessionTest, test_solitary_leave)
     string username = "sole-tester";
     std::pair<ChatMocker*, string> mock_aux_data(&mock_server, username);
     mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
-    np1secUserState user_state(username, mockops);
+    UserState user_state(username, mockops);
     user_state.init();
 
-    pair<np1secUserState*, ChatMocker*> user_server_state(&user_state, &mock_server);
+    pair<UserState*, ChatMocker*> user_server_state(&user_state, &mock_server);
 
     // client login and join
     mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));
@@ -412,22 +419,22 @@ TEST_F(SessionTest, test_leave_from_2p_conv)
     // to sign in the room
     // return;
     string creator = "creator";
-    np1secAppOps creator_mockops = *mockops;
+    AppOps creator_mockops = *mockops;
     std::pair<ChatMocker*, string> mock_aux_creator_data(&mock_server, creator);
     creator_mockops.bare_sender_data = static_cast<void*>(&mock_aux_creator_data);
-    np1secUserState* creator_state = new np1secUserState(creator, &creator_mockops);
+    UserState* creator_state = new UserState(creator, &creator_mockops);
     creator_state->init();
 
-    np1secAppOps joiner_mockops = *mockops;
+    AppOps joiner_mockops = *mockops;
     string joiner = "joiner";
     std::pair<ChatMocker*, string> mock_aux_joiner_data(&mock_server, joiner);
     joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
-    np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);
+    UserState* joiner_state = new UserState(joiner, &joiner_mockops);
     // They can use the same mock up as they are using the same mock server
     joiner_state->init();
 
-    pair<np1secUserState*, ChatMocker*> creator_server_state(creator_state, &mock_server);
-    pair<np1secUserState*, ChatMocker*> joiner_server_state(joiner_state, &mock_server);
+    pair<UserState*, ChatMocker*> creator_server_state(creator_state, &mock_server);
+    pair<UserState*, ChatMocker*> joiner_server_state(joiner_state, &mock_server);
 
     // everybody signs in
     // creator
@@ -468,22 +475,22 @@ TEST_F(SessionTest, test_immature_leave_from_2p_conv)
     // to sign in the room
     // return;
     string creator = "creator";
-    np1secAppOps creator_mockops = *mockops;
+    AppOps creator_mockops = *mockops;
     std::pair<ChatMocker*, string> mock_aux_creator_data(&mock_server, creator);
     creator_mockops.bare_sender_data = static_cast<void*>(&mock_aux_creator_data);
-    np1secUserState* creator_state = new np1secUserState(creator, &creator_mockops);
+    UserState* creator_state = new UserState(creator, &creator_mockops);
     creator_state->init();
 
-    np1secAppOps joiner_mockops = *mockops;
+    AppOps joiner_mockops = *mockops;
     string joiner = "joiner";
     std::pair<ChatMocker*, string> mock_aux_joiner_data(&mock_server, joiner);
     joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
-    np1secUserState* joiner_state = new np1secUserState(joiner, &joiner_mockops);
+    UserState* joiner_state = new UserState(joiner, &joiner_mockops);
     // They can use the same mock up as they are using the same mock server
     joiner_state->init();
 
-    pair<np1secUserState*, ChatMocker*> creator_server_state(creator_state, &mock_server);
-    pair<np1secUserState*, ChatMocker*> joiner_server_state(joiner_state, &mock_server);
+    pair<UserState*, ChatMocker*> creator_server_state(creator_state, &mock_server);
+    pair<UserState*, ChatMocker*> joiner_server_state(joiner_state, &mock_server);
 
     // everybody signs in
     // creator
@@ -520,30 +527,30 @@ TEST_F(SessionTest, test_concurrent_join)
     // first we need a username and we use it
     // to sign in the room
     string alice = "alice";
-    np1secAppOps alice_mockops = *mockops;
+    AppOps alice_mockops = *mockops;
     std::pair<ChatMocker*, string> mock_aux_alice_data(&mock_server, alice);
     alice_mockops.bare_sender_data = static_cast<void*>(&mock_aux_alice_data);
-    np1secUserState* alice_state = new np1secUserState(alice, &alice_mockops);
+    UserState* alice_state = new UserState(alice, &alice_mockops);
     alice_state->init();
 
-    np1secAppOps bob_mockops = *mockops;
+    AppOps bob_mockops = *mockops;
     string bob = "bob";
     std::pair<ChatMocker*, string> mock_aux_bob_data(&mock_server, bob);
     bob_mockops.bare_sender_data = static_cast<void*>(&mock_aux_bob_data);
-    np1secUserState* bob_state = new np1secUserState(bob, &bob_mockops);
+    UserState* bob_state = new UserState(bob, &bob_mockops);
     // They can use the same mock up as they are using the same mock server
     bob_state->init();
 
-    np1secAppOps charlie_mockops = *mockops;
+    AppOps charlie_mockops = *mockops;
     string charlie = "charlie";
     std::pair<ChatMocker*, string> mock_aux_charlie_data(&mock_server, charlie);
     charlie_mockops.bare_sender_data = static_cast<void*>(&mock_aux_charlie_data);
-    np1secUserState* charlie_state = new np1secUserState(charlie, &charlie_mockops);
+    UserState* charlie_state = new UserState(charlie, &charlie_mockops);
     charlie_state->init();
 
-    pair<np1secUserState*, ChatMocker*> alice_server_state(alice_state, &mock_server);
-    pair<np1secUserState*, ChatMocker*> bob_server_state(bob_state, &mock_server);
-    pair<np1secUserState*, ChatMocker*> charlie_server_state(charlie_state, &mock_server);
+    pair<UserState*, ChatMocker*> alice_server_state(alice_state, &mock_server);
+    pair<UserState*, ChatMocker*> bob_server_state(bob_state, &mock_server);
+    pair<UserState*, ChatMocker*> charlie_server_state(charlie_state, &mock_server);
 
     // everybody signs in
     // alice
@@ -586,38 +593,38 @@ TEST_F(SessionTest, test_concurrent_join_leave)
     // client side. so for example the @P@JOIN message should have the number
     // of participants
     string alice = "alice";
-    np1secAppOps alice_mockops = *mockops;
+    AppOps alice_mockops = *mockops;
     std::pair<ChatMocker*, string> mock_aux_alice_data(&mock_server, alice);
     alice_mockops.bare_sender_data = static_cast<void*>(&mock_aux_alice_data);
-    np1secUserState* alice_state = new np1secUserState(alice, &alice_mockops);
+    UserState* alice_state = new UserState(alice, &alice_mockops);
     alice_state->init();
 
-    np1secAppOps bob_mockops = *mockops;
+    AppOps bob_mockops = *mockops;
     string bob = "bob";
     std::pair<ChatMocker*, string> mock_aux_bob_data(&mock_server, bob);
     bob_mockops.bare_sender_data = static_cast<void*>(&mock_aux_bob_data);
-    np1secUserState* bob_state = new np1secUserState(bob, &bob_mockops);
+    UserState* bob_state = new UserState(bob, &bob_mockops);
     // They can use the same mock up as they are using the same mock server
     bob_state->init();
 
-    np1secAppOps charlie_mockops = *mockops;
+    AppOps charlie_mockops = *mockops;
     string charlie = "charlie";
     std::pair<ChatMocker*, string> mock_aux_charlie_data(&mock_server, charlie);
     charlie_mockops.bare_sender_data = static_cast<void*>(&mock_aux_charlie_data);
-    np1secUserState* charlie_state = new np1secUserState(charlie, &charlie_mockops);
+    UserState* charlie_state = new UserState(charlie, &charlie_mockops);
     charlie_state->init();
 
-    np1secAppOps david_mockops = *mockops;
+    AppOps david_mockops = *mockops;
     string david = "david";
     std::pair<ChatMocker*, string> mock_aux_david_data(&mock_server, david);
     david_mockops.bare_sender_data = static_cast<void*>(&mock_aux_david_data);
-    np1secUserState* david_state = new np1secUserState(david, &david_mockops);
+    UserState* david_state = new UserState(david, &david_mockops);
     david_state->init();
 
-    pair<np1secUserState*, ChatMocker*> alice_server_state(alice_state, &mock_server);
-    pair<np1secUserState*, ChatMocker*> bob_server_state(bob_state, &mock_server);
-    pair<np1secUserState*, ChatMocker*> charlie_server_state(charlie_state, &mock_server);
-    pair<np1secUserState*, ChatMocker*> david_server_state(david_state, &mock_server);
+    pair<UserState*, ChatMocker*> alice_server_state(alice_state, &mock_server);
+    pair<UserState*, ChatMocker*> bob_server_state(bob_state, &mock_server);
+    pair<UserState*, ChatMocker*> charlie_server_state(charlie_state, &mock_server);
+    pair<UserState*, ChatMocker*> david_server_state(david_state, &mock_server);
 
     // everybody signs in
     // alice

@@ -31,9 +31,9 @@
 namespace np1sec
 {
 
-class np1secUserState;
+class UserState;
 
-class np1secMessage
+class Message
 {
   protected:
     Cryptic* cryptic; // message class is never responsible to delete the cryptic object
@@ -77,7 +77,7 @@ class np1secMessage
             logger.error("invalid length: total: " + std::to_string(parsed_string.size()) + " cur: " +
                          std::to_string(current_offset) + " f1: " + std::to_string(move_window) + " f2: " +
                          std::to_string(expected_field_length));
-            throw np1secMessageFormatException();
+            throw MessageFormatException();
         }
 
         return current_offset + move_window;
@@ -118,7 +118,7 @@ class np1secMessage
     std::string check_and_chop_protocol_tag(const std::string& raw_message)
     {
         if (raw_message.substr(0, c_np1sec_protocol_name.size()) != c_np1sec_protocol_name)
-            throw np1secMessageFormatException();
+            throw MessageFormatException();
         // TODO:: do something intelligent here
         // should we warn the user about unencrypted message
         // and then return everything as the plain text?
@@ -145,13 +145,13 @@ class np1secMessage
     bool check_version_validity(std::string& raw_protocol_less_message)
     {
         if (raw_protocol_less_message.size() < sizeof(DTShort))
-            throw np1secMessageFormatException();
+            throw MessageFormatException();
 
         return (*(reinterpret_cast<const DTShort*>(raw_protocol_less_message.data())) == c_np1sec_protocol_version);
     }
 
   public:
-    enum np1secMessageType {
+    enum MessageType {
         UNKNOWN = 0x00, // Invalid
         JOIN_REQUEST = 0x0a, // Session establishement
         PARTICIPANTS_INFO = 0x0b,
@@ -164,7 +164,7 @@ class np1secMessage
 
     };
 
-    enum np1secMessageSubType {
+    enum MessageSubType {
         JUST_ACK,
         USER_MESSAGE,
         LEAVE_MESSAGE,
@@ -173,7 +173,7 @@ class np1secMessage
         // CONTRIBUTION_STATE
     };
 
-    np1secMessageType message_type;
+    MessageType message_type;
     SessionId session_id;
     DTLength sender_index;
     std::string sender_nick;
@@ -181,10 +181,10 @@ class np1secMessage
     MessageId sender_message_id;
     MessageId parent_id;
     HashBlock session_id_buffer;
-    np1secMessageSubType message_sub_type;
+    MessageSubType message_sub_type;
     std::string user_message;
     std::string sys_message;
-    np1secLoadFlag meta_load_flag;
+    LoadFlag meta_load_flag;
     HashStdBlock transcript_chain_hash;
     std::string nonce;
     HashStdBlock z_sender;
@@ -213,20 +213,20 @@ class np1secMessage
     std::string final_whole_message;
 
     /** to make sending by message itself possible*/
-    np1secUserState* us;
+    UserState* us;
     std::string room_name;
 
     /*
-     * Construct a new np1secMessage based on a set of message components
+     * Construct a new Message based on a set of message components
      * as input
      */
-    np1secMessage(Cryptic* cryptic = nullptr);
+    Message(Cryptic* cryptic = nullptr);
 
     /*
-     * Construct a new np1secMessage based on a set of message components
+     * Construct a new Message based on a set of message components
      * based on an encrypted message as input
      */
-    np1secMessage(std::string raw_message, Cryptic* cryptic = nullptr, size_t no_of_participants = 0);
+    Message(std::string raw_message, Cryptic* cryptic = nullptr, size_t no_of_participants = 0);
 
     /**
      * @return if the message is of type PARTICIPANTS_INFO it returns
@@ -282,7 +282,7 @@ class np1secMessage
      */
     std::string create_in_session_msg(SessionId session_id, uint32_t sender_index, uint32_t sender_own_id,
                                       uint32_t parent_id, HashStdBlock transcript_chain_hash,
-                                      np1secMessageSubType message_sub_type, std::string user_message = "");
+                                      MessageSubType message_sub_type, std::string user_message = "");
 
     void string_to_session_view(std::string sv_string);
 
@@ -301,7 +301,7 @@ class np1secMessage
      * This function is responsible for sending of bare messages
      *
      */
-    void send(std::string room_name, np1secUserState* us);
+    void send(std::string room_name, UserState* us);
 
     /**
      * Base 64 encode encrypted message
@@ -325,7 +325,7 @@ class np1secMessage
      * Verify the message
      *
      */
-    bool verify_message(np1secPublicKey sender_ephemeral_key);
+    bool verify_message(PublicKey sender_ephemeral_key);
 
     /**
      * Create and return an encrypted form of the signed message
@@ -389,7 +389,7 @@ class np1secMessage
      * Destructor
      *
      */
-    ~np1secMessage();
+    ~Message();
 
     /**
      *

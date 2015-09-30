@@ -39,8 +39,8 @@ using namespace np1sec;
 
 void chat_mocker_np1sec_plugin_join(std::string room_name, void* aux_data)
 {
-    pair<np1secUserState*, ChatMocker*>* user_server_state =
-        reinterpret_cast<pair<np1secUserState*, ChatMocker*>*>(aux_data);
+    pair<UserState*, ChatMocker*>* user_server_state =
+        reinterpret_cast<pair<UserState*, ChatMocker*>*>(aux_data);
     // It is chat client duty to provide the userstate class with
     // the list of participants not really other participants are going to do it.
     vector<string> current_occupants = user_server_state->second->participant_list(room_name);
@@ -53,8 +53,8 @@ void chat_mocker_np1sec_plugin_join(std::string room_name, void* aux_data)
 
 void chat_mocker_np1sec_plugin_receive_handler(std::string room_name, std::string np1sec_message, void* aux_data)
 {
-    pair<np1secUserState*, ChatMocker*>* user_server_state =
-        reinterpret_cast<pair<np1secUserState*, ChatMocker*>*>(aux_data);
+    pair<UserState*, ChatMocker*>* user_server_state =
+        reinterpret_cast<pair<UserState*, ChatMocker*>*>(aux_data);
 
     // we need to process message and see if it is join leave or actual message
     // why? it is crazy to expect the client to disect and digest the message
@@ -69,7 +69,7 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name, std::strin
         if (user_server_state->first->user_nick() == joining_nick) {
             try {
                 user_server_state->first->join_room(room_name, user_server_state->second->participant_list(room_name));
-            } catch (np1secInsufficientCredentialException& e) {
+            } catch (InsufficientCredentialException& e) {
                 logger.error(joining_nick + " failed to join room" + room_name);
             }
         } else {
@@ -126,8 +126,8 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name, std::strin
  */
 void chat_mocker_np1sec_plugin_send(std::string room_name, std::string message, void* aux_data)
 {
-    pair<np1secUserState*, ChatMocker*>* user_server_state =
-        reinterpret_cast<pair<np1secUserState*, ChatMocker*>*>(aux_data);
+    pair<UserState*, ChatMocker*>* user_server_state =
+        reinterpret_cast<pair<UserState*, ChatMocker*>*>(aux_data);
 
     user_server_state->first->send_handler(room_name, message);
 }
@@ -135,7 +135,7 @@ void chat_mocker_np1sec_plugin_send(std::string room_name, std::string message, 
 // Just a wrapper to call the mocker send function
 void send_bare(std::string room_name, std::string message, void* data)
 {
-    // pair<np1secUserState*, ChatMocker*>* user_server_state = reinterpret_cast<pair<np1secUserState*,
+    // pair<UserState*, ChatMocker*>* user_server_state = reinterpret_cast<pair<UserState*,
     // ChatMocker*>*>(data);
     ChatMocker* chat_server = (static_cast<pair<ChatMocker*, std::string>*>(data))->first;
     std::string sender = (static_cast<pair<ChatMocker*, std::string>*>(data))->second;

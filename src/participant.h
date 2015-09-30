@@ -62,9 +62,9 @@ struct ParticipantId {
         memcpy(fingerprint, fingerprint_strbuff.c_str(), fingerprint_strbuff.size());
     }
 
-    ParticipantId(std::string nickname, np1secAsymmetricKey fingerprint_sexp)
+    ParticipantId(std::string nickname, AsymmetricKey fingerprint_sexp)
     {
-        std::string fingerprint_strbuff(Cryptic::retrieve_result(fingerprint_sexp));
+        std::string fingerprint_strbuff(retrieve_result(fingerprint_sexp));
         ParticipantId(nickname, fingerprint_strbuff);
     }
 
@@ -85,7 +85,7 @@ struct ParticipantId {
         nickname = nick_fingerprint_strbuff.substr(0, nick_fingerprint_strbuff.size() - c_fingerprint_length);
         if ((nick_fingerprint_strbuff.size() - nickname.size()) != ParticipantId::c_fingerprint_length) {
             logger.error("can not convert string participant id", __FUNCTION__);
-            throw np1secMessageFormatException();
+            throw MessageFormatException();
         }
 
         std::string fingerprint_strbuff =
@@ -99,6 +99,15 @@ struct ParticipantId {
     ParticipantId(const ParticipantId& lhs) : nickname(lhs.nickname)
     {
         memcpy(fingerprint, lhs.fingerprint, c_fingerprint_length);
+    }
+
+    /**
+     * Destructor
+     */
+    ~ParticipantId()
+    {
+      secure_wipe(fingerprint, c_fingerprint_length);
+      logger.debug("Wiping fingerprint from ParticipantID");
     }
 
     /**
@@ -161,7 +170,7 @@ struct UnauthenticatedParticipant {
     {
         if (participant_id_and_ephmeralkey.size() < c_ephemeral_key_length + sizeof(DTByte)) {
             logger.error("can not convert string to unauthenticated participant", __FUNCTION__);
-            throw np1secMessageFormatException();
+            throw MessageFormatException();
         }
         std::string ephemeral_pub_key = participant_id_and_ephmeralkey.substr(participant_id_and_ephmeralkey.size() -
                                                                               c_ephemeral_key_length - sizeof(DTByte));
@@ -199,16 +208,16 @@ class Participant
 
   public:
     ParticipantId id;
-    np1secPublicKey long_term_pub_key;
-    np1secPublicKey ephemeral_key = nullptr;
+    PublicKey long_term_pub_key;
+    PublicKey ephemeral_key = nullptr;
     MessageId last_acked_message_id;
     void* send_ack_timer = nullptr;
-    HashBlock raw_ephemeral_key = {};
-    HashBlock future_raw_ephemeral_key = {};
+    edCurvePublicKey raw_ephemeral_key = {};
+    edCurvePublicKey future_raw_ephemeral_key = {};
     // MessageDigest message_digest;
 
     np1secKeyShare cur_keyshare;
-    HashBlock p2p_key = {};
+    np1secSymmetricKey p2p_key = {};
     bool authenticated = false;
     bool authed_to = false;
     bool key_share_contributed;
@@ -234,11 +243,11 @@ class Participant
           authed_to(rhs.authed_to), key_share_contributed(rhs.key_share_contributed), index(rhs.index)
 
     {
-        long_term_pub_key = Cryptic::copy_crypto_resource(rhs.long_term_pub_key);
+        long_term_pub_key = copy_crypto_resource(rhs.long_term_pub_key);
         set_ephemeral_key(rhs.raw_ephemeral_key);
-        memcpy(future_raw_ephemeral_key, rhs.future_raw_ephemeral_key, sizeof(HashBlock));
-        memcpy(p2p_key, rhs.p2p_key, sizeof(HashBlock));
-        memcpy(cur_keyshare, rhs.cur_keyshare, sizeof(HashBlock));
+        memcpy(future_raw_ephemeral_key, rhs.future_raw_ephemeral_key, sizeof(edCurvePublicKey));
+        memcpy(p2p_key, rhs.p2p_key, sizeof(np1secSymmetricKey));
+        memcpy(cur_keyshare, rhs.cur_keyshare, sizeof(np1secKeyShare));
     }
 
     enum ForwardSecracyContribution { NONE, EPHEMERAL, KEY_SHARE };
@@ -256,12 +265,12 @@ class Participant
     /**
      * crypto material access functions
      */
-    void set_ephemeral_key(const HashBlock raw_ephemeral_key)
+    void set_ephemeral_key(const edCurvePublicKey raw_ephemeral_key)
     {
-        Cryptic::release_crypto_resource(this->ephemeral_key);
+        release_crypto_resource(this->ephemeral_key);
         // delete [] this->raw_ephemeral_key; doesn't make sense to delete const length array
-        memcpy(this->raw_ephemeral_key, raw_ephemeral_key, sizeof(HashBlock));
-        ephemeral_key = Cryptic::reconstruct_public_key_sexp(
+        memcpy(this->raw_ephemeral_key, raw_ephemeral_key, sizeof(edCurvePublicKey));
+        ephemeral_key = reconstruct_public_key_sexp(
             std::string(reinterpret_cast<const char*>(raw_ephemeral_key), c_ephemeral_key_length));
     }
 
@@ -269,9 +278,9 @@ class Participant
      * store the encrypted keyshare and set the contributed flag true
      *
      */
-    void set_key_share(const HashBlock new_key_share)
+    void set_key_share(const np1secKeyShare new_key_share)
     {
-        memcpy(this->cur_keyshare, new_key_share, sizeof(HashBlock));
+        memcpy(this->cur_keyshare, new_key_share, sizeof(np1secKeyShare));
         key_share_contributed = true;
     }
 
@@ -280,7 +289,7 @@ class Participant
      *
      * throw an exception in case it fails
      */
-    void compute_p2p_private(np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
+    void compute_p2p_private(AsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
 
     /**
      * Generate the approperiate authentication token to send to the
@@ -290,7 +299,7 @@ class Participant
      *
      * throw an exception in case it fails
      */
-    void authenticate_to(HashBlock auth_token, const np1secAsymmetricKey thread_user_id_key,
+    void authenticate_to(Token auth_token, const AsymmetricKey thread_user_id_key,
                          Cryptic* thread_user_crypto);
 
     /**
@@ -301,8 +310,8 @@ class Participant
      *
      * throw and exception if authentication fails
      */
-    void be_authenticated(std::string authenicator_id, const HashBlock auth_token,
-                          np1secAsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
+    void be_authenticated(std::string authenicator_id, const Token auth_token,
+                          AsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
 
     /**
      * default constructor
@@ -316,8 +325,8 @@ class Participant
 
     Participant(const UnauthenticatedParticipant& unauth_participant)
         : id(unauth_participant.participant_id),
-          long_term_pub_key(Cryptic::reconstruct_public_key_sexp(
-              Cryptic::hash_to_string_buff(unauth_participant.participant_id.fingerprint))),
+          long_term_pub_key(reconstruct_public_key_sexp(
+              hash_to_string_buff(unauth_participant.participant_id.fingerprint))),
           authenticated(false), authed_to(false), key_share_contributed(false)
     {
         set_ephemeral_key(unauth_participant.ephemeral_pub_key);
@@ -327,8 +336,19 @@ class Participant
     ~Participant()
     {
         // release gcrypt stuff
-        Cryptic::release_crypto_resource(this->ephemeral_key);
-        Cryptic::release_crypto_resource(this->long_term_pub_key);
+        release_crypto_resource(this->ephemeral_key);
+        release_crypto_resource(this->long_term_pub_key);
+        // TODO - Verify with Vmon that these are necessary
+        //secure_wipe(ephemeral_key, c_hash_length);
+        //secure_wipe(raw_ephemeral_key, c_hash_length);
+        //secure_wipe(future_raw_ephemeral_key, c_hash_length);
+        secure_wipe(cur_keyshare, c_hash_length);
+        secure_wipe(p2p_key, c_hash_length);
+        //logger.debug("Wiped ephemeral_key from Participant");
+        //logger.debug("Wiped raw_ephemeral_key from Participant");
+        //logger.debug("Wiped cur_keyshare from Participant");
+        logger.debug("Wiped future_raw_ephemeral_key from Participant");
+        logger.debug("Wiped p2p_key from Participant");
     }
 };
 
@@ -338,7 +358,7 @@ typedef std::map<std::string, Participant> ParticipantMap;
  * To be used in std::sort to sort the particpant list
  * in a way that is consistent way between all participants
  */
-bool sort_by_long_term_pub_key(const np1secAsymmetricKey lhs, const np1secAsymmetricKey rhs);
+bool sort_by_long_term_pub_key(const AsymmetricKey lhs, const AsymmetricKey rhs);
 
 /**
  * operator < needed by map class not clear why but it doesn't compile

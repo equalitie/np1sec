@@ -47,7 +47,7 @@ TEST_F(CryptTest, test_hash)
         "ba7816bf8f01cfea414140de5dae2223"
         "b00361a396177a9cb410ff61f20015ad";
     uint8_t* res = new HashBlock;
-    gcry_error_t err = Cryptic::hash(reinterpret_cast<const void*>(str.c_str()), 3, res, false);
+    gcry_error_t err = hash(reinterpret_cast<const void*>(str.c_str()), 3, res, false);
     EXPECT_FALSE(err);
     std::stringstream buf;
     buf << std::hex << std::internal << std::setfill('0');
@@ -61,6 +61,7 @@ TEST_F(CryptTest, test_hash)
 TEST_F(CryptTest, test_encrypt_decrypt)
 {
     Cryptic cryptic;
+    cryptic.init();
     std::string test_text = "This is a string to be encrypted";
     std::string enc_text = cryptic.Encrypt(test_text.c_str());
     std::string dec_text = cryptic.Decrypt(enc_text);
@@ -87,15 +88,15 @@ TEST_F(CryptTest, test_sign_verify)
 TEST_F(CryptTest, test_teddh_test)
 {
 
-    np1secAsymmetricKey alice_long_term_key = NULL;
-    np1secAsymmetricKey bob_long_term_key = NULL;
+    AsymmetricKey alice_long_term_key = NULL;
+    AsymmetricKey bob_long_term_key = NULL;
 
-    ASSERT_TRUE(Cryptic::generate_key_pair(&alice_long_term_key));
-    ASSERT_TRUE(Cryptic::generate_key_pair(&bob_long_term_key));
+    ASSERT_TRUE(generate_key_pair(&alice_long_term_key));
+    ASSERT_TRUE(generate_key_pair(&bob_long_term_key));
 
     // Extract just the public key to hand over to the peer
-    np1secPublicKey alice_long_term_pub_key = gcry_sexp_find_token(alice_long_term_key, "public-key", 0);
-    np1secPublicKey bob_long_term_pub_key = gcry_sexp_find_token(bob_long_term_key, "public-key", 0);
+    PublicKey alice_long_term_pub_key = gcry_sexp_find_token(alice_long_term_key, "public-key", 0);
+    PublicKey bob_long_term_pub_key = gcry_sexp_find_token(bob_long_term_key, "public-key", 0);
 
     ASSERT_TRUE(alice_long_term_pub_key && bob_long_term_pub_key);
     Cryptic alice_crypt, bob_crypt;

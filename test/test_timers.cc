@@ -35,7 +35,7 @@ class TimerTest : public ::testing::Test
 protected:
   ChatMocker mock_server;
   struct event_base* base;
-  np1secUserState* ustate;
+  UserState* ustate;
   np1secAppOpps* appops;
   Cryptic* current_ephemeral_crypto;
   UnauthenticatedParticipantList& sole_participant_view;
@@ -46,13 +46,13 @@ protected:
   {
     base = event_base_new();
     mock_server.initialize_event_manager(base);
-    appops = new np1secAppOps(five_seconds_mil, five_seconds_mil, five_seconds_mil, five_seconds_mil);
+    appops = new AppOps(five_seconds_mil, five_seconds_mil, five_seconds_mil, five_seconds_mil);
     // Create a dummy keypair consisting of all 0s.
     uint8_t* keypair = malloc(sizeof(uint8_t) * 64);
     for (int i = 0; i < 64; i++) {
       keypair[i] = 0;
     }
-    ustate = new np1secUserState(user_name, appops, keypair);
+    ustate = new UserState(user_name, appops, keypair);
     current_ephemeral_crypto = ;
     sole_participant_view = ;
     session = new np1secSession(ustate, room_name, current_ephemeral_crypto, sole_participant_view);
@@ -90,10 +90,10 @@ TEST_F(SessionTest, test_init) {
   std::pair<ChatMocker*, string> mock_aux_data(&mock_server,username);
   mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
 
-  np1secUserState* user_state = new np1secUserState(username, mockops);
+  UserState* user_state = new UserState(username, mockops);
   user_state->init();
 
-  pair<np1secUserState*, ChatMocker*> user_server_state(user_state, &mock_server);
+  pair<UserState*, ChatMocker*> user_server_state(user_state, &mock_server);
 
   //client login and join
   mock_server.sign_in(username, chat_mocker_np1sec_plugin_receive_handler, static_cast<void*>(&user_server_state));
