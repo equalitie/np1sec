@@ -139,3 +139,5 @@ class TRoom
             }
         }
 };
+
+#endif // _CHAMBER_CLIENT_H_
