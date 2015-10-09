@@ -617,10 +617,10 @@ class Session
   */
 
     /**
-        For join user calls this when receivemessage has type of PARTICIPANTS_INFO
-
-        sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), (kc_{sender, joiner}), z_sender
-
+     *  For join user calls this when receivemessage has type of PARTICIPANTS_INFO
+     *
+     *  sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), (kc_{sender, joiner}), z_sender
+     *
         for everybody including the sender
 
         joiner should:
@@ -809,8 +809,8 @@ class Session
         //^^^ this is bullshit, only the first one generate the session the second one
         // is get to the state handler
 
-        np1secFSMGraphTransitionMatrix[JOIN_REQUESTED][Message::SESSION_CONFIRMATION] =
-            &Session::confirm_or_resession;
+        /* np1secFSMGraphTransitionMatrix[JOIN_REQUESTED][Message::SESSION_CONFIRMATION] = */
+        /*     &Session::confirm_or_resession; */
 
         // user currently in the session: current session
         np1secFSMGraphTransitionMatrix[IN_SESSION][Message::JOIN_REQUEST] =

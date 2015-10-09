@@ -1,0 +1,26 @@
+var searchData=
+[
+  ['last_5facked_5fmessage_5fid',['last_acked_message_id',['../classnp1sec_1_1Participant.html#a2969184c77406daf14c2fbf7858eeffa',1,'np1sec::Participant']]],
+  ['last_5freceived_5fmessage_5fid',['last_received_message_id',['../classnp1sec_1_1np1secSession.html#af09cd04c4f511ba9200d9ca049db3e1f',1,'np1sec::np1secSession']]],
+  ['leave',['leave',['../structnp1sec_1_1np1secAppOps.html#a9f76c954472c5c5218b4392253ae5c69',1,'np1sec::np1secAppOps::leave()'],['../classnp1sec_1_1np1secRoom.html#af5ea5bdb0ad5621c2fc229b4b888da8e',1,'np1sec::np1secRoom::leave()'],['../classnp1sec_1_1np1secSession.html#a64bd809d6a5988c54e2e5a56f138b9a2',1,'np1sec::np1secSession::leave()'],['../classMockRoom.html#a5c812324de0427e7e0697dbffa29a57d',1,'MockRoom::leave()'],['../classChatMocker.html#adc44998d0e62cea4832587a801d21c59',1,'ChatMocker::leave()'],['../structnp1sec_1_1RaisonDEtre.html#af7672737d5ac59a03556805e392b0f64a21150d7b7f46e245f3def1851f571a5a',1,'np1sec::RaisonDEtre::LEAVE()'],['../namespacenp1sec.html#a042b9a89f916f46adc8b072a6bf1433cadd736197dbc28e2cc71a5e29b9de2f4d',1,'np1sec::LEAVE()']]],
+  ['leave_5fmessage',['LEAVE_MESSAGE',['../classnp1sec_1_1np1secMessage.html#a4b56a2fdbe6b6f237d39dc2463b25706ab21e594d53216e9f05ba9512a636cf76',1,'np1sec::np1secMessage']]],
+  ['leave_5fparent',['leave_parent',['../classnp1sec_1_1np1secSession.html#a4aec71968ca9b91fe796b78fe45e8131',1,'np1sec::np1secSession']]],
+  ['leave_5frequested',['LEAVE_REQUESTED',['../classnp1sec_1_1np1secSession.html#a10d5501c43eca793db0d6c987378b8a5ad284c7a0672dc0855b14249a4ad6663d',1,'np1sec::np1secSession']]],
+  ['leave_5froom',['leave_room',['../classnp1sec_1_1np1secUserState.html#aaa0cacdf96ccacac02496c717bb082bc',1,'np1sec::np1secUserState']]],
+  ['leaving',['leaving',['../classnp1sec_1_1Participant.html#a21bb33a3a7d4a77f61c31d578805009c',1,'np1sec::Participant']]],
+  ['log',['log',['../classnp1sec_1_1Logger.html#a7be57688004ba18e36e3ab1f88a0f1bb',1,'np1sec::Logger::log()'],['../xmpp__test_8cpp.html#a29efd48ac1bbeffe731dfa6b52ae8909',1,'log():&#160;xmpp_test.cpp']]],
+  ['log_5ffile',['log_file',['../classnp1sec_1_1Logger.html#a8e7f7dd5675facb1c921266af11e5013',1,'np1sec::Logger::log_file()'],['../test__logger_8cc.html#ae3845dc689462e7b3ce1805b880948f8',1,'log_file():&#160;test_logger.cc']]],
+  ['log_5ffilename',['log_filename',['../classnp1sec_1_1Logger.html#a7059048581b65ad367d1be38f846b156',1,'np1sec::Logger']]],
+  ['log_5flevel_5ft',['log_level_t',['../namespacenp1sec.html#a5e6431ae15a41b7fe0ec98529a3a3c4f',1,'np1sec']]],
+  ['log_5fto_5ffile',['log_to_file',['../classnp1sec_1_1Logger.html#a891338bdbc4f7aeaccced7ecca1d0f58',1,'np1sec::Logger']]],
+  ['log_5fto_5fstderr',['log_to_stderr',['../classnp1sec_1_1Logger.html#afabfee7f9123037531c204ee3d7f1b86',1,'np1sec::Logger']]],
+  ['logger',['Logger',['../classnp1sec_1_1Logger.html#aad00aa3cf8167e8a6a08438314b45d89',1,'np1sec::Logger::Logger()'],['../namespacenp1sec.html#a2957dc4e0a4606a5f75c92979305aa6a',1,'np1sec::logger()'],['../namespacenp1sec.html#ad6a283eebe173c9eaf1650245e08b16c',1,'np1sec::logger(DEBUG)']]],
+  ['logger',['Logger',['../classnp1sec_1_1Logger.html',1,'np1sec']]],
+  ['logger_2ecc',['logger.cc',['../logger_8cc.html',1,'']]],
+  ['logger_2eh',['logger.h',['../logger_8h.html',1,'']]],
+  ['loggertest',['LoggerTest',['../classLoggerTest.html',1,'']]],
+  ['long_5fterm_5fkey_5fpair',['long_term_key_pair',['../classnp1sec_1_1np1secUserState.html#a40b4c0d19207056ef0b19001427f2015',1,'np1sec::np1secUserState']]],
+  ['long_5fterm_5fpub_5fkey',['long_term_pub_key',['../classnp1sec_1_1Participant.html#a31250dcbfbe2402010d53963f4ad078e',1,'np1sec::Participant']]],
+  ['longtermidkey',['LongTermIDKey',['../classnp1sec_1_1LongTermIDKey.html#ac88ac5ab28733714e6b3ae42fce7ea0d',1,'np1sec::LongTermIDKey']]],
+  ['longtermidkey',['LongTermIDKey',['../classnp1sec_1_1LongTermIDKey.html',1,'np1sec']]]
+];
