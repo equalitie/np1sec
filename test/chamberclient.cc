@@ -28,6 +28,16 @@ typedef std::pair<UserState*, TState*> StatePair;
 typedef std::pair<TState*, std::string> StateNicknamePair;
 
 /**
+ * Main function sets up an HTTP server to listen for POST requests on the route
+ * /received.
+ */
+int main(int argc, char** argv)
+{
+    // For now, let's just get something running!
+    std::cout << "Hello, Chamber!" << std::endl;
+}
+
+/**
  * Join a room.
  * @param room_name - The name of the room to join
  * @param aux_data - A pointer to memory containing
