@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "src/logger.h"
+#include "src/userstate.h"
 
 #ifndef _CHAMBER_CLIENT_H_
 #define _CHAMBER_CLIENT_H_
@@ -40,8 +41,10 @@ typedef void (*timer_cb)(void*);
 // A collection of error cases that should be handled by the client
 typedef enum
 {
-    NIL,          // No error has occurred
-    NOT_SIGNED_IN // The user has tried to do something before signing in
+    NIL,             // No error has occurred
+    NOT_SIGNED_IN,   // The user has tried to do something before signing in
+    BAD_CREDENTIALS, // The user does not have the right keys to be able to participate in a session
+    PARSE_ERROR      // The message (for sending) could not be parsed
 }
 TError;
 
@@ -60,6 +63,11 @@ void chamber_send(std::string room_name, std::string message, void* aux_data);
 /*
  * End of function signatures for np1sec interaction
  **/
+
+/**
+ * Helper functions
+ */
+TError parse_and_send(std::string room_name, std::string message, UserState* user);
 
 /**
  * Stores information about participants in chats.
