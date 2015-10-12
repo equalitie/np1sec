@@ -33,6 +33,19 @@ libnp1sec_test_LDFLAGS = \
 	$(PTHREAD)
 	  $(top_builddir)/${GTEST_BASE}/lib/libgtest.la $(PTHREAD)
 
+# Network condition tests
+
+noinst_PROGRAMS += chamber_client
+
+chamber_client_SOURCES = \
+    test/chamberclient.cc \
+    test/mongoose.c
+
+chamber_client_LDADD = \
+    libnp1sec.la \
+    $(LIBGCRYPT_LIBS) \
+    $(LIBEVENT_LIBS)
+
 # Integration tests
 
 # noinst_PROGRAMS += xmpp_test

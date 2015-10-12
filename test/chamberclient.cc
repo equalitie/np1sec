@@ -10,7 +10,7 @@
 #include <iostream>
 
 #include "test/chamberclient.h"
-#incldude "test/mongoose.h"
+#include "test/mongoose.h"
 
 // np1sec functionality
 #include "src/userstate.h"
@@ -27,10 +27,12 @@ static const char* http_port = "9005";
 static struct mg_serve_http_opts http_server_opts;
 
 // A pair containing information about a specific user and the test state
-typedef std::pair<UserState*, TState*> StatePair;
+typedef std::pair<np1sec::UserState*, TState*> StatePair;
 
 // A pair containing test state and a user's nickname
 typedef std::pair<TState*, std::string> StateNicknamePair;
+
+static void request_handler(struct mg_connection *nc, int ev, void *p);
 
 /**
  * Main function sets up an HTTP server to listen for POST requests on the route
@@ -38,6 +40,10 @@ typedef std::pair<TState*, std::string> StateNicknamePair;
  */
 int main(int argc, char** argv)
 {
+    // For now, avoid having the compiler complain about not using these parameters
+    argc = argc + 1 - 1;
+    std::cout << "argv[0] = " << argv[0] << std::endl;
+
     struct mg_mgr manager;
     struct mg_connection* net_conn;
 
@@ -58,6 +64,16 @@ int main(int argc, char** argv)
 }
 
 /**
+ * Handle new clients
+ */
+static void request_handler(struct mg_connection *nc, int ev, void *p) {
+    struct http_message* http_msg = reinterpret_cast<struct http_message*>(p);
+    if (ev == MG_EV_HTTP_REQUEST) {
+        mg_serve_http(nc, http_msg, http_server_opts);
+    }
+}
+
+/**
  * Join a room.
  * @param room_name - The name of the room to join
  * @param aux_data - A pointer to memory containing
@@ -65,7 +81,7 @@ int main(int argc, char** argv)
 void chamber_join(std::string room_name, void* aux_data)
 {
     StatePair* state = reinterpret_cast<StatePair*>(aux_data);
-    ParticipantList participants = state->second->participants(room_name);
+    ParticipantList participants = state->second->get_participants(room_name);
     state->first->join_room(room_name, participants);
 }
 
@@ -91,7 +107,7 @@ void chamber_send_raw(std::string room_name, std::string message, void* aux_data
  */
 void chamber_announce_new_session(std::string room_name, ParticipantList participants, void* aux_data)
 {
-    StateNicknamePair* state_nick = reinterpret_cast<StateNickNamePair*>(aux_data);
+    StateNicknamePair* state_nick = reinterpret_cast<StateNicknamePair*>(aux_data);
     // Check if the user is no longer in the participants list, indicating that they are leaving
     if (std::find(participants.begin(), participants.end(), state_nick->second) == participants.end()) {
         std::cout << state_nick->second << " left the room " << room_name << std::endl;
@@ -153,7 +169,7 @@ void chamber_del_timer(void* to_be_removed, void* aux_data)
 bool chamber_single_user_in_room(std::string room_name, void* aux_data)
 {
     StateNicknamePair* state_nick = reinterpret_cast<StateNicknamePair*>(aux_data);
-    return state_nick->first->participants(room_name).size() == 1;
+    return state_nick->first->get_participants(room_name).size() == 1;
 }
 
 /**
@@ -176,42 +192,46 @@ void chamber_send(std::string room_name, std::string message, void* aux_data)
  */
 TError chamber_receive_handler(std::string room_name, std::string message, void* aux_data)
 {
+    // I have no idea why, but the compiler is complaining about room_name not being used
+    // for the rest of the function.
+    room_name = "" + room_name; // Take that, evil compiler!
+
     // All messages are prefixed with a delimited type, such as @<o>@JOIN@<o>@
     // The first step is to find the fourth '@' so we can determine the message type
     size_t end_msg_type = message.find('@', 5) + (size_t)4;
     std::string message_type = message.substr(0, end_msg_type);
     std::cout << "Message Type: " << message_type << std::endl;
     StatePair* user_test_pair = reinterpret_cast<StatePair*>(aux_data);
-    switch (message_type) {
-    case JOIN:
+    
+    // What the F, compiler? I am using user_test_pair too!!
+    user_test_pair = user_test_pair;
+
+    if (message_type == JOIN) {
         // Check if it is ourselves or someone else who is joining
-        std::string joining = message.substr(end_message_type)
+        std::string joining = message.substr(end_msg_type);
         if (user_test_pair->first->user_nick() == joining) {
             try {
-                ParticipantList participants = user_test_pair->second->participants(room_name);
+                ParticipantList participants = user_test_pair->second->get_participants(room_name);
                 user_test_pair->first->join_room(room_name, participants);
-            } catch (Exception &e) {
+            } catch (std::exception& e) {
                 return BAD_CREDENTIALS;
             }
         } else {
             user_test_pair->first->increment_room_size(room_name);
         }
-        break;
-    case INTEND_LEAVE:
+    } else if (message_type == INTEND_LEAVE) {
         std::string leaving = message.substr(end_msg_type);
         if (user_test_pair->first->user_nick() == leaving) {
             user_test_pair->first->leave_room(room_name);
         }
         // In a real usage scenario, we'll never see another user send this message.
-        break;
-    case LEAVE:
+    } else if (message_type == LEAVE) {
         std::string leaving = message.substr(end_msg_type);
         if (user_test_pair->first->user_nick() != leaving) {
             user_test_pair->first->shrink(room_name, leaving);
         }
         // We shouldn't end up in the alternate case
-        break;
-    case SEND:
+    } else if (message_type == SEND) {
         return parse_and_send(room_name, message, user_test_pair->first);
     }
     return NIL;
@@ -224,10 +244,10 @@ TError chamber_receive_handler(std::string room_name, std::string message, void*
  * @param message - The fully encoded message to be sent with identifiers etc.
  * @param user - The state of the client's user
  */
-TError parse_and_send(std::string room_name, std::string message, UserState* user)
+TError parse_and_send(std::string room_name, std::string message, np1sec::UserState* user)
 {
-    std::string msg_with_id = messsge.substring(strlen("@<o>@SEND@<o>@"));
-    size_t sender_pos = msg_with_d.find("@<o>@");
+    std::string msg_with_id = message.substr(strlen("@<o>@SEND@<o>@"));
+    size_t sender_pos = msg_with_id.find("@<o>@");
     std::string msg_id_str = msg_with_id.substr(0, sender_pos);
     int message_id;
     std::stringstream(msg_id_str) >> message_id;

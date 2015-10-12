@@ -17,6 +17,8 @@
 
 extern np1sec::Logger logger;
 
+// Early declarations of the test participant and test room classes
+// so that we can declare types and function signatures referring to them
 class TParticipant;
 class TRoom;
 
@@ -58,7 +60,7 @@ void chamber_print_message(std::string room_name, std::string sender, std::strin
 void* chamber_set_timer(timer_cb callback, void* ops_data, uint32_t interval, void* aux_data);
 void chamber_del_timer(void* to_be_removed, void* aux_data);
 bool chamber_single_user_in_room(std::string room_name, void* aux_data);
-void chamber_receive_handler(std::string room_name, std::string message, void* aux_data);
+TError chamber_receive_handler(std::string room_name, std::string message, void* aux_data);
 void chamber_send(std::string room_name, std::string message, void* aux_data);
 /*
  * End of function signatures for np1sec interaction
@@ -67,7 +69,7 @@ void chamber_send(std::string room_name, std::string message, void* aux_data);
 /**
  * Helper functions
  */
-TError parse_and_send(std::string room_name, std::string message, UserState* user);
+TError parse_and_send(std::string room_name, std::string message, np1sec::UserState* user);
 
 /**
  * Stores information about participants in chats.
@@ -77,7 +79,7 @@ class TParticipant
     public:
         std::string nickname;
         // Data to be passed to a receive handler
-        void* aux_data
+        void* aux_data;
         receive_h recv_handler;
         bool scheduled_to_leave = false;
 };
@@ -96,8 +98,11 @@ class TRoom
         }
 
     public:
-        MockRoom(std::string room_name)
-          : name(room_name) { }
+        TRoom()
+            : name("") { }
+
+        TRoom(std::string room_name)
+            : name(room_name) { }
 
         /**
          * Handle having a participant join the room.
@@ -105,7 +110,7 @@ class TRoom
          * @param handler - A message-receipt handler function to invoke when the user is to receive a message
          * @param user_data - The blob of data relevant to the user joining
          */
-        void join(std::string nickname, receieve_h handler, void* user_data)
+        void join(std::string nickname, receive_h handler, void* user_data)
         {
             participants[nickname].nickname = nickname;
             participants[nickname].recv_handler = handler;
@@ -246,7 +251,7 @@ class TState
                 return NOT_SIGNED_IN;
             }
             user = participants[nickname];
-            if (rooms.find(room) == rooms.end()) {
+            if (rooms.find(room_name) == rooms.end()) {
                 std::pair<std::string, TRoom> new_room_pair(room_name, TRoom(room_name));
                 rooms.insert(new_room_pair);
             }
@@ -258,7 +263,7 @@ class TState
          * Obtain a list of the participants in a room.
          * @param room_name - The name of the room to get the list of participants from
          */
-        ParticipantList participants(std::string room_name)
+        ParticipantList get_participants(std::string room_name)
         {
             return rooms[room_name].get_participants();
         }

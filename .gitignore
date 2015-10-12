@@ -176,6 +176,7 @@ Makefile.in
 # Other
 .DS_Store
 /libnp1sec_test*
+/chamber_client*
 /xmpp_test*
 .libs/*
 *.orig
