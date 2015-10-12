@@ -10,6 +10,7 @@
 #include <iostream>
 
 #include "test/chamberclient.h"
+#incldude "test/mongoose.h"
 
 // np1sec functionality
 #include "src/userstate.h"
@@ -20,6 +21,10 @@ const std::string JOIN = "@<o>@JOIN@<o>@";
 const std::string INTEND_LEAVE = "@<o>@INTEND2LEAVE@<o>@";
 const std::string LEAVE = "@<o>@LEAVE@<o>@";
 const std::string SEND = "@<o>@SEND@<o>@";
+
+// Values for the Mongoose HTTP server
+static const char* http_port = "9005";
+static struct mg_serve_http_opts http_server_opts;
 
 // A pair containing information about a specific user and the test state
 typedef std::pair<UserState*, TState*> StatePair;
@@ -33,8 +38,23 @@ typedef std::pair<TState*, std::string> StateNicknamePair;
  */
 int main(int argc, char** argv)
 {
-    // For now, let's just get something running!
-    std::cout << "Hello, Chamber!" << std::endl;
+    struct mg_mgr manager;
+    struct mg_connection* net_conn;
+
+    mg_mgr_init(&manager, NULL);
+    net_conn = mg_bind(&manager, http_port, request_handler);
+
+    // Set up HTTP server parameters
+    mg_set_protocol_http_websocket(net_conn);
+    http_server_opts.document_root = ".";
+    http_server_opts.enable_directory_listing = "no";
+
+    std::cout << "Starting HTTP server on port " << http_port << std::endl;
+    for (;;) {
+        mg_mgr_poll(&manager, 1000);
+    }
+    mg_mgr_free(&manager);
+    return 0;
 }
 
 /**
