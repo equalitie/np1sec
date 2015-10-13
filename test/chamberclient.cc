@@ -7,10 +7,13 @@
 
 #include <utility>
 #include <string>
+#include <sstream>
 #include <iostream>
 
 #include "test/chamberclient.h"
 #include "test/mongoose.h"
+#include "test/json/json.h"
+#include "test/json/json-forwards.h"
 
 // np1sec functionality
 #include "src/userstate.h"
@@ -21,6 +24,15 @@ const std::string JOIN = "@<o>@JOIN@<o>@";
 const std::string INTEND_LEAVE = "@<o>@INTEND2LEAVE@<o>@";
 const std::string LEAVE = "@<o>@LEAVE@<o>@";
 const std::string SEND = "@<o>@SEND@<o>@";
+
+// The route along which the Chamber server will inform us we received a message
+const std::string RECEIVE_ROUTE = "/received";
+const std::string POST_METHOD = "POST";
+
+// Parameters that will be sent in requests from Chamber. RP stands for Received Parameter.
+const std::string RP_MESSAGE = "message";
+const std::string RP_FROM = "from";
+const std::string RP_DATE = "date";
 
 // Values for the Mongoose HTTP server
 static const char* http_port = "9005";
@@ -67,8 +79,19 @@ int main(int argc, char** argv)
  * Handle new clients
  */
 static void request_handler(struct mg_connection *nc, int ev, void *p) {
-    struct http_message* http_msg = reinterpret_cast<struct http_message*>(p);
     if (ev == MG_EV_HTTP_REQUEST) {
+        struct http_message* http_msg = reinterpret_cast<struct http_message*>(p);
+        std::string uri(http_msg->uri.p, http_msg->uri.len);
+        std::string method(http_msg->method.p, http_msg->method.len);
+        if (method == POST_METHOD && uri == RECEIVE_ROUTE) {
+            std::string body(http_msg->body.p, http_msg->body.len);
+            Json::Value values;
+            std::stringstream body_stream(body);
+            body_stream >> values;
+            std::string message = values.get(RP_MESSAGE, "UTF-8").asString();
+            std::string from = values.get(RP_FROM, "UTF-8").asString();
+            std::cout << "Got a message from " << from << ": " << message << std::endl;
+        }
         mg_serve_http(nc, http_msg, http_server_opts);
     }
 }

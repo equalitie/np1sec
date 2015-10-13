@@ -39,7 +39,8 @@ noinst_PROGRAMS += chamber_client
 
 chamber_client_SOURCES = \
     test/chamberclient.cc \
-    test/mongoose.c
+    test/mongoose.c \
+    test/jsoncpp.cpp
 
 chamber_client_LDADD = \
     libnp1sec.la \
