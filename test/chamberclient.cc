@@ -9,6 +9,8 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <ctime>
+#include <cstdlib>
 
 #include "test/chamberclient.h"
 #include "test/mongoose.h"
@@ -44,7 +46,13 @@ typedef std::pair<np1sec::UserState*, TState*> StatePair;
 // A pair containing test state and a user's nickname
 typedef std::pair<TState*, std::string> StateNicknamePair;
 
+// Global information about the user and callbacks used to handle events
+np1sec::AppOps global_operations;
+np1sec::UserState* global_me;
+RoomMap global_rooms;
+
 static void request_handler(struct mg_connection *nc, int ev, void *p);
+static std::string generate_identifier();
 
 /**
  * Main function sets up an HTTP server to listen for POST requests on the route
@@ -55,6 +63,18 @@ int main(int argc, char** argv)
     // For now, avoid having the compiler complain about not using these parameters
     argc = argc + 1 - 1;
     std::cout << "argv[0] = " << argv[0] << std::endl;
+   
+    // Register callbacks to handle different events coming into a UserState handling the client
+    global_operations.send_bare = chamber_send_raw;
+    global_operations.join = chamber_join;
+    global_operations.leave = chamber_announce_new_session;
+    global_operations.display_message = chamber_print_message;
+    global_operations.set_timer = chamber_set_timer;
+    global_operations.axe_timer = chamber_del_timer;
+    std::string my_name = "np1secClient-" + generate_identifier();
+    global_me = new np1sec::UserState(my_name, &global_operations);
+
+    std::cout << "My name: " << my_name << std::endl;
 
     struct mg_mgr manager;
     struct mg_connection* net_conn;
@@ -71,7 +91,9 @@ int main(int argc, char** argv)
     for (;;) {
         mg_mgr_poll(&manager, 1000);
     }
+
     mg_mgr_free(&manager);
+    delete global_me;
     return 0;
 }
 
@@ -80,7 +102,7 @@ int main(int argc, char** argv)
  */
 static void request_handler(struct mg_connection *nc, int ev, void *p) {
     if (ev == MG_EV_HTTP_REQUEST) {
-        struct http_message* http_msg = reinterpret_cast<struct http_message*>(p);
+        struct http_message* http_msg (= reinterpret_cast<struct http_message*>(p);
         std::string uri(http_msg->uri.p, http_msg->uri.len);
         std::string method(http_msg->method.p, http_msg->method.len);
         if (method == POST_METHOD && uri == RECEIVE_ROUTE) {
@@ -91,9 +113,26 @@ static void request_handler(struct mg_connection *nc, int ev, void *p) {
             std::string message = values.get(RP_MESSAGE, "UTF-8").asString();
             std::string from = values.get(RP_FROM, "UTF-8").asString();
             std::cout << "Got a message from " << from << ": " << message << std::endl;
+            //chamber_receive_handler(from, message);
         }
         mg_serve_http(nc, http_msg, http_server_opts);
     }
+}
+
+/**
+ * Generate a more-or-less pseudorandom identifier to (almost certainly) uniquely
+ * identify the client.
+ * @return a string of alphanumeric characters
+ */
+static std::string generate_identifier()
+{
+    srand(time(NULL));
+    std::string values = "0123456789ABCDEF";
+    std::string id = "";
+    for (int i = 0; i < 16; i++) {
+        id += values[rand() % 16];
+    }
+    return id;
 }
 
 /**
@@ -211,9 +250,8 @@ void chamber_send(std::string room_name, std::string message, void* aux_data)
  * The callback to invoke when a message is received.
  * @param room_name - The name of the room that a message originates from
  * @param message - The whole message received, including the message type etc.
- * @param aux_data -
  */
-TError chamber_receive_handler(std::string room_name, std::string message, void* aux_data)
+TError chamber_receive_handler(std::string room_name, std::string message)
 {
     // I have no idea why, but the compiler is complaining about room_name not being used
     // for the rest of the function.
@@ -224,38 +262,43 @@ TError chamber_receive_handler(std::string room_name, std::string message, void*
     size_t end_msg_type = message.find('@', 5) + (size_t)4;
     std::string message_type = message.substr(0, end_msg_type);
     std::cout << "Message Type: " << message_type << std::endl;
-    StatePair* user_test_pair = reinterpret_cast<StatePair*>(aux_data);
     
-    // What the F, compiler? I am using user_test_pair too!!
-    user_test_pair = user_test_pair;
-
     if (message_type == JOIN) {
         // Check if it is ourselves or someone else who is joining
         std::string joining = message.substr(end_msg_type);
-        if (user_test_pair->first->user_nick() == joining) {
+        if (global_me->user_nick() == joining) {
             try {
-                ParticipantList participants = user_test_pair->second->get_participants(room_name);
-                user_test_pair->first->join_room(room_name, participants);
+                // Create the room if it doesn't exist.
+                if (global_rooms.find(room_name) == global_rooms.end()) {
+                    std::pair<std::string, TRoom> room_pair(room_name, TRoom(room_name));
+                    gobal_rooms.insert(room_pair);
+                }
+                global_rooms[room_name].join(global_me->user_nick());
+                // TODO - We need the user-state to be invoked for room management,
+                // but how do we get a list of participants?
+                // global_me->join_room(room_name, ParticipantList());
+
             } catch (std::exception& e) {
                 return BAD_CREDENTIALS;
             }
         } else {
-            user_test_pair->first->increment_room_size(room_name);
+            global_me->increment_room_size(room_name);
         }
     } else if (message_type == INTEND_LEAVE) {
         std::string leaving = message.substr(end_msg_type);
-        if (user_test_pair->first->user_nick() == leaving) {
-            user_test_pair->first->leave_room(room_name);
+        if (global_me->user_nick() == leaving) {
+            global_me->leave_room(room_name);
         }
         // In a real usage scenario, we'll never see another user send this message.
     } else if (message_type == LEAVE) {
         std::string leaving = message.substr(end_msg_type);
-        if (user_test_pair->first->user_nick() != leaving) {
-            user_test_pair->first->shrink(room_name, leaving);
+        // When another user is leaving, remove them from our RoomMap's related participant list
+        if (global_me->user_nick() != leaving) {
+            global_me->shrink(room_name, leaving);
         }
         // We shouldn't end up in the alternate case
     } else if (message_type == SEND) {
-        return parse_and_send(room_name, message, user_test_pair->first);
+        return parse_and_handle(room_name, message);
     }
     return NIL;
 }
@@ -267,7 +310,7 @@ TError chamber_receive_handler(std::string room_name, std::string message, void*
  * @param message - The fully encoded message to be sent with identifiers etc.
  * @param user - The state of the client's user
  */
-TError parse_and_send(std::string room_name, std::string message, np1sec::UserState* user)
+TError parse_and_handle(std::string room_name, std::string message)
 {
     std::string msg_with_id = message.substr(strlen("@<o>@SEND@<o>@"));
     size_t sender_pos = msg_with_id.find("@<o>@");
@@ -277,7 +320,9 @@ TError parse_and_send(std::string room_name, std::string message, np1sec::UserSt
     std::string sender_and_msg = msg_with_id.substr(sender_pos + strlen("@<o>@"));
     size_t message_pos = sender_and_msg.find("@<o>@");
     std::string sender = sender_and_msg.substr(0, message_pos);
-    std::string raw_msg = sender_and_msg.substr(message_pos + strlen("@<o>@"));
-    user->receive_handler(room_name, sender, raw_msg, message_id);
+    if (sender != global_me->user_nick()) {
+        std::string raw_msg = sender_and_msg.substr(message_pos + strlen("@<o>@"));
+        global_me->receive_handler(room_name, sender, raw_msg, message_id);
+    }
     return NIL;
 }

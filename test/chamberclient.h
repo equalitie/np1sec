@@ -6,11 +6,13 @@
  */
 
 #include <map>
-#include <queue>
 #include <vector>
+#include <iostream>
 
 #include "src/logger.h"
 #include "src/userstate.h"
+
+#include "test/mongoose.h"
 
 #ifndef _CHAMBER_CLIENT_H_
 #define _CHAMBER_CLIENT_H_
@@ -22,17 +24,11 @@ extern np1sec::Logger logger;
 class TParticipant;
 class TRoom;
 
-// Handler function for message receipt
-typedef void (*receive_h)(std::string, std::string, void*);
-
 // A mapping of participant names to participant instances
 typedef std::map<std::string, TParticipant> ParticipantMap;
 
 // A mapping of room names to room instances
 typedef std::map<std::string, TRoom> RoomMap;
-
-// A queue of incoming messages that have yet to be handled
-typedef std::queue<std::string> MessageQueue;
 
 // A list of nicknames of participants in a room
 typedef std::vector<std::string> ParticipantList;
@@ -60,7 +56,7 @@ void chamber_print_message(std::string room_name, std::string sender, std::strin
 void* chamber_set_timer(timer_cb callback, void* ops_data, uint32_t interval, void* aux_data);
 void chamber_del_timer(void* to_be_removed, void* aux_data);
 bool chamber_single_user_in_room(std::string room_name, void* aux_data);
-TError chamber_receive_handler(std::string room_name, std::string message, void* aux_data);
+TError chamber_receive_handler(std::string room_name, std::string message);
 void chamber_send(std::string room_name, std::string message, void* aux_data);
 /*
  * End of function signatures for np1sec interaction
@@ -79,8 +75,6 @@ class TParticipant
     public:
         std::string nickname;
         // Data to be passed to a receive handler
-        void* aux_data;
-        receive_h recv_handler;
         bool scheduled_to_leave = false;
 };
 
@@ -90,11 +84,14 @@ class TRoom
         uint64_t global_message_id = 0;
         std::string name;
         ParticipantMap participants;
-        MessageQueue messages;
 
-        void broadcast(std::string message)
-        {
-            messages.push(message);
+        /**
+         * Send a message to the chamber server to be sent to the room.
+         * @param message - The contents of the message to send
+         */
+        void broadcast(std::string message) {
+            std::cout << "Broadcasting:\t" << message << std::endl;
+            return;
         }
 
     public:
@@ -107,14 +104,10 @@ class TRoom
         /**
          * Handle having a participant join the room.
          * @param nickname - The nickname of the joining user
-         * @param handler - A message-receipt handler function to invoke when the user is to receive a message
-         * @param user_data - The blob of data relevant to the user joining
          */
-        void join(std::string nickname, receive_h handler, void* user_data)
+        void join(std::string nickname)
         {
             participants[nickname].nickname = nickname;
-            participants[nickname].recv_handler = handler;
-            participants[nickname].aux_data = user_data;
             broadcast("@<o>@JOIN@<o>@" + nickname);
         }
 
@@ -123,11 +116,11 @@ class TRoom
          */
         ParticipantList get_participants()
         {
-          ParticipantList list;
-          for (auto current = participants.begin(); current != participants.end(); current++) {
-              list.push_back((current->second).nickname);
-          }
-          return list;
+            ParticipantList list;
+            for (auto current = participants.begin(); current != participants.end(); current++) {
+                list.push_back((current->second).nickname);
+            }
+            return list;
         }
 
         /**
@@ -166,6 +159,8 @@ class TRoom
          */
         void receive()
         {
+            std::cout << "Calling TRoom::receive()" << std::endl;
+            /*
             std::string leaving_nickname;
             while (!messages.empty()) {
                 for (auto current = participants.begin(); current != participants.end(); current++) {
@@ -183,6 +178,7 @@ class TRoom
                 }
                 messages.pop();
             }
+            */
         }
 };
 
