@@ -1,0 +1,38 @@
+* TODO List of DoS possibilities
+  DoS Malciousness
+  - Unresponsiveness.
+  - Generating wrong keyshare.
+  - Confirming wrong session.
+  - Asking for people to leave without reason.
+
+  - When a participant conclude that a participant is malicious
+    bceause of one of above reasons it request a leave for that 
+    participant.
+
+* TODO How to detect
+  - How to detect DoS:
+    - Time dependent: allow double amount of timeout to re-act but accept any re-action after the timeout period.
+    - Generating wrong keyshare:
+      - AES-GCM the shares sends it out to everybody.
+      - 
+
+* TODO How to react after detection
+  - If DoS happens during a join process, 
+       Is it the joiner malcious:
+          The malciousness is happening in session confirmation phase:
+          - just drop the session in limbo. Send re-join message with participant info without DoSer.
+          - The maliciousness is happening before sending session confirmation phase. Just drop the joining session.
+
+       A current partcipant is malcious:
+          - run a leave request which generate a session confirmation which helps the joiner.
+
+  - If DoS happens during leave process:
+       Run a leave on the malcious participant.
+
+  - If DoS happens during re-session.
+       Run a leave on the malcious participant.
+  
+  - Authentication failure is a reason for barring join but not DoS.
+
+* 
+* TODO Check mitigation method in the literature
