@@ -304,12 +304,12 @@ void Session::compute_session_id()
  */
 void Session::setup_session_view(Message session_view_message)
 {
-
     populate_participants_and_peers(session_view_message.get_session_view());
     compute_session_id();
 
     if (session_id.get() == nullptr)
         throw MessageFormatException();
+
 }
 
 void Session::compute_session_confirmation()
@@ -444,7 +444,7 @@ bool Session::nobody_confirmed()
 
 /**
  *   Joiner call this after receiving the participant info to
- *    authenticate to everybody in the room
+ *   authenticate to everybody in the room
  */
 void Session::joiner_send_auth_and_share()
 {
@@ -924,7 +924,7 @@ Session::StateAndAction Session::send_session_confirmation_if_everybody_is_contr
         // if we are joing we don't need to relimbo and the room will
         // ignore the action,
     }
-
+ 
     // otherwise just wait for more shares
     return StateAndAction(my_state, RoomAction());
 }

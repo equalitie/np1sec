@@ -437,7 +437,7 @@ void Cryptic::sign(unsigned char** sigp, size_t* siglenp, std::string plain_text
     const uint32_t magic_number = 64, half_magic_number = 32;
 
     *sigp = new unsigned char[magic_number];
-    if (sigp == nullptr) {
+    if (*sigp == nullptr) {
         logger.abort("Failed to allocate memory.");
     }
 

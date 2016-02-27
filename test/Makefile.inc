@@ -35,19 +35,32 @@ libnp1sec_test_LDFLAGS = \
 
 # Network condition tests
 
-noinst_PROGRAMS += chamber_client
+# noinst_PROGRAMS += chamber_client
 
-chamber_client_SOURCES = \
-	test/chamberclient.cc \
-	test/mongoose.c \
-	test/jsoncpp.cpp
+# chamber_client_SOURCES = \
+# 	test/chamberclient.cc \
+# 	test/mongoose.c \
+# 	test/jsoncpp.cpp
 
-chamber_client_LDADD = \
-	libnp1sec.la \
-	$(LIBGCRYPT_LIBS) \
-	$(LIBEVENT_LIBS)
+# chamber_client_LDADD = \
+# 	libnp1sec.la \
+# 	$(LIBGCRYPT_LIBS) \
+# 	$(LIBEVENT_LIBS)
 
 # Integration tests
+
+noinst_PROGRAMS += jabberite
+
+jabberite_SOURCES = test/jabberite.cc \
+                    test/jabberite_np1sec_plugin.cc
+
+jabberite_LDADD = \
+	$(PURPLE_LIBS) \
+	libnp1sec.la
+
+jabberite_CPPFLAGS = \
+ 	$(PURPLE_CFLAGS) \
+ 	-I$(srcdir)/src
 
 # noinst_PROGRAMS += xmpp_test
 
