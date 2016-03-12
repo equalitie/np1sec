@@ -114,7 +114,7 @@
 
 ** If a set of participants cannot reach an agreement, the status quo will remain in place.
 ** Maliciousness is relative and defined based on the agreeing subgroup. If the transport delivers different payloads for different participants, then those sets of participants cannot reach an agreement.
-
+   
 * DoS goal:
 ** A set of benign participants where the transport honestly delivers packets between them should be able to form a session.
 
@@ -145,7 +145,7 @@
           - The maliciousness is happening before sending session confirmation phase. Just drop the joining session.
 
        A current participant is malicious:
-          - send a kick request which generates a session confirmation that helps the joiner.
+          - send a kick request which generates a session confirmation that helps the joiner to know that a new session is generated.
 
   - If DoS happens during leave process:
        Send a kick request for the malicious participant.
@@ -184,21 +184,21 @@
     all private key encrypted by p2p keys signed by non-DoS-tagged authenticated
     private key. The cheater will be detected and kicked out.
   * If U_i kicks U_j out (that is starting session S while U_j is not in the 
-    new session) without cheating evidence signed by alleged cheater U_j, then U_k starts a session without
-    U_i in it but U_j in it. That could be because U_k has not received U_j's intention-to-leave
-    message.
+    new session) without cheating evidence signed by alleged cheater U_j, then U_k simply ignore the request 
+    for the new session.
 
 ** Sub protocol for unresponsiveness on join or re-session or any other part of the key agreement protocol.
    If U_i fails to reply, U_j sends a kick request (for failure to reply) after the grace period has passed.
    Other participants either should agree with the kick and respond by participant-info message or re-broadcast the failed message (if they have received it despite the fact that U_j has not). When 
    you get the message for failed delivery, you *have to* agree or rebroadcast. If you fail to do so, you will be dropped as well.
+
    - The main idea is to have two timers:
      A replies before timer 1 ends, B asks to kick out A=> kickout B.
      A replies after timer 1 but before timer 2 ends, B asks to kick out A => kickout A.
      A replies after timer 2 but B does not ask to kickout A => ask to kickout A.
 
- -- Current users start a timer as soon as they get a join request for 
-   all users in the room to respond with authentication. 
+   -- Current users start a timer as soon as they get a join request for 
+   all users in the room to respond with authentication.
 
    Note: Authentication failed should be an acceptable response.
 
@@ -235,10 +235,9 @@
 
 So it is obvious that we should treat cheating and transport problems separately, because the latter are provable.
 
-Planned but not to be implemented in this phase: in particular, if A decides that C is unresponsive while C is responsive, then
-B can relay C info signed by C to A.
+   in particular, if A decides that C is unresponsive while C is responsive, then B can relay C info signed by C to A.
 
-When B receives a DoS re-session request from A to drop C: either B agrees with A on the reason of dropping C or she doesn't. If yes, she continues with the kick protocol on C. If no, then B's view does not agree with A's view, and therefore they cannot be in the same session. As such, B sends a kick request for A, attaching A's reason, and all other participants whose view agrees with B drop A and start a new session.
+When B receives a DoS re-session request from A to drop C: either B agrees with A on the reason of dropping C or she doesn't. If yes, she continues with the kick protocol on C. If no, B re-send the missing info to A in hope of reaching agreement if A doesn't reply to requested info in timely manner, then B's view does not agree with A's view, and therefore they cannot be in the same session. As such, B sends a kick request for A and all other participants whose view agrees with B drop A and start a new session.
 
 *** Delivery failure/Transport delay recovery.
 - The protocol agrees on INTERACTIVE_GRACE_PERIOD.
