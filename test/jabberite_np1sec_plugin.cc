@@ -146,28 +146,35 @@ using namespace np1sec;
 // informing join and leave
 void new_session_announce(std::string room_name, std::vector<std::string> plist, void* aux_data)
 {
-    std::pair<ChatMocker*, string>* server_and_nick = reinterpret_cast<std::pair<ChatMocker*, string>*>(aux_data);
-    if (std::find(plist.begin(), plist.end(), server_and_nick->second) == plist.end()) { // we are leaving the room
-        cout << server_and_nick->second << "'s client: " << server_and_nick->second << " left room" << endl;
-        server_and_nick->first->leave(room_name, server_and_nick->second);
+  UNUSED(aux_data);
+    // std::pair<ChatMocker*, string>* server_and_nick = reinterpret_cast<std::pair<ChatMocker*, string>*>(aux_data);
+    // if (std::find(plist.begin(), plist.end(), server_and_nick->second) == plist.end()) { // we are leaving the room
+    //     cout << server_and_nick->second << "'s client: " << server_and_nick->second << " left room" << endl;
+    //     server_and_nick->first->leave(room_name, server_and_nick->second);
 
-    } else {
-        cout << reinterpret_cast<std::pair<ChatMocker*, string>*>(aux_data)->second << "'s client: "
-             << "new session established: ";
-        for (uint32_t i = 0; i < plist.size(); i++) {
-            std::cout << plist[i] << " ";
-        }
+    // } else {
+    //     cout << reinterpret_cast<std::pair<ChatMocker*, string>*>(aux_data)->second << "'s client: "
+    //          << "new session established: ";
+    //     for (uint32_t i = 0; i < plist.size(); i++) {
+    //         std::cout << plist[i] << " ";
+    //     }
 
-        std::cout << std::endl;
-    }
+    //     std::cout << std::endl;
+    // }
+  cout << "new session in room" << room_name <<  " with participants: ";
+  for (uint32_t i = 0; i < plist.size(); i++) {
+           std::cout << plist[i] << ", ";
+  }
+
+  cout << endl;
+  
 }
 
 // Display received messages
 void display_message(std::string room_name, std::string sender_nickname, std::string user_message, void* aux_data)
 {
-
-    cout << reinterpret_cast<std::pair<ChatMocker*, string>*>(aux_data)->second << "'s client: " << sender_nickname
-         << "@" << room_name << ": " << user_message << endl;
+  UNUSED(aux_data);
+  cout << sender_nickname << "@" << room_name << ": " << user_message << endl;
 }
 
 // Add a timeout callback to the ChatMocker server provided
@@ -177,10 +184,15 @@ void display_message(std::string room_name, std::string sender_nickname, std::st
 // data           - A pair containing a chatmocker and a string
 void* set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval, void* data)
 {
-    ChatMocker* chat_server = (reinterpret_cast<pair<ChatMocker*, std::string>*>(data))->first;
-    pair<timeout_callback, void*>* my_data = new pair<timeout_callback, void*>(timer_callback, opdata);
-    std::string* s = chat_server->add_timeout(my_data, interval);
-    return s;
+  UNUSED(timer_callback);
+  UNUSED(opdata);
+  UNUSED(interval);
+  UNUSED(data);
+    // ChatMocker* chat_server = (reinterpret_cast<pair<ChatMocker*, std::string>*>(data))->first;
+    // pair<timeout_callback, void*>* my_data = new pair<timeout_callback, void*>(timer_callback, opdata);
+    // std::string* s = chat_server->add_timeout(my_data, interval);
+    // return s;
+  return nullptr;
 }
 
 // Remove a timeout event from the ChatMocker server provided
@@ -188,9 +200,11 @@ void* set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t int
 // data       - A pair containing a chatmocker and a string
 void axe_timer(void* identifier, void* data)
 {
-    std::string* ident = reinterpret_cast<std::string*>(identifier);
-    ChatMocker* chat_server = (reinterpret_cast<pair<ChatMocker*, std::string>*>(data))->first;
-    chat_server->remove_timeout(ident);
+  UNUSED(identifier);
+  UNUSED(data);
+    // std::string* ident = reinterpret_cast<std::string*>(identifier);
+    // ChatMocker* chat_server = (reinterpret_cast<pair<ChatMocker*, std::string>*>(data))->first;
+    // chat_server->remove_timeout(ident);
 }
 
 /*void join(std::string room_name, std::string sender_nickname, void* data)

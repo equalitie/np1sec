@@ -29,11 +29,12 @@ namespace np1sec
  *
  */
 Room::Room(std::string room_name, UserState* user_state,
-                       std::vector<std::string> participants_in_the_room)
+                       uint32_t room_size)
     : name(room_name), user_state(user_state), user_in_room_state(JOINING)
 {
     np1sec_ephemeral_crypto.init(); // generate intitial ephemeral keys for join
-    room_size = participants_in_the_room.size();
+    //room_size = participants_in_the_room.size(); //we should not rely on the server for room size?
+    this->room_size = room_size; //this really should be changed to lonely_room
 
     join();
 }
@@ -84,8 +85,12 @@ void Room::join()
 {
     logger.assert_or_die(user_in_room_state == JOINING, "only can be called in joining stage", __FUNCTION__,
                          user_state->myself->nickname); // no double join but we need a
-    logger.assert_or_die(room_size, "being in an empty room is a logical contradition", __FUNCTION__,
-                         user_state->myself->nickname);
+    //We should not die. in particular we already know that one participant is in the room.
+    if (room_size == 0) {
+      logger.warn("room size reported to be: " + std::to_string(room_size) + ". being in an empty room is a logical contradition", __FUNCTION__,
+                  user_state->myself->nickname);
+      room_size = 1;
+    }
 
     logger.debug("currently " + std::to_string(room_size) + " partcipants in the room", __FUNCTION__,
                  user_state->myself->nickname);
@@ -107,6 +112,12 @@ void Room::join()
         join_message.create_join_request_msg(me);
         join_message.send(name, user_state);
     }
+    //TODO: what are we going to do if we fail to join?
+           //what does it mean to fail to joi?
+           //If everybody in the room deny access to us,
+           //We join with ourselves.
+           //We always join to the largest set of participants
+           //who join us.
 }
 
 /**

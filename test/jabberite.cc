@@ -29,6 +29,7 @@ extern "C" {
 
 extern "C" {
 #include "purple.h"
+  //#include "conversation.h"
 }
 
 #include "src/userstate.h"
@@ -79,19 +80,21 @@ static void signed_on(PurpleConnection* gc, gpointer null)
     serv_join_chat(gc, components);
 }
 
-static void process_sending_chat(PurpleAccount* account, char** message, int id, void* m)
-{
-    UNUSED(account);
-    UNUSED(id);
-    np1sec::UserState* user_state = reinterpret_cast<np1sec::UserState*>(m);
-    //std::string prefix = std::string("np1sec:");
-    //prefix.append(*message);
-    //free(*message);
-    //*message = strdup(prefix.c_str());
-    PurpleConnection *gc = purple_account_get_connection(account);
-    PurpleConversation *conv = purple_find_chat(gc, id);
-    user_state->send_handler(conv->name, *message);
-}
+//we should not interfere with send as it is bare send which is sending
+//instead we interfere with io_callback and get the data through (n+1)sec
+// static void process_sending_chat(PurpleAccount* account, char** message, int id, void* m)
+// {
+//     UNUSED(account);
+//     UNUSED(id);
+//     np1sec::UserState* user_state = reinterpret_cast<np1sec::UserState*>(m);
+//     //std::string prefix = std::string("np1sec:");
+//     //prefix.append(*message);
+//     //free(*message);
+//     //*message = strdup(prefix.c_str());
+//     PurpleConnection *gc = purple_account_get_connection(account);
+//     PurpleConversation *conv = purple_find_chat(gc, id);
+//     user_state->send_handler(conv->name, *message);
+// }
 
 static gboolean process_receiving_chat(PurpleAccount* account, char** sender, char** message, PurpleConversation* conv,
                                        int* flags, void* m)
@@ -117,24 +120,49 @@ static void process_chat_join_failed(PurpleConnection* gc, GHashTable* component
     printf("Join failed :(\n");
 }
 
-static void process_chat_joined(PurpleConversation* conv, void* m)
-{
-    np1sec::UserState* user_state = reinterpret_cast<np1sec::UserState*>(m);
-    // todo: Arlo could you convert conv->chat to vector<string>
-    std::vector<std::string> current_occupants;
-    bool joined = user_state->join_room(conv->name, current_occupants);
-    message_id[conv->name]=0;
-    printf("Joining %s: %s\n", conv->name, joined ? "succeeded" : "failed");
-}
+// static void process_chat_joined(PurpleConversation* conv, void* m)
+// {
+//     np1sec::UserState* user_state = reinterpret_cast<np1sec::UserState*>(m);
+//     // todo: Arlo could you convert conv->chat to vector<string>
+
+//     //    GList* g_participant_list =	purple_conv_chat_get_users(cur_chat);
+//     //    std::cout << (char*)g_participant_list->data << std::endl;
+//     (void) user_state;
+//     //bool joined = user_state->join_room(conv->name, current_occupants);
+//     //message_id[conv->name]=0;
+//     //printf("Joining %s: %s\n", conv->name, joined ? "succeeded" : "failed");
+
+// }
 
 static void process_buddy_chat_joined(PurpleConversation* conv, const char* name, PurpleConvChatBuddyFlags flags,
                                       gboolean new_arrival, void* m)
 {
-    UNUSED(conv);
     UNUSED(flags);
     UNUSED(new_arrival);
-    UNUSED(m);
-    printf("%s joined the chat\n", name);
+    np1sec::UserState* user_state = reinterpret_cast<np1sec::UserState*>(m);
+    printf("%s joined the chat is new %d\n", name, new_arrival);
+
+    //in general we don't care about this handle. new users are responsible
+    //to initiate the join to the secure session. We only are using this
+    //for the time that we join. To detect that it is the time of our join
+    //we check if the user joined is us.
+    //this is quite aweful but I have not found a better handle to find out how many
+    //people are in the room at the time of joining
+    if (user_state->user_nick() == name) {//we are joining
+      //we need to check if we are alone.
+      GList* g_participant_list =	purple_conv_chat_get_users(PURPLE_CONV_CHAT(conv));
+      bool joined = user_state->join_room(conv->name, g_list_length(g_participant_list));
+      
+      printf("Initating Join to room %s: %s\n", conv->name, joined ? "succeeded" : "failed");
+      
+    }
+   // for (; g_participant_list != NULL; g_participant_list = g_participant_list->next)
+   //   {
+   //     PurpleConvChatBuddy* cbuddy = (PurpleConvChatBuddy *)(g_participant_list->data);
+   //     //std::cout << cbuddy->name << std::endl;
+   //     if (cbuddy->name == name)
+   //   }
+   
 }
 
 static void process_chat_buddy_left(PurpleConversation* conv, const char* name, const char* reason, void* m)
@@ -145,6 +173,26 @@ static void process_chat_buddy_left(PurpleConversation* conv, const char* name, 
     printf("%s left the chat\n", name);
 }
 
+// void chat_conversation_updated(PurpleConversation *conv,
+//                                PurpleConvUpdateType type, gpointer data)
+// {
+//   (void) type;
+//   (void) data;
+//   PurpleConvChat* cur_chat = purple_conversation_get_chat_data(conv);
+//   purple_conv_chat_send (cur_chat, "conv_update");
+
+// }
+
+void send_bare(std::string room_name, std::string message, void* data)
+{
+  PurpleAccount* account = reinterpret_cast<PurpleAccount*>(data);
+  //char* name = g_strdup_printf("%s@%s", room_name.c_str(), server);
+  PurpleConversation* conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_CHAT, room_name.c_str(), account);
+
+  purple_conv_chat_send(PURPLE_CONV_CHAT(conv), message.c_str());
+
+}
+
 static void connect_to_signals(np1sec::UserState* user_state)
 {
     static int handle;
@@ -152,12 +200,13 @@ static void connect_to_signals(np1sec::UserState* user_state)
     void* conv_handle = purple_conversations_get_handle();
 
     purple_signal_connect(conn_handle, "signed-on", &handle, PURPLE_CALLBACK(signed_on), user_state);
-    purple_signal_connect(conv_handle, "sending-chat-msg", &handle, PURPLE_CALLBACK(process_sending_chat), user_state);
+    //purple_signal_connect(conv_handle, "sending-chat-msg", &handle, PURPLE_CALLBACK(process_sending_chat), user_state);
     purple_signal_connect(conv_handle, "receiving-chat-msg", &handle, PURPLE_CALLBACK(process_receiving_chat),
                           user_state);
     purple_signal_connect(conv_handle, "chat-join-failed", &handle, PURPLE_CALLBACK(process_chat_join_failed),
                           user_state);
-    purple_signal_connect(conv_handle, "chat-joined", &handle, PURPLE_CALLBACK(process_chat_joined), user_state);
+    //purple_signal_connect(conv_handle, "chat-joined", &handle, PURPLE_CALLBACK(process_chat_joined), user_state);
+    //purple_signal_connect(conv_handle, "conversation-updated", &handle, PURPLE_CALLBACK(chat_conversation_updated), user_state);
     purple_signal_connect(conv_handle, "chat-buddy-joined", &handle, PURPLE_CALLBACK(process_buddy_chat_joined),
                           user_state);
     purple_signal_connect(conv_handle, "chat-buddy-left", &handle, PURPLE_CALLBACK(process_chat_buddy_left),
@@ -172,6 +221,7 @@ typedef struct _PurpleGLibIOClosure {
     guint result;
     gpointer data;
 } PurpleGLibIOClosure;
+
 
 void purple_glib_io_destroy(gpointer data) { g_free(data); }
 
@@ -253,22 +303,26 @@ void purple_init(void)
 static gboolean io_callback(GIOChannel* io, GIOCondition condition, gpointer p)
 {
     UNUSED(condition);
-    PurpleAccount* account = reinterpret_cast<PurpleAccount*>(p);
+    //we don't need the account we have sent it as send_bare_data before
+    // PurpleAccount* account = (static_cast<pair<PurpleAccount*, np1sec::UserState*>*>(p))->first;
+    // np1sec::UserState* user_state = (static_cast<pair<PurpleAccount*, np1sec::UserState*>*>(p))->second;
+    np1sec::UserState* user_state = reinterpret_cast<np1sec::UserState*>(p);
+    
     gchar in;
     GError* error = NULL;
     static char buf[128];
     static int ind = 0;
 
-    char* name = g_strdup_printf("%s@%s", room_name, server);
-    PurpleConversation* conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_CHAT, name, account);
-    g_free(name);
+    //PurpleConversation* conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_CHAT, name, account);
 
     switch (g_io_channel_read_chars(io, &in, 1, NULL, &error)) {
     case G_IO_STATUS_NORMAL:
         buf[ind++] = in;
         if (ind == 128 || in == '\n') {
-            buf[ind - 1] = '\0';
-            purple_conv_chat_send(PURPLE_CONV_CHAT(conv), strdup(buf));
+          char* name = g_strdup_printf("%s@%s", room_name, server);
+          user_state->send_handler(name, strdup(buf));
+          g_free(name);
+          //purple_conv_chat_send(PURPLE_CONV_CHAT(conv), strdup(buf));
             ind = 0;
         }
         return TRUE;
@@ -332,10 +386,10 @@ int main(int argc, char* argv[])
     /* An array describing valid long options. */
     const struct option long_options[] = {
       { "help", 0, NULL, 'h' },
-      { "account", 1, NULL, 'o' },
-      { "password", 1, NULL, 'o' },
-      { "server", 1, NULL, 'o' },
-      { "room", 1, NULL, 'o' },
+      { "account", 1, NULL, 'a' },
+      { "password", 1, NULL, 'p' },
+      { "server", 1, NULL, 's' },
+      { "room", 1, NULL, 'r' },
       { NULL, 0, NULL, 0 }
     };
 
@@ -408,18 +462,25 @@ int main(int argc, char* argv[])
     //          uint32_t BROADCAST_LATENCY)
     static np1sec::AppOps ops(hundred_mili_sec, one_sec, hundred_mili_sec, hundred_mili_sec);;
 
-    //ops.send_bare = send_bare;
+    ops.send_bare = send_bare;
     ops.join = new_session_announce;
+    ops.display_message = display_message;
+    ops.set_timer = set_timer;
+    ops.axe_timer = axe_timer;
+
     //ops.leave = new_session_announce;
-    //ops.display_message = display_message;
-    //ops.set_timer = set_timer;
-    //ops.axe_timer = axe_timer;
 
     PurpleAccount* account = purple_account_new(user_name, prpl);
     ops.bare_sender_data = static_cast<void*>(account);
     np1sec::logger.debug("Set bare_sender_data");
 
-    np1sec::UserState user_state(user_name, &ops, nullptr);
+    //we drop the server name get the nick
+    std::string nick(user_name);
+    size_t at_pos = nick.find('@');
+    if (at_pos != std::string::npos)
+      nick = nick.substr(0, at_pos);
+    
+    np1sec::UserState user_state(nick, &ops, nullptr);
     if (!user_state.init()) {
         fprintf(stderr, "Failed to initiate the userstate.\n");
         abort();
@@ -430,14 +491,13 @@ int main(int argc, char* argv[])
     
     if (password == NULL) {
       password = getpass("Password: ");
-      purple_account_set_password(account, password);
-      purple_account_set_enabled(account, UI_ID, TRUE);
-
-      PurpleSavedStatus* status = purple_savedstatus_new(NULL, PURPLE_STATUS_AVAILABLE);
-      purple_savedstatus_activate(status);
-      
     }
+    purple_account_set_password(account, password);
+    purple_account_set_enabled(account, UI_ID, TRUE);
 
+    PurpleSavedStatus* status = purple_savedstatus_new(NULL, PURPLE_STATUS_AVAILABLE);
+    purple_savedstatus_activate(status);
+      
     // user_state need to be sent in order to be available to call backs
     connect_to_signals(&user_state);
 
@@ -465,7 +525,7 @@ int main(int argc, char* argv[])
     }
 
     GIOChannel* io = g_io_channel_unix_new(STDIN_FILENO);
-    g_io_add_watch(io, G_IO_IN, io_callback, account);
+    g_io_add_watch(io, G_IO_IN, io_callback, &user_state);
     g_main_loop_run(loop);
 
     delete[] user_name;

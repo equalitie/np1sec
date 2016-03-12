@@ -77,6 +77,7 @@ class UserState
      * The client need to call this function when the user is joining a room.
      *
      * @param room_name the chat room name
+     * @param room_size the number of participants in the room at the time of join
      *
      * @return true in case of success (does not mean successful join) and false
      *         in case of failure. client need to inform server of leaving the
@@ -84,7 +85,12 @@ class UserState
      */
     // TODO it is not clear that return value is useful at all. drop it if it
     // has no use
-    bool join_room(std::string room_name, std::vector<std::string> participants_in_the_room);
+    // TODO room size should change to
+     /*     * @param lonely_room the client should set to true if we are the only participant in the  */
+     /* *                    the room. It is not critical information as through DoS measure we */
+     /* *                    eventually start a solitary session, however it helps not wait. */
+
+    bool join_room(std::string room_name, uint32_t room_size);
 
     // Depricate, join request is triggered through join message
     /* /\** */

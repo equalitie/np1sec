@@ -114,7 +114,7 @@ bool UserState::init()
  *  Another condition which can make the failure of join inititation
  *  is that if we are already has joined a session in this room.
  */
-bool UserState::join_room(std::string room_name, std::vector<std::string> participants_in_the_room)
+bool UserState::join_room(std::string room_name, uint32_t room_size)
 {
     // we can't join without id key
     if (!long_term_key_pair.is_initiated()) {
@@ -129,7 +129,7 @@ bool UserState::join_room(std::string room_name, std::vector<std::string> partic
     if (chatrooms.find(room_name) == chatrooms.end()) {
         // room creation triger joining
         try {
-            chatrooms.emplace(room_name, Room(room_name, this, participants_in_the_room));
+            chatrooms.emplace(room_name, Room(room_name, this, room_size));
         } catch (std::exception& e) {
             logger.error(e.what(), __FUNCTION__, myself->nickname);
             logger.error("unable to join the room", __FUNCTION__, myself->nickname);
