@@ -1,4 +1,4 @@
-% Created 2016-01-29 Fri 11:01
+% Created 2016-03-11 Fri 23:07
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -29,18 +29,17 @@
 
 \section{DoS axioms:}
 \label{sec-1}
-\begin{itemize}
-\item we assume that the joiner cannot deny access for other joiners for the following:
-\end{itemize}
-\subsection{The line in the code which result in dropping other join requests:}
+\subsection{We assume that the joiner cannot deny access for other joiners because of the following:}
 \label{sec-1-1}
+\subsubsection{The line in the code which results in dropping other join requests:}
+\label{sec-1-1-1}
    if (action$_{\text{to}}$$_{\text{take}}$.action$_{\text{type}}$ \texttt{= RoomAction::NEW\_PRIORITY\_SESSION ||
             action\_to\_take.action\_type =} RoomAction::PRESUME$_{\text{HEIR}}$) \{
     stale$_{\text{in}}$$_{\text{limbo}}$$_{\text{sessions}}$$_{\text{presume}}$$_{\text{heir}}$(action$_{\text{to}}$$_{\text{take}}$.bred$_{\text{session}}$->session$_{\text{id}}$);
 \} // else \{ //user state in the room
 
-\subsection{The condition that lead to PRESUME$_{\text{HEIR}}$}
-\label{sec-1-2}
+\subsubsection{The condition that leads to PRESUME$_{\text{HEIR}}$}
+\label{sec-1-1-2}
 if (everybody$_{\text{authenticated}}$$_{\text{and}}$$_{\text{contributed}}$()) \{
     group$_{\text{dec}}$();
     // first compute the confirmation
@@ -62,28 +61,28 @@ re$_{\text{limbo}}$$_{\text{action}}$.action$_{\text{type}}$ = RoomAction::PRESU
 re$_{\text{limbo}}$$_{\text{action}}$.bred$_{\text{session}}$ = this;
 
     return StateAndAction(GROUP$_{\text{KEY}}$$_{\text{GENERATED}}$, re$_{\text{limbo}}$$_{\text{action}}$);
-    \emph{/ if we are joing we don't need to relimbo and the room will
-    /} ignore the action,
+    \emph{/ if we are joining we don't need to relimbo and the room will
+    /} ignore the action
 \}
 
-\subsection{The condition that lead to NEW$_{\text{PRIORITY}}$$_{\text{SESSION}}$}
-\label{sec-1-3}
+\subsubsection{The condition that leads to NEW$_{\text{PRIORITY}}$$_{\text{SESSION}}$}
+\label{sec-1-1-3}
 RoomAction Session::shrink(std::string leaving$_{\text{nick}}$)
 \{
- \emph{/ we are basically running the intention to leave message
- /} without broadcasting it (because it is not us who intend to do so)
- // make a fake intention to leave message but don't send ack
+ \emph{/ we are basically building the intention-to-leave message
+ /} without broadcasting it (because it is not us who intend to do so),
+ // so we are making a fake intention-to-leave message without sending it
  RoomAction new$_{\text{session}}$$_{\text{action}}$;
 
 auto leaver = participants.find(leaving$_{\text{nick}}$);
 if (leaver == participants.end()) \{
     logger.warn("participant " + leaving$_{\text{nick}}$ + " is not part of the active session of the room " + room$_{\text{name}}$ +
                 " from which they are trying to leave, already parted?");
-\} else if (zombies.find(leaving$_{\text{nick}}$) != zombies.end()) \{ // we haven already shrunk and made a session
+\} else if (zombies.find(leaving$_{\text{nick}}$) != zombies.end()) \{ // we haven't shrunk and made a session yet
     logger.debug("shrunk session for leaving user " + leaving$_{\text{nick}}$ + " has already been generated. nothing to do",
                  \uline{\uline{FUNCTION}}, myself.nickname);
 \} else \{ \emph{/ shrink now
-    /} if everything is ok add the leaver to the zombie list and make a
+    /} if everything is ok, add the leaver to the zombie list and make a
     // session without zombies
     zombies.insert(*leaver);
 
@@ -96,8 +95,8 @@ new$_{\text{session}}$$_{\text{action}}$.action$_{\text{type}}$ = RoomAction::NE
 new$_{\text{session}}$$_{\text{action}}$.bred$_{\text{session}}$ = new$_{\text{child}}$$_{\text{session}}$;
 
     \emph{/ we are as we have farewelled
-    /} my$_{\text{state}}$ = FAREWELLED; \emph{/We shouldn't change here and it is not clear why we
-    /} we need this stage, not to accept join? why? join will fail by non confirmation
+    /} my$_{\text{state}}$ = FAREWELLED; \emph{/We shouldn't change here and it is not clear why
+    /} we need this stage: so as not to accept join? Why? Join will fail by non-confirmation
     // of the leavers
     return new$_{\text{session}}$$_{\text{action}}$;
 \}
@@ -105,96 +104,110 @@ new$_{\text{session}}$$_{\text{action}}$.bred$_{\text{session}}$ = new$_{\text{c
     return c$_{\text{no}}$$_{\text{room}}$$_{\text{action}}$;
 \}
 
-\subsection{The joiner DOSing}
-\label{sec-1-4}
+\subsubsection{The joiner DOSing}
+\label{sec-1-1-4}
 \begin{itemize}
-\item As the result, the joiner can not leave the session before joining so it can't
+\item As a result, the joiner cannot leave the session before joining, so she cannot
 invoke NEW$_{\text{PRIORITY}}$$_{\text{SESSION}}$. 
 \begin{itemize}
-\item PRESUME$_{\text{HEIR}}$ is only called when group$_{\text{dec}}$ is successful: If the group dec is not correct then the user will not drop the other sessions.
-\item If the joiner send correct message to some users and bad message to others, it can force some of participant to drop the session and some not. Therefore, whenever a user is dropping a session, they should announce it if it is because of 
+\item PRESUME$_{\text{HEIR}}$ is only called when group$_{\text{dec}}$ is successful: if the group dec is not correct, then the user will not drop the other sessions.
+\item If the joiner sends a correct message to some users and a bad message to others, she can force some of the participants to drop the session and some not. Therefore, whenever a user is dropping a session, she should announce it if it is because of: 
 \begin{itemize}
 \item timeout
 \item auth error
-\item decryption error.
-\item confirmation error.
+\item decryption error
+\item confirmation error
 
-\item If any user send decryption error or confirmation error then all users of the session runs the cheater detection algorithm.
+\item If any user sends a decryption error or a confirmation error, then all users of the session run the cheater detection algorithm.
 \end{itemize}
 
 \item Badly signed messages are considered just garbage/not sent/not received.
 
 \item Scenarios:
 \begin{itemize}
-\item Malicious joiner sends bad shares.
-\item Results in decryption error. Still need investigation because it could be some insider who did it. Other joiners joins as they did before.
-\item Some decrypt correctly some decrypt badly. In this situation we still run a dos detection process. if the shares are all signed then it is on the sender.
+\item A malicious joiner sends bad shares.
+\item Results in decryption error. This still needs investigation because it could be some insider who did it. Other joiners join as they did before.
+\item Some decrypt correctly and some decrypt badly. In this situation, we still run a DoS detection process. If the shares are all signed, then it is on the sender.
 \end{itemize}
 
 \item Dropping by timing:
 \begin{itemize}
-\item You request drop when grace period + wait period passed.
+\item You request drop in the grace period and wait for the period to pass.
 \item You accept drop if the grace period has passed.
-\item If you received the message of the party being dropped you keep them. Drop the 
+\item If you received the messages of the party being dropped, you keep them. Drop the 
 dropper.
 \end{itemize}
 
 \item Detection
 \begin{enumerate}
-\item If it fails do to session confirmation or decryption failure, the user should inform and request for reseassion marked with dos detection.
-\item If it passes the second time then you can go ahead, take off the dos tag.
-\item If it fails and tag with dos detection. Everybody sign and send their new private key with their old ephemeral public key and old established p2p keys.
-\item Detect the cheater. drop the cheater. broadcast your proof.
-\item If someone is dropping someone else without proper proof, drop them with sending the proof.
+\item If it fails due to session confirmation or decryption failure, the user should inform and request for re-session marked with DoS detection.
+\item If it passes the second time, then you can go ahead, taking off the DoS tag.
+\item If it fails again while tagged with DoS detection, everybody signs and sends their new private key with their old ephemeral public key and old established p2p keys.
+\item Detect the cheater. Drop the cheater. Broadcast your proof.
+\item If someone is dropping someone else without proper proof, drop them indicating lack of proof.
 \end{enumerate}
 
 \item Remedy:
 \begin{enumerate}
-\item You drop the session with the cheaters/dosers if it is past presume heir, you send a new participant info message for the new message which tells other joiners to try again.
-\item You drop as many as you need till you are alone.
-\item When you drop someone you don't accept them as participants anymore only as joiners.
-\item Somebody wants to join as participant but you expect them as joiner, you inform them that.
+\item The user drops the cheaters/DOSers from the new participant list (as they have indicated their intention to leave), and sends a new participant info message for the new message which tells other joiners to try again.
+\item The user drops as many as she needs till she is alone.
+\item When the user drops someone, she doesn't accept them as participants anymore, only as joiners.
+\item Somebody wants to join as a participant but the user expects her as a joiner, so she informs her about that.
 \end{enumerate}
 \end{itemize}
 \end{itemize}
 
-\subsection{No joiner is receiving priority before}
-\label{sec-1-5}
+\subsubsection{No joiner is receiving priority before}
+\label{sec-1-1-5}
 **
 
-\section{List of DoS possibilities}
+\subsection{If a set of participants cannot reach an agreement, the status quo will remain in place.}
+\label{sec-1-2}
+\subsection{Maliciousness is relative and defined based on the agreeing subgroup. If the transport delivers different payloads for different participants, then those sets of participants cannot reach an agreement.}
+\label{sec-1-3}
+
+\section{DoS goal:}
 \label{sec-2}
-DoS Maliciousness
-\begin{itemize}
+\subsection{A set of benign participants where the transport honestly delivers packets between them should be able to form a session.}
+\label{sec-2-1}
+
+\section{List of DoS possibilities}
+\label{sec-3}
+\subsection{DoS Maliciousness}
+\label{sec-3-1}
+\begin{enumerate}
 \item Unresponsiveness.
 \item Generating wrong keyshare.
 \item Confirming wrong session.
 \item Asking for people to leave without reason.
-
-\item When a participant conclude that a participant is malicious
-bceause of one of above reasons it request a leave for that 
-participant.
-\end{itemize}
+\end{enumerate}
+\subsection{Exception: Authentication discrepancy:}
+\label{sec-3-2}
+\subsubsection{If two participants do not agree on authenticating a new joiner, then the protocol halts without consequences because authentication is (1) deniable and (2) inherently a privilege.}
+\label{sec-3-2-1}
 
 \section{How to detect}
-\label{sec-3}
+\label{sec-4}
 \begin{itemize}
+\item When a participant concludes that another participant is malicious
+because of one of the above reasons, she request that participant to be 
+kicked out of the participant list, and includes the reason for the kick.
 \item How to detect DoS:
 \begin{itemize}
-\item Time dependent: allow double amount of timeout to re-act but accept any re-action after the timeout period.
-\item Generating wrong keyshare:
+\item Time dependent: allow double amount of timeout to react, but accept any reaction after the timeout period.
+\item Generating wrong keyshare or confirmation share:
 \begin{itemize}
-\item AES-GCM the shares sends it out to everybody.
-\item 
+\item Generate a new share (not to disclose the previous secret).
+\item In case of failure, encrypt the new shares using AES-GCM with the old p2p key and send it to everybody.
 \end{itemize}
 \end{itemize}
 \end{itemize}
 
 \section{How to react after detection}
-\label{sec-4}
+\label{sec-5}
 \begin{itemize}
 \item If DoS happens during a join process, 
-Is it the joiner malicious:
+If it is the joiner who is malicious:
    The maliciousness is happening in session confirmation phase:
 \begin{itemize}
 \item just drop the session in limbo. Send re-join message with participant info without DoSer.
@@ -202,133 +215,155 @@ Is it the joiner malicious:
 \end{itemize}
 A current participant is malicious:
 \begin{itemize}
-\item run a leave request which generate a session confirmation which helps the joiner.
+\item send a kick request which generates a session confirmation that helps the joiner to know that a new session is generated.
 \end{itemize}
 
 \item If DoS happens during leave process:
-Run a leave on the malicious participant.
+Send a kick request for the malicious participant.
 
 \item If DoS happens during re-session.
-Run a leave on the malicious participant.
+Send a kick request for the malicious participant.
 
 \item Authentication failure is a reason for barring join but not DoS.
 
-\item When someone get kicked out due to DoS reason he should be put on 
-last person to join after all joiners already in line.
+\item When someone gets kicked out due to DoS reasons, she should become the 
+last person to join after all the other joiners already in line.
 \end{itemize}
 
 \section{Concerns:}
-\label{sec-5}
-Timing problems. There should be acceptable delay. The messages arrived during 
-acceptable delay period should be ordered in their hash order. But for now we 
-assume global ordering on messages for now.
-
-\section{Proof of DoS protection}
 \label{sec-6}
 \begin{itemize}
-\item Theorem: Suppose $U_1,...,U_n$ are set of participant. $I_o \cap I_m = \{1,...,n\}$.
+\item Timing problems. There should be an acceptable delay. The messages arrived within an
 \end{itemize}
-then after running above algorithm, each participants get a list of $plist_i$. If
-the transport is honestly delivering messages in timely manner then for $i,j \in I_o$ 
-we have $U_i \in plist_j$.
+acceptable delay period should be ordered in their hash order. But we 
+assume global ordering on messages for now.
 
-With enough round of running algorithm an honest joiner $U_i \in I_o$.
+\begin{itemize}
+\item Multiple sessions in the same room. This is a natural consequence of the end-to-end protocol, as a different subgroup might have agreed on different views. This is not a problem with current participants, as they are ignoring the session id for which they do not have an established session.
+\item For a joining participant, the UI will present a choice of sessions and participants which the joiner can choose to join.
+\item For the sake of simplicity, we assume that each room is divided into mutually exclusive sessions.
+\end{itemize}
 
-\section{New Algorithm:}
+\section{Proof of DoS protection}
 \label{sec-7}
 \begin{itemize}
-\item Badly signed messages dropped treated as undelivered.
-\item If someone fails to contribute any message we are waiting for the grace$_{\text{period}}$
-    we just assume they left.
-\item If key generation or confirmation fails then we need to resession with the session
+\item Theorem: Suppose $U_1,...,U_n$ are sets of participants. $I_h \cap I_m = \{1,...,n\}$.
 \end{itemize}
-tagged as DoS detection. You only can do that by sharing the evidence of cheating.
+where $I_o$ is the set of honest and $I_m$ the set of malcious participants, then, after running the above algorithm, each participant gets a list of $plist_i$. If the transport is honestly and consistently delivering messages in timely manner, then for $i,j \in I_h$  
+we have $U_i \in plist_j$.
+
+Proof: TBD.
+
+\section{New Algorithm:}
+\label{sec-8}
 \begin{itemize}
+\item Badly signed messages are dropped and treated as undelivered.
+\item If someone fails to contribute any message we are waiting for, we wait for the grace$_{\text{period}}$
+    and then we just assume they left.
+\item If key generation or confirmation fails, then we need to re-session with the session 
+tagged as DoS detection. Users only can do this by sharing the evidence of cheating.
 \item If we fail key generation or confirmation with Dos detection tag, then we publish
-all private key encrypted by p2p keys signed by non-dos tagged authenticated
+all private key encrypted by p2p keys signed by non-DoS-tagged authenticated
 private key. The cheater will be detected and kicked out.
-\item If someone kick someone out (that's staring session S while U$_{\text{i}}$ is not in the 
-new session) without signed leave request by U$_{\text{i}}$ then U$_{\text{j}}$ start a session without
-U$_{\text{i}}$ in it but U$_{\text{j}}$ in it. That could be because we didn't leave request
+\item If U$_{\text{i}}$ kicks U$_{\text{j}}$ out (that is starting session S while U$_{\text{j}}$ is not in the 
+new session) without cheating evidence signed by alleged cheater U$_{\text{j}}$, then U$_{\text{k}}$ simply ignore the request 
+for the new session.
 \end{itemize}
 
+\subsection{Sub protocol for unresponsiveness on join or re-session or any other part of the key agreement protocol.}
+\label{sec-8-1}
+If U$_{\text{i}}$ fails to reply, U$_{\text{j}}$ sends a kick request (for failure to reply) after the grace period has passed.
+Other participants either should agree with the kick and respond by participant-info message or re-broadcast the failed message (if they have received it despite the fact that U$_{\text{j}}$ has not). When 
+you get the message for failed delivery, you \textbf{have to} agree or rebroadcast. If you fail to do so, you will be dropped as well.
+
+\begin{itemize}
+\item The main idea is to have two timers:
+A replies before timer 1 ends, B asks to kick out A=> kickout B.
+A replies after timer 1 but before timer 2 ends, B asks to kick out A => kickout A.
+A replies after timer 2 but B does not ask to kickout A => ask to kickout A.
+\end{itemize}
 
 -- Current users start a timer as soon as they get a join request for 
-   all users in the room to response with authentication. 
+all users in the room to respond with authentication.
 
-Note: Authentication faille should be an acceptable response.
+Note: Authentication failed should be an acceptable response.
 
--- If the timer time out. They mark the user as unresponsive, they start
-   another timer to report the user as unresponsive.
+-- If the timer times out, they mark the user as unresponsive and start
+another timer to report the user as unresponsive.
 
--- If they receive the message before the timer time out.
-   and no other users requests the user to leave they continue with
+-- If they receive the message before the timer times out,
+   and no other user requests the user to leave, they continue with
    the session establishment.
 
--- If somebody request new session without the user they accept
+-- If somebody requests a new session without the user, they accept
    the request and can drop the session.
 
--- If they don't receive message before the second timer time
-   out they request a session without the unresponsive users.
+-- If they don't receive the message before the second timer times
+   out, they request a session without the unresponsive users.
 
--- If they receive  a session shrink but the kicked out user
-   has replied in time of the first timer. They drop the requesting
-   user. (should we?)
+-- If they receive a session shrink but the kicked-out user
+   has replied in time for the first timer, they drop the requesting
+   user. (We should because the receiving user and the requesting user have different views of the room.)
 
-The users will play the second round. setup timers and follow the same 
+The users will play the second round, set up timers and follow the same 
 rules.
 
 -- Conflict of circles:
-   Obviously there will be circle conflict because:
+   Obviously there will be a circle conflict because:
 
-A thinks B is in and C is not. (A,B) => A eventually doesn't receive a response from B and drops B
-B thinks C is in and A is not. (B,C) =>  B doesn't receive a response from C and drop C
-C thinks A,B and C are in. (A,B,C) => doesn't receive a response from A and B and drop both of them.
+A thinks B is in and C is not. (A,B) => A eventually doesn't receive a response from B and drops B.
+B thinks C is in and A is not. (B,C) =>  B doesn't receive a response from C and drops C.
+C thinks A, B and C are in. (A,B,C) => C doesn't receive a response from A and B and drops both of them.
 
-----
-So it is obvious that we should treat cheating and transport problems totally 
-separately. Therefore we call provable cheating 
+\begin{itemize}
+\item In the end only users whose views are completely in agreement will stay in the same session. The room might be
+divided into different mutually exclusive sessions. (View agreement is an equivalence relationship.) 
+The new joiner will be presented the option of choosing which session to join.
+\end{itemize}
 
-In particular if A decide that C is unresponsive while C is responsive then
-B can relay C info signed by C to A.
+So it is obvious that we should treat cheating and transport problems separately, because the latter are provable.
 
-----
+in particular, if A decides that C is unresponsive while C is responsive, then B can relay C info signed by C to A.
+
+When B receives a DoS re-session request from A to drop C: either B agrees with A on the reason of dropping C or she doesn't. If yes, she continues with the kick protocol on C. If no, B re-send the missing info to A in hope of reaching agreement if A doesn't reply to requested info in timely manner, then B's view does not agree with A's view, and therefore they cannot be in the same session. As such, B sends a kick request for A and all other participants whose view agrees with B drop A and start a new session.
+
+\subsubsection{Delivery failure/Transport delay recovery.}
+\label{sec-8-1-1}
+\begin{itemize}
+\item The protocol agrees on INTERACTIVE$_{\text{GRACE}}$$_{\text{PERIOD}}$.
+\item If U$_{\text{i}}$ expects a message from U$_{\text{j}}$ to establish a session and she does not receive it in INTERACTIVE$_{\text{GRACE}}$$_{\text{PERIOD}}$ as of the end of the last round, then U$_{\text{i}}$ starts new$_{\text{session}}$(kick$_{\text{out}}$ U$_{\text{i}}$, reason: U$_{\text{i}}$ fails message type x from session sid).
+\item If U$_{\text{k}}$ receives a kick message, they either have received the failed delivery message or they have not: if they have, they resend the message to s'id, message type x from sid by U$_{\text{j}}$ (encrypt or not?) and do not follow up with the new
+session.
+\item If U$_{\text{i}}$ is the only member of the session and there are more participants in the room, U$_{\text{i}}$ will rejoin the room.
+\end{itemize}
+
+\subsection{Sub protocol for generating wrong keyshare or confirming wrong session.}
+\label{sec-8-2}
+
 The protocol general rule:
 
--- If key recovery or confirmation failed. Rekey try again, if it fails then publish 
-keys, publish proof of cheating. start a new session with the cheater out.
+-- If key recovery or confirmation fails, then the key agreement protocol runs again with new ephemeral keys. If it fails, then the new keys and proof of cheating are published. A new session starts when the cheater has been kicked out.
 
--- If someone failed to reply. Send the failed replied after grace period. Other participant
-either should send the same message or rebroadcast the failed message. When 
-you get the message for failed delivery. You \textbf{have to} agree or rebroadcast, if
-you fail to do so you'll be drop as well.
+-- If someone fails to reply, then run sub-protocol for unresponsive user.
 
-The failed message, has the share for the new subgroup, finally the responsive 
+The failed message has the share for the new subgroup, so finally the responsive 
 parties will make a successful subgroup.
 
 So we break the protocol into sections:
 
-Delivery failure/Transport delay recovery.
+\subsubsection{Cheater detection protocol:}
+\label{sec-8-2-1}
+
+   If the key fails to recover or the session confirmation does not match, then a special session with new ephemeral keys will be distributed and session establishment will be attempted. If the cheater detection session fails 
+at the same stages, then the participants will reveal their private key signed by their old key and the cheater will be detected and kicked out.
 
 \begin{itemize}
-\item The protocol agrees on INTERACTIVE$_{\text{GRACE}}$$_{\text{PERIOD}}$.
-\item If U$_{\text{i}}$ expect a message from U$_{\text{j}}$ to establish session and it does not receive it in INTERACTIVE$_{\text{GRACE}}$$_{\text{PERIOD}}$ as of end of last round. then U$_{\text{i}}$ start new$_{\text{session}}$(kick$_{\text{out}}$ U$_{\text{i}}$, reason: U$_{\text{i}}$ fails message type x from session sid).
-\item If U$_{\text{k}}$ receive a kick out message, either they have received the failed delivery message or not: yes, they resend the message to s'id, message type x from sid by U$_{\text{j}}$ (encrypt or not?) and does not follow up with the new
-session.
-\item If U$_{\text{i}}$ is the only member of the session and there are more participant in the room U$_{\text{i}}$ will rejoin the room.
-\end{itemize}
-
-Cheater detection protocol:
-
-If the key fails to recover or the session confirmation do not match, then a special session with new ephemeral key will be distributed and session establishment will be tried. If the cheater detection session fails 
-at the same stages then the participants will reveal their private key signed by their old key, the cheater will be detected and kicked out.
-
-\begin{itemize}
-\item U$_{\text{i}}$ fails at key recovery or conf$_{\text{j}}$!= conf$_{\text{i}}$. Request a cheater detection session, with reason. (reason is the set of signed shares which does not satisfies the system or the confirmation which does not matches the deduced key)
-\item U$_{\text{j}}$ receive a request for cheater detection evaluate the reason. If it is legitimate, starts a cheater detection session.
-\item If the cheater detection succeed, it become the main session.
-\item If the cheater detection session fails. publish private keys signed by old private keys.
-\item Detect cheater and kicked them out with proof.
+\item U$_{\text{i}}$ fails at key recovery or conf$_{\text{j}}$!= conf$_{\text{i}}$. Request a cheater detection session, with reason. (Reason is the set of signed shares which does not satisfy the system or the confirmation which does not match the deduced key.)
+\item U$_{\text{j}}$ receives a request for cheater detection and evaluates the reason. If it is legitimate, a cheater detection session starts.
+\item If the cheater detection succeeds, it becomes the main session.
+\item If the cheater detection session fails, private keys signed by old private keys are published.
+\item Detect cheater and kick them out with proof.
+\item Do not join sessions which you do not agree with on the view.
 \end{itemize}
 % Emacs 24.5.1 (Org mode 8.2.10)
 \end{document}
