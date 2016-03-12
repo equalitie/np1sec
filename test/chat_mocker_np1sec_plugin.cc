@@ -48,7 +48,7 @@ void chat_mocker_np1sec_plugin_join(std::string room_name, void* aux_data)
     // for(uint32_t cur_participant = 0; cur_participant < current_occupants.size(); cur_participant++)
     //  current_occupants_with_key.push_back((UnauthenticatedParticipant){current_occupants[cur_participant], ""});
 
-    user_server_state->first->join_room(room_name, current_occupants);
+    user_server_state->first->join_room(room_name, current_occupants.size());
 }
 
 void chat_mocker_np1sec_plugin_receive_handler(std::string room_name, std::string np1sec_message, void* aux_data)
@@ -68,7 +68,7 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name, std::strin
 
         if (user_server_state->first->user_nick() == joining_nick) {
             try {
-                user_server_state->first->join_room(room_name, user_server_state->second->participant_list(room_name));
+              user_server_state->first->join_room(room_name, user_server_state->second->participant_list(room_name).size());
             } catch (InsufficientCredentialException& e) {
                 logger.error(joining_nick + " failed to join room" + room_name);
             }

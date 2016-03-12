@@ -93,10 +93,17 @@ $ make
 # make install
 $ cd ..
 ```
- 
+
+To make sure that you link to the correct libgrypt:
+
+```
+$ mkdir -p m4 && ln -sf /usr/local/share/aclocal/libgcrypt.m4 m4/
+```
+
+
 ## haveged
  
-Haveged is used to generate entropy more quickly.  You may or may not want it.
+Haveged is used to generate entropy more quickly.  You may or may not want it (but you have to wait a long time to gather enough entropy if you do not install it).
  
 ```
 # apt-get install haveged

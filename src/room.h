@@ -126,7 +126,7 @@ class Room
      * by default.
      *
      */
-    Room(std::string room_name, UserState* user_state, std::vector<std::string> participants_in_the_room);
+    Room(std::string room_name, UserState* user_state, uint32_t room_size);
 
     /**
      * bad constructor just for the sake of operator[] of chatrooms
