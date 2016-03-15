@@ -184,7 +184,7 @@
     all private key encrypted by p2p keys signed by non-DoS-tagged authenticated
     private key. The cheater will be detected and kicked out.
   * If U_i kicks U_j out (that is starting session S while U_j is not in the 
-    new session) without cheating evidence signed by alleged cheater U_j, then U_k simply ignore the request 
+    new session) without cheating evidence signed by alleged cheater U_j, then U_k simply ignores the request 
     for the new session.
 
 ** Sub protocol for unresponsiveness on join or re-session or any other part of the key agreement protocol.
@@ -237,7 +237,7 @@ So it is obvious that we should treat cheating and transport problems separately
 
    in particular, if A decides that C is unresponsive while C is responsive, then B can relay C info signed by C to A.
 
-When B receives a DoS re-session request from A to drop C: either B agrees with A on the reason of dropping C or she doesn't. If yes, she continues with the kick protocol on C. If no, B re-send the missing info to A in hope of reaching agreement if A doesn't reply to requested info in timely manner, then B's view does not agree with A's view, and therefore they cannot be in the same session. As such, B sends a kick request for A and all other participants whose view agrees with B drop A and start a new session.
+When B receives a DoS re-session request from A to drop C: either B agrees with A on the reason of dropping C or she doesn't. If yes, she continues with the kick protocol on C. If no, B re-sends the missing info to A in the hope of reaching an agreement if A doesn't reply to requested info in a timely manner, then B's view does not agree with A's view, and therefore they cannot be in the same session. As such, B sends a kick request for A and all other participants whose view agrees with B drop A and start a new session.
 
 *** Delivery failure/Transport delay recovery.
 - The protocol agrees on INTERACTIVE_GRACE_PERIOD.
