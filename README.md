@@ -64,6 +64,22 @@ $ cd ..
  
 ```
 # apt-get install gettext
+$ gettext --version
+```
+
+If you do not have version 0.19.3 or newer, you will need to install it from
+source. For example:
+
+```
+$ wget ftp.gnu.org/pub/gnu/gettext/gettext-0.19.7.tar.gz
+$ tar -xzf gettext-0.19.7.tar.gz
+$ cd gettext-0.19.7/
+$ ./configure
+$ make
+# make install
+```
+
+```
 $ wget ftp://ftp.gnupg.org/gcrypt/libgpg-error/libgpg-error-1.19.tar.bz2
 $ tar -xvf libgpg-error-1.19.tar.bz2
 $ cd libgpg-error-1.19
