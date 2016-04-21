@@ -144,3 +144,13 @@ test_concurrent_join_leave
 $ ./libnp1sec_test
 ```
 
+to test jabberite client
+
+cd ~/doc/code/np1sec/contrib/prosody-hg
+lua5.1 prosody
+
+./jabberite --account=alice@localhost --password=12345678 --server=conference.localhost --room=np1sectestroom
+
+you can login as a normal user using any client (like pidgin and then join with)
+
+
