@@ -100,6 +100,18 @@ To make sure that you link to the correct libgrypt:
 $ mkdir -p m4 && ln -sf /usr/local/share/aclocal/libgcrypt.m4 m4/
 ```
 
+## pkg-config
+
+```
+$ wget https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.1.tar.gz
+$ tar -xvf pkg-config-0.29.1.tar.gz
+$ cd pkg-config-0.29.1/
+$ ./configure
+$ make
+# make install
+$ cd ..
+$ export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig/
+```
 
 ## haveged
  
@@ -110,17 +122,23 @@ Haveged is used to generate entropy more quickly.  You may or may not want it (b
 ```
  
 ## np1sec
- 
+
+Fork [np1sec](https://github.com/equalitie/np1sec).
+
 ```
-$ wget https://equalit.ie/public/np1sec.tar.gz
-$ tar -xzf np1sec.tar.gz
-$ cd np1sec
+$ git clone https://github.com/<your_account>/np1sec
+$ cd np1sec/
+$ ./autogen.sh
 $ ./configure
 $ make
 ```
  
 ### Run the tests
  
+```
+$ ./libnp1sec_test
+```
+
 The following session tests will be run.  Session tests are responsible for ensuring that encrypted multi-party chat
 sessions are conducted securely.
 
@@ -138,9 +156,5 @@ test_leave_from_2p_conv
 test_immature_leave_from_2p_conv
 test_concurrent_join
 test_concurrent_join_leave
-```
-
-```
-$ ./libnp1sec_test
 ```
 
