@@ -486,8 +486,6 @@ int main(int argc, char* argv[])
         abort();
     }
     np1sec::logger.debug("Initialized user_state");
-
-
     
     if (password == NULL) {
       password = getpass("Password: ");
