@@ -54,6 +54,8 @@ class UserState
      *
      * @param name: the user name which is going to be used as default nickname
      *              for the rooms
+     * @param ops: is a pointer to struct object containing tho AppOps info including
+     *              timers' length and call backs
      * @param key_pair the binary blob which contains the long term identity key
      *                 pair for ED25519.
      */
