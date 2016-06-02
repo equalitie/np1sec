@@ -178,6 +178,7 @@ Makefile.in
 /libnp1sec_test*
 /chamber_client*
 /xmpp_test*
+/jabberite
 .libs/*
 *.orig
 
