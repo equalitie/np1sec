@@ -96,3 +96,19 @@ May 06 14:19:45 certmanager	error	SSL/TLS: Failed to load '/etc/prosody/certs/lo
 May 06 14:19:45 localhost:tls	error	Error creating contexts for s2sout: error loading private key (system lib)
 May 06 14:19:45 certmanager	error	SSL/TLS: Failed to load '/etc/prosody/certs/localhost.key': Previous error (see logs), or other system error. (for localhost)
 May 06 14:19:45 localhost:tls	error	Error creating contexts for s2sin: error loading private key (system lib)
+Jun 09 12:49:58 certmanager	error	SSL/TLS: Failed to load '/etc/prosody/certs/localhost.key': Check that the path is correct, and the file exists. (for conference.localhost)
+Jun 09 12:49:58 conference.localhost:tls	error	Error creating context for c2s: error loading private key (No such file or directory)
+Jun 09 12:49:58 certmanager	error	SSL/TLS: Failed to load '/etc/prosody/certs/localhost.key': Previous error (see logs), or other system error. (for conference.localhost)
+Jun 09 12:49:58 conference.localhost:tls	error	Error creating contexts for s2sout: error loading private key (system lib)
+Jun 09 12:49:58 certmanager	error	SSL/TLS: Failed to load '/etc/prosody/certs/localhost.key': Previous error (see logs), or other system error. (for conference.localhost)
+Jun 09 12:49:58 conference.localhost:tls	error	Error creating contexts for s2sin: error loading private key (system lib)
+Jun 09 12:49:58 portmanager	error	Failed to open server port 5269 on ::, check that Prosody or another XMPP server is not already running and using this port
+Jun 09 12:49:58 portmanager	error	Failed to open server port 5269 on *, check that Prosody or another XMPP server is not already running and using this port
+Jun 09 12:49:58 certmanager	error	SSL/TLS: Failed to load '/etc/prosody/certs/localhost.key': Check that the path is correct, and the file exists. (for localhost)
+Jun 09 12:49:58 localhost:tls	error	Error creating context for c2s: error loading private key (No such file or directory)
+Jun 09 12:49:58 certmanager	error	SSL/TLS: Failed to load '/etc/prosody/certs/localhost.key': Previous error (see logs), or other system error. (for localhost)
+Jun 09 12:49:58 localhost:tls	error	Error creating contexts for s2sout: error loading private key (system lib)
+Jun 09 12:49:58 certmanager	error	SSL/TLS: Failed to load '/etc/prosody/certs/localhost.key': Previous error (see logs), or other system error. (for localhost)
+Jun 09 12:49:58 localhost:tls	error	Error creating contexts for s2sin: error loading private key (system lib)
+Jun 09 12:49:58 portmanager	error	Failed to open server port 5222 on ::, check that Prosody or another XMPP server is not already running and using this port
+Jun 09 12:49:58 portmanager	error	Failed to open server port 5222 on *, check that Prosody or another XMPP server is not already running and using this port

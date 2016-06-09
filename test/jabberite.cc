@@ -68,6 +68,14 @@ void ui_init(void) { purple_conversations_set_ui_ops(&conv_uiops); }
 
 static PurpleCoreUiOps uiops = {NULL, NULL, ui_init, NULL, NULL, NULL, NULL, NULL};
 
+static void connection_error(PurpleConnection *gc, PurpleConnectionError err, const gchar *desc)
+{
+  UNUSED(desc);
+  UNUSED(gc);
+  fprintf(stderr, "Failed to connect to server. Error code %d: see libpurple/connection.h for description", err);
+  abort();
+
+}
 static void signed_on(PurpleConnection* gc, gpointer null)
 {
     UNUSED(null);
@@ -199,6 +207,8 @@ static void connect_to_signals(np1sec::UserState* user_state)
     void* conn_handle = purple_connections_get_handle();
     void* conv_handle = purple_conversations_get_handle();
 
+    purple_signal_connect(conn_handle, "connection-error", &handle, PURPLE_CALLBACK(connection_error), user_state);
+	                       
     purple_signal_connect(conn_handle, "signed-on", &handle, PURPLE_CALLBACK(signed_on), user_state);
     //purple_signal_connect(conv_handle, "sending-chat-msg", &handle, PURPLE_CALLBACK(process_sending_chat), user_state);
     purple_signal_connect(conv_handle, "receiving-chat-msg", &handle, PURPLE_CALLBACK(process_receiving_chat),
@@ -491,11 +501,14 @@ int main(int argc, char* argv[])
       password = getpass("Password: ");
     }
     purple_account_set_password(account, password);
-    purple_account_set_enabled(account, UI_ID, TRUE);
 
+    //set status available to later force libpurple to connect
+    purple_account_set_enabled(account, UI_ID, TRUE);
     PurpleSavedStatus* status = purple_savedstatus_new(NULL, PURPLE_STATUS_AVAILABLE);
     purple_savedstatus_activate(status);
-      
+
+    //PurpleStatus* cur_status = purple_account_get_active_status(account);
+
     // user_state need to be sent in order to be available to call backs
     connect_to_signals(&user_state);
 

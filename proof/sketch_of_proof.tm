@@ -11,7 +11,7 @@
     1. <strong|TDH>: Triple DH deniable Authentication
 
     2. <strong|FAGKE>: Flexible Authenticated Group Key Exchange protocol
-    presented in <cite|AMP10>
+    presented in <cite|ACMP10>
 
     3. <strong|SecCom>: Secure (authenticated confidential) Send and Receive.
 
@@ -27,7 +27,7 @@
   The sketch of the Sketch goes as follows, Section <reference|sect-tdh>
   deals with security of TDH namely its deniability. The authentication of
   TDH will be proven as parte of AKE security proof. We also prove the TDH
-  protocol as a 2-party secure AKE in model presented in <cite|AMP10>.
+  protocol as a 2-party secure AKE in model presented in <cite|ACMP10>.
   Section <reference|sect-GKE> prove the security properties of the group key
   exchange protocol. \ Section <reference|sect-tca-sec> we give proof of the
   security properties of TCA.
@@ -599,8 +599,8 @@
   In this section we prove that TDH is a secure two-party authenticated key
   exchange. we do so in the AKE security model proposed in
   <math|<cite|Ma09>>. This is because (n+1)Sec key exchange protocol is a
-  varient of the protocol proposed in <cite|AMP10>, which is designed to
-  satisifies all three AKE models proposed in <cite|Ma09> and <cite|AMP10>.
+  varient of the protocol proposed in <cite|ACMP10>, which is designed to
+  satisifies all three AKE models proposed in <cite|Ma09> and <cite|ACMP10>.
   Furthermore, based on the security properties required from (n+1)Sec as a
   secure multiparty chat protocol, we beleive these models provide adequite
   security for real world threat scenarios.
@@ -652,7 +652,7 @@
 
   <\proof>
     We argue that the AKE security for the (n+1)Sec <math|p2p> keys follows
-    similarly to from the proof of Theorem 8 <cite|AMP10> which proves the
+    similarly to from the proof of Theorem 8 <cite|ACMP10> which proves the
     security of BD+P protocol.\ 
 
     In fact we follow the same sequence of games for games <math|G<rsub|0>>
@@ -747,7 +747,7 @@
 
   <\proof>
     We argue that the AKE security for the (n+1)Sec group key follows
-    similarly to from the proof of Theorem 7 <cite|AMP10> which proves the
+    similarly to from the proof of Theorem 7 <cite|ACMP10> which proves the
     security of BD+P protocol.
 
     In fact we follow the same sequence of games for games <math|G<rsub|0>>
@@ -896,7 +896,45 @@
 
   <label|sect-tca>
 
-  \;
+  <\bibliography|bib|tm-alpha|~/doc/code/np2sec/np1sec_paper/np1sec.bib>
+    <\bib-list|7>
+      <bibitem*|ACMP><label|bib-ACMP10>Michel Abdalla, Céline Chevalier, Mark
+      Manulis<localize|, and >David Pointcheval.<newblock> Flexible Group Key
+      Exchange with On-Demand Computation of Subgroup Keys.<newblock>
+      <localize|Volume> 6055<localize| of ><with|font-shape|italic|LNCS>,
+      <localize|pages >351\U368. Springer.<newblock>
+
+      <bibitem*|BDL+><label|bib-BDLSY11>Daniel<nbsp>J.<nbsp>Bernstein, Niels
+      Duif, Tanja Lange, Peter Schwabe<localize|, and >Bo-Yin Yang.<newblock>
+      High-Speed High-Security Signatures.<newblock> <localize|Volume>
+      6917<localize| of ><with|font-shape|italic|Lecture Notes in Computer
+      Science>, <localize|pages >124\U142. Springer.<newblock>
+
+      <bibitem*|BHMS><label|bib-BHMS15>Colin Boyd, Britta Hale,
+      Stig<nbsp>Frode Mjølsnes<localize|, and >Douglas Stebila.<newblock>
+      From Stateless to Stateful: Generic Authentication and Authenticated
+      Encryption Constructions with Application to TLS.<newblock>
+
+      <bibitem*|IOM><label|bib-IOM12>Tetsu Iwata, Keisuke Ohashi<localize|,
+      and >Kazuhiko Minematsu.<newblock> Breaking and repairing GCM security
+      proofs.<newblock> <localize|In ><with|font-shape|italic|Advances in
+      Cryptology\UCRYPTO 2012>, <localize|pages >31\U49. Springer.<newblock>
+
+      <bibitem*|JKSS><label|bib-JKSS12>Tibor Jager, Florian Kohlar, Sven
+      Schäge<localize|, and >Jörg Schwenk.<newblock> On the security of
+      TLS-DHE in the standard model.<newblock> <localize|In
+      ><with|font-shape|italic|Advances in Cryptology--CRYPTO 2012>,
+      <localize|pages >273\U293. Springer.<newblock>
+
+      <bibitem*|Man><label|bib-Ma09>Mark Manulis.<newblock> Group Key
+      Exchange Enabling On-Demand Derivation of Peer-to-Peer Keys.<newblock>
+      <localize|Pages >1\U19.<newblock>
+
+      <bibitem*|MV><label|bib-McVi04>David<nbsp>A McGrew<localize| and >John
+      Viega.<newblock> The security and performance of the Galois/Counter
+      Mode (GCM) of operation (full version).<newblock>
+    </bib-list>
+  </bibliography>
 </body>
 
 <initial|<\collection>
@@ -904,10 +942,10 @@
 
 <\references>
   <\collection>
-    <associate|Adversarial_power_2|<tuple|2.3.1|?>>
+    <associate|Adversarial_power_2|<tuple|2.3.1|5>>
     <associate|Adversary.27s_challenges_2|<tuple|2.2.1|?>>
-    <associate|Definition_of_Adversaries_and_their_advantages_2|<tuple|2.2.1|?>>
-    <associate|Definition_of_Adversary|<tuple|2.3.2|?>>
+    <associate|Definition_of_Adversaries_and_their_advantages_2|<tuple|2.2.1|5>>
+    <associate|Definition_of_Adversary|<tuple|2.3.2|5>>
     <associate|MathJax-Element-1-Frame|<tuple|5|?>>
     <associate|MathJax-Element-10-Frame|<tuple|15|?>>
     <associate|MathJax-Element-11-Frame|<tuple|15|?>>
@@ -982,42 +1020,42 @@
     <associate|MathJax-Element-6-Frame|<tuple|6|?>>
     <associate|MathJax-Element-60-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
     <associate|MathJax-Element-61-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-62-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-63-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-64-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-65-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-66-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-67-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Element-62-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Element-63-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Element-64-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Element-65-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Element-66-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Element-67-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
     <associate|MathJax-Element-68-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-69-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Element-69-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
     <associate|MathJax-Element-7-Frame|<tuple|6|?>>
-    <associate|MathJax-Element-70-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-71-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Element-70-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Element-71-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
     <associate|MathJax-Element-72-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-73-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-74-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-75-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-76-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-77-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Element-78-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Element-73-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Element-74-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Element-75-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Element-76-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Element-77-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Element-78-Frame|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
     <associate|MathJax-Element-8-Frame|<tuple|6|?>>
     <associate|MathJax-Element-9-Frame|<tuple|15|?>>
     <associate|MathJax-Span-1|<tuple|5|?>>
     <associate|MathJax-Span-10|<tuple|5|?>>
     <associate|MathJax-Span-100|<tuple|6|?>>
-    <associate|MathJax-Span-1000|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-1001|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-1002|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-1003|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-1004|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-1005|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-1006|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-1007|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-1008|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-1009|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-1000|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-1001|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-1002|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-1003|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-1004|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-1005|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-1006|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-1007|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-1008|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-1009|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
     <associate|MathJax-Span-101|<tuple|6|?>>
-    <associate|MathJax-Span-1010|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-1011|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-1010|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-1011|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
     <associate|MathJax-Span-102|<tuple|6|?>>
     <associate|MathJax-Span-103|<tuple|6|?>>
     <associate|MathJax-Span-104|<tuple|6|?>>
@@ -2104,97 +2142,97 @@
     <associate|MathJax-Span-802|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
     <associate|MathJax-Span-803|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
     <associate|MathJax-Span-804|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-805|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-806|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-807|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-808|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-809|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-805|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-806|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-807|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-808|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-809|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
     <associate|MathJax-Span-81|<tuple|6|?>>
-    <associate|MathJax-Span-810|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-811|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-812|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-813|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-814|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-815|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-816|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-817|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-818|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-819|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-810|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-811|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-812|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-813|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-814|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-815|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-816|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-817|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-818|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-819|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
     <associate|MathJax-Span-82|<tuple|6|?>>
-    <associate|MathJax-Span-820|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-821|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-822|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-823|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-824|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-825|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-826|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-827|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-828|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-829|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-820|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-821|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-822|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-823|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-824|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-825|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-826|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-827|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-828|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-829|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
     <associate|MathJax-Span-83|<tuple|6|?>>
-    <associate|MathJax-Span-830|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-831|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-832|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-833|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-834|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-835|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-836|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-837|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-838|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-839|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-830|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-831|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-832|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-833|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-834|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-835|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-836|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-837|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-838|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-839|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
     <associate|MathJax-Span-84|<tuple|6|?>>
-    <associate|MathJax-Span-840|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-841|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-842|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-843|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-844|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-845|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-846|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-847|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-848|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-849|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-840|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-841|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-842|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-843|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-844|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-845|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-846|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-847|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-848|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-849|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
     <associate|MathJax-Span-85|<tuple|6|?>>
-    <associate|MathJax-Span-850|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-851|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-852|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-853|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-854|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-855|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-856|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-857|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-858|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-859|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-850|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-851|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-852|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-853|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-854|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-855|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-856|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-857|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-858|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-859|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
     <associate|MathJax-Span-86|<tuple|6|?>>
-    <associate|MathJax-Span-860|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-861|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-862|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-863|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-864|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-865|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-866|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-867|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-868|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-869|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-860|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-861|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-862|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-863|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-864|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-865|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-866|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-867|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-868|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-869|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
     <associate|MathJax-Span-87|<tuple|6|?>>
-    <associate|MathJax-Span-870|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-871|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-872|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-873|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-874|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-875|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-876|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-877|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-878|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-879|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-870|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-871|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-872|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-873|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-874|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-875|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-876|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-877|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-878|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-879|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
     <associate|MathJax-Span-88|<tuple|6|?>>
-    <associate|MathJax-Span-880|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-881|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-882|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-883|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-884|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-885|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-886|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-887|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-880|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-881|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-882|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-883|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-884|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-885|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-886|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
+    <associate|MathJax-Span-887|<tuple|<with|mode|<quote|math>|\<bullet\>>|3>>
     <associate|MathJax-Span-888|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
     <associate|MathJax-Span-889|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
     <associate|MathJax-Span-89|<tuple|6|?>>
@@ -2207,44 +2245,44 @@
     <associate|MathJax-Span-896|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
     <associate|MathJax-Span-897|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
     <associate|MathJax-Span-898|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-899|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-899|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
     <associate|MathJax-Span-9|<tuple|5|?>>
     <associate|MathJax-Span-90|<tuple|6|?>>
-    <associate|MathJax-Span-900|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-901|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-902|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-903|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-904|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-905|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-906|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-907|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-908|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-909|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-900|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-901|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-902|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-903|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-904|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-905|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-906|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-907|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-908|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-909|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
     <associate|MathJax-Span-91|<tuple|6|?>>
-    <associate|MathJax-Span-910|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-911|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-912|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-913|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-914|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-915|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-916|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-917|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-918|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-919|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-910|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-911|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-912|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-913|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-914|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-915|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-916|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-917|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-918|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-919|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
     <associate|MathJax-Span-92|<tuple|6|?>>
-    <associate|MathJax-Span-920|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-921|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-922|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-923|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-924|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-925|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-926|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-927|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-928|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-929|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-920|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-921|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-922|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-923|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-924|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-925|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-926|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-927|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-928|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-929|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
     <associate|MathJax-Span-93|<tuple|6|?>>
-    <associate|MathJax-Span-930|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-931|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-930|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-931|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
     <associate|MathJax-Span-932|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
     <associate|MathJax-Span-933|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
     <associate|MathJax-Span-934|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
@@ -2260,138 +2298,181 @@
     <associate|MathJax-Span-943|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
     <associate|MathJax-Span-944|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
     <associate|MathJax-Span-945|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-946|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-947|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-948|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-949|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-946|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-947|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-948|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-949|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
     <associate|MathJax-Span-95|<tuple|6|?>>
-    <associate|MathJax-Span-950|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-951|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-952|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-953|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-954|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-955|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-956|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-957|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-958|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-959|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-950|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-951|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-952|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-953|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-954|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-955|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-956|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-957|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-958|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-959|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
     <associate|MathJax-Span-96|<tuple|6|?>>
-    <associate|MathJax-Span-960|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-961|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-962|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-963|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-964|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-965|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-966|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-967|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-968|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-969|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-960|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-961|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-962|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-963|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-964|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-965|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-966|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-967|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-968|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-969|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
     <associate|MathJax-Span-97|<tuple|6|?>>
-    <associate|MathJax-Span-970|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-971|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-972|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-973|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-974|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-975|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-976|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-977|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-978|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-979|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-970|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-971|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-972|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-973|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-974|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-975|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-976|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-977|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-978|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-979|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
     <associate|MathJax-Span-98|<tuple|6|?>>
-    <associate|MathJax-Span-980|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-981|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-982|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-983|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-984|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-985|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-986|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-987|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-988|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-989|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
+    <associate|MathJax-Span-980|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-981|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-982|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-983|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-984|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-985|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-986|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-987|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-988|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-989|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
     <associate|MathJax-Span-99|<tuple|6|?>>
-    <associate|MathJax-Span-990|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-991|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-992|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-993|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-994|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-995|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-996|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-997|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-998|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|MathJax-Span-999|<tuple|<with|mode|<quote|math>|\<bullet\>>|?>>
-    <associate|Message_Origin_Authentication_Adversary|<tuple|2.3|?>>
-    <associate|Secure_Multiparty_Channel_Adversary|<tuple|2.2|?>>
+    <associate|MathJax-Span-990|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-991|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-992|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-993|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-994|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-995|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-996|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-997|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-998|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|MathJax-Span-999|<tuple|<with|mode|<quote|math>|\<bullet\>>|4>>
+    <associate|Message_Origin_Authentication_Adversary|<tuple|6|10>>
+    <associate|Secure_Multiparty_Channel_Adversary|<tuple|2.2|5>>
     <associate|auto-1|<tuple|1|1>>
-    <associate|auto-10|<tuple|3.1|?>>
-    <associate|auto-11|<tuple|1|?>>
-    <associate|auto-12|<tuple|3.2|?>>
-    <associate|auto-13|<tuple|3.3|?>>
-    <associate|auto-14|<tuple|4|?>>
-    <associate|auto-15|<tuple|4.1|?>>
-    <associate|auto-16|<tuple|5|?>>
-    <associate|auto-17|<tuple|5.1|?>>
-    <associate|auto-18|<tuple|6|?>>
-    <associate|auto-19|<tuple|7|?>>
-    <associate|auto-2|<tuple|2|1>>
-    <associate|auto-20|<tuple|7|?>>
-    <associate|auto-3|<tuple|2.1|2>>
-    <associate|auto-4|<tuple|2.2|1>>
-    <associate|auto-5|<tuple|2.2.1|2>>
-    <associate|auto-6|<tuple|2.3|2>>
-    <associate|auto-7|<tuple|2.3.1|2>>
-    <associate|auto-8|<tuple|2.3.2|?>>
-    <associate|auto-9|<tuple|3|?>>
-    <associate|defn-AEAD|<tuple|13|?>>
-    <associate|defn-aead-adv|<tuple|18|?>>
-    <associate|defn-cdh|<tuple|1|?>>
-    <associate|defn-ddh|<tuple|2|?>>
-    <associate|defn-gdh-assumption|<tuple|3|?>>
-    <associate|defn-gdh-solver|<tuple|4|?>>
-    <associate|defn-orig-adv|<tuple|19|?>>
-    <associate|harv_ref-ACMP10-5|<tuple|5|?>>
-    <associate|harv_ref-CaKr01-1|<tuple|2.2|?>>
-    <associate|harv_ref-GBNM11-1|<tuple|5|?>>
-    <associate|harv_ref-KPW13-1|<tuple|2.2|?>>
+    <associate|auto-10|<tuple|3.1|6>>
+    <associate|auto-11|<tuple|1|6>>
+    <associate|auto-12|<tuple|3.2|6>>
+    <associate|auto-13|<tuple|3.3|7>>
+    <associate|auto-14|<tuple|4|8>>
+    <associate|auto-15|<tuple|4.1|8>>
+    <associate|auto-16|<tuple|5|9>>
+    <associate|auto-17|<tuple|5.1|9>>
+    <associate|auto-18|<tuple|6|10>>
+    <associate|auto-19|<tuple|7|10>>
+    <associate|auto-2|<tuple|2|3>>
+    <associate|auto-20|<tuple|7|10>>
+    <associate|auto-3|<tuple|2.1|3>>
+    <associate|auto-4|<tuple|2.2|5>>
+    <associate|auto-5|<tuple|2.2.1|5>>
+    <associate|auto-6|<tuple|2.3|5>>
+    <associate|auto-7|<tuple|2.3.1|5>>
+    <associate|auto-8|<tuple|2.3.2|5>>
+    <associate|auto-9|<tuple|3|6>>
+    <associate|bib-ACMP10|<tuple|ACMP|10>>
+    <associate|bib-BDLSY11|<tuple|BDL+|?>>
+    <associate|bib-BHMS15|<tuple|BHMS|10>>
+    <associate|bib-IOM12|<tuple|IOM|?>>
+    <associate|bib-JKSS12|<tuple|JKSS|10>>
+    <associate|bib-Ma09|<tuple|Man|10>>
+    <associate|bib-McVi04|<tuple|MV|?>>
+    <associate|defn-AEAD|<tuple|13|3>>
+    <associate|defn-aead-adv|<tuple|18|5>>
+    <associate|defn-cdh|<tuple|1|1>>
+    <associate|defn-ddh|<tuple|2|1>>
+    <associate|defn-gdh-assumption|<tuple|3|1>>
+    <associate|defn-gdh-solver|<tuple|4|1>>
+    <associate|defn-orig-adv|<tuple|19|5>>
+    <associate|harv_ref-ACMP10-5|<tuple|5|1>>
+    <associate|harv_ref-CaKr01-1|<tuple|2.2|5>>
+    <associate|harv_ref-GBNM11-1|<tuple|5|1>>
+    <associate|harv_ref-KPW13-1|<tuple|2.2|5>>
     <associate|sect-comp-sec|<tuple|5|2>>
-    <associate|sect-gke|<tuple|4|?>>
+    <associate|sect-gke|<tuple|4|8>>
     <associate|sect-np1sec-in-pcl|<tuple|3|?|../../../.TeXmacs/texts/scratch/no_name_12.tm>>
     <associate|sect-np1sec-pclize|<tuple|4|2>>
-    <associate|sect-tca|<tuple|7|?>>
+    <associate|sect-tca|<tuple|7|10>>
     <associate|sect-tca-sec|<tuple|3|2>>
-    <associate|sect-tdh|<tuple|3|?>>
-    <associate|sect-tdh-sec|<tuple|3.2|1>>
-    <associate|tabl-tdh-protocol|<tuple|1|?>>
-    <associate|thrm-np1sec-acce|<tuple|25|?>>
-    <associate|thrm-np1sec-gke|<tuple|24|?>>
-    <associate|thrm-np1sec-p2p-sec|<tuple|23|?>>
+    <associate|sect-tdh|<tuple|3|6>>
+    <associate|sect-tdh-sec|<tuple|3.2|6>>
+    <associate|tabl-tdh-protocol|<tuple|1|6>>
+    <associate|thrm-np1sec-acce|<tuple|25|9>>
+    <associate|thrm-np1sec-gke|<tuple|24|8>>
+    <associate|thrm-np1sec-p2p-sec|<tuple|23|7>>
   </collection>
 </references>
 
 <\auxiliary>
   <\collection>
     <\associate|bib>
-      AMP10
+      ACMP10
 
-      AMP10
+      ACMP10
+
+      BHMS15
+
+      ACMP10
+
+      ACMP10
+
+      JKSS12
+
+      JKSS12
+
+      BHMS15
+
+      JKSS12
+
+      BHMS15
+
+      BHMS15
 
       GKR06
 
       Ma09
 
-      AMP10
+      ACMP10
 
       Ma09
 
-      AMP10
+      ACMP10
 
-      AMP10
+      ACMP10
 
-      AMP10
+      ACMP10
+
+      JKSS12
+
+      BHMS15
+
+      McVi04
+
+      IOM12
+
+      BHMS15
+
+      BHMS15
+
+      JKSS12
+
+      BDLSY11
+
+      PtSc00
     </associate>
     <\associate|table>
       <\tuple|normal>
         Triple Diffie-Hellman protocol
-      </tuple|<pageref|auto-6>>
+      </tuple|<pageref|auto-11>>
     </associate>
     <\associate|toc>
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|1<space|2spc>General
@@ -2406,36 +2487,74 @@
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-3>>
 
-      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|3<space|2spc>Security
-      of Triple Diffie-Hellman Authentication>
-      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-4><vspace|0.5fn>
+      <with|par-left|<quote|1tab>|2.2<space|2spc>Secure Multiparty Channel
+      Adversary <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-4>>
 
-      <with|par-left|<quote|1tab>|3.1<space|2spc>The Triple Diffie-Hellman
-      Protocol <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <with|par-left|<quote|2tab>|2.2.1<space|2spc>Definition of Adversaries
+      and their advantages <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-5>>
 
-      <with|par-left|<quote|1tab>|3.2<space|2spc>The deniablity of TDH
+      <with|par-left|<quote|1tab>|2.3<space|2spc>Message Origin
+      Authentication Adversary <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-6>>
+
+      <with|par-left|<quote|2tab>|2.3.1<space|2spc>Adversarial power
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-7>>
 
+      <with|par-left|<quote|2tab>|2.3.2<space|2spc>Definition of Adversary
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-8>>
+
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|3<space|2spc>Security
+      of Triple Diffie-Hellman Authentication>
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-9><vspace|0.5fn>
+
+      <with|par-left|<quote|1tab>|3.1<space|2spc>The Triple Diffie-Hellman
+      Protocol <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-10>>
+
+      <with|par-left|<quote|1tab>|3.2<space|2spc>The deniablity of TDH
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-12>>
+
       <with|par-left|<quote|1tab>|3.3<space|2spc>Security of TDH as a two
       party Authenticate Key Exchange <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-8>>
+      <no-break><pageref|auto-13>>
 
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|4<space|2spc>Security
       of (n+1)sec authenticated group key exchange>
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-9><vspace|0.5fn>
+      <no-break><pageref|auto-14><vspace|0.5fn>
 
       <with|par-left|<quote|1tab>|4.1<space|2spc>Security of GKE
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-10>>
+      <no-break><pageref|auto-15>>
 
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|5<space|2spc>Security
+      of (n+1)sec authenticated group key exchange>
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-16><vspace|0.5fn>
+
+      <with|par-left|<quote|1tab>|5.1<space|2spc>Security of
+      <with|mode|<quote|math>|<around*|(|n+1|)>sec> as a secure channel
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-17>>
+
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|6<space|2spc>Message
+      Origin Authentication Adversary> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-18><vspace|0.5fn>
+
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|7<space|2spc>Security
       of Transcript Consistency Assurance>
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-11><vspace|0.5fn>
+      <no-break><pageref|auto-19><vspace|0.5fn>
+
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|Bibliography>
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-20><vspace|0.5fn>
     </associate>
   </collection>
 </auxiliary>
