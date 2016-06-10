@@ -70,9 +70,8 @@ static PurpleCoreUiOps uiops = {NULL, NULL, ui_init, NULL, NULL, NULL, NULL, NUL
 
 static void connection_error(PurpleConnection *gc, PurpleConnectionError err, const gchar *desc)
 {
-  UNUSED(desc);
   UNUSED(gc);
-  fprintf(stderr, "Failed to connect to server. Error code %d: see libpurple/connection.h for description", err);
+  fprintf(stderr, "Failed to connect to server. Error %d: %s", err, desc);
   abort();
 
 }
@@ -130,15 +129,19 @@ static void process_chat_join_failed(PurpleConnection* gc, GHashTable* component
 
 // static void process_chat_joined(PurpleConversation* conv, void* m)
 // {
-//     np1sec::UserState* user_state = reinterpret_cast<np1sec::UserState*>(m);
-//     // todo: Arlo could you convert conv->chat to vector<string>
+//   UNUSED(conv);
+//   UNUSED(m);
+//   printf("xmpp join happened\n");
+  
+// //     np1sec::UserState* user_state = reinterpret_cast<np1sec::UserState*>(m);
+// //     // todo: Arlo could you convert conv->chat to vector<string>
 
-//     //    GList* g_participant_list =	purple_conv_chat_get_users(cur_chat);
-//     //    std::cout << (char*)g_participant_list->data << std::endl;
-//     (void) user_state;
-//     //bool joined = user_state->join_room(conv->name, current_occupants);
-//     //message_id[conv->name]=0;
-//     //printf("Joining %s: %s\n", conv->name, joined ? "succeeded" : "failed");
+// //     //    GList* g_participant_list =	purple_conv_chat_get_users(cur_chat);
+// //     //    std::cout << (char*)g_participant_list->data << std::endl;
+// //     (void) user_state;
+// //     //bool joined = user_state->join_room(conv->name, current_occupants);
+// //     //message_id[conv->name]=0;
+// //     //printf("Joining %s: %s\n", conv->name, joined ? "succeeded" : "failed");
 
 // }
 
@@ -215,7 +218,7 @@ static void connect_to_signals(np1sec::UserState* user_state)
                           user_state);
     purple_signal_connect(conv_handle, "chat-join-failed", &handle, PURPLE_CALLBACK(process_chat_join_failed),
                           user_state);
-    //purple_signal_connect(conv_handle, "chat-joined", &handle, PURPLE_CALLBACK(process_chat_joined), user_state);
+//    purple_signal_connect(conv_handle, "chat-joined", &handle, PURPLE_CALLBACK(process_chat_joined), user_state);
     //purple_signal_connect(conv_handle, "conversation-updated", &handle, PURPLE_CALLBACK(chat_conversation_updated), user_state);
     purple_signal_connect(conv_handle, "chat-buddy-joined", &handle, PURPLE_CALLBACK(process_buddy_chat_joined),
                           user_state);
@@ -501,6 +504,23 @@ int main(int argc, char* argv[])
       password = getpass("Password: ");
     }
     purple_account_set_password(account, password);
+
+    //force not using tls as it is not working half of the time
+    //purple_account_set_string(account, "connection_security", "none");
+    //doesn't work because of this in libpurple:jabber.c:
+    // 	/*
+	//  * This code DOES NOT EXIST, will never be enabled by default, and
+	//  * will never ever be supported (by me).
+	//  * It's literally *only* for developer testing.
+	//  */
+	// {
+	// 	const gchar *connection_security = purple_account_get_string(account, "connection_security", JABBER_DEFAULT_REQUIRE_TLS);
+	// 	if (!g_str_equal(connection_security, "none")) {
+	// 		jabber_send_raw(js,
+	// 				"<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>", -1);
+	// 		return TRUE;
+	// 	}
+	// }
 
     //set status available to later force libpurple to connect
     purple_account_set_enabled(account, UI_ID, TRUE);
