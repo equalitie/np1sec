@@ -81,11 +81,8 @@
   </definition>
 
   In modelling the chat session, in terms of the adversarial models and protocol
-  specifications, the notation of
-  <rsup|<label|harv_ref-ACMP10-5><hlink|[ACMP10]|https://learn.equalit.ie/wiki/Np1sec#harv_note-ACMP10>>
-  is followed. This notation is common to other publications on group key
-  exchange such as
-  <rsup|<label|harv_ref-GBNM11-1><hlink|[GBNM11]|https://learn.equalit.ie/wiki/Np1sec#harv_note-GBNM11>>,
+  specifications, the notation of <cite|ACMP10> is followed. This notation is
+  common to other publications on group key exchange such as <cite|GBNM11>,
   and is adhered to for consistency.
 
   <\definition>
@@ -389,8 +386,7 @@
 
   The desirable way to define an adversary for a multi-party chat session is
   a secure channel model similar to the two-party secure channels described
-  in <rsup|<label|harv_ref-CaKr01-1><hlink|[CaKr01]|https://learn.equalit.ie/wiki/Np1sec#harv_note-CaKr01>>
-  <cite|JKSS12>and <rsup|<label|harv_ref-KPW13-1><hlink|[KPW13]|https://learn.equalit.ie/wiki/Np1sec#harv_note-KPW13>>.
+  in <cite|CaKr01>, <cite|JKSS12> and <cite|KPW13>.
   As such, we set the <em|authenticated and confidential channel
   establishment> (ACCE) protocol as our starting point. In this regard, we
   would like to prove that <math|<around*|(|n+1|)>sec> is an ACCE protocol.
