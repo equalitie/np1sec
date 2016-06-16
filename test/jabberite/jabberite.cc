@@ -26,6 +26,8 @@ extern "C" {
 #include <cstdint>
 #include <string>
 #include <map>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 extern "C" {
 #include "purple.h"
@@ -34,7 +36,7 @@ extern "C" {
 
 #include "src/userstate.h"
 #include "src/common.h"
-#include "test/jabberite_np1sec_plugin.h"
+#include "test/jabberite/jabberite_np1sec_plugin.h"
 #include "src/interface.h"
 
 #define CUSTOM_USER_DIRECTORY "/tmp/test_user"
@@ -369,7 +371,7 @@ void print_usage (FILE* stream, int exit_code)
            " -a --account  xmpp account    The xmpp account used for login\n"
            " -p --password password        The password for the login\n"
            " -s --server   server name     The conference server\n"
-           " -r --room     room name       The room name to join\n");
+           " -r --room     room name       The room name to join\n"
            " -s --ec-socket  EC socket name  The socket name through which EchoChamber communicating with jabberite\n");
   exit (exit_code);
 }
@@ -444,7 +446,7 @@ int main(int argc, char* argv[])
           /* -r or --room */
              room_name = optarg;
              break;
-        case 's':
+        case 'e':
           /* -e or --ec-sock */
              room_name = optarg;
              break;
@@ -571,8 +573,10 @@ int main(int argc, char* argv[])
     socket_fd = socket (PF_LOCAL, SOCK_STREAM, 0);
     /* Indicate that this is a server. */
     name.sun_family = AF_LOCAL;
+    /* unused variable
     strcpy (name.sun_path, socket_name);
-    bind (socket_fd, &name, SUN_LEN (&name));
+    */
+    bind (socket_fd, reinterpret_cast<sockaddr const *>(&name), SUN_LEN (&name));
     
     GIOChannel* io = g_io_channel_unix_new(STDIN_FILENO);
     g_io_add_watch(io, G_IO_IN, io_callback, &user_state);

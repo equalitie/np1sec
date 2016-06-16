@@ -6,8 +6,8 @@ AM_CPPFLAGS = -I. -I$(srcdir)/src \
 
 noinst_PROGRAMS += jabberite
 
-jabberite_SOURCES = test/jabberite.cc \
-                    test/jabberite_np1sec_plugin.cc
+jabberite_SOURCES = test/jabberite/jabberite.cc \
+                    test/jabberite/jabberite_np1sec_plugin.cc
 
 jabberite_LDADD = \
 	$(PURPLE_LIBS) \
