@@ -25,6 +25,11 @@
 #include <string>
 #include <iostream>
 
+extern "C" {
+#include <glib.h>
+}
+
+
 #include "test/chat_mocker.h"
 
 // npsec1 functions
@@ -177,6 +182,21 @@ void display_message(std::string room_name, std::string sender_nickname, std::st
   cout << sender_nickname << "@" << room_name << ": " << user_message << endl;
 }
 
+struct Np1secTimer {
+    guint timer_id;
+    void (*timer_callback)(void* opdata);
+    void *opdata;
+};
+
+static gboolean execute_timer(gpointer np1sec_timer)
+{
+    Np1secTimer *timer = reinterpret_cast<Np1secTimer*>(np1sec_timer);
+    timer->timer_callback(timer->opdata);
+    delete timer;
+    // Returning 0 stops the timer.
+    return 0;
+}
+
 // Add a timeout callback to the ChatMocker server provided
 // timer_callback - The callback to call with the provided opdata
 // opdata         - The data to call timer_callback with
@@ -184,15 +204,13 @@ void display_message(std::string room_name, std::string sender_nickname, std::st
 // data           - A pair containing a chatmocker and a string
 void* set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval, void* data)
 {
-  UNUSED(timer_callback);
-  UNUSED(opdata);
-  UNUSED(interval);
-  UNUSED(data);
-    // ChatMocker* chat_server = (reinterpret_cast<pair<ChatMocker*, std::string>*>(data))->first;
-    // pair<timeout_callback, void*>* my_data = new pair<timeout_callback, void*>(timer_callback, opdata);
-    // std::string* s = chat_server->add_timeout(my_data, interval);
-    // return s;
-  return nullptr;
+    UNUSED(data);
+
+    Np1secTimer *timer = new Np1secTimer;
+    timer->timer_callback = timer_callback;
+    timer->opdata = opdata;
+    timer->timer_id = g_timeout_add(interval, execute_timer, timer);
+    return timer;
 }
 
 // Remove a timeout event from the ChatMocker server provided
@@ -200,11 +218,11 @@ void* set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t int
 // data       - A pair containing a chatmocker and a string
 void axe_timer(void* identifier, void* data)
 {
-  UNUSED(identifier);
-  UNUSED(data);
-    // std::string* ident = reinterpret_cast<std::string*>(identifier);
-    // ChatMocker* chat_server = (reinterpret_cast<pair<ChatMocker*, std::string>*>(data))->first;
-    // chat_server->remove_timeout(ident);
+    UNUSED(data);
+
+    Np1secTimer *timer = reinterpret_cast<Np1secTimer*>(identifier);
+    g_source_remove(timer->timer_id);
+    delete timer;
 }
 
 /*void join(std::string room_name, std::string sender_nickname, void* data)

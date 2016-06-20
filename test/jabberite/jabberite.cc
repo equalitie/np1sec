@@ -479,14 +479,16 @@ int main(int argc, char* argv[])
     }
 
     // here is the place to construct the user state
-    uint32_t hundred_mili_sec = 100;
-    uint32_t one_sec = 1000;
+    uint32_t two_seconds = 2000;
+    uint32_t five_seconds = 5000;
+    uint32_t one_minute = 60000;
+    
 
     // AppOps(uint32_t ACK_GRACE_INTERVAL,
     //          uint32_t REKEY_GRACE_INTERVAL,
     //          uint32_t INTERACTION_GRACE_INTERVAL,
     //          uint32_t BROADCAST_LATENCY)
-    static np1sec::AppOps ops(hundred_mili_sec, one_sec, hundred_mili_sec, hundred_mili_sec);;
+    static np1sec::AppOps ops(five_seconds, one_minute, two_seconds, two_seconds);
 
     ops.send_bare = send_bare;
     ops.join = new_session_announce;
