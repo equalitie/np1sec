@@ -398,7 +398,7 @@ int main(int argc, char* argv[])
 
     //Dealing with command line option
     /* A string listing valid short options letters.*/
-    const char* const short_options = "ha:p:s:r:";
+    const char* const short_options = "ha:p:s:P:r:";
     /* An array describing valid long options. */
     const struct option long_options[] = {
       { "help", 0, NULL, 'h' },
@@ -406,6 +406,7 @@ int main(int argc, char* argv[])
       { "password", 1, NULL, 'p' },
       { "server", 1, NULL, 's' },
       { "room", 1, NULL, 'r' },
+      { "port", 1, NULL, 'P' },
       { "ec-fd", 1, NULL, 'e' },
       { NULL, 0, NULL, 0 }
     };
@@ -416,6 +417,7 @@ int main(int argc, char* argv[])
     //user inputs
     char* user_name = NULL;
     char* password = NULL;
+    int port = -1;
 
     //variables relating to the socket communication with echochamber
     int socket_fd;
@@ -445,6 +447,14 @@ int main(int argc, char* argv[])
         case 'r':
           /* -r or --room */
              room_name = optarg;
+             break;
+        case 'P':
+          /* -P or --port */
+             try {
+                 port = std::stoi(std::string(optarg));
+             } catch(std::invalid_argument) {
+                 print_usage(stdout, 1);
+             }
              break;
         case 'e':
           /* -e or --ec-sock */
@@ -519,6 +529,9 @@ int main(int argc, char* argv[])
       password = getpass("Password: ");
     }
     purple_account_set_password(account, password);
+    if (port != -1) {
+        purple_account_set_int(account, "port", port);
+    }
 
     //force not using tls as it is not working half of the time
     //purple_account_set_string(account, "connection_security", "none");
