@@ -49,7 +49,7 @@ libnp1sec_test_LDFLAGS = \
 
 # Integration tests
 
-noinst_PROGRAMS += jabberite
+noinst_PROGRAMS += jabberite ecjabberite
 
 jabberite_SOURCES = test/jabberite/jabberite.cc \
                     test/jabberite/cli-ui.cc
@@ -61,6 +61,20 @@ jabberite_LDADD = \
 jabberite_CPPFLAGS = \
  	$(PURPLE_CFLAGS) \
  	-I$(srcdir)/src
+
+ecjabberite_SOURCES = test/jabberite/jabberite.cc \
+                      test/jabberite/echochamber-ui.cc
+
+ecjabberite_LDADD = \
+	$(PURPLE_LIBS) \
+	$(JSONCPP_LIBS) \
+	libnp1sec.la
+
+ecjabberite_CPPFLAGS = \
+ 	$(PURPLE_CFLAGS) \
+	$(JSONCPP_CFLAGS) \
+ 	-I$(srcdir)/src
+
 
 # noinst_PROGRAMS += xmpp_test
 

@@ -44,6 +44,15 @@ PKG_CHECK_MODULES([LIBEVENT], [libevent], [
 	AC_MSG_ERROR([No libevent])
 ])
 
+PKG_CHECK_MODULES([JSONCPP], [jsoncpp], [
+	AC_DEFINE([HAVE_JSONCPP], [1], [Define if we have found jsoncpp.])
+	AC_SUBST(JSONCPP_CFLAGS)
+	AC_SUBST(JSONCPP_LIBS)
+], [
+	AC_MSG_RESULT(no)
+	AC_MSG_ERROR([No jsoncpp])
+])
+
 AM_PATH_LIBGCRYPT([], [
 	AC_SUBST(LIBGCRYPT_CFLAGS)
 	AC_SUBST(LIBGCRYPT_LIBS)

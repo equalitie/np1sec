@@ -27,13 +27,17 @@ void ui_connection_error(int error_code, std::string description)
     abort();
 }
 
-void ui_signed_on(std::string username)
+void ui_signed_on(std::string username, void* data)
 {
+    UNUSED(data);
+
     printf("Account connected: %s\n", username.c_str());
 }
 
-void ui_try_np1sec_join(std::string room, std::string username, std::vector<std::string> users)
+void ui_try_np1sec_join(std::string room, std::string username, std::vector<std::string> users, void* data)
 {
+    UNUSED(data);
+
     printf("Initiating np1sec join of room '%s' as '%s', participants:", room.c_str(), username.c_str());
     for (size_t i = 0; i < users.size(); i++) {
         printf(" %s", users[i].c_str());
@@ -41,8 +45,10 @@ void ui_try_np1sec_join(std::string room, std::string username, std::vector<std:
     printf("\n");
 }
 
-void ui_np1sec_joined(bool success)
+void ui_np1sec_joined(bool success, void* data)
 {
+    UNUSED(data);
+
     if (success) {
         printf("Join succeeded\n");
     } else {
@@ -50,23 +56,31 @@ void ui_np1sec_joined(bool success)
     }
 }
 
-void ui_join_failed()
+void ui_join_failed(void* data)
 {
+    UNUSED(data);
+
     printf("Unable to join room\n");
 }
 
-void ui_user_joined(std::string username)
+void ui_user_joined(std::string username, void* data)
 {
+    UNUSED(data);
+
     printf("%s joined the chat\n", username.c_str());
 }
 
-void ui_user_left(std::string username)
+void ui_user_left(std::string username, void* data)
 {
+    UNUSED(data);
+
     printf("%s left the chat\n", username.c_str());
 }
 
-void ui_new_session(std::string room, std::vector<std::string> users)
+void ui_new_session(std::string room, std::vector<std::string> users, void* data)
 {
+    UNUSED(data);
+
     printf("Starting new np1sec session in room '%s' with participants:", room.c_str());
     for (size_t i = 0; i < users.size(); i++) {
         printf(" %s", users[i].c_str());
@@ -74,8 +88,10 @@ void ui_new_session(std::string room, std::vector<std::string> users)
     printf("\n");
 }
 
-void ui_incoming_message(std::string room, std::string sender, std::string message)
+void ui_incoming_message(std::string room, std::string sender, std::string message, void* data)
 {
+    UNUSED(data);
+
     printf("%s@%s: %s\n", sender.c_str(), room.c_str(), message.c_str());
 }
 
@@ -83,10 +99,7 @@ void ui_incoming_message(std::string room, std::string sender, std::string messa
 
 struct StdinData
 {
-    std::string username;
-    std::string server;
-    std::string room;
-    np1sec::UserState* user_state;
+    Jabberite* settings;
     std::string line_buffer;
 };
 
@@ -103,7 +116,7 @@ static gboolean stdin_callback(GIOChannel* io, GIOCondition condition, gpointer 
         if (in != '\n') {
             data->line_buffer += in;
         } else {
-            data->user_state->send_handler(data->room + "@" + data->server, data->line_buffer);
+            data->settings->user_state->send_handler(data->settings->room + "@" + data->settings->server, data->line_buffer);
             data->line_buffer.clear();
         }
         return TRUE;
@@ -120,16 +133,15 @@ static gboolean stdin_callback(GIOChannel* io, GIOCondition condition, gpointer 
     return FALSE;
 }
 
-void ui_main(std::string username, std::string server, std::string room, std::string ec_socket, np1sec::UserState* user_state)
+void* ui_main(Jabberite* settings)
 {
-    UNUSED(ec_socket);
-
     StdinData *data = new StdinData;
-    data->username = username;
-    data->server = server;
-    data->room = room;
-    data->user_state = user_state;
+    data->settings = settings;
 
     GIOChannel* io = g_io_channel_unix_new(STDIN_FILENO);
     g_io_add_watch(io, G_IO_IN, stdin_callback, data);
+
+    jabberite_connect(settings);
+
+    return NULL;
 }

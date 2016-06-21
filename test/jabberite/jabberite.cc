@@ -16,43 +16,18 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-extern "C" {
-#include <glib.h>
-#include <signal.h>
-#include <unistd.h>
-}
-
-#include <getopt.h>
-#include <cstdint>
-#include <string>
-#include <map>
-#include <sys/socket.h>
-#include <sys/un.h>
-
-extern "C" {
-#include "purple.h"
-  //#include "conversation.h"
-}
-
-#include "src/userstate.h"
-#include "src/common.h"
-#include "src/interface.h"
-
 #include "ui.h"
+
+#include <unistd.h>
+#include <getopt.h>
+#include <string>
+
+#include "src/interface.h"
 
 #define CUSTOM_USER_DIRECTORY "/tmp/test_user"
 #define CUSTOM_PLUGIN_PATH ""
 #define PLUGIN_SAVE_PREF "/tmp/test_client/plugins/saved"
 #define UI_ID "test_client"
-
-struct Jabberite
-{
-    PurpleAccount* account;
-    np1sec::UserState* user_state;
-
-    std::string server;
-    std::string room;
-};
 
 
 
@@ -95,16 +70,16 @@ void np1sec_unset_timer(void* identifier, void* data)
 
 void np1sec_new_session(std::string room, std::vector<std::string> users, void* data)
 {
-    UNUSED(data);
+    Jabberite* settings = reinterpret_cast<Jabberite*>(data);
 
-    ui_new_session(room, users);
+    ui_new_session(room, users, settings->ui_data);
 }
 
 void np1sec_incoming_message(std::string room, std::string sender, std::string message, void* data)
 {
-    UNUSED(data);
+    Jabberite* settings = reinterpret_cast<Jabberite*>(data);
 
-    ui_incoming_message(room, sender, message);
+    ui_incoming_message(room, sender, message, settings->ui_data);
 }
 
 void np1sec_send(std::string room, std::string message, void* data)
@@ -155,7 +130,7 @@ static void process_signed_on(PurpleConnection* conn, void *m)
     Jabberite* settings = reinterpret_cast<Jabberite*>(m);
 
     PurpleAccount* account = purple_connection_get_account(conn);
-    ui_signed_on(account->username);
+    ui_signed_on(account->username, settings->ui_data);
 
     GHashTable* components = g_hash_table_new(g_str_hash, g_str_equal);
     g_hash_table_insert(components, strdup("room"), strdup(settings->room.c_str()));
@@ -167,9 +142,9 @@ static void process_chat_join_failed(PurpleConnection* gc, GHashTable* component
 {
     UNUSED(gc);
     UNUSED(components);
-    UNUSED(m);
+    Jabberite* settings = reinterpret_cast<Jabberite*>(m);
 
-    ui_join_failed();
+    ui_join_failed(settings->ui_data);
 }
 
 static void process_buddy_chat_joined(PurpleConversation* conv, const char* name, PurpleConvChatBuddyFlags flags, gboolean new_arrival, void* m)
@@ -182,15 +157,16 @@ static void process_buddy_chat_joined(PurpleConversation* conv, const char* name
         std::vector<std::string> user_vector;
         GList* user_list = purple_conv_chat_get_users(PURPLE_CONV_CHAT(conv));
         while (user_list) {
-            user_vector.push_back((const char *)user_list->data);
+            PurpleConvChatBuddy* buddy = reinterpret_cast<PurpleConvChatBuddy*>(user_list->data);
+            user_vector.push_back(purple_conv_chat_cb_get_name(buddy));
             user_list = user_list->next;
         }
 
-        ui_try_np1sec_join(conv->name, name, user_vector);
+        ui_try_np1sec_join(conv->name, name, user_vector, settings->ui_data);
         bool success = settings->user_state->join_room(conv->name, user_vector.size());
-        ui_np1sec_joined(success);
+        ui_np1sec_joined(success, settings->ui_data);
     } else if (new_arrival) {
-        ui_user_joined(name);
+        ui_user_joined(name, settings->ui_data);
     }
 }
 
@@ -198,9 +174,9 @@ static void process_chat_buddy_left(PurpleConversation* conv, const char* name, 
 {
     UNUSED(conv);
     UNUSED(reason);
-    UNUSED(m);
+    Jabberite* settings = reinterpret_cast<Jabberite*>(m);
 
-    ui_user_left(name);
+    ui_user_left(name, settings->ui_data);
 }
 
 static void process_received_chat(PurpleAccount* account, char* sender, char* message, PurpleConversation* conv, int flags, void* m)
@@ -333,6 +309,12 @@ void setup_purple(void)
 
 
 
+void jabberite_connect(Jabberite *settings)
+{
+    purple_account_set_enabled(settings->account, UI_ID, TRUE);
+    purple_savedstatus_activate(purple_savedstatus_new(NULL, PURPLE_STATUS_AVAILABLE));
+}
+
 void do_jabberite(std::string username, std::string password, std::string server, std::string room, int port, std::string ec_socket)
 {
     GMainLoop* loop = g_main_loop_new(NULL, FALSE);
@@ -365,8 +347,12 @@ void do_jabberite(std::string username, std::string password, std::string server
 
 
     Jabberite *settings = new Jabberite;
+    settings->username = username;
+    settings->password = password;
     settings->server = server;
     settings->room = room;
+    settings->port = port;
+    settings->ec_socket = ec_socket;
 
     setup_np1sec(settings, nick);
 
@@ -378,14 +364,11 @@ void do_jabberite(std::string username, std::string password, std::string server
         purple_account_set_int(settings->account, "port", port);
     }
 
-    purple_account_set_enabled(settings->account, UI_ID, TRUE);
-    purple_savedstatus_activate(purple_savedstatus_new(NULL, PURPLE_STATUS_AVAILABLE));
-
     setup_purple_callbacks(settings);
 
 
 
-    ui_main(username, server, room, ec_socket, settings->user_state);
+    settings->ui_data = ui_main(settings);
 
     g_main_loop_run(loop);
 }
