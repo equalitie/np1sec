@@ -52,7 +52,7 @@ libnp1sec_test_LDFLAGS = \
 noinst_PROGRAMS += jabberite
 
 jabberite_SOURCES = test/jabberite/jabberite.cc \
-                    test/jabberite/jabberite_np1sec_plugin.cc
+                    test/jabberite/cli-ui.cc
 
 jabberite_LDADD = \
 	$(PURPLE_LIBS) \
