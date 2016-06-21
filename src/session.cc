@@ -67,7 +67,7 @@ void cb_ack_not_received(void* arg)
 
     std::string ack_failure_message = ack_timer_ops->participant->id.nickname + " failed to ack";
     ack_timer_ops->session->us->ops->display_message(ack_timer_ops->session->room_name, "np1sec directive",
-                                                     ack_failure_message, ack_timer_ops->session->us);
+                                                     ack_failure_message, ack_timer_ops->session->us->ops->bare_sender_data);
     logger.warn(ack_failure_message + " in room " + ack_timer_ops->session->room_name, __FUNCTION__,
                 ack_timer_ops->session->myself.nickname);
 
@@ -106,7 +106,7 @@ void cb_ack_not_sent(void* arg)
 
     std::string ack_failure_message = "we did not receive our own sent message";
     ack_timer_ops->session->us->ops->display_message(ack_timer_ops->session->room_name, "np1sec directive",
-                                                     ack_failure_message, ack_timer_ops->session->us);
+                                                     ack_failure_message, ack_timer_ops->session->us->ops->bare_sender_data);
 }
 
 /**
@@ -1212,7 +1212,7 @@ void Session::check_parent_message_consistency(Message received_message)
         std::string consistency_failure_message = received_message.sender_nick +
                                                   " transcript doesn't match ours as of " +
                                                   std::to_string(received_message.parent_id);
-        us->ops->display_message(room_name, "np1sec directive", consistency_failure_message, us);
+        us->ops->display_message(room_name, "np1sec directive", consistency_failure_message, us->ops->bare_sender_data);
         logger.error(consistency_failure_message, __FUNCTION__, myself.nickname);
     }
 
@@ -1234,7 +1234,7 @@ bool Session::check_leave_transcript_consistency()
                 if (received_transcript_chain[leave_parent][i].transcript_hash !=
                     received_transcript_chain[leave_parent][my_index].transcript_hash) {
                     std::string consistency_failure_message = peers[i] + " transcript doesn't match ours";
-                    us->ops->display_message(room_name, "np1sec directive", consistency_failure_message, us);
+                    us->ops->display_message(room_name, "np1sec directive", consistency_failure_message, us->ops->bare_sender_data);
                     logger.error(consistency_failure_message, __FUNCTION__, myself.nickname);
                 } // not equal
             } // not empty
