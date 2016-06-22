@@ -500,7 +500,7 @@ std::string Message::base64_encode(std::string message)
     // buf needs to be cleansed before deleting.
 
     std::string ret = std::string(buf);
-    delete buf;
+    delete[] buf;
     return ret;
 }
 
@@ -516,7 +516,7 @@ std::string Message::base64_decode(std::string message)
     // buf needs to be cleansed before deleting.
 
     std::string ret = std::string(reinterpret_cast<const char*>(buf), len);
-    delete buf;
+    delete[] buf;
     return ret;
 }
 
