@@ -382,7 +382,7 @@ void print_usage(FILE* stream, const char *program_name, int exit_code)
                      " -s --server     server name     The conference server\n"
                      " -r --room       room name       The room name to join\n"
                      " -P --port       port number     The port to connect on; defaults to 5222\n"
-                     " -s --ec-socket  EC socket name  The socket name through which EchoChamber communicating with jabberite\n"
+                     " -e --ec-socket  EC socket name  The socket name through which EchoChamber communicating with jabberite\n"
     );
     exit (exit_code);
 }
