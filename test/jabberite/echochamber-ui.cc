@@ -81,24 +81,9 @@ void ui_signed_on(std::string username, void* data)
 void ui_try_np1sec_join(std::string room, std::string username, std::vector<std::string> users, void* data)
 {
     UNUSED(room);
-    EchochamberConnection* connection = reinterpret_cast<EchochamberConnection*>(data);
-
-    Json::Value participants(Json::arrayValue);
-    for (size_t i = 0; i < users.size(); i++) {
-        participants.append(users[i]);
-    }
-    Json::Value root(Json::objectValue);
-    root["request"] = "joined";
-    root["id"] = username;
-    root["participants"] = participants;
-    echochamber_send(connection, root);
-}
-
-void ui_np1sec_joined(bool success, void* data)
-{
-    if (!success) {
-        ui_join_failed(data);
-    }
+    UNUSED(username);
+    UNUSED(users);
+    UNUSED(data);
 }
 
 void ui_join_failed(void* data)
@@ -127,6 +112,22 @@ void ui_user_left(std::string username, void* data)
     Json::Value root(Json::objectValue);
     root["request"] = "userLeft";
     root["id"] = username;
+    echochamber_send(connection, root);
+}
+
+void ui_np1sec_join_succeeded(std::string room, std::string username, std::vector<std::string> users, void* data)
+{
+    UNUSED(room);
+    EchochamberConnection* connection = reinterpret_cast<EchochamberConnection*>(data);
+
+    Json::Value participants(Json::arrayValue);
+    for (size_t i = 0; i < users.size(); i++) {
+        participants.append(users[i]);
+    }
+    Json::Value root(Json::objectValue);
+    root["request"] = "joined";
+    root["id"] = username;
+    root["participants"] = participants;
     echochamber_send(connection, root);
 }
 

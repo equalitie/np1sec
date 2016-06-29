@@ -72,6 +72,11 @@ void np1sec_new_session(std::string room, std::vector<std::string> users, void* 
 {
     Jabberite* settings = reinterpret_cast<Jabberite*>(data);
 
+    if (!settings->joined) {
+        settings->joined = true;
+        ui_np1sec_join_succeeded(room, settings->username, users, settings->ui_data);
+    }
+
     ui_new_session(room, users, settings->ui_data);
 }
 
@@ -163,8 +168,7 @@ static void process_buddy_chat_joined(PurpleConversation* conv, const char* name
         }
 
         ui_try_np1sec_join(conv->name, name, user_vector, settings->ui_data);
-        bool success = settings->user_state->join_room(conv->name, user_vector.size());
-        ui_np1sec_joined(success, settings->ui_data);
+        settings->user_state->join_room(conv->name, user_vector.size());
     } else if (new_arrival) {
         ui_user_joined(name, settings->ui_data);
     }
@@ -347,6 +351,7 @@ void do_jabberite(std::string username, std::string password, std::string server
 
 
     Jabberite *settings = new Jabberite;
+    settings->joined = false;
     settings->username = username;
     settings->password = password;
     settings->server = server;

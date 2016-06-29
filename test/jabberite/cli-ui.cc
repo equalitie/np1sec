@@ -45,17 +45,6 @@ void ui_try_np1sec_join(std::string room, std::string username, std::vector<std:
     printf("\n");
 }
 
-void ui_np1sec_joined(bool success, void* data)
-{
-    UNUSED(data);
-
-    if (success) {
-        printf("Join succeeded\n");
-    } else {
-        printf("Join failed\n");
-    }
-}
-
 void ui_join_failed(void* data)
 {
     UNUSED(data);
@@ -75,6 +64,17 @@ void ui_user_left(std::string username, void* data)
     UNUSED(data);
 
     printf("%s left the chat\n", username.c_str());
+}
+
+void ui_np1sec_join_succeeded(std::string room, std::string username, std::vector<std::string> users, void* data)
+{
+    UNUSED(data);
+
+    printf("Finished joining room '%s' as '%s', participants: ", room.c_str(), username.c_str());
+    for (size_t i = 0; i < users.size(); i++) {
+        printf(" %s", users[i].c_str());
+    }
+    printf("\n");
 }
 
 void ui_new_session(std::string room, std::vector<std::string> users, void* data)

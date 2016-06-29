@@ -34,6 +34,8 @@ struct Jabberite
     PurpleAccount* account;
     np1sec::UserState* user_state;
 
+    bool joined;
+
     std::string username;
     std::string password;
     std::string server;
@@ -48,10 +50,10 @@ struct Jabberite
 void ui_connection_error(int error_code, std::string  description);
 void ui_signed_on(std::string username, void* data);
 void ui_try_np1sec_join(std::string room, std::string username, std::vector<std::string> users, void* data);
-void ui_np1sec_joined(bool success, void* data);
 void ui_join_failed(void* data);
 void ui_user_joined(std::string username, void* data);
 void ui_user_left(std::string username, void* data);
+void ui_np1sec_join_succeeded(std::string room, std::string username, std::vector<std::string> users, void* data);
 
 void ui_new_session(std::string room, std::vector<std::string> users, void* data);
 void ui_incoming_message(std::string room, std::string sender, std::string message, void* data);
