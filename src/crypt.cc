@@ -324,6 +324,130 @@ gcry_sexp_t copy_crypto_resource(gcry_sexp_t crypto_resource)
     return copied_resource;
 };
 
+void dump_sexp(const char *message, gcry_sexp_t sexp)
+{
+    size_t size = gcry_sexp_sprint(sexp, GCRYSEXP_FMT_DEFAULT, NULL, 0);
+    char *buffer = new char[size + 1];
+    gcry_sexp_sprint(sexp, GCRYSEXP_FMT_DEFAULT, buffer, size);
+    fprintf(stderr, "%s: '%s'\n", message, buffer);
+    delete[] buffer;
+}
+
+/*
+ * gcrypt ed25519 private keys only contain the information necessary for
+ * signing, not the actual scalar. This function re-implements the computation
+ * of the private key scalar, which we need for 3DH.
+ *
+ * returns a sexp containing the scalar, which the caller needs to release.
+ * returns NULL on error.
+ */
+static gcry_sexp_t compute_private_key_scalar(AsymmetricKey private_key)
+{
+    gcry_sexp_t d = gcry_sexp_find_token(private_key, "d", 0);
+    if (!d) {
+        return NULL;
+    }
+    size_t d_size;
+    const char *d_buffer = gcry_sexp_nth_data(d, 1, &d_size);
+    if (!d_buffer) {
+        gcry_sexp_release(d);
+        return NULL;
+    }
+
+    gcry_md_hd_t digest;
+    if (gcry_md_open(&digest, GCRY_MD_SHA512, GCRY_MD_FLAG_SECURE)) {
+        gcry_sexp_release(d);
+        return NULL;
+    }
+    gcry_md_write(digest, d_buffer, d_size);
+    gcry_sexp_release(d);
+
+    unsigned char *hash = gcry_md_read(digest, GCRY_MD_SHA512);
+    unsigned char hash_buffer[32];
+    for (size_t i = 0; i < (sizeof hash_buffer); i++) {
+        hash_buffer[i] = hash[(sizeof hash_buffer) - i - 1];
+    }
+    hash_buffer[0] = (hash_buffer[0] & 0x7f) | 0x40;
+    hash_buffer[(sizeof hash_buffer) - 1] &= 0xf8;
+    gcry_md_close(digest);
+
+    gcry_mpi_t a;
+    if (gcry_mpi_scan(&a, GCRYMPI_FMT_STD, hash_buffer, sizeof hash_buffer, NULL)) {
+        return NULL;
+    }
+    gcry_sexp_t result;
+    if (gcry_sexp_build(&result, NULL, "%m", a)) {
+        gcry_mpi_release(a);
+        return NULL;
+    }
+    gcry_mpi_release(a);
+
+    return result;
+}
+
+/*
+ * gcrypt stores ed25519 public keys in a form that gcry_pk_encrypt()
+ * doesn't understand. This function translates it into a form that
+ * can be used with gcry_pk_encrypt(). The resulting key form probably
+ * will NOT work with any other gcrypt functions.
+ *
+ * This hack will probably break as soon as gcrypt adds proper ed25519
+ * support. We'll need to ifdef it out when this support arrives.
+ *
+ * returns a public key sexp. returns NULL on error.
+ */
+static gcry_sexp_t convert_ed25519_encryption_key(PublicKey public_key)
+{
+    gcry_ctx_t public_key_parameters;
+    if (gcry_mpi_ec_new(&public_key_parameters, public_key, NULL)) {
+        return NULL;
+    }
+
+    gcry_mpi_t scalar = gcry_mpi_ec_get_mpi("q", public_key_parameters, 0);
+    gcry_ctx_release(public_key_parameters);
+    if (!scalar) {
+        return NULL;
+    }
+
+    gcry_sexp_t key_sexp;
+    gcry_error_t err = gcry_sexp_build(&key_sexp, NULL, "(public-key(ecc(curve Ed25519)(flags eddsa)(q%m)))", scalar);
+    gcry_mpi_release(scalar);
+    if (err) {
+        return NULL;
+    }
+
+    return key_sexp;
+}
+
+/*
+ * For an ed25519 public key [g]x and private key y, computes [g]xy.
+ */
+static bool compute_dh_token(gcry_sexp_t* destination, AsymmetricKey private_key, PublicKey public_key)
+{
+    gcry_sexp_t private_scalar = compute_private_key_scalar(private_key);
+    if (!private_scalar) {
+        return false;
+    }
+
+    gcry_sexp_t public_encryption_key = convert_ed25519_encryption_key(public_key);
+    if (!public_encryption_key) {
+        gcry_sexp_release(private_scalar);
+        return false;
+    }
+
+    gcry_error_t error = gcry_pk_encrypt(destination, private_scalar, public_encryption_key);
+
+    gcry_sexp_release(public_encryption_key);
+    gcry_sexp_release(private_scalar);
+
+    if (error) {
+        logger.error("teddh: failed to compute dh token\n", __FUNCTION__);
+        return false;
+    }
+
+    return true;
+}
+
 /**
  * Given the peer's long term and ephemeral public key AP and ap, and ours
  * BP, bP, all points on ed25519 curve, this
@@ -345,54 +469,23 @@ gcry_sexp_t copy_crypto_resource(gcry_sexp_t crypto_resource)
 void Cryptic::triple_ed_dh(PublicKey peer_ephemeral_key, PublicKey peer_long_term_key,
                            AsymmetricKey my_long_term_key, bool peer_is_first, Token* teddh_token)
 {
-    gcry_error_t err = 0;
     bool failed = true;
-    // we need to call
-    // static gcry_err_code_t ecc_decrypt_raw (gcry_sexp_t *r_plain, gcry_sexp_t s_data, gcry_sexp_t keyparms)
-    // which is ecdh function of gcryp (what a weird name?) such that:
-    // gcrypt:
-    // give the secret key as a key pair in keyparams
-    // extract the point of  public key of the peer as s_data
-    // this is quite a complicated opertaion so
-    // we use ecc_encrypt_raw(the_public_point, 1, key);
-    // initiating the to be encrypted 1
 
     gcry_sexp_t triple_dh_sexp[3] = {};
     std::string token_concat;
 
-    gcry_sexp_t my_long_term_secret_scaler = gcry_sexp_nth(gcry_sexp_find_token(my_long_term_key, "a", 0), 1);
-    gcry_sexp_t my_ephemeral_secret_scaler = gcry_sexp_nth(gcry_sexp_find_token(ephemeral_key, "a", 0), 1);
-
-    if (!(my_long_term_secret_scaler && my_ephemeral_secret_scaler)) {
-        logger.error(
-            "teddh: failed to retreive long or ephemeral secret scaler, possibly using a wrong version of gcryp",
-            __FUNCTION__);
-        goto leave;
-    }
-
     // bAP
-    err = gcry_pk_encrypt(triple_dh_sexp + (peer_is_first ? 0 : 1), my_ephemeral_secret_scaler, peer_long_term_key);
-
-    if (err) {
-        logger.error("teddh: failed to compute dh token\n", __FUNCTION__);
-        logger.error(std::string("Failure: ") + gcry_strsource(err) + "/" + gcry_strerror(err), __FUNCTION__);
+    if (!compute_dh_token(triple_dh_sexp + (peer_is_first ? 0 : 1), ephemeral_key, peer_long_term_key)) {
         goto leave;
     }
 
     // BaP
-    err = gcry_pk_encrypt(triple_dh_sexp + (peer_is_first ? 1 : 0), my_long_term_secret_scaler, peer_ephemeral_key);
-    if (err) {
-        logger.error("teddh: failed to compute dh token\n", __FUNCTION__);
-        logger.error(std::string("Failure: ") + gcry_strsource(err) + "/" + gcry_strerror(err), __FUNCTION__);
+    if (!compute_dh_token(triple_dh_sexp + (peer_is_first ? 1 : 0), my_long_term_key, peer_ephemeral_key)) {
         goto leave;
     }
 
     // abP
-    err = gcry_pk_encrypt(triple_dh_sexp + 2, my_ephemeral_secret_scaler, peer_ephemeral_key);
-
-    if (err) {
-        logger.error("teddh: failed to compute dh token\n", __FUNCTION__);
-        logger.error(std::string("Failure: ") + gcry_strsource(err) + "/" + gcry_strerror(err), __FUNCTION__);
+    if (!compute_dh_token(triple_dh_sexp + 2, ephemeral_key, peer_ephemeral_key)) {
         goto leave;
     }
 
@@ -410,17 +503,12 @@ void Cryptic::triple_ed_dh(PublicKey peer_ephemeral_key, PublicKey peer_long_ter
         gcry_sexp_release(cur_tdh_point);
     }
 
-    if (teddh_token == NULL)
-        teddh_token = new Token[1]; // so stupid!!!
-
     hash(buffer, c_tdh_point_length * 3, *teddh_token, true);
     secure_wipe(buffer, c_tdh_point_length * 3);
 
     failed = false;
 
 leave:
-    gcry_sexp_release(my_long_term_secret_scaler);
-    gcry_sexp_release(my_ephemeral_secret_scaler);
     for (int i = 0; i < 3; i++)
         gcry_sexp_release(triple_dh_sexp[i]);
 
