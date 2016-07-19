@@ -249,6 +249,10 @@ void* ui_main(Jabberite* settings)
     connection->message_size_buffer_size = 0;
 
     GIOChannel* io = g_io_channel_unix_new(connection->fd);
+    if (g_io_channel_set_encoding(io, NULL, NULL) != G_IO_STATUS_NORMAL) {
+        fprintf(stderr, "Encoding error\n");
+        exit(1);
+    }
     g_io_add_watch(io, G_IO_IN, echochamber_callback, connection);
 
     jabberite_connect(settings);
