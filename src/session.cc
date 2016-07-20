@@ -27,12 +27,6 @@
 namespace np1sec
 {
 
-/**
- * To be used in std::sort to sort the particpant list
- * in a way that is consistent way between all participants
- */
-bool compare_creation_priority(const RaisonDEtre& lhs, const RaisonDEtre& rhs) { return lhs.reason <= rhs.reason; }
-
 void cb_re_session(void* arg)
 {
     Session* session = (static_cast<Session*>(arg));
@@ -49,7 +43,7 @@ void cb_re_session(void* arg)
                                  " which apparenly doesn't exists",
                              __FUNCTION__, session->myself.nickname);
 
-        session->us->chatrooms[session->room_name].insert_session(new_child_session);
+        session->us->chatrooms[session->room_name]->insert_session(new_child_session);
     } catch (std::exception& e) {
         logger.error("Failed to resession to ensure forward secrecy", __FUNCTION__, session->myself.nickname);
     }
@@ -139,7 +133,7 @@ void cb_rejoin(void* arg)
 
     logger.debug("joining session timed out, trying to rejoin", __FUNCTION__, session->myself.nickname);
 
-    session_room->second.try_rejoin();
+    session_room->second->try_rejoin();
 
     session->rejoin_timer = nullptr;
 }
@@ -177,107 +171,46 @@ void cb_rejoin(void* arg)
 */
 Session::Session(SessionConceiverCondition conceiver, UserState* us, std::string room_name,
                              Cryptic* current_ephemeral_crypto, const ParticipantMap& current_participants,
-                             const ParticipantMap& parent_plist, Message* conceiving_message)
+                             const ParticipantMap& parent_plist)
     : us(us), room_name(room_name), myself(*us->myself), cryptic(*current_ephemeral_crypto),
       participants(current_participants), parental_participants(parent_plist)
-// conceiving_message(&(*conceiving_message)) //forcing copying, we need a fresh copy
 {
     logger.info("constructing new session for room " + room_name + " with " + std::to_string(participants.size()) +
                     " participants",
                 __FUNCTION__, myself.nickname);
 
-    // Joiner is the only one who can't compute session id at creation so we
-    // need give them a specail treatement
+    populate_peers_from_participants();
+
     if (conceiver == JOINER) {
-        logger.assert_or_die(conceiving_message && conceiving_message->message_type == Message::PARTICIPANTS_INFO,
-                             "wrong message type is provided to the joiner " + myself.nickname +
-                                 " to establish a session. Message type " +
-                                 std::to_string(Message::PARTICIPANTS_INFO) + " was expected but type " +
-                                 std::to_string(conceiving_message->message_type) + " was provided.",
-                             __FUNCTION__, myself.nickname);
         my_state = JOIN_REQUESTED;
 
-        populate_participants_and_peers(conceiving_message->get_session_view());
-
-    } else {
-        switch (conceiver) {
-        case CREATOR:
-            logger.assert_or_die(participants.size() == 1, "initiated a room by more than a one participants",
-                                 __FUNCTION__, myself.nickname);
-            break;
-
-        case ACCEPTOR: {
-            if (conceiving_message) {
-                logger.assert_or_die(
-                    (conceiving_message->message_type == Message::JOIN_REQUEST ||
-                     conceiving_message->message_type == Message::PARTICIPANTS_INFO),
-                    "Acceptor message should be of type " + logger.message_type_to_text[Message::JOIN_REQUEST] +
-                        " or " + logger.message_type_to_text[Message::PARTICIPANTS_INFO] +
-                        " but message type of " + std::to_string(conceiving_message->message_type) + " was provided.",
-                    __FUNCTION__, myself.nickname);
-                // raisons_detre.push_back(RaisonDEtre(RaisonDEtre::JOIN,
-                // UnauthenticatedParticipant(conceiving_message->joiner_info).participant_id));
-            }
-            break;
-        }
-
-        case STAYER: {
-            // logger.assert_or_die(!(conceiving_message && conceiving_message->message_type ==
-            // Message::IN_SESSION_MESSAGE && conceiving_message->message_sub_type ==
-            // Message::LEAVE_MESSAGE),                 "wrong message type is provided to the stayer " +
-            // myself.nickname + " to establish a session. Leave messaage is expected.");
-            // string leaver_id = conceiving_message->sender_nick;
-            // raisons_detre.push_back(RaisonDEtre(RaisonDEtre::LEAVE, leaver->second.id));
-            // participants.erase(leaver_id);
-            break;
-        }
-
-        case PEER:
-            raisons_detre.push_back(RaisonDEtre(RaisonDEtre::RESESSION));
-            break;
-
-        default:
-            logger.abort("wrong conceiver type: " + std::to_string(conceiver), __FUNCTION__, myself.nickname);
-
-        } // switch
-
-        populate_peers_from_participants();
+        joiner_send_auth_and_share();
+        arm_rejoin_timer();
+    } else if (conceiver == CREATOR) {
         my_state = RE_SHARED;
 
-    } // end of else (i.e !=  JOINER)
 
-    // common ritual after getting the participants filled up (or down) as requested
-    if (conceiver == CREATOR) {
         send_view_auth_and_share();
         arm_rejoin_timer();
-    } else if (conceiver == JOINER) {
-        logger.assert_or_die(conceiving_message, "conceiving message missing to create new session", __FUNCTION__,
-                             myself.nickname);
-        Message to_send = *conceiving_message;
-
-        verify_peers_signature(to_send); // check message authenticity before going forward
-        joiner_send_auth_and_share();
-        my_state = auth_and_reshare(to_send).first;
-        arm_rejoin_timer();
     } else if (conceiver == ACCEPTOR) {
+        my_state = RE_SHARED;
+
+
         std::string joiner_id;
-        if (conceiving_message && conceiving_message->message_type == Message::JOIN_REQUEST) {
-            joiner_id = UnauthenticatedParticipant(conceiving_message->joiner_info).participant_id.nickname;
-        } else if (!delta_plist().empty()) {
+        if (!delta_plist().empty()) {
             logger.assert_or_die(delta_plist().size() <= 1, "this is n+1sec, one addition at time", __FUNCTION__,
                                  myself.nickname);
             joiner_id = delta_plist().begin()->second.id.nickname;
         }
-
-        if (conceiving_message && conceiving_message->message_type == Message::PARTICIPANTS_INFO) {
-            confirm_auth_add_update_share_repo(*conceiving_message);
-        }
-
         send_view_auth_and_share(joiner_id);
-    } else if (conceiver == PEER || conceiver == STAYER) // just anything else
+    } else if (conceiver == PEER) {
+        my_state = RE_SHARED;
+
+
         send_new_share_message();
-    else
-        logger.abort("invalid session conceiver", __FUNCTION__, myself.nickname);
+    } else {
+        logger.abort("wrong conceiver type: " + std::to_string(conceiver), __FUNCTION__, myself.nickname);
+    }
 
     logger.info("session constructed with FSM new state: " + logger.state_to_text[my_state], __FUNCTION__,
                 myself.nickname);
@@ -293,21 +226,6 @@ void Session::compute_session_id()
 {
     logger.assert_or_die(!session_id.get(), "session id is unchangable"); // if session id isn't set we have to set it
     session_id.compute(participants);
-}
-
-/**
- *  setup session view based on session view message,
- *  note the session view is set once and for all change in
- *  session view always need new session object.
- */
-void Session::setup_session_view(Message session_view_message)
-{
-    populate_participants_and_peers(session_view_message.get_session_view());
-    compute_session_id();
-
-    if (session_id.get() == nullptr)
-        throw MessageFormatException();
-
 }
 
 void Session::compute_session_confirmation()
@@ -544,11 +462,8 @@ RoomAction Session::state_handler(Message received_message)
                 __FUNCTION__, myself.nickname);
 
     if (my_state == JOIN_REQUESTED && received_message.message_type == Message::PARTICIPANTS_INFO) {
+        verify_peers_signature(received_message);
         StateAndAction result = auth_and_reshare(received_message);
-        my_state = result.first;
-        return result.second;
-    } else if (my_state == IN_SESSION && received_message.message_type == Message::JOIN_REQUEST) {
-        StateAndAction result = init_a_session_with_new_user(received_message);
         my_state = result.first;
         return result.second;
     } else if (my_state == RE_SHARED && (
@@ -615,207 +530,6 @@ Session::StateAndAction Session::auth_and_reshare(Message received_message)
         reinterpret_cast<const uint8_t*>(received_message.z_sender.c_str()));
 
     return send_session_confirmation_if_everybody_is_contributed();
-
-    // TODO: check the ramification of lies by other participants about honest
-    // participant ephemeral key. Normally nothing should happen as we recompute
-    // the session id and so the session will never get messages from honest
-    // participants and so will never be authed.
-    // return StateAndAction(my_state, RoomAction(RoomAction::NO_ACTION));
-}
-
-/**
-   For the joiner user, calls it when receive a session confirmation
-   message.
-
-   sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), hash(GroupKey, U_sender)
-
-   of SESSION_CONFIRMATION type
-
-   if it is the same sid as the session id, marks the confirmation in
-   the confirmation list for the sender. If all confirmed, change
-   state to IN_SESSION, call the call back join from ops.
-
-   If the sid is different send a new join request
-
-*/
-// Session::StateAndAction Session::confirm_or_resession(Message received_message)
-// {
-//     // This function is never called because
-//     // if sid is the same mark the participant as confirmed
-//     // receiving mismatch sid basically means rejoin
-//     if (compare_hash(received_message.session_id.get(), session_id.get())) {
-//         if (validate_session_confirmation(received_message))
-//             confirmed_peers[participants[received_message.sender_nick].index] = true;
-//         else {
-//             logger.warn(received_message.sender_nick +
-//                             "failed to provid a valid session confirmation. confirmation ignored.",
-//                         __FUNCTION__, myself.nickname);
-//             // we just ignore the message instead I think
-//             // I can throw something too.
-//             return StateAndAction(my_state, RoomAction(RoomAction::NO_ACTION));
-//         }
-
-//         if (everybody_confirmed()) {
-//             // flush the raison d'etre because we have fullfield it
-//             // raison_detre.clear();
-//             return StateAndAction(IN_SESSION, RoomAction(RoomAction::NO_ACTION));
-//         } else {
-//             return StateAndAction(my_state, RoomAction(RoomAction::NO_ACTION));
-//         }
-
-//     } else { // It is not ours, if we haven't received any confirmation then
-//         // we should die
-//         if (nobody_confirmed()) {
-//             return StateAndAction(DEAD, RoomAction(RoomAction::NO_ACTION));
-//         } else {
-//             return StateAndAction(my_state, RoomAction(RoomAction::NO_ACTION));
-//         }
-//     }
-// }
-
-//*****JOINER state transitors END*****
-
-//*****Current participant state transitors*****
-/**
-     For the current user, calls it when receive JOIN_REQUEST with
-
-     (U_joiner, y_joiner)
-
-     - start a new new participant list which does
-
-     - computes session_id
-     - new session does:
-     - compute kc = kc_{joiner, everybody}
-     - compute z_sender (self)
-     - set new session status to REPLIED_TO_NEW_JOIN
-     - send
-
-     sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), (kc_{sender, joiner}), z_sender
-
-     of PARTICIPANT_INFO message type
-
-     change status to REPLIED_TO_NEW_JOIN
-
- */
-Session::StateAndAction Session::init_a_session_with_new_user(Message received_message)
-{
-
-    RoomAction new_session_action;
-
-    logger.assert_or_die(received_message.message_type == Message::JOIN_REQUEST,
-                         "wrong message type is provided to the accetpor " + myself.nickname +
-                             " to establish a session. Message type " + std::to_string(Message::JOIN_REQUEST) +
-                             " was expected but type " + std::to_string(received_message.message_type) +
-                             " was provided.");
-
-    UnauthenticatedParticipant joiner(received_message.joiner_info);
-    // each id can only join once but it might be zombied out so we need
-    // account for that
-    // inform everybody about your transcript chain
-    send("", Message::JUST_ACK);
-
-    ParticipantMap live_participants = future_participants();
-    if (live_participants.find(joiner.participant_id.nickname) == live_participants.end()) {
-        logger.info("creating a session with new participant " + joiner.participant_id.nickname);
-        live_participants.insert(
-            std::pair<std::string, Participant>(joiner.participant_id.nickname, Participant(joiner)));
-
-        Session* new_child_session = new Session(
-            ACCEPTOR, us, room_name, &future_cryptic, live_participants, future_participants(), &received_message);
-
-        // if it fails it throw exception catched by the room
-        new_session_action.action_type = RoomAction::NEW_SESSION;
-        new_session_action.bred_session = new_child_session;
-
-        // This broadcast not happens in session constructor because sometime we want just to make
-        // a session object and not tell the whole world about it.
-    } else {
-        logger.warn(joiner.participant_id.nickname + " can't join the room twice");
-        throw DoubleJoinException();
-    }
-
-    // TODO: this is incomplete, you need to report your session
-    // to the room. more logically the room just need to request the
-    // creation of the room. so just return the list of participants
-    // to the room and ask the room to construct it
-
-    // our state doesn't need to change
-    return StateAndAction(my_state, new_session_action);
-}
-
-//*****Current participant state transitors*****
-/**
-     For the current user, calls it when receive PARTICIPANT_INFO which
-     doesn't exists in its universe, this only happens when they are the
-     joining participant in previous itteration
-
-     sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), (kc_{sender, joiner}), z_sender
-
-     - start a new new participant list which does
-       checks if itself is part of the list.
-
-     - it verifies the future keys of current session, other wise
-       reject the session. anybody not on current session list
-       mark as unauthenticated.
-
-
- */
-RoomAction Session::init_a_session_with_plist(Message received_message)
-{
-
-    RoomAction new_session_action;
-
-    logger.assert_or_die(received_message.message_type == Message::PARTICIPANTS_INFO,
-                         "wrong message type is provided to the accetpor " + myself.nickname +
-                             " to establish a session. Message type " +
-                             logger.message_type_to_text[Message::PARTICIPANTS_INFO] + " was expected but type " +
-                             logger.message_type_to_text[Message::PARTICIPANTS_INFO] + " was provided.");
-
-    // check the signature
-    if (participants.find(received_message.sender_nick) == participants.end()) {
-        logger.warn("sender not part of participant");
-        throw InvalidParticipantException();
-    }
-
-    PublicKey temp_future_pub_key = reconstruct_public_key_sexp(
-        hash_to_string_buff(participants[received_message.sender_nick].future_raw_ephemeral_key));
-
-    if (!received_message.verify_message(temp_future_pub_key)) {
-        release_crypto_resource(temp_future_pub_key);
-        logger.warn("failed to verify signature of PARTICIPANT_INFO message.");
-        throw AuthenticationException();
-    }
-
-    release_crypto_resource(temp_future_pub_key);
-
-    ParticipantMap live_participants = participants_list_to_map(received_message.get_session_view());
-
-    if (live_participants.find(myself.nickname) == live_participants.end()) {
-        logger.warn("rejecting participant info message which myself am not part of");
-        throw InvalidRoomException();
-    }
-
-    // only let those which match the same public key as stored in our future list
-    // to be authenticated
-    for (auto& cur_participant : live_participants) {
-        if (participants.find(cur_participant.second.id.nickname) != participants.end()) {
-            cur_participant.second.authenticated =
-                !compare_hash(participants[cur_participant.second.id.nickname].future_raw_ephemeral_key,
-                                       cur_participant.second.raw_ephemeral_key);
-        } else {
-            cur_participant.second.authenticated = false;
-        }
-    }
-
-    Session* new_child_session = new Session(ACCEPTOR, us, room_name, &future_cryptic, live_participants,
-                                                         future_participants(), &received_message);
-
-    // if it fails it throw exception catched by the room
-    new_session_action.action_type = RoomAction::NEW_SESSION;
-    new_session_action.bred_session = new_child_session;
-
-    // our state doesn't need to change
-    return new_session_action;
 }
 
 /**
@@ -840,8 +554,6 @@ RoomAction Session::shrink(std::string leaving_nick)
         // session without zombies
         zombies.insert(*leaver);
 
-        // raison_detre.insert(RaisonDEtre(LEAVE, leaver->id));
-
         Session* new_child_session =
             new Session(PEER, us, room_name, &future_cryptic, future_participants());
 
@@ -857,18 +569,6 @@ RoomAction Session::shrink(std::string leaving_nick)
 
     return c_no_room_action;
 }
-
-/**
- * Move the session from DEAD to
- */
-// RoomAction Session::revive_session()
-// {
-//   StateAndAction state_and_action = send_session_confirmation_if_everybody_is_contributed();
-//   my_state = state_and_action.first;
-
-//   return state_and_action.second;
-
-// }
 
 /**
    For the current user, calls it when receive JOINER_AUTH
@@ -902,10 +602,6 @@ Session::StateAndAction Session::confirm_auth_add_update_share_repo(Message rece
     participants[received_message.sender_nick].set_key_share(strbuff_to_hash(received_message.z_sender));
 
     return send_session_confirmation_if_everybody_is_contributed();
-    // else { //assuming the message is PARTICIPANT_INFO from other in
-    // session people
-
-    //}
 }
 /**
  * sends session confirmation if everybody is contributed and authenticated
@@ -1016,7 +712,6 @@ Session::StateAndAction Session::send_farewell_and_reshare(Message received_mess
     // send a farewell message
     send("", Message::JUST_ACK); // no point to send FS loads as the session is
     // ending anyway
-    // return init_a_session_with_new_plist(received_message);
     logger.assert_or_die(received_message.message_type == Message::IN_SESSION_MESSAGE &&
                              received_message.message_sub_type == Message::LEAVE_MESSAGE,
                          "wrong message type is provided to the stayer " + myself.nickname +
@@ -1033,27 +728,6 @@ Session::StateAndAction Session::send_farewell_and_reshare(Message received_mess
     // all join request. A new session will be establish and then new
     // participant info will be sent. In reallity all joiners need to
     // wait for all leavers to leave
-}
-
-/**
- * compute the id of a potential session when leaving_nick leaves the session
- */
-SessionId Session::shrank_session_id(std::string leaver_nick)
-{
-    auto leaver = participants.find(leaver_nick);
-    if (leaver == participants.end()) {
-        logger.error("participant " + leaver_nick + "is not in the session from which they are trying to leave",
-                     __FUNCTION__, myself.nickname);
-        throw InvalidDataException();
-    }
-
-    ParticipantMap temp_zombies = zombies;
-    temp_zombies.insert(*leaver);
-    ParticipantMap temp_plist = participants - temp_zombies;
-
-    SessionId shrank_id(temp_plist);
-
-    return shrank_id;
 }
 
 void Session::leave()
@@ -1157,20 +831,6 @@ void Session::stop_acking_timer()
     // }
 }
 
-void Session::stop_timer_receive(std::string acknowledger_id, MessageId message_id)
-{
-
-    for (MessageId i = participants[acknowledger_id].last_acked_message_id + 1; i <= message_id; i++) {
-        if (received_transcript_chain[message_id][participants[acknowledger_id].index].consistency_timer)
-            us->ops->axe_timer(
-                received_transcript_chain[message_id][participants[acknowledger_id].index].consistency_timer,
-                us->ops->bare_sender_data);
-        received_transcript_chain[message_id][participants[acknowledger_id].index].consistency_timer = nullptr;
-    }
-
-    participants[acknowledger_id].last_acked_message_id = message_id;
-}
-
 /**
  * Inserts a block in the send transcript chain and start a
  * timer to receive the ack for it
@@ -1211,28 +871,6 @@ void Session::perform_received_consisteny_tasks(Message received_message)
 
     // it needs to be called after add as it assumes it is already added
     start_ack_timers(received_message);
-}
-
-/**
- * - check the consistency of the parent message with our own.
- * - kill all ack receive timers of the sender for the parent backward
- */
-void Session::check_parent_message_consistency(Message received_message)
-{
-    received_transcript_chain[received_message.parent_id][participants[received_message.sender_nick].index]
-        .transcript_hash = received_message.transcript_chain_hash;
-
-    if (received_transcript_chain[received_message.parent_id][my_index].transcript_hash !=
-        received_transcript_chain[received_message.parent_id][participants[received_message.sender_nick].index]
-            .transcript_hash) {
-        std::string consistency_failure_message = received_message.sender_nick +
-                                                  " transcript doesn't match ours as of " +
-                                                  std::to_string(received_message.parent_id);
-        us->ops->display_message(room_name, "np1sec directive", consistency_failure_message, us->ops->bare_sender_data);
-        logger.error(consistency_failure_message, __FUNCTION__, myself.nickname);
-    }
-
-    stop_timer_receive(received_message.sender_nick, received_message.message_id);
 }
 
 /**
@@ -1410,46 +1048,33 @@ void Session::disarm_all_timers()
 {
     if (farewell_deadline_timer)
         us->ops->axe_timer(farewell_deadline_timer, us->ops->bare_sender_data);
+    farewell_deadline_timer = nullptr;
     if (send_ack_timer)
         us->ops->axe_timer(send_ack_timer, us->ops->bare_sender_data);
+    send_ack_timer = nullptr;
 
     if (rejoin_timer)
         us->ops->axe_timer(rejoin_timer, us->ops->bare_sender_data);
+    rejoin_timer = nullptr;
 
     if (session_life_timer)
         us->ops->axe_timer(session_life_timer, us->ops->bare_sender_data);
-
-    for (auto& cur_block : received_transcript_chain)
-        for (auto& cur_participant : cur_block.second)
-            if (cur_participant.consistency_timer) {
-                us->ops->axe_timer(cur_participant.consistency_timer, us->ops->bare_sender_data);
-            }
-
-    for (auto& cur_block : sent_transcript_chain)
-        if (cur_block.second.consistency_timer) {
-            us->ops->axe_timer(cur_block.second.consistency_timer, us->ops->bare_sender_data);
-        }
-
-    clear_all_timers();
-}
-
-/**
- * stop all timers
- */
-void Session::clear_all_timers()
-{
-
-    farewell_deadline_timer = nullptr;
-    send_ack_timer = nullptr;
-    rejoin_timer = nullptr;
     session_life_timer = nullptr;
 
     for (auto& cur_block : received_transcript_chain)
-        for (auto& cur_participant : cur_block.second)
+        for (auto& cur_participant : cur_block.second) {
+            if (cur_participant.consistency_timer) {
+                us->ops->axe_timer(cur_participant.consistency_timer, us->ops->bare_sender_data);
+            }
             cur_participant.consistency_timer = nullptr;
+        }
 
-    for (auto& cur_block : sent_transcript_chain)
+    for (auto& cur_block : sent_transcript_chain) {
+        if (cur_block.second.consistency_timer) {
+            us->ops->axe_timer(cur_block.second.consistency_timer, us->ops->bare_sender_data);
+        }
         cur_block.second.consistency_timer = nullptr;
+    }
 }
 
 /**
@@ -1467,10 +1092,8 @@ void Session::arm_rejoin_timer()
 Session::~Session()
 {
     // TODO - Verify with Vmon which of these are necessary
-    secure_wipe(session_key_secret_share, c_hash_length);
     secure_wipe(session_key, c_hash_length);
     secure_wipe(session_confirmation, c_hash_length);
-    logger.debug("Wiped session_key_secret_share from Session");
     logger.debug("Wiped session_key from Session");
     logger.debug("Wiped session_confirmation from Session");
 

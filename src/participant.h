@@ -94,23 +94,6 @@ struct ParticipantId {
     }
 
     /**
-     * copy constructor
-     */
-    ParticipantId(const ParticipantId& lhs) : nickname(lhs.nickname)
-    {
-        memcpy(fingerprint, lhs.fingerprint, c_fingerprint_length);
-    }
-
-    /**
-     * Destructor
-     */
-    ~ParticipantId()
-    {
-      secure_wipe(fingerprint, c_fingerprint_length);
-      logger.debug("Wiping fingerprint from ParticipantID");
-    }
-
-    /**
      * Access function when the finger print is added later
      */
     void set_fingerprint(std::string fingerprint_strbuff)

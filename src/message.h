@@ -208,8 +208,6 @@ class Message
     std::string encrypted_part_of_message; // it is used when we don't have
     // the key to decrypt yet till later.
 
-    /** message hash and consistency necessities */
-    HashStdBlock message_hash;
     std::string final_whole_message;
 
     /** to make sending by message itself possible*/

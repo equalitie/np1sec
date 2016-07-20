@@ -33,7 +33,6 @@ namespace np1sec
 {
 
 class UserState;
-typedef std::map<std::string, Room> RoomMap;
 
 /**
  * Manages a user with long term identity for participating in a multiparty
@@ -46,7 +45,7 @@ class UserState
     ParticipantId* myself;
     LongTermIDKey long_term_key_pair; // private and public key
     // AsymmetricKey long_term_pub_key;
-    RoomMap chatrooms;
+    std::map<std::string, Room*> chatrooms;
     AppOps* ops;
 
     /**

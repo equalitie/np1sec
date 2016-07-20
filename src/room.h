@@ -122,30 +122,6 @@ class Room
     Room(std::string room_name, UserState* user_state, uint32_t room_size);
 
     /**
-     * bad constructor just for the sake of operator[] of chatrooms
-     *
-     */
-    Room() { assert(0); }
-
-    // we need to deep copy the session_universe
-    Room(const Room& rhs)
-        : name(rhs.name), // room name given in creation by user_state
-          user_state(rhs.user_state), myself(rhs.myself), room_size(rhs.room_size),
-          user_in_room_state(rhs.user_in_room_state), np1sec_ephemeral_crypto(rhs.np1sec_ephemeral_crypto),
-          active_session(rhs.active_session), next_in_activation_line(rhs.next_in_activation_line)
-    {
-        logger.debug("copying room object");
-        for (auto& cur_session : rhs.session_universe) {
-            Session* new_copy = new Session(*cur_session.second);
-            // if rejoin timer is still active we need to activate in the copy
-            new_copy->clear_all_timers(); // it doesn't make sense to copy the
-            // timer as they have pointer to the session
-            if (cur_session.second->is_rejoin_timer_active())
-                new_copy->arm_rejoin_timer();
-            session_universe[new_copy->session_id.get_as_stringbuff()] = new_copy;
-        }
-    }
-    /**
      * called by UserState, everytime the user trys to join a room
      * it just simply send a join message to the room.
      */
@@ -182,7 +158,7 @@ class Room
      *
      *
      */
-    void receive_handler(Message received_message);
+    void receive_handler(std::string received_message, std::string sender_nickname, uint32_t message_id);
 
     /**
      *  sends user message given in plain text by the client to the

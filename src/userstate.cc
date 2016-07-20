@@ -129,7 +129,7 @@ bool UserState::join_room(std::string room_name, uint32_t room_size)
     if (chatrooms.find(room_name) == chatrooms.end()) {
         // room creation triger joining
         try {
-            chatrooms.emplace(room_name, Room(room_name, this, room_size));
+            chatrooms[room_name] = new Room(room_name, this, room_size);
         } catch (std::exception& e) {
             logger.error(e.what(), __FUNCTION__, myself->nickname);
             logger.error("unable to join the room", __FUNCTION__, myself->nickname);
@@ -142,7 +142,7 @@ bool UserState::join_room(std::string room_name, uint32_t room_size)
         // if (!chatrooms[room_name].join()) {
         // TODO:garbage collector for the room?
         try { // try rejoining
-            chatrooms[room_name].try_rejoin();
+            chatrooms[room_name]->try_rejoin();
         } catch (InvalidRoomException& e) {
             logger.warn("alreay in the room. need to leave the room before rejoining it.");
             return false;
@@ -157,7 +157,7 @@ void UserState::increment_room_size(std::string room_name)
     // if the room is not made, we make it.
     if (chatrooms.find(room_name) != chatrooms.end()) {
         // room creation triger joining
-        chatrooms[room_name].increment_size();
+        chatrooms[room_name]->increment_size();
     }
 }
 
@@ -179,7 +179,7 @@ void UserState::leave_room(std::string room_name)
         throw InvalidRoomException();
     }
 
-    chatrooms[room_name].leave();
+    chatrooms[room_name]->leave();
 }
 
 /**
@@ -204,7 +204,7 @@ void UserState::shrink(std::string room_name, std::string leaving_user_id)
     // session will take care of consistency
     logger.info(leaving_user_id + " is leaving " + room_name, __FUNCTION__, myself->nickname);
     logger.info(room_name + " shrinking", __FUNCTION__, myself->nickname);
-    chatrooms[room_name].shrink(leaving_user_id);
+    chatrooms[room_name]->shrink(leaving_user_id);
 }
 
 /**
@@ -228,18 +228,12 @@ void UserState::receive_handler(std::string room_name, std::string sender_nickna
 {
     logger.debug("receiving message...", __FUNCTION__, myself->nickname);
     try {
-        Message received(received_message, nullptr); // so no decryption key here
-        received.sender_nick = sender_nickname;
-        // in case the transport is providing the message id (if it is zero means to
-        // trust the global order
-        received.message_id = message_id;
-
         // if there is no room, it was a mistake to give us the message
         logger.assert_or_die(chatrooms.find(room_name) != chatrooms.end(),
                              "np1sec can not receive messages from room " + room_name +
                                  " to which has not been informed to join");
 
-        chatrooms[room_name].receive_handler(received);
+        chatrooms[room_name]->receive_handler(received_message, sender_nickname, message_id);
     } catch (std::exception& e) { // any unhandled error till here, we just
         // ignore as bad message
         logger.error(e.what(), __FUNCTION__, myself->nickname);
@@ -261,7 +255,7 @@ void UserState::send_handler(std::string room_name, std::string plain_message)
                                                                            room_name +
                                                                            " to which has not been informed to join");
     try {
-        chatrooms[room_name].send_user_message(plain_message);
+        chatrooms[room_name]->send_user_message(plain_message);
     } catch (std::exception& e) { // any unhandled error till here, we just
         // ignore as bad message
         logger.error(e.what(), __FUNCTION__, myself->nickname);

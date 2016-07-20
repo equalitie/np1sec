@@ -82,36 +82,6 @@ class RoomAction
 const RoomAction c_no_room_action;
 
 /**
- * reason of the creation of the session. it can be
- * JOIN, LEAVE or RESESSION.
- *
- * A bred session will be dead:
- *   - if the activated session satisfies its raison d'etre.
- *   - if the bred session defies its rasion d'etre
- */
-struct RaisonDEtre {
-    enum ReasonType { // orderd by priority
-        LEAVE,
-        JOIN,
-        RESESSION
-    };
-
-    ReasonType reason;
-    ParticipantId changing_particpant;
-
-    RaisonDEtre(ReasonType reason1, ParticipantId changing_particpant) // For leave and join
-        : changing_particpant(changing_particpant)
-    {
-        reason = reason1;
-    }
-
-    RaisonDEtre(ReasonType reason1) // For resession
-    {
-        reason = reason1;
-    }
-};
-
-/**
  * This class is encapsulating all information and action, a user needs and
  * performs in a session.
  */
@@ -128,13 +98,6 @@ class Session
 
     Cryptic cryptic;
     Cryptic future_cryptic;
-    HashBlock hashed_id;
-
-    // TODO: To keep track of why the session is created and if it is
-    // still relevant
-    std::list<RaisonDEtre> raisons_detre;
-    // temprorary solution to replace raisons_detre
-    // Message* conceiving_message = nullptr;
 
     size_t my_index;
 
@@ -167,12 +130,6 @@ class Session
      * - Perform parent consistency check
      */
     void perform_received_consisteny_tasks(Message received_message);
-
-    /**
-     * - check the consistency of the parent message with our own.
-     * - kill all ack receive timers of the sender for the parent backward
-     */
-    void check_parent_message_consistency(Message message);
 
     // participants data:
     /**
@@ -221,18 +178,10 @@ class Session
     std::vector<bool> confirmed_peers;
 
     /**
-     * Keeps the list of the unauthenticated participants in the room before the
-     * join/accept or farewell finishes.
-     */
-    // std::map<std::string,Participant> unauthed_participants;
-
-    /**
       * Insert new message hash into transcript chain
       *
       */
     void add_message_to_transcript(std::string message, uint32_t message_id);
-
-    time_t key_freshness_time_stamp;
 
     /**
       * Generate acknowledgement timers for all other participants
@@ -250,19 +199,8 @@ class Session
      */
     void stop_acking_timer();
 
-    /**
-     * End ack timer on for given acknowledgeing participants
-     */
-    void stop_timer_receive(std::string acknowledger_id, MessageId message_id);
-
-    /*
-     * Stop ack to send timers when user sends new message before timer expires
-     *
-     */
-    void stop_timer_send();
     SessionId session_id;
     // TODO - Move these into the Cryptic class where appropriate
-    HashBlock session_key_secret_share;
     HashBlock session_key;
     HashBlock session_confirmation;
 
@@ -281,23 +219,6 @@ class Session
     // two different reasons, though I can't come
     // up with an example.
 
-    // keeping track of tree
-    // Session* my_parent = nullptr;
-    /* /\** */
-    /*  * When someone join and authenticated, we should */
-    /*  * tell all other joining users to stop joining the */
-    /*  * sessions they are joining */
-    /*  *\/ */
-    /* void kill_my_sibling(); */
-
-    /* /\** */
-    /*  * When someone join and authenticated, we should */
-    /*  * tell all other joining users to stop joining the */
-    /*  * other sessions, the request for killing session */
-    /*  * rival session coming from the nticated */
-    /*  * child session */
-    /*  *\/ */
-    /* void kill_rival_children(); */
     static const int32_t c_my_right = 1;
     static const int32_t c_my_left = -1;
 
@@ -314,7 +235,7 @@ class Session
      */
     void secret_share_on(int32_t side, HashBlock hb);
 
-    ParticipantMap participants_list_to_map(const UnauthenticatedParticipantList& session_view)
+    static ParticipantMap participants_list_to_map(const UnauthenticatedParticipantList& session_view)
     {
         ParticipantMap converted_map;
 
@@ -326,29 +247,6 @@ class Session
         }
 
         return converted_map;
-    }
-
-    /**
-     * reading the particpant_in_the_room list, it populate the
-     * particpants
-     * reading the particpant map, it populate the
-     * peers vector then find the index of thread runner
-     */
-    void populate_participants_and_peers(const UnauthenticatedParticipantList& session_view)
-    {
-        /* for(UnauthenticatedParticipantList::const_iterator view_it = session_view.begin(); view_it !=
-         * session_view.end();  view_it++) { */
-        /*   participants.insert(std::pair<std::string, Participant>(view_it->participant_id.nickname,
-         * Participant(*view_it))); */
-        /*   participants[view_it->participant_id.nickname].authenticated = view_it->authenticated; */
-        /*   peers.push_back(view_it->participant_id.nickname); */
-
-        /* } */
-        participants = participants_list_to_map(session_view);
-        populate_peers_from_participants();
-
-        /*keep_peers_in_order_spot_myself();
-          compute_session_id();*/
     }
 
     void populate_peers_from_participants()
@@ -433,11 +331,6 @@ class Session
     ParticipantMap delta_plist();
 
     /**
-     * compute the id of a potential session when leaving_nick leaves the session
-     */
-    SessionId shrank_session_id(std::string leaving_nick);
-
-    /**
      * compute the session confirmation of the based on the value of
      * the shared key
      */
@@ -473,16 +366,8 @@ class Session
             throw AuthenticationException();
     }
 
-    /**
-     * exctract partcipanat info message information to setup session view
-     * and session id. throw exception if the message format is wrong
-     */
-    void setup_session_view(Message session_view_message);
-
     void group_enc();
     void group_dec();
-
-    gcry_error_t compute_message_hash(HashBlock transcript_chain, std::string message);
 
     /**
      * Simply checks the confirmed array for every element be true
@@ -553,7 +438,7 @@ class Session
      * When a session request the creation of a session it inform
      * the sessoin of the condition it has been created
      */
-    enum SessionConceiverCondition { CREATOR, JOINER, ACCEPTOR, PEER, STAYER };
+    enum SessionConceiverCondition { CREATOR, JOINER, ACCEPTOR, PEER };
 
   protected:
     // should only be changed in constructor or state transitor
@@ -620,64 +505,6 @@ class Session
     StateAndAction auth_and_reshare(Message received_message);
 
     /**
-       For the joiner user, calls it when receive a session confirmation
-       message.
-
-       sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), hash(GroupKey, U_sender)
-
-       of SESSION_CONFIRMATION type
-
-       if it is the same sid as the session id, marks the confirmation in
-       the confirmation list for the sender. If all confirmed, change
-       state to IN_SESSION, call the call back join from ops.
-
-       If the sid is different send a new join request
-
-     */
-    StateAndAction confirm_or_resession(Message received_message);
-
-    /**
-       For the current user, calls it when receive JOIN_REQUEST with
-
-       (U_joiner, y_joiner)
-
-       - start a new new participant list which does
-
-       - computes session_id
-       - new session does:
-       - compute kc = kc_{joiner, everybody}
-       - compute z_sender (self)
-       - set new session status to REPLIED_TO_NEW_JOIN
-       - send
-
-       sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), (kc_{sender, joiner}), z_sender
-
-       of PARTICIPANT_INFO message type
-
-       change status to REPLIED_TO_NEW_JOIN
-
-     */
-    StateAndAction init_a_session_with_new_user(Message received_message);
-
-    /**
-       For the current user, calls it when receive PARTICIPANT_INFO which
-       doesn't exists in its universe, this only happens when they are the
-       joining participant in previous itteration
-
-       sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), (kc_{sender, joiner}), z_sender
-
-       - start a new new participant list which does
-         checks if itself is part of the list.
-
-       - it verifies the future keys of current session, other wise
-         reject the session. anybody not on current session list
-         mark as unauthenticated.
-
-
-   */
-    RoomAction init_a_session_with_plist(Message received_message);
-
-    /**
        For the current user, calls it when receive JOINER_AUTH
 
         sid, kc, z_sender
@@ -738,50 +565,11 @@ class Session
     RoomAction shrink(std::string leaving_nick);
 
     /**
-       For the current/leaving user, calls it when receive FAREWELL
-
-       sid, ((U_1,y_i)...(U_{n-1},y_{n-1}), z_sender, transcript_consistency_stuff
-
-       -if sid matches, ask parent to run a routine transcript consistency check
-       - if not, we are the leaving user just run a routine transcript consistency check
-       - add z_sender to share table
-       - if all share are there compute the group key send the confirmation
-
-         sid, ((U_1,y_i)...(U_{n+1},y_{i+1}), hash(GroupKey, U_sender)
-
-         change status GROUP_KEY_GENERATED
-       otherwise no change to the status
-
-     */
-    StateAndAction check_transcript_consistency_update_share_repo(Message received_message);
-
-    /**
      * - check the consistency of all participants for the parent leave message
      *
      *  @return true if everybody has farewelled (consistent or not)
      */
     bool check_leave_transcript_consistency();
-
-    /**
-       This pointer represent an edge in the transition
-       graph of the session state machine.
-
-       The state machine will be represented by a
-       double array index by State and Incoming Message
-       type where each element np1secFSMGraphEdge object
-       is stored. This object says what action to
-       to be taken and return the next state
-
-    */
-    typedef StateAndAction (Session::*np1secFSMGraphTransitionEdge)(Message received_message);
-
-    /**
-     * In session forward secrecy stuff
-     */
-    /**
-     * Decides what load to include in the current message
-     */
-    Message::MessageSubType forward_secrecy_load_type();
 
   public:
     /**
@@ -824,12 +612,6 @@ class Session
     void disarm_all_timers();
 
     /**
-     * nullify the timers because they are not valid
-     * instead of this we need a respectable constructor
-     */
-    void clear_all_timers();
-
-    /**
      * same as suicide but it is marked so its list be used later
      */
     void stale_me()
@@ -838,33 +620,12 @@ class Session
         my_state = STALE;
     }
 
-    /**
-     * Create a new Session object based on the combination of participants
-     * from the current session plus another session
-     *
-     */
-    // Session operator+(Session a);
-
-    /**
-     * Create a new Session object based which has all the participants
-     * from the current session minus the provided session
-     *
-     */
-    // Session operator-(Session a);
-
-    /**
-     * is called for force kickout a person without a message from
-     * that participant
-     */
-    // Session operator-(std::string nick);
-
-    /**
+   /**
      * When a user wants to send a message to a session it needs to call its send
      * function.
      */
     void send(std::string message, Message::MessageSubType message_type);
 
-    // TODO really one of these two are needed;
     /**
      *  Constructor
      *
@@ -872,7 +633,7 @@ class Session
      */
     Session(SessionConceiverCondition conceiver, UserState* us, std::string room_name,
                   Cryptic* current_ephemeral_crypto, const ParticipantMap& current_participants = ParticipantMap(),
-                  const ParticipantMap& parent_plist = ParticipantMap(), Message* conceiving_message = nullptr);
+                  const ParticipantMap& parent_plist = ParticipantMap());
 
     // Session(UserState *us, std::string room_name,  Cryptic* current_ephemeral_crypto, Message
     // join_message, ParticipantMap current_authed_participants);

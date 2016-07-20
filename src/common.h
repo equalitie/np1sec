@@ -64,6 +64,19 @@ typedef std::string HashStdBlock; // This eventually gonna replace HashBlock,
 // mainly because StdHashBlock can be easily checked to see if it is initiated
 // or not (length)
 
+template<int n> struct ByteArray
+{
+    uint8_t data[n];
+
+    ByteArray() {}
+    ByteArray(const uint8_t* data_) { memcpy(data, data_, n); }
+
+    std::string as_string() const { return std::string(reinterpret_cast<const char*>(data), n); }
+};
+
+typedef ByteArray<c_hash_length> Hash;
+typedef ByteArray<32> PublicKeyFingerprint;
+
 // np1sec Message data type
 typedef uint8_t DTByte;
 typedef uint16_t DTShort;
@@ -77,7 +90,6 @@ enum LoadFlag { NO_LOAD, NEW_EPHEMERAL_KEY, LEAVE, NEW_SECRET_SHARE };
 const std::string c_np1sec_protocol_name(":o3np1sec:");
 const DTShort c_np1sec_protocol_version = 0x0001;
 const std::string c_np1sec_delim(":o3"); // because http://en.wikipedia.org/wiki/Man%27s_best_friend_(phrase)
-const std::string c_subfield_delim(":"); // needed by ParticipantId defined in interface.h
 
 // Global logger
 extern Logger logger;
