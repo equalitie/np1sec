@@ -559,17 +559,6 @@ void Room::send_user_message(std::string plain_message)
     }
 }
 
-// Session* Room::retrieve_session(std::string room_name) {
-//   Session *cur_session = nullptr;
-//   session_room_map::iterator it = session_in_a_room.find(room_name);
-
-//   if ( it != session_in_a_room.end() ) {
-//     cur_session = it->second;
-//   }
-
-//   return cur_session;
-
-// }
 /**
  * Just sends a message for closing the transcript consistency
  * this also initiate the new session creation for other users
@@ -739,18 +728,11 @@ void Room::insert_session(Session* new_session)
         std::pair<std::string, Session*>(new_session->my_session_id().get_as_stringbuff(), new_session));
 }
 
-/**
- * Destructor need to clean up the session universe
- */
 Room::~Room()
 {
     for (auto& cur_session : session_universe) {
         cur_session.second->commit_suicide();
         delete cur_session.second;
-        // session_universe.erase(cur_session.first);
-        // we don't need to erase
-        // the session universe destuctro is gonna be called right after us
-        // and erasing makes the iterator go crazy
     }
 }
 

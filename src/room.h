@@ -31,11 +31,6 @@
 namespace np1sec
 {
 
-// The type that keep the set of all sessions associated with this room
-// It really need to be a pointer, because the sessions are mostly
-// create by other sessions and handed to the room.
-
-// Should we point to a session or store the session itself?
 typedef std::map<std::string, Session*> SessionMap;
 
 /**
@@ -230,8 +225,6 @@ class Room
      */
     ~Room();
 };
-
-typedef std::map<std::string, Session*> session_room_map;
 
 } // namespace np1sec
 

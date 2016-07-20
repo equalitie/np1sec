@@ -182,8 +182,6 @@ Session::Session(SessionConceiverCondition conceiver, UserState* us, std::string
       participants(current_participants), parental_participants(parent_plist)
 // conceiving_message(&(*conceiving_message)) //forcing copying, we need a fresh copy
 {
-    engrave_state_machine_graph();
-
     logger.info("constructing new session for room " + room_name + " with " + std::to_string(participants.size()) +
                     " participants",
                 __FUNCTION__, myself.nickname);
@@ -544,23 +542,41 @@ RoomAction Session::state_handler(Message received_message)
     logger.info("handling state: " + logger.state_to_text[my_state] + " message_type:" +
                     logger.message_type_to_text[received_message.message_type],
                 __FUNCTION__, myself.nickname);
-    if (!this->np1secFSMGraphTransitionMatrix[my_state][received_message.message_type]) {
-        logger.debug("lose state transitor, don't know where to go on FSM. ignoring message", __FUNCTION__,
-                     myself.nickname);
 
-    } else {
-        // JOIN_REQUEST has no singnature
-        // IN_SESSION is encrypted
-        // Note that the first PARTICIPANT_INFO of the joiner doesn't make it here
-        if ((received_message.message_type != Message::JOIN_REQUEST) &&
-            (received_message.message_type != Message::IN_SESSION_MESSAGE))
-            verify_peers_signature(received_message);
-        StateAndAction result =
-            (this->*np1secFSMGraphTransitionMatrix[my_state][received_message.message_type])(received_message);
+    if (my_state == JOIN_REQUESTED && received_message.message_type == Message::PARTICIPANTS_INFO) {
+        StateAndAction result = auth_and_reshare(received_message);
         my_state = result.first;
-        logger.info("FSM new state: " + logger.state_to_text[my_state], __FUNCTION__, myself.nickname);
+        return result.second;
+    } else if (my_state == IN_SESSION && received_message.message_type == Message::JOIN_REQUEST) {
+        StateAndAction result = init_a_session_with_new_user(received_message);
+        my_state = result.first;
+        return result.second;
+    } else if (my_state == RE_SHARED && (
+        received_message.message_type == Message::JOINER_AUTH ||
+        received_message.message_type == Message::PARTICIPANTS_INFO ||
+        received_message.message_type == Message::GROUP_SHARE))
+    {
+        verify_peers_signature(received_message);
+        StateAndAction result = confirm_auth_add_update_share_repo(received_message);
+        my_state = result.first;
+        return result.second;
+    } else if (my_state == GROUP_KEY_GENERATED && received_message.message_type == Message::SESSION_CONFIRMATION) {
+        verify_peers_signature(received_message);
+        StateAndAction result = mark_confirmed_and_may_move_session(received_message);
+        my_state = result.first;
+        return result.second;
+    } else if ((
+        my_state == IN_SESSION ||
+        my_state == DEAD ||
+        my_state == LEAVE_REQUESTED
+        ) && received_message.message_type == Message::IN_SESSION_MESSAGE)
+    {
+        StateAndAction result = receive(received_message);
+        my_state = result.first;
         return result.second;
     }
+
+    logger.debug("lose state transitor, don't know where to go on FSM. ignoring message", __FUNCTION__, myself.nickname);
 
     return RoomAction(RoomAction::NO_ACTION);
 }

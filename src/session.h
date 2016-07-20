@@ -42,17 +42,6 @@ class UserState;
 class Session;
 class Room;
 
-// This has been removed in favor of Session::operator- function
-// Session::operator+ functions.
-// which compute the contrast of two sessions and gives set up of joining
-// and leaving users.
-/* /\** */
-/*  * it represents a message from a session to the room. When a room needs */
-/*  * to take action based on result of a message that a session is received */
-/*  * */
-/*  *  */
-/*  * */
-/*  *\/ */
 
 class RoomAction
 {
@@ -122,10 +111,6 @@ struct RaisonDEtre {
     }
 };
 
-// Defining essential types
-typedef uint8_t np1secBareMessage[];
-
-// typedef std::vector<uint8_t> SessionID;
 /**
  * This class is encapsulating all information and action, a user needs and
  * performs in a session.
@@ -789,83 +774,6 @@ class Session
 
     */
     typedef StateAndAction (Session::*np1secFSMGraphTransitionEdge)(Message received_message);
-
-    np1secFSMGraphTransitionEdge
-        np1secFSMGraphTransitionMatrix[Session::TOTAL_NO_OF_STATES][Message::TOTAL_NO_OF_MESSAGE_TYPE] = {};
-
-    /**
-     *  Setups the state machine transition double array once and
-     *  for all during the initiation.
-     *
-    */
-    void engrave_state_machine_graph()
-    {
-        // engraving state machine graph
-        // joining user
-        np1secFSMGraphTransitionMatrix[JOIN_REQUESTED][Message::PARTICIPANTS_INFO] =
-            &Session::auth_and_reshare;
-        //^^^ doesn't really happen because before receiving participant info you don't have
-        // a session anyway
-        //^^^ this is bullshit, only the first one generate the session the second one
-        // is get to the state handler
-
-        /* np1secFSMGraphTransitionMatrix[JOIN_REQUESTED][Message::SESSION_CONFIRMATION] = */
-        /*     &Session::confirm_or_resession; */
-
-        // user currently in the session: current session
-        np1secFSMGraphTransitionMatrix[IN_SESSION][Message::JOIN_REQUEST] =
-            &Session::init_a_session_with_new_user;
-
-        // new session for currently in previous session
-        // JOINER_AUTH and PARTICIPANT_INFO are essentially the same beside the
-        // After leave or in session forward secrecy
-        np1secFSMGraphTransitionMatrix[RE_SHARED][Message::JOINER_AUTH] =
-            &Session::confirm_auth_add_update_share_repo;
-
-        np1secFSMGraphTransitionMatrix[RE_SHARED][Message::PARTICIPANTS_INFO] =
-            &Session::confirm_auth_add_update_share_repo;
-
-        np1secFSMGraphTransitionMatrix[RE_SHARED][Message::GROUP_SHARE] =
-            &Session::confirm_auth_add_update_share_repo;
-
-        // always confirm the new key
-        np1secFSMGraphTransitionMatrix[GROUP_KEY_GENERATED][Message::SESSION_CONFIRMATION] =
-            &Session::mark_confirmed_and_may_move_session;
-
-        // If it is in session and it is an in session message, then need to receive it
-        // by the session first
-        np1secFSMGraphTransitionMatrix[IN_SESSION][Message::IN_SESSION_MESSAGE] = &Session::receive;
-
-        // DEAD session should be allowed to decrypt a message is aimed at though it shouldn't take any action based on
-        // it
-        np1secFSMGraphTransitionMatrix[DEAD][Message::IN_SESSION_MESSAGE] = &Session::receive;
-
-        // Leave should have priority over join because the leaving user
-        // is not gonna confirm the session and as such the join will
-        // fail any way.
-
-        // Therefore when leave is requested, 1. corresponding child sesion should
-        // killall its sibling 2. No new child session should be created till
-        // transition to the left session is complete
-
-        // LEAVE Request is indicated in the meta message of user message so this redirect
-        // actually happens in receive
-        // np1secFSMGraphTransitionMatrix[IN_SESSION][Message::LEAVE_REQUEST] =
-        // &Session::send_farewell_and_reshare;
-
-        // I'm not sure either of these occures
-
-        // only reply to in session messages (for the reason of consistency check)
-        // if you are leaving. receive drops user messages
-        np1secFSMGraphTransitionMatrix[LEAVE_REQUESTED][Message::IN_SESSION_MESSAGE] = &Session::receive;
-
-        // We don't accept join request while in farewelled state (for now at least) but the participants still can
-        // talk: We actually do but:
-        // 1. session will never materialized cause the leaver never confirm.
-        // 2. when leaver leaves a new session will be created and the new
-        //   participant info message will be sent which will take care of
-        //   forwarding the join to the session with reduced plist.
-    }
 
     /**
      * In session forward secrecy stuff
