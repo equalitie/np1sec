@@ -28,9 +28,9 @@
 #include <string>
 #include <gcrypt.h>
 
-#include "src/crypt.h"
-#include "src/exceptions.h"
-#include "src/logger.h"
+#include "crypt.h"
+#include "exceptions.h"
+#include "logger.h"
 #include "common.h"
 #include "crypt.h"
 #include "exceptions.h"
@@ -323,15 +323,6 @@ gcry_sexp_t copy_crypto_resource(gcry_sexp_t crypto_resource)
 
     return copied_resource;
 };
-
-void dump_sexp(const char *message, gcry_sexp_t sexp)
-{
-    size_t size = gcry_sexp_sprint(sexp, GCRYSEXP_FMT_DEFAULT, NULL, 0);
-    char *buffer = new char[size + 1];
-    gcry_sexp_sprint(sexp, GCRYSEXP_FMT_DEFAULT, buffer, size);
-    fprintf(stderr, "%s: '%s'\n", message, buffer);
-    delete[] buffer;
-}
 
 /*
  * gcrypt ed25519 private keys only contain the information necessary for
