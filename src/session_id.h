@@ -19,9 +19,9 @@
 #ifndef SRC_SESSION_ID_H_
 #define SRC_SESSION_ID_H_
 
-#include "src/common.h"
-#include "src/participant.h"
-#include "src/crypt.h"
+#include "common.h"
+#include "participant.h"
+#include "crypt.h"
 
 namespace np1sec
 {

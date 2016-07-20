@@ -16,9 +16,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "src/message.h"
+#include "message.h"
 #include "userstate.h"
-#include "src/room.h"
+#include "room.h"
 
 namespace np1sec
 {

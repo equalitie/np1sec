@@ -32,8 +32,8 @@ extern "C" {
 #include <cstring>
 #include <math.h>
 
-#include "src/logger.h"
-#include "src/base64.h"
+#include "logger.h"
+#include "base64.h"
 
 #define UNUSED(expr) (void)(expr)
 

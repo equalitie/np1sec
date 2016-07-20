@@ -26,14 +26,14 @@
 #include <utility>
 #include <algorithm>
 
-#include "src/common.h"
-#include "src/interface.h"
-#include "src/participant.h"
-#include "src/message.h"
-#include "src/crypt.h"
-#include "src/session_id.h"
+#include "common.h"
+#include "interface.h"
+#include "participant.h"
+#include "message.h"
+#include "crypt.h"
+#include "session_id.h"
 
-#include "src/transcript_consistency.h"
+#include "transcript_consistency.h"
 
 namespace np1sec
 {
@@ -955,69 +955,6 @@ class Session
      * function.
      */
     void send(std::string message, Message::MessageSubType message_type);
-
-    // List ofc onstructors
-    /* /\** */
-    /*    constructor */
-    /*    You can't have a session without a user */
-
-    /*    TODO:What about a session without a room? */
-    /*    why such a room should exists?  */
-    /*  *\/ */
-    /**
-     * only exists to make operator[] possible for SessionUniverse
-     *
-     */
-    Session() : myself("", "")
-    {
-        assert(0); // not for calling
-    };
-
-    /* /\** */
-    /*  sole joiner constructor */
-    /* *\/ */
-    /* Session(UserState *us, std::string room_name, */
-    /*                              Cryptic* current_ephemeral_crypto, */
-    /*                              const UnauthenticatedParticipantList& sole_participant_view); */
-
-    /* /\** */
-    /*  * Constructor, initiate by joining. */
-    /*  *\/ */
-    /* Session(UserState *us, */
-    /*               std::string room_name, */
-    /*               Cryptic* current_ephemeral_crypto, */
-    /*               Message participants_info_message); */
-
-    /* /\** */
-    /*    Constructor being called by current participant receiving leave request */
-
-    /*    - in new session constructor these will happen */
-    /*    - drop leaver */
-    /*    - computes session_id */
-    /*    - compute z_sender (self) */
-    /*    - set new session status to RE_SHARED */
-
-    /* *\/ */
-    /* Session(UserState* us, std::string room_name, Cryptic* current_ephemeral_crypto, std::string
-     * leaver_id, ParticipantMap current_authed_participants); */
-
-    /* /\** */
-    /*    Constructor being called by operator+ and operator- to breed  */
-    /*    new (unestablished) session */
-
-    /*    - in new session constructor these will happen */
-    /*      - computes session_id */
-    /*      - compute z_sender (self) */
-    /*      - set new session status to RE_SHARED */
-
-    /* *\/ */
-    /* Session(UserState* us, std::string room_name, Cryptic* current_ephemeral_crypto, const
-     * ParticipantMap& current_authed_participants, bool broadcast_participant_info = true); */
-    /* /\** */
-    /*  * Almost copy constructor, we only alter the plist */
-    /*  *\/ */
-    /* /\*Session(Session& breeding_session,  */
-    /*   ParticipantMap participants_in_the_room);*\/ */
 
     // TODO really one of these two are needed;
     /**

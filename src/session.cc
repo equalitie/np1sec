@@ -20,9 +20,9 @@
 #include <stdlib.h>
 #include <string>
 
-#include "src/session.h"
-#include "src/exceptions.h"
-#include "src/userstate.h"
+#include "session.h"
+#include "exceptions.h"
+#include "userstate.h"
 
 namespace np1sec
 {

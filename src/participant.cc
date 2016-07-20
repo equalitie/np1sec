@@ -18,7 +18,7 @@
 
 #include <algorithm>
 
-#include "src/participant.h"
+#include "participant.h"
 
 namespace np1sec
 {

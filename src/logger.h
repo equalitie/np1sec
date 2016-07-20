@@ -19,11 +19,6 @@
 #include <iostream>
 #include <fstream>
 
-/* #include "src/common.h" */
-/* #include "src/crypt.h" */
-/* #include "src/session.h" */
-/* #include "src/message.h" */
-
 #ifndef SRC_LOGGER_H_
 #define SRC_LOGGER_H_
 

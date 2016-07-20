@@ -22,8 +22,6 @@
 #include "src/logger.h"
 
 #include "src/common.h"
-#include "src/crypt.h"
-#include "participant.h"
 #include "src/session.h"
 #include "src/message.h"
 

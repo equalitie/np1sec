@@ -21,12 +21,12 @@
 #include <map>
 #include <iostream>
 
-#include "src/common.h"
-#include "src/interface.h"
-#include "src/crypt.h"
-#include "src/base64.h"
-#include "src/participant.h"
-#include "src/session_id.h"
+#include "common.h"
+#include "interface.h"
+#include "crypt.h"
+#include "base64.h"
+#include "participant.h"
+#include "session_id.h"
 
 namespace np1sec
 {
@@ -39,7 +39,7 @@ class Message
     Cryptic* cryptic; // message class is never responsible to delete the cryptic object
     UnauthenticatedParticipantList session_view;
 
-    std::vector<std::string>& split(const std::string& s, const std::string delim, std::vector<std::string>& elems)
+    static std::vector<std::string>& split(const std::string& s, const std::string delim, std::vector<std::string>& elems)
     {
         std::string destructable_s(s);
         std::string token;
@@ -58,7 +58,7 @@ class Message
         return elems;
     }
 
-    std::vector<std::string> split(const std::string& s, const std::string delim)
+    static std::vector<std::string> split(const std::string& s, const std::string delim)
     {
         std::vector<std::string> elems;
         split(s, delim, elems);
@@ -70,7 +70,7 @@ class Message
      * we won't exceed the expected length of next token
      * otherwise throw message format exception
      */
-    size_t move_offset_or_throw_up(const std::string& parsed_string, size_t current_offset, size_t move_window,
+    static size_t move_offset_or_throw_up(const std::string& parsed_string, size_t current_offset, size_t move_window,
                                    size_t expected_field_length = 0)
     {
         if (parsed_string.size() < current_offset + move_window + expected_field_length) {
@@ -84,24 +84,24 @@ class Message
     }
 
     // aux formating functions
-    std::string data_to_string(const DTByte data)
+    static std::string data_to_string(const DTByte data)
     {
         return std::string(reinterpret_cast<const char*>(&data), sizeof(DTByte));
     }
 
-    std::string data_to_string(const DTShort data)
+    static std::string data_to_string(const DTShort data)
     {
         return std::string(reinterpret_cast<const char*>(&data), sizeof(DTShort));
     }
 
-    std::string data_to_string(const DTLength data)
+    static std::string data_to_string(const DTLength data)
     {
         return std::string(reinterpret_cast<const char*>(&data), sizeof(DTLength));
     }
 
-    uint32_t string_to_length(const char* data) { return uint32_t(*reinterpret_cast<const uint32_t*>(data)); }
+    static uint32_t string_to_length(const char* data) { return uint32_t(*reinterpret_cast<const uint32_t*>(data)); }
 
-    uint16_t string_to_short(const char* data)
+    static uint16_t string_to_short(const char* data)
     {
         // there is a bug in emscripten which makes this value wrong
         // return uint16_t(*reinterpret_cast<const uint16_t*>(data));
@@ -113,9 +113,9 @@ class Message
     /*   return uint16_t(*reinterpret_cast<const uint16_t*>(data)); */
     /* } */
 
-    uint8_t string_to_byte(const char* data) { return uint8_t(*reinterpret_cast<const uint8_t*>(data)); }
+    static uint8_t string_to_byte(const char* data) { return uint8_t(*reinterpret_cast<const uint8_t*>(data)); }
 
-    std::string check_and_chop_protocol_tag(const std::string& raw_message)
+    static std::string check_and_chop_protocol_tag(const std::string& raw_message)
     {
         if (raw_message.substr(0, c_np1sec_protocol_name.size()) != c_np1sec_protocol_name)
             throw MessageFormatException();
@@ -142,7 +142,7 @@ class Message
      */
     std::pair<std::string, std::string> decode_opaque_field(std::string opaque_data);
 
-    bool check_version_validity(std::string& raw_protocol_less_message)
+    static bool check_version_validity(std::string& raw_protocol_less_message)
     {
         if (raw_protocol_less_message.size() < sizeof(DTShort))
             throw MessageFormatException();

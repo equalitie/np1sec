@@ -24,7 +24,7 @@
 #include <map>
 
 #include "exceptions.h"
-#include "src/crypt.h"
+#include "crypt.h"
 
 namespace np1sec
 {
@@ -201,11 +201,6 @@ class ParticipantInSessionProperties
  */
 class Participant
 {
-  protected:
-    // Cryptic* thread_user_crypto; //TODO: instead we should make a copy
-    // TODO: this is actually shouldn't be stored by this user, the private key
-    // just to be provided when participant wants to compute the p2p key
-
   public:
     ParticipantId id;
     PublicKey long_term_pub_key;
@@ -253,14 +248,6 @@ class Participant
     enum ForwardSecracyContribution { NONE, EPHEMERAL, KEY_SHARE };
 
     ForwardSecracyContribution ForwardSecracyStatus = NONE;
-
-    /**
-     * running thread user crypto access function
-     */
-    /* void set_thread_user_crypto(Cryptic* cryptic) */
-    /* { */
-    /*   thread_user_crypto = cryptic; */
-    /* } */
 
     /**
      * crypto material access functions

@@ -19,16 +19,14 @@
 #ifndef SRC_ROOM_H_
 #define SRC_ROOM_H_
 
-//#error I am here
-
 #include <string>
 #include <map>
 
-#include "src/common.h"
-#include "src/crypt.h"
-#include "src/interface.h"
-#include "src/session.h"
-#include "src/message.h"
+#include "common.h"
+#include "crypt.h"
+#include "interface.h"
+#include "session.h"
+#include "message.h"
 
 namespace np1sec
 {

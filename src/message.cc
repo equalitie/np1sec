@@ -21,9 +21,9 @@
 
 #include <iostream>
 
-#include "src/message.h"
-#include "src/userstate.h"
-#include "src/exceptions.h"
+#include "message.h"
+#include "userstate.h"
+#include "exceptions.h"
 
 namespace np1sec
 {

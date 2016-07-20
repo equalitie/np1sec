@@ -26,8 +26,7 @@
 #define SRC_INTERFACE_H_
 
 #include <string>
-
-#include "src/crypt.h"
+#include <vector>
 
 namespace np1sec
 {
@@ -104,7 +103,7 @@ struct AppOps {
     /**
      * confirm the association of nickname and public key
      */
-    void (*validate_long_term_key)(std::string nickname, PublicKey fingerprint, void* aux_data);
+    // void (*validate_long_term_key)(std::string nickname, PublicKey fingerprint, void* aux_data);
 
     /**
      * it needs to set a timer which calls timer_callback function after

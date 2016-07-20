@@ -22,12 +22,12 @@
 #include <string>
 #include <map>
 
-#include "src/common.h"
-#include "src/crypt.h"
-#include "src/interface.h"
+#include "common.h"
+#include "crypt.h"
+#include "interface.h"
 
-#include "src/room.h"
-#include "src/session.h"
+#include "room.h"
+#include "session.h"
 
 namespace np1sec
 {
