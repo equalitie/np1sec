@@ -177,7 +177,6 @@ class Message
     SessionId session_id;
     DTLength sender_index;
     std::string sender_nick;
-    MessageId message_id;
     MessageId sender_message_id;
     MessageId parent_id;
     HashBlock session_id_buffer;
@@ -288,12 +287,6 @@ class Message
      * returns true if session_id is set
      */
     bool has_sid() { return (session_id.get() != nullptr); }
-
-    /**
-     * Compute a unique globally ordered id from the time stamped message,
-     * ultimately this function should be overridable by the client.
-     */
-    uint32_t compute_message_id() const;
 
     /**
      * This function is responsible for sending of bare messages

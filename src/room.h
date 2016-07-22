@@ -158,7 +158,7 @@ class Room
      *
      *
      */
-    void receive_handler(std::string received_message, std::string sender_nickname, uint32_t message_id);
+    void receive_handler(std::string received_message, std::string sender_nickname);
 
     /**
      *  sends user message given in plain text by the client to the

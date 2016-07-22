@@ -153,11 +153,10 @@ void Room::try_rejoin()
                 else
                   (this shouldn't happen either). *
  */
-void Room::receive_handler(std::string message_string, std::string sender_nickname, uint32_t message_id)
+void Room::receive_handler(std::string message_string, std::string sender_nickname)
 {
     Message received_message(message_string, nullptr);
     received_message.sender_nick = sender_nickname;
-    received_message.message_id = message_id;
 
     // If the user is not in the session, we can do nothing with
     // session less messages, we are joining and we need info

@@ -116,7 +116,7 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name, std::strin
         string pure_message = sender_and_message.substr(message_pos + strlen("@<o>@"));
         // RoomActoin will tell you to 1)show message, 2)add participant 3) remove participant etc
         // not sure yet
-        user_server_state->first->receive_handler(room_name, sender, pure_message, message_id);
+        user_server_state->first->receive_handler(room_name, sender, pure_message);
     }
 };
 

@@ -223,8 +223,7 @@ void UserState::shrink(std::string room_name, std::string leaving_user_id)
  *  can't do much more about it.
  *
  */
-void UserState::receive_handler(std::string room_name, std::string sender_nickname, std::string received_message,
-                                      uint32_t message_id)
+void UserState::receive_handler(std::string room_name, std::string sender_nickname, std::string received_message)
 {
     logger.debug("receiving message...", __FUNCTION__, myself->nickname);
     try {
@@ -233,7 +232,7 @@ void UserState::receive_handler(std::string room_name, std::string sender_nickna
                              "np1sec can not receive messages from room " + room_name +
                                  " to which has not been informed to join");
 
-        chatrooms[room_name]->receive_handler(received_message, sender_nickname, message_id);
+        chatrooms[room_name]->receive_handler(received_message, sender_nickname);
     } catch (std::exception& e) { // any unhandled error till here, we just
         // ignore as bad message
         logger.error(e.what(), __FUNCTION__, myself->nickname);

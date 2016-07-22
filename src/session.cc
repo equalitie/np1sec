@@ -771,15 +771,15 @@ void Session::start_ack_timers(const Message& received_message)
             (received_message.sender_nick != myself.nickname)) // not for the sender and not
         // for myself
         {
-            received_transcript_chain[received_message.message_id][(*it).second.index].ack_timer_ops.session = this;
-            received_transcript_chain[received_message.message_id][(*it).second.index].ack_timer_ops.participant =
+            received_transcript_chain[last_received_message_id][(*it).second.index].ack_timer_ops.session = this;
+            received_transcript_chain[last_received_message_id][(*it).second.index].ack_timer_ops.participant =
                 &(it->second);
-            received_transcript_chain[received_message.message_id][(*it).second.index].ack_timer_ops.message_id =
-                received_message.message_id;
-            received_transcript_chain[received_message.message_id][(*it).second.index].consistency_timer =
+            received_transcript_chain[last_received_message_id][(*it).second.index].ack_timer_ops.message_id =
+                last_received_message_id;
+            received_transcript_chain[last_received_message_id][(*it).second.index].consistency_timer =
                 us->ops->set_timer(
                     cb_ack_not_received,
-                    &(received_transcript_chain[received_message.message_id][(*it).second.index].ack_timer_ops),
+                    &(received_transcript_chain[last_received_message_id][(*it).second.index].ack_timer_ops),
                     us->ops->c_consistency_failure_interval, us->ops->bare_sender_data);
         }
     }
@@ -867,7 +867,7 @@ void Session::perform_received_consisteny_tasks(Message received_message)
         }
     }
 
-    add_message_to_transcript(received_message.final_whole_message, received_message.message_id);
+    add_message_to_transcript(received_message.final_whole_message, last_received_message_id);
 
     // it needs to be called after add as it assumes it is already added
     start_ack_timers(received_message);

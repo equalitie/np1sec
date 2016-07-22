@@ -477,11 +477,7 @@ void Message::unwrap_in_session_message(std::string u_message)
             // throw NotImplementedException();
         }
     };
-
-    // message_id = compute_message_id(user_message);
 }
-
-uint32_t Message::compute_message_id() const { return message_id; }
 
 void Message::send(std::string room_name, UserState* us)
 {
