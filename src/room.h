@@ -26,7 +26,6 @@
 #include "crypt.h"
 #include "interface.h"
 #include "session.h"
-#include "message.h"
 
 namespace np1sec
 {
@@ -195,6 +194,11 @@ class Room
      * in the room's session map
      */
     void insert_session(Session* new_session);
+
+    /**
+     * Sends a message.
+     */
+    void send(const Message& message);
 
     /**
      * Destructor need to clean up the session universe

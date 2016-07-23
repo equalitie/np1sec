@@ -13,382 +13,208 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef SRC_MESSAGE_H_
-#define SRC_MESSAGE_H_
+#ifndef SRC_MESSAGE_NEW_H_
+#define SRC_MESSAGE_NEW_H_
 
-#include <utility>
-#include <string>
+#include <cstdint>
 #include <map>
-#include <iostream>
+#include <string>
+#include <vector>
 
 #include "common.h"
-#include "interface.h"
-#include "crypt.h"
-#include "base64.h"
-#include "participant.h"
-#include "session_id.h"
+#include "exceptions.h"
 
 namespace np1sec
 {
 
-class UserState;
+class Cryptic;
 
-class Message
+class MessageBuffer : public std::string
 {
-  protected:
-    Cryptic* cryptic; // message class is never responsible to delete the cryptic object
-    UnauthenticatedParticipantList session_view;
+    public:
+    MessageBuffer() {}
+    MessageBuffer(const std::string& string): std::string(string) {}
 
-    static std::vector<std::string>& split(const std::string& s, const std::string delim, std::vector<std::string>& elems)
+    unsigned char byte(size_t index) { return (unsigned char)(at(index)); }
+
+    void add_8(uint8_t byte);
+    void add_16(uint16_t number);
+    void add_32(uint32_t number);
+
+    template<int n> void addByteArray(const ByteArray<n>& data)
     {
-        std::string destructable_s(s);
-        std::string token;
-        size_t npos;
-        while ((npos = destructable_s.find(delim)) != std::string::npos) {
-            token = destructable_s.substr(0, npos);
-            elems.push_back(token);
-            size_t end = npos + delim.length();
-            destructable_s.erase(0, end);
-        }
-        // we need to check to see if anything left and we send it
-        // as the last token
-        if (destructable_s.length())
-            elems.push_back(destructable_s);
-
-        return elems;
+        append(reinterpret_cast<const char *>(data.buffer), n);
     }
 
-    static std::vector<std::string> split(const std::string& s, const std::string delim)
-    {
-        std::vector<std::string> elems;
-        split(s, delim, elems);
-        return elems;
-    }
+    void add_hash(Hash hash) { addByteArray(hash); }
+    void add_raw_public_key(RawPublicKey key) { addByteArray(key); }
+    void add_signature(Signature signature) { addByteArray(signature); }
+    void add_bytes(const std::string& buffer);
+    void add_opaque(const std::string& buffer);
 
-    /**
-     * move the current offset to point to the next token, it checks that
-     * we won't exceed the expected length of next token
-     * otherwise throw message format exception
-     */
-    static size_t move_offset_or_throw_up(const std::string& parsed_string, size_t current_offset, size_t move_window,
-                                   size_t expected_field_length = 0)
+    void check_empty() throw(MessageFormatException);
+    uint8_t remove_8() throw(MessageFormatException);
+    uint16_t remove_16() throw(MessageFormatException);
+    uint32_t remove_32() throw(MessageFormatException);
+
+    template<int n> ByteArray<n> removeByteArray()
     {
-        if (parsed_string.size() < current_offset + move_window + expected_field_length) {
-            logger.error("invalid length: total: " + std::to_string(parsed_string.size()) + " cur: " +
-                         std::to_string(current_offset) + " f1: " + std::to_string(move_window) + " f2: " +
-                         std::to_string(expected_field_length));
+        if (size() < n) {
             throw MessageFormatException();
         }
 
-        return current_offset + move_window;
+        ByteArray<n> result;
+        for (int i = 0; i < n; i++) {
+            result.buffer[i] = at(i);
+        }
+
+        erase(0, n);
+
+        return result;
     }
 
-    // aux formating functions
-    static std::string data_to_string(const DTByte data)
-    {
-        return std::string(reinterpret_cast<const char*>(&data), sizeof(DTByte));
-    }
+    Hash remove_hash() { return removeByteArray<c_hash_length>(); }
+    RawPublicKey remove_raw_public_key() { return removeByteArray<32>(); }
+    Signature remove_signature() { return removeByteArray<c_signature_length>(); }
+    std::string remove_bytes(size_t size) throw(MessageFormatException);
+    std::string remove_opaque() throw(MessageFormatException);
+};
 
-    static std::string data_to_string(const DTShort data)
-    {
-        return std::string(reinterpret_cast<const char*>(&data), sizeof(DTShort));
-    }
 
-    static std::string data_to_string(const DTLength data)
-    {
-        return std::string(reinterpret_cast<const char*>(&data), sizeof(DTLength));
-    }
 
-    static uint32_t string_to_length(const char* data) { return uint32_t(*reinterpret_cast<const uint32_t*>(data)); }
-
-    static uint16_t string_to_short(const char* data)
-    {
-        // there is a bug in emscripten which makes this value wrong
-        // return uint16_t(*reinterpret_cast<const uint16_t*>(data));
-        // so we have to explicitly make it
-        return uint16_t(((unsigned)data[0]) + 256 * (unsigned)data[1]);
-    }
-
-    /* uint16_t string_to_short(const char* data) { */
-    /*   return uint16_t(*reinterpret_cast<const uint16_t*>(data)); */
-    /* } */
-
-    static uint8_t string_to_byte(const char* data) { return uint8_t(*reinterpret_cast<const uint8_t*>(data)); }
-
-    static std::string check_and_chop_protocol_tag(const std::string& raw_message)
-    {
-        if (raw_message.substr(0, c_np1sec_protocol_name.size()) != c_np1sec_protocol_name)
-            throw MessageFormatException();
-        // TODO:: do something intelligent here
-        // should we warn the user about unencrypted message
-        // and then return everything as the plain text?
-        else
-            return raw_message.substr(c_np1sec_protocol_name.size());
-    }
-
-    enum EncodeDataType { DT_BYTE, DT_SHORT, DT_HASH, DT_OPAQUE };
-
-    /**
-     *  returns the apporperiate string buffer which contains the data
-     *  in data in opaque format (length attached)
-     *
-     */
-    std::string encode_opaque_data(const std::string& data);
-
-    /**
-     *  gets a string starts with opaque data field
-     *  return a pairs of strings, first with the opaque data (without length)
-     *  second the rest of the string
-     */
-    std::pair<std::string, std::string> decode_opaque_field(std::string opaque_data);
-
-    static bool check_version_validity(std::string& raw_protocol_less_message)
-    {
-        if (raw_protocol_less_message.size() < sizeof(DTShort))
-            throw MessageFormatException();
-
-        return (*(reinterpret_cast<const DTShort*>(raw_protocol_less_message.data())) == c_np1sec_protocol_version);
-    }
-
-  public:
-    enum MessageType {
-        UNKNOWN = 0x00, // Invalid
+struct Message
+{
+    enum Type {
         JOIN_REQUEST = 0x0a, // Session establishement
         PARTICIPANTS_INFO = 0x0b,
         JOINER_AUTH = 0x0c,
         GROUP_SHARE = 0x0d,
         SESSION_CONFIRMATION = 0x0e, // In session messages
-        IN_SESSION_MESSAGE = 0x10,
-        INADMISSIBLE = 0x20,
-        TOTAL_NO_OF_MESSAGE_TYPE // This should be always the last message type
-
+        IN_SESSION_MESSAGE = 0x10
     };
 
-    enum MessageSubType {
+    Type type;
+    std::string payload;
+
+    std::string encode() const;
+    static Message decode(const std::string& encoded) throw(MessageFormatException);
+};
+
+struct SessionMessage
+{
+    Message::Type type;
+    Hash session_id;
+    std::string payload;
+
+    Message encode() const;
+    static SessionMessage decode(const Message& encoded) throw(MessageFormatException);
+};
+
+
+
+struct UnsignedCurrentSessionMessage
+{
+    Message::Type type;
+    std::string payload;
+};
+
+struct UnsignedSessionMessage : public UnsignedCurrentSessionMessage
+{
+    Hash session_id;
+
+    std::string signed_body() const;
+};
+
+struct SignedSessionMessage : public UnsignedSessionMessage
+{
+    Signature signature;
+
+    bool verify(PublicKey key) const;
+    static SignedSessionMessage sign(const UnsignedSessionMessage& message, Cryptic* key);
+
+    SessionMessage encode() const;
+    static SignedSessionMessage decode(const SessionMessage& message) throw(MessageFormatException);
+
+    SessionMessage encrypt(Cryptic* key) const;
+    static SignedSessionMessage decrypt(const SessionMessage& message, Cryptic* key) throw(MessageFormatException);
+};
+
+
+
+struct JoinRequestMessage
+{
+    std::string nickname;
+    RawPublicKey long_term_public_key;
+    RawPublicKey ephemeral_public_key;
+
+    Message encode() const;
+    static JoinRequestMessage decode(const Message& message) throw(MessageFormatException);
+};
+
+struct ParticipantsInfoMessage
+{
+    struct ParticipantInfo
+    {
+        std::string nickname;
+        RawPublicKey long_term_public_key;
+        RawPublicKey ephemeral_public_key;
+        bool authenticated;
+    };
+
+    std::vector<ParticipantInfo> participants;
+    Hash key_confirmation;
+    Hash sender_share;
+
+    UnsignedCurrentSessionMessage encode() const;
+    static ParticipantsInfoMessage decode(const UnsignedCurrentSessionMessage& message) throw(MessageFormatException);
+};
+
+struct JoinerAuthMessage
+{
+    std::map<uint32_t, Hash> key_confirmations;
+    Hash sender_share;
+
+    UnsignedCurrentSessionMessage encode() const;
+    static JoinerAuthMessage decode(const UnsignedCurrentSessionMessage& message) throw(MessageFormatException);
+};
+
+struct GroupShareMessage
+{
+    Hash sender_share;
+
+    UnsignedCurrentSessionMessage encode() const;
+    static GroupShareMessage decode(const UnsignedCurrentSessionMessage& message) throw(MessageFormatException);
+};
+
+struct SessionConfirmationMessage
+{
+    Hash session_confirmation;
+    RawPublicKey next_ephemeral_public_key;
+
+    UnsignedCurrentSessionMessage encode() const;
+    static SessionConfirmationMessage decode(const UnsignedCurrentSessionMessage& message) throw(MessageFormatException);
+};
+
+struct InSessionMessage
+{
+    enum Type {
         JUST_ACK,
         USER_MESSAGE,
-        LEAVE_MESSAGE,
-        // EPHEMERAL_KEY,
-        // KEY_SHARE,
-        // CONTRIBUTION_STATE
+        LEAVE_MESSAGE
     };
 
-    MessageType message_type;
-    SessionId session_id;
-    DTLength sender_index;
-    std::string sender_nick;
-    MessageId sender_message_id;
-    MessageId parent_id;
-    HashBlock session_id_buffer;
-    MessageSubType message_sub_type;
-    std::string user_message;
-    std::string sys_message;
-    LoadFlag meta_load_flag;
-    HashStdBlock transcript_chain_hash;
-    std::string nonce;
-    HashStdBlock z_sender;
-    std::map<DTLength, std::string> authentication_table;
-    std::string key_confirmation;
-    std::string session_key_confirmation;
-    std::string next_session_ephemeral_key;
-    std::string joiner_info;
-    std::vector<std::string> pstates;
-    size_t no_of_participants;
+    uint32_t sender_index;
+    uint32_t sender_message_id;
+    uint32_t parent_server_message_id;
+    Hash transcript_chain_hash;
+    Hash nonce;
+    Type subtype;
+    std::string payload;
 
-    /** signature stuff */
-    std::string signed_message; // we store the part of message
-    // which supposed to be/is signed here so the session class
-    // verifies the signature. The message class can not verify
-    // the signature cause it does not keep track of the ephemeral
-    // public key of the participants
-    std::string signature;
-    // unacceptable for format or invalid signature etc
-
-    std::string encrypted_part_of_message; // it is used when we don't have
-    // the key to decrypt yet till later.
-
-    std::string final_whole_message;
-
-    /** to make sending by message itself possible*/
-    UserState* us;
-    std::string room_name;
-
-    /*
-     * Construct a new Message based on a set of message components
-     * as input
-     */
-    Message(Cryptic* cryptic = nullptr);
-
-    /*
-     * Construct a new Message based on a set of message components
-     * based on an encrypted message as input
-     */
-    Message(std::string raw_message, Cryptic* cryptic = nullptr, size_t no_of_participants = 0);
-
-    /**
-     * @return if the message is of type PARTICIPANTS_INFO it returns
-     *         the list of participants with their ephemerals
-     *         (session view)otherwise
-     *         throw an exception
-     */
-    const UnauthenticatedParticipantList& get_session_view();
-
-    std::string session_view_as_string();
-
-    /**
-     * Create PARTICIPANT_INFO system message
-     *
-     */
-    void create_participant_info_msg(SessionId session_id, UnauthenticatedParticipantList& session_view_list,
-                                     std::string key_confirmation, HashStdBlock z_sender);
-
-    /**
-     * create session_confirmation system message
-     *
-     */
-    void create_session_confirmation_msg(SessionId session_id, std::string session_key_confirmation,
-                                         std::string next_session_ephemeral_key);
-
-    /**
-     * create JOIN_REQUEST system message
-     *
-     */
-    void create_join_request_msg(UnauthenticatedParticipant joiner);
-
-    /**
-     * create JOINER_AUTH system message
-     *
-     */
-    void create_joiner_auth_msg(SessionId session_id, std::string key_confirmation, std::string z_sender);
-
-    /**
-     * create GROUP_SHARE system message
-     *
-     */
-    void create_group_share_msg(SessionId session_id, std::string z_sender);
-
-    /**
-     * Append standard message end for system messages
-     *
-     */
-    void append_msg_end(bool need_to_be_signed = true);
-
-    /**
-     * Create USER_MESSAGE
-     *
-     */
-    std::string create_in_session_msg(SessionId session_id, uint32_t sender_index, uint32_t sender_own_id,
-                                      uint32_t parent_id, HashStdBlock transcript_chain_hash,
-                                      MessageSubType message_sub_type, std::string user_message = "");
-
-    void string_to_session_view(std::string sv_string);
-
-    /**
-     * returns true if session_id is set
-     */
-    bool has_sid() { return (session_id.get() != nullptr); }
-
-    /**
-     * This function is responsible for sending of bare messages
-     *
-     */
-    void send(std::string room_name, UserState* us);
-
-    /**
-     * Base 64 encode encrypted message
-     *
-     */
-    std::string base64_encode(std::string message);
-
-    /**
-     * Base 64 decode encrypted message
-     *
-     */
-    std::string base64_decode(std::string encode_message);
-
-    /**
-     * Create and return a signed form of the message
-     *
-     */
-    std::string sign_message(std::string message);
-
-    /**
-     * Verify the message
-     *
-     */
-    bool verify_message(PublicKey sender_ephemeral_key);
-
-    /**
-     * Create and return an encrypted form of the signed message
-     *
-     */
-    std::string encrypt_message(std::string signed_message);
-
-    /**
-     * Decrypt and return the raw form of the message
-     *
-     */
-    std::string decrypt_message(std::string encrypted_message);
-
-    /**
-     * Compose message into sendable formt
-     *
-     */
-    std::string format_sendable_message();
-
-    /**
-     * Format p_info message for inclusion for
-     * standalone use
-     *
-     */
-    void format_generic_message();
-
-    /**
-     * Unwrap p_info message into its constituent components
-     *
-     */
-    void unwrap_generic_message(std::string b64ed_message);
-
-    void unwrap_in_session_message(std::string u_message);
-
-    /**
-     * Format Meta message for inclusion with standard message or for
-     * standalone use
-     *
-     */
-    void format_meta_message();
-
-    /**
-     * Unwrap meta message into its constituent components
-     *
-     */
-    void unwrap_meta_message();
-
-    /**
-     * Return string containing the current state for all participants
-     *
-     */
-    std::string ustate_values(std::vector<std::string> pstates);
-
-    /**
-     * chop the key_confirmation from joiner auth and make a
-     * table out of it.
-     */
-    void build_authentication_table();
-
-    /**
-     * Destructor
-     *
-     */
-    ~Message();
-
-    /**
-     *
-     *
-     */
-    HashStdBlock compute_hash();
+    UnsignedCurrentSessionMessage encode() const;
+    static InSessionMessage decode(const UnsignedCurrentSessionMessage& message) throw(MessageFormatException);
 };
 
 } // namespace np1sec
 
-#endif // SRC_MESSAGE_H_
+#endif

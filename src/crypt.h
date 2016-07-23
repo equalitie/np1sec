@@ -210,7 +210,7 @@ class Cryptic
      * @return true if the signature is valid false on false signature
      * throw exception in case of error
      */
-    bool verify(std::string signed_text, const unsigned char* sigbuf, PublicKey signer_ephmeral_pub_key);
+    static bool verify(std::string signed_text, const unsigned char* sigbuf, PublicKey signer_ephmeral_pub_key);
 
     /**
      * Create instance of cipher session based on configured algorithm, mode,

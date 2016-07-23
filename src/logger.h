@@ -41,7 +41,7 @@ class Logger
 
   public:
     std::string state_to_text[0xFF]; // TOTAL_NO_OF_STATES
-    std::string message_type_to_text[0xFF]; // TOTAL_NO_OF_MESSAGE_TYPE];
+    std::string message_type_to_text[0xFF];
 
     // put name on states and message types
     void initiate_textual_conversions();

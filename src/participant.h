@@ -68,6 +68,12 @@ struct ParticipantId {
         ParticipantId(nickname, fingerprint_strbuff);
     }
 
+    ParticipantId(std::string nickname_, uint8_t* fingerprint_)
+    {
+        nickname = nickname_;
+        memcpy(fingerprint, fingerprint_, c_fingerprint_length);
+    }
+
     /**
      * Just a default constructor for when we don't want to initiate the
      * participant name and key
@@ -122,6 +128,13 @@ struct UnauthenticatedParticipant {
 
     {
         memcpy(this->ephemeral_pub_key, ephemeral_pub_key.c_str(), c_ephemeral_key_length);
+    }
+
+    UnauthenticatedParticipant(ParticipantId participant_id, uint8_t* ephemeral_pub_key, bool authenticated = false)
+        : participant_id(participant_id), authenticated(authenticated)
+
+    {
+        memcpy(this->ephemeral_pub_key, ephemeral_pub_key, c_ephemeral_key_length);
     }
 
     /**

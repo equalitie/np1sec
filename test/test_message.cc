@@ -69,7 +69,7 @@ TEST_F(MessageTest, test_user_message)
     memcpy(transcript_chain_hash, base.c_str(), sizeof(HashBlock));
     session_id.set(sid);
 
-    Message outbound(&cryptic);
+    // Message outbound(&cryptic);
 
     // outbound.create_user_msg(session_id,
     //                          user_state->myself->nickname,

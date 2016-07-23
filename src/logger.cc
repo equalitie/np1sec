@@ -19,11 +19,11 @@
 #include <iostream>
 #include <fstream>
 
-#include "src/logger.h"
+#include "logger.h"
 
-#include "src/common.h"
-#include "src/session.h"
-#include "src/message.h"
+#include "common.h"
+#include "session.h"
+#include "message.h"
 
 namespace np1sec
 {
@@ -41,14 +41,11 @@ void Logger::initiate_textual_conversions()
     state_to_text[Session::STALE] = "STALE";
     state_to_text[Session::DEAD] = "DEAD";
 
-    message_type_to_text[Message::UNKNOWN] = "UNKNOWN";
     message_type_to_text[Message::JOIN_REQUEST] = "JOIN_REQUEST";
     message_type_to_text[Message::PARTICIPANTS_INFO] = "PARTICIPANTS_INFO";
     message_type_to_text[Message::JOINER_AUTH] = "JOINER_AUTH";
     message_type_to_text[Message::GROUP_SHARE] = "GROUP_SHARE";
     message_type_to_text[Message::SESSION_CONFIRMATION] = "SESSION_CONFIRMATION";
-    message_type_to_text[Message::IN_SESSION_MESSAGE] = "IN_SESSION_MESSAGE";
-    message_type_to_text[Message::INADMISSIBLE] = "INADMISSIBLE";
 }
 
 // Standard constructor

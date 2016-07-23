@@ -16,9 +16,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "message.h"
 #include "userstate.h"
 #include "room.h"
+
+#include "message.h"
 
 namespace np1sec
 {
@@ -56,7 +57,7 @@ void Room::solitary_join()
             true));
     participants.insert(std::pair<std::string, Participant>(user_state->myself->nickname, self));
 
-    Session* session = new Session(Session::CREATOR, user_state, name, &np1sec_ephemeral_crypto, participants);
+    Session* session = new Session(Session::CREATOR, user_state, this, name, &np1sec_ephemeral_crypto, participants);
 
     session_universe[session->my_session_id().get_as_stringbuff()] = session;
 }
@@ -82,15 +83,11 @@ void Room::join()
     } else {
         logger.info("joining room " + name + "...", __FUNCTION__, user_state->myself->nickname);
 
-        // more humane way of doing this
-        // turening sexp to stirng buffer.
-        UnauthenticatedParticipant me(
-            *(user_state->myself), public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()),
-            true);
-        Message join_message;
-
-        join_message.create_join_request_msg(me);
-        join_message.send(name, user_state);
+        JoinRequestMessage join_request;
+        join_request.nickname = user_state->myself->nickname;
+        memcpy(join_request.long_term_public_key.buffer, user_state->myself->fingerprint, sizeof(join_request.long_term_public_key.buffer));
+        memcpy(join_request.ephemeral_public_key.buffer, public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()).data(), sizeof(join_request.ephemeral_public_key.buffer));
+        send(join_request.encode());
     }
 }
 
@@ -155,17 +152,15 @@ void Room::try_rejoin()
  */
 void Room::receive_handler(std::string message_string, std::string sender_nickname)
 {
-    Message received_message(message_string, nullptr);
-    received_message.sender_nick = sender_nickname;
+    Message message = Message::decode(message_string);
 
     // If the user is not in the session, we can do nothing with
     // session less messages, we are joining and we need info
     // about the room
     RoomAction action_to_take = c_no_room_action;
 
-    logger.info("room " + name + " handling message " + logger.message_type_to_text[received_message.message_type] +
-                    " from " + received_message.sender_nick,
-                __FUNCTION__, user_state->myself->nickname);
+    logger.info("room " + name + " handling message " + logger.message_type_to_text[message.type] + " from " + sender_nickname,
+        __FUNCTION__, user_state->myself->nickname);
 
     //   The principale:
 
@@ -185,45 +180,79 @@ void Room::receive_handler(std::string message_string, std::string sender_nickna
     // - KEY_GENERATED: updated limbos, send confirmation.
     // - Confirmed: move session.
 
-    if (user_in_room_state == JOINING) {
-        logger.debug("in JOINING state", __FUNCTION__, user_state->myself->nickname);
-        if (received_message.has_sid()) {
-            auto message_session = session_universe.find(received_message.session_id.get_as_stringbuff());
-            if (message_session != session_universe.end() &&
-                (message_session->second->get_state() != Session::DEAD)) {
-                action_to_take = message_session->second->state_handler(received_message);
+    Session *session;
+
+    if (message.type == Message::JOIN_REQUEST) {
+        session = nullptr;
+        JoinRequestMessage join_request_message = JoinRequestMessage::decode(message);
+
+        if (user_in_room_state == CURRENT_USER) {
+            Session *next_in_activation = session_universe[next_in_activation_line.get_as_stringbuff()];
+            ParticipantMap current_participants = next_in_activation->future_participants();
+            ParticipantMap next_participants = current_participants;
+
+            ParticipantId joiner_id(join_request_message.nickname, join_request_message.long_term_public_key.buffer);
+            UnauthenticatedParticipant joiner(joiner_id, join_request_message.ephemeral_public_key.buffer);
+
+            if (next_participants.find(joiner.participant_id.nickname) != next_participants.end()) {
+                logger.warn(joiner.participant_id.nickname + " can't join the room twice");
+            } else {
+                next_participants.insert(std::pair<std::string, Participant>(joiner.participant_id.nickname, Participant(joiner)));
+                action_to_take.action_type = RoomAction::NEW_SESSION;
+                action_to_take.bred_session = new Session(Session::ACCEPTOR, user_state, this, name,
+                    &next_in_activation->future_cryptic, next_participants, current_participants);
+            }
+        }
+        // else just ignore it, it is probably another user's join that we don't
+        // care.
+    } else {
+        SessionMessage session_message = SessionMessage::decode(message);
+
+        std::string session_id = session_message.session_id.as_string();
+        if (session_universe.find(session_id) == session_universe.end()) {
+            session = nullptr;
+        } else {
+            session = session_universe[session_id];
+        }
+
+        if (user_in_room_state == JOINING) {
+            logger.debug("in JOINING state", __FUNCTION__, user_state->myself->nickname);
+
+            if (session && (session->get_state() != Session::DEAD)) {
+                action_to_take = session->state_handler(sender_nickname, session_message);
             } else {
                 // we are only interested in PARTICIANT_INFO and SESSION_CONFIRMATION (they means death to unconfirmed
                 // sessions)
-                if (received_message.message_type == Message::PARTICIPANTS_INFO) {
+                if (message.type == Message::PARTICIPANTS_INFO) {
                     try {
+                        SignedSessionMessage signed_message = SignedSessionMessage::decode(session_message);
+                        ParticipantsInfoMessage participants_info = ParticipantsInfoMessage::decode(signed_message);
+
                         ParticipantMap participants;
-                        UnauthenticatedParticipantList unauthenticated_participants = received_message.get_session_view();
-                        for (auto it = unauthenticated_participants.begin(); it != unauthenticated_participants.end(); it++) {
-                            participants.insert(std::pair<std::string, Participant>(
-                                it->participant_id.nickname,
-                                Participant(*it)
-                            ));
+                        for (size_t i = 0; i < participants_info.participants.size(); i++) {
+                            ParticipantId id(participants_info.participants[i].nickname, participants_info.participants[i].long_term_public_key.buffer);
+                            UnauthenticatedParticipant unauthenticated_participant(id, participants_info.participants[i].ephemeral_public_key.buffer);
+                            participants.insert(std::pair<std::string, Participant>(participants_info.participants[i].nickname, Participant(unauthenticated_participant)));
                         }
 
                         Session* new_session =
-                            new Session(Session::JOINER, user_state, name, &np1sec_ephemeral_crypto, participants);
+                            new Session(Session::JOINER, user_state, this, name, &np1sec_ephemeral_crypto, participants);
                         if (new_session->get_state() != Session::DEAD) {
                             // we need to get rid of old session if it is dead
                             // till we get a reviving mechanisim
-                            if (message_session != session_universe.end() &&
-                                (message_session->second->get_state() == Session::DEAD)) {
-                                delete message_session->second;
-                                session_universe.erase(message_session->first);
+                            if (session && session->get_state() == Session::DEAD) {
+                                delete session;
+                                session = 0;
+                                session_universe.erase(session_id);
                             }
-                            session_universe.insert(std::pair<std::string, Session*>(
-                                received_message.session_id.get_as_stringbuff(), new_session));
-                            new_session->state_handler(received_message);
+                            session_universe[session_id] = new_session;
+
+                            new_session->state_handler(sender_nickname, session_message);
                         }
                     } catch (std::exception& e) {
                         logger.warn(e.what(), __FUNCTION__, user_state->myself->nickname);
                     }
-                } else if (received_message.message_type == Message::SESSION_CONFIRMATION) {
+                } else if (message.type == Message::SESSION_CONFIRMATION) {
                     // this is bad news we haven't been confirmed and we received a
                     // confirmation for another sid. so it means another session is being
                     // confirmed. If we haven't sent any confirmation, then we should die
@@ -241,39 +270,42 @@ void Room::receive_handler(std::string message_string, std::string sender_nickna
                 } // otherwise that message doesn't concern us (the entrance for setting up session id is
                 // PARTICIPANTS_INFO
             }
-        }
-        // else just ignore it, it is probably another user's join that we don't
-        // care.
-    } else if (user_in_room_state == CURRENT_USER) {
-        logger.debug("in CURRENT_USER state", __FUNCTION__, user_state->myself->nickname);
-        // if we are current user we must have active_session
-        logger.assert_or_die(active_session.get() &&
-                                 session_universe.find(active_session.get_as_stringbuff()) != session_universe.end(),
-                             "CURRENT_USER without active session! something doesn't make sense");
-        if (received_message.has_sid()) {
-            if (session_universe.find(hash_to_string_buff(received_message.session_id.get())) !=
-                session_universe.end()) {
+        } else if (user_in_room_state == CURRENT_USER) {
+            logger.debug("in CURRENT_USER state", __FUNCTION__, user_state->myself->nickname);
+            // if we are current user we must have active_session
+            logger.assert_or_die(active_session.get() &&
+                                    session_universe.find(active_session.get_as_stringbuff()) != session_universe.end(),
+                                "CURRENT_USER without active session! something doesn't make sense");
+
+            if (session) {
                 try {
-                    action_to_take = session_universe[received_message.session_id.get_as_stringbuff()]->state_handler(
-                        received_message);
+                    action_to_take = session->state_handler(sender_nickname, session_message);
                 } catch (std::exception& e) {
                     logger.error(e.what(), __FUNCTION__, user_state->myself->nickname);
                 }
-            } else if (received_message.message_type == Message::PARTICIPANTS_INFO && 
+            } else if (message.type == Message::PARTICIPANTS_INFO &&
                        session_universe[active_session.get_as_stringbuff()]->get_state() != Session::LEAVE_REQUESTED)
             {
+                SignedSessionMessage signed_message = SignedSessionMessage::decode(session_message);
+                ParticipantsInfoMessage participants_info = ParticipantsInfoMessage::decode(signed_message);
+
                 // We just joined, and then missed a new user's join request.
                 Session *next_in_activation = session_universe[next_in_activation_line.get_as_stringbuff()];
                 ParticipantMap current_participants = next_in_activation->future_participants();
 
                 // Check the message signature.
-                if (current_participants.find(received_message.sender_nick) == current_participants.end()) {
+                if (current_participants.find(sender_nickname) == current_participants.end()) {
                     logger.warn("sender not part of participant");
-                } else if (!received_message.verify_message(current_participants[received_message.sender_nick].ephemeral_key)) {
+                } else if (!signed_message.verify(current_participants[sender_nickname].ephemeral_key)) {
                     logger.warn("failed to verify signature of PARTICIPANT_INFO message.");
                 } else {
                     // Create a session for the participants in the message.
-                    ParticipantMap next_participants = Session::participants_list_to_map(received_message.get_session_view());
+                    ParticipantMap next_participants;
+                    for (size_t i = 0; i < participants_info.participants.size(); i++) {
+                        ParticipantId id(participants_info.participants[i].nickname, participants_info.participants[i].long_term_public_key.buffer);
+                        UnauthenticatedParticipant unauthenticated_participant(id, participants_info.participants[i].ephemeral_public_key.buffer);
+                        next_participants.insert(std::pair<std::string, Participant>(participants_info.participants[i].nickname, Participant(unauthenticated_participant)));
+                    }
 
                     if (next_participants.find(myself.nickname) == next_participants.end()) {
                         logger.warn("rejecting participant info message which myself am not part of");
@@ -290,56 +322,33 @@ void Room::receive_handler(std::string message_string, std::string sender_nickna
                         }
 
                         action_to_take.action_type = RoomAction::NEW_SESSION;
-                        action_to_take.bred_session = new Session(Session::ACCEPTOR, user_state, name,
+                        action_to_take.bred_session = new Session(Session::ACCEPTOR, user_state, this, name,
                             &next_in_activation->future_cryptic, next_participants, current_participants);
 
-                        action_to_take.bred_session->state_handler(received_message);
+                        action_to_take.bred_session->state_handler(sender_nickname, session_message);
                     }
                 }
             }
-        } else { // no sid, it should be a join message, verify and send to active session
-            if (received_message.message_type == Message::JOIN_REQUEST) {
-                Session *next_in_activation = session_universe[next_in_activation_line.get_as_stringbuff()];
-                ParticipantMap current_participants = next_in_activation->future_participants();
-                ParticipantMap next_participants = current_participants;
-                UnauthenticatedParticipant joiner(received_message.joiner_info);
-
-                if (next_participants.find(joiner.participant_id.nickname) != next_participants.end()) {
-                    logger.warn(joiner.participant_id.nickname + " can't join the room twice");
-                } else {
-                    next_participants.insert(std::pair<std::string, Participant>(joiner.participant_id.nickname, Participant(joiner)));
-                    action_to_take.action_type = RoomAction::NEW_SESSION;
-                    action_to_take.bred_session = new Session(Session::ACCEPTOR, user_state, name,
-                        &next_in_activation->future_cryptic, next_participants, current_participants);
-                }
-            } else {
-                logger.error("Invalid state-less message, of type " + std::to_string(received_message.message_type) +
-                                 " only session-less message allowed is JOIN_REQUEST of type " +
-                                 std::to_string(Message::JOIN_REQUEST),
-                             __FUNCTION__, user_state->myself->nickname);
-                throw InvalidDataException();
-            }
-        } // has sid or not
-
-        logger.debug("room state: " + std::to_string(user_in_room_state) + " requested action: " +
-                         std::to_string(action_to_take.action_type),
-                     __FUNCTION__, user_state->myself->nickname); // just for test to make sure we don't end up here
-
-        // if the action resulted in new session we need to add it to session universe
-        if (action_to_take.action_type == RoomAction::NEW_SESSION ||
-            action_to_take.action_type ==
-                RoomAction::NEW_PRIORITY_SESSION) { // TODO:: we need to delete a dead session probably
-            session_universe.insert(std::pair<std::string, Session*>(
-                action_to_take.bred_session->my_session_id().get_as_stringbuff(), action_to_take.bred_session));
         }
+    }
 
-        if (action_to_take.action_type == RoomAction::NEW_PRIORITY_SESSION ||
-            action_to_take.action_type == RoomAction::PRESUME_HEIR) {
-            stale_in_limbo_sessions_presume_heir(action_to_take.bred_session->session_id);
-        } // else { //user state in the room
-        // else just ignore it
+    logger.debug("room state: " + std::to_string(user_in_room_state) + " requested action: " +
+                        std::to_string(action_to_take.action_type),
+                    __FUNCTION__, user_state->myself->nickname); // just for test to make sure we don't end up here
 
-    } // State in the room
+    // if the action resulted in new session we need to add it to session universe
+    if (action_to_take.action_type == RoomAction::NEW_SESSION ||
+        action_to_take.action_type == RoomAction::NEW_PRIORITY_SESSION)
+    {
+        // TODO:: we need to delete a dead session probably
+        session_universe[action_to_take.bred_session->my_session_id().get_as_stringbuff()] = action_to_take.bred_session;
+    }
+
+    if (action_to_take.action_type == RoomAction::NEW_PRIORITY_SESSION ||
+        action_to_take.action_type == RoomAction::PRESUME_HEIR)
+    {
+        stale_in_limbo_sessions_presume_heir(action_to_take.bred_session->session_id);
+    }
 
     // Now we check if the resulting action resulted in new confirmed session
     // we have to activate that session:
@@ -347,14 +356,11 @@ void Room::receive_handler(std::string message_string, std::string sender_nickna
     // 2. The session should have different session_id than
     //   the currently active one
 
-    if (received_message.has_sid()) {
-        auto message_session = session_universe.find(received_message.session_id.get_as_stringbuff());
-        if (message_session != session_universe.end()) {
-            if (active_session.get_as_stringbuff() != received_message.session_id.get_as_stringbuff()) {
-                if (message_session->second->get_state() == Session::IN_SESSION) {
-                    user_state->ops->join(name, message_session->second->peers, user_state->ops->bare_sender_data);
-                    activate_session(received_message.session_id.get());
-                }
+    if (session) {
+        if (!(session->session_id == active_session)) {
+            if (session->get_state() == Session::IN_SESSION) {
+                user_state->ops->join(name, session->peers, user_state->ops->bare_sender_data);
+                activate_session(session->session_id);
             }
         }
     }
@@ -481,7 +487,7 @@ void Room::refresh_stale_in_limbo_sessions(SessionId new_parent_session_id)
                 // This is an awfully fishy use of `new`!!!
                 refreshed_sessions.insert(std::pair<std::string, Session*>(
                     to_be_born_session_id.get_as_stringbuff(),
-                    new Session(Session::ACCEPTOR, user_state, name,
+                    new Session(Session::ACCEPTOR, user_state, this, name,
                                       &new_parent_session->second->future_cryptic, new_participant_list,
                                       new_parent_session->second->future_participants())));
             } catch (std::exception& e) {
@@ -517,7 +523,7 @@ void Room::refresh_stale_in_limbo_sessions(SessionId new_parent_session_id)
 void Room::send_user_message(std::string plain_message)
 {
     if (active_session.get()) {
-        session_universe[active_session.get_as_stringbuff()]->send(plain_message, Message::USER_MESSAGE);
+        session_universe[active_session.get_as_stringbuff()]->send(plain_message, InSessionMessage::USER_MESSAGE);
     } else {
         logger.error("trying to send message to a room " + name + " with no active session", __FUNCTION__,
                      user_state->myself->nickname);
@@ -681,6 +687,11 @@ void Room::insert_session(Session* new_session)
 
     session_universe.emplace(
         std::pair<std::string, Session*>(new_session->my_session_id().get_as_stringbuff(), new_session));
+}
+
+void Room::send(const Message& message)
+{
+    user_state->ops->send_bare(name, message.encode(), user_state->ops->bare_sender_data);
 }
 
 Room::~Room()

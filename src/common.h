@@ -66,16 +66,27 @@ typedef std::string HashStdBlock; // This eventually gonna replace HashBlock,
 
 template<int n> struct ByteArray
 {
-    uint8_t data[n];
+    uint8_t buffer[n];
 
     ByteArray() {}
-    ByteArray(const uint8_t* data_) { memcpy(data, data_, n); }
+    ByteArray(const uint8_t* data) { memcpy(buffer, data, n); }
 
-    std::string as_string() const { return std::string(reinterpret_cast<const char*>(data), n); }
+    std::string as_string() const { return std::string(reinterpret_cast<const char*>(buffer), n); }
+
+    bool operator==(const ByteArray<n>& other)
+    {
+        return memcmp(buffer, other.buffer, n) == 0;
+    }
+
+    bool operator!=(const ByteArray<n>& other)
+    {
+        return !(*this == other);
+    }
 };
 
 typedef ByteArray<c_hash_length> Hash;
-typedef ByteArray<32> PublicKeyFingerprint;
+typedef ByteArray<32> RawPublicKey;
+typedef ByteArray<c_signature_length> Signature;
 
 // np1sec Message data type
 typedef uint8_t DTByte;
@@ -84,8 +95,6 @@ typedef uint32_t DTLength;
 typedef HashBlock DTHash;
 typedef HashBlock Token;
 typedef HashBlock edCurvePublicKey;
-
-enum LoadFlag { NO_LOAD, NEW_EPHEMERAL_KEY, LEAVE, NEW_SECRET_SHARE };
 
 const std::string c_np1sec_protocol_name(":o3np1sec:");
 const DTShort c_np1sec_protocol_version = 0x0001;
