@@ -26,21 +26,6 @@ namespace np1sec
 class UserState;
 class Session;
 
-class MessageDigest
-{
-  public:
-    HashBlock digest;
-    uint32_t message_id;
-
-    void update(std::string new_message);
-
-    /**
-     * Compute a unique globally ordered id from the time stamped message,
-     * ultimately this function should be overridable by the client.
-     */
-    uint32_t compute_message_id(std::string cur_message);
-};
-
 /**
  * Structure for ops data for waiting timer for receiving ack
  * from other participants
@@ -60,45 +45,13 @@ struct AckTimerOps {
 };
 
 struct ParticipantConsistencyBlock {
-    HashStdBlock transcript_hash;
+    bool have_transcript_hash;
+    HashBlock transcript_hash;
     void* consistency_timer;
     AckTimerOps ack_timer_ops;
 };
 
 typedef std::vector<ParticipantConsistencyBlock> ConsistencyBlockVector;
-
-/* /\** */
-/*  * Callback function to manage sending of heartbeats */
-/*  * */
-/*  *\/ */
-/* static void cb_send_heartbeat(void *arg); */
-
-/* /\** */
-/*  * Callback function to cause automatic sending of ack for  */
-/*  * received message */
-/*  * */
-/*  *\/ */
-/* static void cb_send_ack(void *arg); */
-
-/* /\** */
-/*  * Callback function to cause automatic warning if ack not */
-/*  * received for previously sent message */
-/*  * */
-/*  *\/ */
-/* static void cb_ack_not_received(void *arg); */
-
-/* /\** */
-/*  * The timer set upon of sending a message. */
-/*  * when this timer is timed out means that  */
-/*  * we haven't received our own message */
-/*  *\/ */
-/* static void cb_ack_not_sent(void* arg); */
-
-/* /\** */
-/*  * when times out, the leaving user check  */
-/*  * all user's consistency before leaving */
-/*  *\/ */
-/* static void cb_leave(void *arg); */
 
 } // namespace np1sec
 

@@ -52,9 +52,8 @@ void Room::solitary_join()
                          user_state->myself->nickname);
 
     ParticipantMap participants;
-    Participant self(UnauthenticatedParticipant(
-            *(user_state->myself), public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()),
-            true));
+    Participant self(user_state->myself->nickname, user_state->myself->fingerprint,
+        (uint8_t*)public_key_to_stringbuff(np1sec_ephemeral_crypto.get_ephemeral_pub_key()).data());
     participants.insert(std::pair<std::string, Participant>(user_state->myself->nickname, self));
 
     Session* session = new Session(Session::CREATOR, user_state, this, name, &np1sec_ephemeral_crypto, participants);
@@ -191,13 +190,11 @@ void Room::receive_handler(std::string message_string, std::string sender_nickna
             ParticipantMap current_participants = next_in_activation->future_participants();
             ParticipantMap next_participants = current_participants;
 
-            ParticipantId joiner_id(join_request_message.nickname, join_request_message.long_term_public_key.buffer);
-            UnauthenticatedParticipant joiner(joiner_id, join_request_message.ephemeral_public_key.buffer);
-
-            if (next_participants.find(joiner.participant_id.nickname) != next_participants.end()) {
-                logger.warn(joiner.participant_id.nickname + " can't join the room twice");
+            if (next_participants.find(join_request_message.nickname) != next_participants.end()) {
+                logger.warn(join_request_message.nickname + " can't join the room twice");
             } else {
-                next_participants.insert(std::pair<std::string, Participant>(joiner.participant_id.nickname, Participant(joiner)));
+                next_participants.insert(std::pair<std::string, Participant>(join_request_message.nickname, 
+                    Participant(join_request_message.nickname, join_request_message.long_term_public_key.buffer, join_request_message.ephemeral_public_key.buffer)));
                 action_to_take.action_type = RoomAction::NEW_SESSION;
                 action_to_take.bred_session = new Session(Session::ACCEPTOR, user_state, this, name,
                     &next_in_activation->future_cryptic, next_participants, current_participants);
@@ -230,9 +227,11 @@ void Room::receive_handler(std::string message_string, std::string sender_nickna
 
                         ParticipantMap participants;
                         for (size_t i = 0; i < participants_info.participants.size(); i++) {
-                            ParticipantId id(participants_info.participants[i].nickname, participants_info.participants[i].long_term_public_key.buffer);
-                            UnauthenticatedParticipant unauthenticated_participant(id, participants_info.participants[i].ephemeral_public_key.buffer);
-                            participants.insert(std::pair<std::string, Participant>(participants_info.participants[i].nickname, Participant(unauthenticated_participant)));
+                            participants.insert(std::pair<std::string, Participant>(participants_info.participants[i].nickname,
+                                Participant(participants_info.participants[i].nickname,
+                                    participants_info.participants[i].long_term_public_key.buffer,
+                                    participants_info.participants[i].ephemeral_public_key.buffer
+                                )));
                         }
 
                         Session* new_session =
@@ -302,9 +301,11 @@ void Room::receive_handler(std::string message_string, std::string sender_nickna
                     // Create a session for the participants in the message.
                     ParticipantMap next_participants;
                     for (size_t i = 0; i < participants_info.participants.size(); i++) {
-                        ParticipantId id(participants_info.participants[i].nickname, participants_info.participants[i].long_term_public_key.buffer);
-                        UnauthenticatedParticipant unauthenticated_participant(id, participants_info.participants[i].ephemeral_public_key.buffer);
-                        next_participants.insert(std::pair<std::string, Participant>(participants_info.participants[i].nickname, Participant(unauthenticated_participant)));
+                        next_participants.insert(std::pair<std::string, Participant>(participants_info.participants[i].nickname, Participant(
+                            participants_info.participants[i].nickname,
+                            participants_info.participants[i].long_term_public_key.buffer,
+                            participants_info.participants[i].ephemeral_public_key.buffer
+                        )));
                     }
 
                     if (next_participants.find(myself.nickname) == next_participants.end()) {

@@ -67,14 +67,12 @@ class RoomAction
 
     ActionType action_type;
     // The user which joined, left or sent a message.
-    // UnauthenticatedParticipant acting_user; //it is enough to be just a nick
-    std::string acting_user_nick;
     Session* bred_session = nullptr;
     /**
      * construtor. given no arugement it results in NO_ACTION
      */
-    RoomAction(ActionType action = NO_ACTION, std::string acting_user_nick = "")
-        : action_type(action), acting_user_nick(acting_user_nick)
+    RoomAction(ActionType action = NO_ACTION)
+        : action_type(action)
     {
     }
 };
@@ -123,7 +121,7 @@ class Session
      * Inserts a block in the send transcript chain and start a
      * timer to receive the ack for it
      */
-    void update_send_transcript_chain(MessageId own_message_id, HashStdBlock message_hash);
+    void update_send_transcript_chain(MessageId own_message_id, std::string message_hash);
 
     // participants data:
     /**

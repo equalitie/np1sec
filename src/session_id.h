@@ -39,12 +39,6 @@ class SessionId
 
     SessionId(ParticipantMap& plist) { compute(plist); }
 
-    // copy constructor: do we need one?
-    /* SessionId(SessionId& lhs) { */
-    /*   std::memcpy(session_id_raw, lhs.session_id_raw, sizeof(HashBlock)); */
-    /*   is_set = lhs.is_set; */
-    /* } */
-
     void set(const HashBlock sid)
     {
         // only one time is possible
@@ -58,20 +52,19 @@ class SessionId
      * given a plist it compute the session id of a session
      * which has that plist as participants
      */
-    void compute(ParticipantMap& plist)
+    void compute(const ParticipantMap& plist)
     {
         assert(plist.size());
 
         std::string session_id_blob;
         for (auto it = plist.begin(); it != plist.end(); ++it) {
-            Participant& p = it->second;
-            UnauthenticatedParticipant uap(p.id, hash_to_string_buff(p.raw_ephemeral_key), p.authenticated);
-            session_id_blob += uap.unauthed_participant_to_stringbuffer();
-            session_id_blob.erase(session_id_blob.size() - 1); // dropping authentication info
+            const Participant& p = it->second;
+            session_id_blob += p.id.nickname;
+            session_id_blob += std::string((char *)p.id.fingerprint, sizeof(p.id.fingerprint));
+            session_id_blob += std::string((char *)p.raw_ephemeral_key, sizeof(p.raw_ephemeral_key));
         }
 
-        HashStdBlock sid = hash(session_id_blob);
-        memcpy(session_id_raw, sid.data(), sizeof(HashBlock));
+        hash(session_id_blob, session_id_raw);
         is_set = true;
     }
 

@@ -61,11 +61,6 @@ gcry_error_t hash(const std::string string_buffer, HashBlock hb)
     return hash(string_buffer, hb, true);
 }
 
-HashStdBlock hash(const std::string string_buffer)
-{
-    return hash(string_buffer, true);
-}
-
 gcry_error_t hash(const void* buffer, size_t buffer_len, HashBlock hb, bool secure)
 {
     gcry_error_t err = 0;
@@ -165,16 +160,6 @@ std::string hash_to_string_buff(const HashBlock hash_block)
 }
 
 /**
- * cast the string hash to unit8_t* dies if the size isn't correct
- * the buffer is only valid as long as the HashStdBlock is valid
- */
-const uint8_t* strbuff_to_hash(std::string& hash_block_buffer)
-{
-    logger.assert_or_die(hash_block_buffer.size() == sizeof(HashBlock), "Hash block doesn't have std size");
-    return reinterpret_cast<const uint8_t*>(hash_block_buffer.c_str());
-}
-
-/**
  * the given public key need to be explicitly released
  */
 PublicKey extract_public_key(const AsymmetricKey complete_key)
@@ -199,16 +184,6 @@ int compare_hash(const HashBlock rhs, const HashBlock lhs)
     return equal;
 }
 
-
-HashStdBlock hash(const std::string string_buffer, bool secure = true)
-{
-    HashBlock hb;
-    gcry_error_t err = hash(string_buffer.c_str(), string_buffer.size(), hb, secure);
-    if (err) {
-        throw CryptoException();
-    }
-    return hash_to_string_buff(hb);
-}
 
 gcry_error_t hash(const std::string string_buffer, HashBlock hb, bool secure = true)
 {

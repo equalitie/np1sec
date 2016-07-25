@@ -659,6 +659,7 @@ void Session::start_ack_timers(const std::string& sender)
             (sender != myself.nickname)) // not for the sender and not
         // for myself
         {
+            received_transcript_chain[last_received_message_id][(*it).second.index].have_transcript_hash = false;
             received_transcript_chain[last_received_message_id][(*it).second.index].ack_timer_ops.session = this;
             received_transcript_chain[last_received_message_id][(*it).second.index].ack_timer_ops.participant =
                 &(it->second);
@@ -725,9 +726,7 @@ void Session::stop_acking_timer()
  */
 void Session::update_send_transcript_chain(MessageId own_message_id, std::string message)
 {
-    HashBlock hb;
-    hash(message, hb, true);
-    sent_transcript_chain[own_message_id].transcript_hash = hash_to_string_buff(hb);
+    hash(message, sent_transcript_chain[own_message_id].transcript_hash);
     sent_transcript_chain[own_message_id].ack_timer_ops = AckTimerOps(this, nullptr, own_message_id);
 
     sent_transcript_chain[own_message_id].consistency_timer =
@@ -745,10 +744,12 @@ bool Session::check_leave_transcript_consistency()
         for (uint32_t i = 0; i < peers.size(); i++) {
 
             // we need to check if we have already got the farewell from this peer
-            if (!received_transcript_chain[leave_parent][i].transcript_hash.empty()) {
+            if (received_transcript_chain[leave_parent][i].have_transcript_hash) {
                 no_of_peers_farewelled++;
-                if (received_transcript_chain[leave_parent][i].transcript_hash !=
-                    received_transcript_chain[leave_parent][my_index].transcript_hash) {
+                if (memcmp(received_transcript_chain[leave_parent][i].transcript_hash,
+                    received_transcript_chain[leave_parent][my_index].transcript_hash,
+                    sizeof(received_transcript_chain[leave_parent][i].transcript_hash)) != 0)
+                {
                     std::string consistency_failure_message = peers[i] + " transcript doesn't match ours";
                     us->ops->display_message(room_name, "np1sec directive", consistency_failure_message, us->ops->bare_sender_data);
                     logger.error(consistency_failure_message, __FUNCTION__, myself.nickname);
@@ -762,27 +763,25 @@ bool Session::check_leave_transcript_consistency()
 
 void Session::add_message_to_transcript(std::string message, MessageId message_id)
 {
-    HashBlock hb;
     std::stringstream ss;
     std::string pointlessconversion;
 
     if (received_transcript_chain.size() > 0) {
-        ss << received_transcript_chain.rbegin()->second[my_index].transcript_hash;
-        ss >> pointlessconversion;
+        pointlessconversion = std::string((const char *)received_transcript_chain.rbegin()->second[my_index].transcript_hash,
+                                   sizeof(received_transcript_chain.rbegin()->second[my_index].transcript_hash));
         pointlessconversion += c_np1sec_delim + message;
 
     } else {
         pointlessconversion = message;
     }
 
-    hash(pointlessconversion, hb);
-
     if (received_transcript_chain.find(message_id) == received_transcript_chain.end()) {
         ConsistencyBlockVector chain_block(participants.size());
         received_transcript_chain.insert(std::pair<MessageId, ConsistencyBlockVector>(message_id, chain_block));
     }
 
-    (received_transcript_chain[message_id])[my_index].transcript_hash = hash_to_string_buff(hb);
+    received_transcript_chain[message_id][my_index].have_transcript_hash = true;
+    hash(pointlessconversion, received_transcript_chain[message_id][my_index].transcript_hash);
     received_transcript_chain[message_id][my_index].consistency_timer = nullptr;
 }
 
@@ -801,7 +800,7 @@ void Session::send(std::string payload, InSessionMessage::Type message_type)
     message.sender_message_id = own_message_counter;
     message.parent_server_message_id = last_received_message_id;
     memcpy(message.transcript_chain_hash.buffer,
-        received_transcript_chain.rbegin()->second[my_index].transcript_hash.data(),
+        received_transcript_chain.rbegin()->second[my_index].transcript_hash,
         sizeof(message.transcript_chain_hash.buffer));
     gcry_randomize(message.nonce.buffer, sizeof(message.nonce.buffer), GCRY_STRONG_RANDOM);
     message.subtype = message_type;

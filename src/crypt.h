@@ -77,14 +77,9 @@ gcry_error_t hash(const void* buffer, size_t buffer_len, HashBlock hb, bool secu
 gcry_error_t hash(const std::string string_buffer, HashBlock hb);
 gcry_error_t hash(const std::string string_buffer, HashBlock hb, bool secure);
 
-HashStdBlock hash(const std::string string_buffer);
-HashStdBlock hash(const std::string string_buffer, bool secure);
-
 int compare_hash(const HashBlock rhs, const HashBlock lhs);
 
 std::string hash_to_string_buff(const HashBlock hash_block);
-
-const uint8_t* strbuff_to_hash(std::string& hash_block_buffer);
 
 PublicKey extract_public_key(const AsymmetricKey complete_key);
 

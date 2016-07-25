@@ -60,9 +60,6 @@ const size_t c_signature_length = 64;
 const size_t c_tdh_point_length = 65;
 
 typedef uint8_t HashBlock[c_hash_length];
-typedef std::string HashStdBlock; // This eventually gonna replace HashBlock,
-// mainly because StdHashBlock can be easily checked to see if it is initiated
-// or not (length)
 
 template<int n> struct ByteArray
 {

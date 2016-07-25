@@ -81,114 +81,12 @@ struct ParticipantId {
     ParticipantId() {}
 
     /**
-     *  constructor using one string buff which has both nick
-     *  and fingerprint
-     *
-     */
-    ParticipantId(const std::string& nick_fingerprint_strbuff)
-    {
-        // TODO:: We need to throw up if the participant format isn't correct
-        nickname = nick_fingerprint_strbuff.substr(0, nick_fingerprint_strbuff.size() - c_fingerprint_length);
-        if ((nick_fingerprint_strbuff.size() - nickname.size()) != ParticipantId::c_fingerprint_length) {
-            logger.error("can not convert string participant id", __FUNCTION__);
-            throw MessageFormatException();
-        }
-
-        std::string fingerprint_strbuff =
-            nick_fingerprint_strbuff.substr(nickname.length(), ParticipantId::c_fingerprint_length);
-        memcpy(fingerprint, fingerprint_strbuff.c_str(), fingerprint_strbuff.size());
-    }
-
-    /**
      * Access function when the finger print is added later
      */
     void set_fingerprint(std::string fingerprint_strbuff)
     {
         memcpy(fingerprint, fingerprint_strbuff.c_str(), fingerprint_strbuff.size());
     }
-};
-
-/**
- * This sturct is used by the client to send the list of participant in
- * the room. consequently np1sec will try to authenticate the participant
- * and establish a group session
- *
- */
-struct UnauthenticatedParticipant {
-    ParticipantId participant_id;
-    uint8_t ephemeral_pub_key[c_ephemeral_key_length]; // This should be in some convienient
-    // Format
-    bool authenticated;
-
-    /**
-    * constructor
-    */
-    UnauthenticatedParticipant(ParticipantId participant_id, std::string ephemeral_pub_key, bool authenticated = false)
-        : participant_id(participant_id), authenticated(authenticated)
-
-    {
-        memcpy(this->ephemeral_pub_key, ephemeral_pub_key.c_str(), c_ephemeral_key_length);
-    }
-
-    UnauthenticatedParticipant(ParticipantId participant_id, uint8_t* ephemeral_pub_key, bool authenticated = false)
-        : participant_id(participant_id), authenticated(authenticated)
-
-    {
-        memcpy(this->ephemeral_pub_key, ephemeral_pub_key, c_ephemeral_key_length);
-    }
-
-    /**
-     * default constructor when we don't want to setup a participant
-     */
-    UnauthenticatedParticipant() {}
-
-    /**
-     * Default copy constructor
-     */
-    UnauthenticatedParticipant(const UnauthenticatedParticipant& rhs)
-        : participant_id(rhs.participant_id), authenticated(rhs.authenticated)
-    {
-        memcpy(this->ephemeral_pub_key, rhs.ephemeral_pub_key, c_ephemeral_key_length);
-    }
-
-    /**
-     * turns a string of type:
-     *
-     *  nickfingerprintephemeralkey
-     *
-     * to an authenticated particpiant
-     */
-    UnauthenticatedParticipant(const std::string& participant_id_and_ephmeralkey)
-        : participant_id((participant_id_and_ephmeralkey.size() > c_ephemeral_key_length + sizeof(DTByte)
-                              ? participant_id_and_ephmeralkey.substr(0, participant_id_and_ephmeralkey.size() -
-                                                                             c_ephemeral_key_length - 1)
-                              : ""))
-    {
-        if (participant_id_and_ephmeralkey.size() < c_ephemeral_key_length + sizeof(DTByte)) {
-            logger.error("can not convert string to unauthenticated participant", __FUNCTION__);
-            throw MessageFormatException();
-        }
-        std::string ephemeral_pub_key = participant_id_and_ephmeralkey.substr(participant_id_and_ephmeralkey.size() -
-                                                                              c_ephemeral_key_length - sizeof(DTByte));
-
-        memcpy(this->ephemeral_pub_key, ephemeral_pub_key.c_str(), c_ephemeral_key_length);
-        authenticated = (participant_id_and_ephmeralkey.back() == 1);
-    };
-
-    std::string unauthed_participant_to_stringbuffer()
-    {
-        std::string string_id(participant_id.id_to_stringbuffer());
-        string_id += std::string(reinterpret_cast<char*>(ephemeral_pub_key), c_ephemeral_key_length);
-        string_id += static_cast<char>(authenticated ? 1 : 0);
-        return string_id;
-    }
-};
-
-typedef std::list<UnauthenticatedParticipant> UnauthenticatedParticipantList;
-
-class ParticipantInSessionProperties
-{
-    // TOOD move all session related values here
 };
 
 /**
@@ -205,7 +103,6 @@ class Participant
     void* send_ack_timer = nullptr;
     edCurvePublicKey raw_ephemeral_key = {};
     edCurvePublicKey future_raw_ephemeral_key = {};
-    // MessageDigest message_digest;
 
     np1secKeyShare cur_keyshare;
     np1secSymmetricKey p2p_key = {};
@@ -301,18 +198,17 @@ class Participant
      * TODO: This only exists because stl asks for it
      * don't use it
      */
-    Participant() : id(""), long_term_pub_key(nullptr), key_share_contributed(false)
+    Participant() : long_term_pub_key(nullptr), key_share_contributed(false)
     {
         logger.abort("not suppose to actually use the default constructor of Participant class");
     }
 
-    Participant(const UnauthenticatedParticipant& unauth_participant)
-        : id(unauth_participant.participant_id),
-          long_term_pub_key(reconstruct_public_key_sexp(
-              hash_to_string_buff(unauth_participant.participant_id.fingerprint))),
+    Participant(const std::string& nickname, uint8_t* long_term_pub_key, uint8_t* ephemeral_pub_key):
+        id(nickname, long_term_pub_key),
+        long_term_pub_key(reconstruct_public_key_sexp(hash_to_string_buff(long_term_pub_key))),
           authenticated(false), authed_to(false), key_share_contributed(false)
     {
-        set_ephemeral_key(unauth_participant.ephemeral_pub_key);
+        set_ephemeral_key(ephemeral_pub_key);
     }
 
     // destructor
