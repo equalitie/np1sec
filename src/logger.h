@@ -69,6 +69,9 @@ class Logger
                        std::string user_nick = "");
 };
 
+// Global logger
+extern Logger logger;
+
 } // namespace np1sec
 
 #endif // SRC_LOGGER_H_

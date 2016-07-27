@@ -55,11 +55,6 @@ VERSION HISTORY:
 
 \******************************************************************* */
 
-/* system headers */
-#include <stdio.h>
-#include <string.h>
-#include <iostream>
-/* libotr headers */
 #include "base64.h"
 
 namespace np1sec
@@ -100,7 +95,7 @@ static void encodeblock(char* out, const unsigned char* in, size_t len)
  * The buffer base64data must contain at least ((datalen+2)/3)*4 bytes of
  * space.  This function will return the number of bytes actually used.
  */
-size_t otrl_base64_encode(char* base64data, const unsigned char* data, size_t datalen)
+size_t base64_encode(char* base64data, const unsigned char* data, size_t datalen)
 {
     size_t base64len = 0;
 
@@ -152,7 +147,7 @@ static size_t decode(unsigned char* out, const char* in, size_t b64len)
  * of space.  This function will return the number of bytes actually
  * used.
  */
-size_t otrl_base64_decode(unsigned char* data, const char* base64data, size_t base64len)
+size_t base64_decode(unsigned char* data, const char* base64data, size_t base64len)
 {
     size_t datalen = 0;
     char b64[4];
@@ -187,54 +182,6 @@ size_t otrl_base64_decode(unsigned char* data, const char* base64data, size_t ba
     /* Just discard any short block at the end. */
 
     return datalen;
-}
-
-/*
- * Base64-encode a block of data, stick "?OTR:" and "." around it, and
- * return the result, or NULL in the event of a memory error.  The
- * caller must delete the return value.
- */
-char* otrl_base64_otr_encode(const unsigned char* buf, size_t buflen)
-{
-    char* base64buf;
-    size_t base64len;
-
-    /* Make the base64-encoding. */
-    base64len = ((buflen + 2) / 3) * 4;
-    base64buf = new char[base64len + 1];
-    if (base64buf == nullptr) {
-        return nullptr;
-    }
-    otrl_base64_encode(base64buf, buf, buflen);
-    base64buf[base64len] = '\0';
-
-    return base64buf;
-}
-
-/*
- * Base64-decode the portion of the given message between "?OTR:" and
- * ".".  Set *bufp to the decoded data, and set *lenp to its length.
- * The caller must delete the result.  Return 0 on success, -1 on a
- * memory error, or -2 on invalid input.
- */
-int otrl_base64_otr_decode(const char* msg, unsigned char** bufp, size_t* lenp)
-{
-    size_t msglen, rawlen;
-    unsigned char* rawmsg;
-
-    msglen = strlen(msg);
-
-    rawlen = OTRL_B64_MAX_DECODED_SIZE(msglen); /* maximum possible */
-    rawmsg = new unsigned char[rawlen];
-    if ((rawmsg == nullptr || !rawmsg) && rawlen > 0) {
-        return -1;
-    }
-
-    rawlen = otrl_base64_decode(rawmsg, msg, msglen); /* actual size */
-    *bufp = rawmsg;
-    *lenp = rawlen;
-
-    return 0;
 }
 
 } // namespace np1sec

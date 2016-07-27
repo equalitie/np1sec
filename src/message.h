@@ -21,13 +21,12 @@
 #include <string>
 #include <vector>
 
-#include "common.h"
+#include "bytearray.h"
+#include "crypto.h"
 #include "exceptions.h"
 
 namespace np1sec
 {
-
-class Cryptic;
 
 class MessageBuffer : public std::string
 {
@@ -41,23 +40,23 @@ class MessageBuffer : public std::string
     void add_16(uint16_t number);
     void add_32(uint32_t number);
 
-    template<int n> void addByteArray(const ByteArray<n>& data)
+    template<int n> void add_byte_array(const ByteArray<n>& data)
     {
         append(reinterpret_cast<const char *>(data.buffer), n);
     }
 
-    void add_hash(Hash hash) { addByteArray(hash); }
-    void add_raw_public_key(RawPublicKey key) { addByteArray(key); }
-    void add_signature(Signature signature) { addByteArray(signature); }
+    void add_hash(const Hash& hash) { add_byte_array(hash); }
+    void add_public_key(const PublicKey& key) { add_byte_array(key); }
+    void add_signature(const Signature& signature) { add_byte_array(signature); }
     void add_bytes(const std::string& buffer);
     void add_opaque(const std::string& buffer);
 
-    void check_empty() throw(MessageFormatException);
-    uint8_t remove_8() throw(MessageFormatException);
-    uint16_t remove_16() throw(MessageFormatException);
-    uint32_t remove_32() throw(MessageFormatException);
+    void check_empty();
+    uint8_t remove_8();
+    uint16_t remove_16();
+    uint32_t remove_32();
 
-    template<int n> ByteArray<n> removeByteArray()
+    template<int n> ByteArray<n> remove_byte_array()
     {
         if (size() < n) {
             throw MessageFormatException();
@@ -73,11 +72,11 @@ class MessageBuffer : public std::string
         return result;
     }
 
-    Hash remove_hash() { return removeByteArray<c_hash_length>(); }
-    RawPublicKey remove_raw_public_key() { return removeByteArray<32>(); }
-    Signature remove_signature() { return removeByteArray<c_signature_length>(); }
-    std::string remove_bytes(size_t size) throw(MessageFormatException);
-    std::string remove_opaque() throw(MessageFormatException);
+    Hash remove_hash() { return remove_byte_array<c_hash_length>(); }
+    PublicKey remove_public_key() { return remove_byte_array<c_public_key_length>(); }
+    Signature remove_signature() { return remove_byte_array<c_signature_length>(); }
+    std::string remove_bytes(size_t size);
+    std::string remove_opaque();
 };
 
 
@@ -97,7 +96,7 @@ struct Message
     std::string payload;
 
     std::string encode() const;
-    static Message decode(const std::string& encoded) throw(MessageFormatException);
+    static Message decode(const std::string& encoded);
 };
 
 struct SessionMessage
@@ -107,7 +106,7 @@ struct SessionMessage
     std::string payload;
 
     Message encode() const;
-    static SessionMessage decode(const Message& encoded) throw(MessageFormatException);
+    static SessionMessage decode(const Message& encoded);
 };
 
 
@@ -129,14 +128,14 @@ struct SignedSessionMessage : public UnsignedSessionMessage
 {
     Signature signature;
 
-    bool verify(PublicKey key) const;
-    static SignedSessionMessage sign(const UnsignedSessionMessage& message, Cryptic* key);
+    bool verify(const PublicKey& key) const;
+    static SignedSessionMessage sign(const UnsignedSessionMessage& message, const PrivateKey& key);
 
     SessionMessage encode() const;
-    static SignedSessionMessage decode(const SessionMessage& message) throw(MessageFormatException);
+    static SignedSessionMessage decode(const SessionMessage& message);
 
-    SessionMessage encrypt(Cryptic* key) const;
-    static SignedSessionMessage decrypt(const SessionMessage& message, Cryptic* key) throw(MessageFormatException);
+    SessionMessage encrypt(const SymmetricKey& key) const;
+    static SignedSessionMessage decrypt(const SessionMessage& message, const SymmetricKey& key);
 };
 
 
@@ -144,11 +143,11 @@ struct SignedSessionMessage : public UnsignedSessionMessage
 struct JoinRequestMessage
 {
     std::string nickname;
-    RawPublicKey long_term_public_key;
-    RawPublicKey ephemeral_public_key;
+    PublicKey long_term_public_key;
+    PublicKey ephemeral_public_key;
 
     Message encode() const;
-    static JoinRequestMessage decode(const Message& message) throw(MessageFormatException);
+    static JoinRequestMessage decode(const Message& message);
 };
 
 struct ParticipantsInfoMessage
@@ -156,8 +155,8 @@ struct ParticipantsInfoMessage
     struct ParticipantInfo
     {
         std::string nickname;
-        RawPublicKey long_term_public_key;
-        RawPublicKey ephemeral_public_key;
+        PublicKey long_term_public_key;
+        PublicKey ephemeral_public_key;
         bool authenticated;
     };
 
@@ -166,7 +165,7 @@ struct ParticipantsInfoMessage
     Hash sender_share;
 
     UnsignedCurrentSessionMessage encode() const;
-    static ParticipantsInfoMessage decode(const UnsignedCurrentSessionMessage& message) throw(MessageFormatException);
+    static ParticipantsInfoMessage decode(const UnsignedCurrentSessionMessage& message);
 };
 
 struct JoinerAuthMessage
@@ -175,7 +174,7 @@ struct JoinerAuthMessage
     Hash sender_share;
 
     UnsignedCurrentSessionMessage encode() const;
-    static JoinerAuthMessage decode(const UnsignedCurrentSessionMessage& message) throw(MessageFormatException);
+    static JoinerAuthMessage decode(const UnsignedCurrentSessionMessage& message);
 };
 
 struct GroupShareMessage
@@ -183,16 +182,16 @@ struct GroupShareMessage
     Hash sender_share;
 
     UnsignedCurrentSessionMessage encode() const;
-    static GroupShareMessage decode(const UnsignedCurrentSessionMessage& message) throw(MessageFormatException);
+    static GroupShareMessage decode(const UnsignedCurrentSessionMessage& message);
 };
 
 struct SessionConfirmationMessage
 {
     Hash session_confirmation;
-    RawPublicKey next_ephemeral_public_key;
+    PublicKey next_ephemeral_public_key;
 
     UnsignedCurrentSessionMessage encode() const;
-    static SessionConfirmationMessage decode(const UnsignedCurrentSessionMessage& message) throw(MessageFormatException);
+    static SessionConfirmationMessage decode(const UnsignedCurrentSessionMessage& message);
 };
 
 struct InSessionMessage
@@ -212,7 +211,7 @@ struct InSessionMessage
     std::string payload;
 
     UnsignedCurrentSessionMessage encode() const;
-    static InSessionMessage decode(const UnsignedCurrentSessionMessage& message) throw(MessageFormatException);
+    static InSessionMessage decode(const UnsignedCurrentSessionMessage& message);
 };
 
 } // namespace np1sec

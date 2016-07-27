@@ -22,7 +22,6 @@
  */
 
 #include "src/userstate.h"
-#include "src/common.h"
 #include "test/chat_mocker_timered.h"
 
 void intermediate_cb(evutil_socket_t fd, short what, void* arg)

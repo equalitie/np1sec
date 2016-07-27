@@ -23,71 +23,11 @@
 #include <list>
 #include <map>
 
-#include "exceptions.h"
-#include "crypt.h"
+#include "crypto.h"
+#include "logger.h"
 
 namespace np1sec
 {
-
-/**
-   Participant id
-
-   consists of nickname and "a" fingerprint of public key
-   the finger print is compact ed25519 point representation
-   in 32 bit (x cordinate and one bit for sign)
- */
-struct ParticipantId {
-    static const unsigned int c_fingerprint_length = 32;
-    std::string nickname;
-    uint8_t fingerprint[c_fingerprint_length]; // Finger print is actually the long term public point of participant
-                                               // that
-    // is x coordinate and one bit for distinguishing the corresponding y
-
-    /**
-     * @return nickname|FingerPrint;
-     */
-    std::string id_to_stringbuffer()
-    {
-        std::string string_id(nickname);
-        string_id.append(reinterpret_cast<char*>(fingerprint), c_fingerprint_length);
-
-        return string_id;
-    }
-
-    /**
-     *  constructor
-     */
-    ParticipantId(std::string nickname, std::string fingerprint_strbuff) : nickname(nickname)
-    {
-        memcpy(fingerprint, fingerprint_strbuff.c_str(), fingerprint_strbuff.size());
-    }
-
-    ParticipantId(std::string nickname, AsymmetricKey fingerprint_sexp)
-    {
-        std::string fingerprint_strbuff(retrieve_result(fingerprint_sexp));
-        ParticipantId(nickname, fingerprint_strbuff);
-    }
-
-    ParticipantId(std::string nickname_, uint8_t* fingerprint_)
-    {
-        nickname = nickname_;
-        memcpy(fingerprint, fingerprint_, c_fingerprint_length);
-    }
-
-    /**
-     * Just a default constructor for when we don't want to initiate the
-     * participant name and key
-     */
-    ParticipantId() {}
-
-    /**
-     * Access function when the finger print is added later
-     */
-    void set_fingerprint(std::string fingerprint_strbuff)
-    {
-        memcpy(fingerprint, fingerprint_strbuff.c_str(), fingerprint_strbuff.size());
-    }
-};
 
 /**
  * This class keeps the state of each participant in the room, including the
@@ -96,16 +36,16 @@ struct ParticipantId {
 class Participant
 {
   public:
-    ParticipantId id;
-    PublicKey long_term_pub_key;
-    PublicKey ephemeral_key = nullptr;
-    MessageId last_acked_message_id;
-    void* send_ack_timer = nullptr;
-    edCurvePublicKey raw_ephemeral_key = {};
-    edCurvePublicKey future_raw_ephemeral_key = {};
+    std::string nickname;
+    PublicKey long_term_public_key;
+    PublicKey ephemeral_public_key;
+    PublicKey next_ephemeral_public_key;
 
-    np1secKeyShare cur_keyshare;
-    np1secSymmetricKey p2p_key = {};
+    uint32_t last_acked_message_id;
+    void* send_ack_timer = nullptr;
+
+    Hash cur_keyshare;
+    SymmetricKey p2p_key;
     bool authenticated = false;
     bool authed_to = false;
     bool key_share_contributed;
@@ -123,21 +63,6 @@ class Participant
                                  the transcript confidential
                               */
 
-    // Participant* thread_user_as_participant;
-
-    // default copy constructor
-    Participant(const Participant& rhs)
-        : id(rhs.id), long_term_pub_key(rhs.long_term_pub_key), authenticated(rhs.authenticated),
-          authed_to(rhs.authed_to), key_share_contributed(rhs.key_share_contributed), index(rhs.index)
-
-    {
-        long_term_pub_key = copy_crypto_resource(rhs.long_term_pub_key);
-        set_ephemeral_key(rhs.raw_ephemeral_key);
-        memcpy(future_raw_ephemeral_key, rhs.future_raw_ephemeral_key, sizeof(edCurvePublicKey));
-        memcpy(p2p_key, rhs.p2p_key, sizeof(np1secSymmetricKey));
-        memcpy(cur_keyshare, rhs.cur_keyshare, sizeof(np1secKeyShare));
-    }
-
     enum ForwardSecracyContribution { NONE, EPHEMERAL, KEY_SHARE };
 
     ForwardSecracyContribution ForwardSecracyStatus = NONE;
@@ -145,22 +70,18 @@ class Participant
     /**
      * crypto material access functions
      */
-    void set_ephemeral_key(const edCurvePublicKey raw_ephemeral_key)
+    void set_ephemeral_key(const PublicKey& ephemeral_key)
     {
-        release_crypto_resource(this->ephemeral_key);
-        // delete [] this->raw_ephemeral_key; doesn't make sense to delete const length array
-        memcpy(this->raw_ephemeral_key, raw_ephemeral_key, sizeof(edCurvePublicKey));
-        ephemeral_key = reconstruct_public_key_sexp(
-            std::string(reinterpret_cast<const char*>(raw_ephemeral_key), c_ephemeral_key_length));
+        ephemeral_public_key = ephemeral_key;
     }
 
     /**
      * store the encrypted keyshare and set the contributed flag true
      *
      */
-    void set_key_share(const np1secKeyShare new_key_share)
+    void set_key_share(const Hash& new_key_share)
     {
-        memcpy(this->cur_keyshare, new_key_share, sizeof(np1secKeyShare));
+        cur_keyshare = new_key_share;
         key_share_contributed = true;
     }
 
@@ -169,18 +90,15 @@ class Participant
      *
      * throw an exception in case it fails
      */
-    void compute_p2p_private(AsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
+    void compute_p2p_private(const PrivateKey& long_term_private_key, const PrivateKey& ephemeral_private_key);
 
     /**
      * Generate the approperiate authentication token to send to the
      * to the participant so they trust (authenticate us)
      *
-     * @param auth_token authentication token received as a message
-     *
      * throw an exception in case it fails
      */
-    void authenticate_to(Token auth_token, const AsymmetricKey thread_user_id_key,
-                         Cryptic* thread_user_crypto);
+    Hash authenticate_to(const PrivateKey& long_term_private_key, const PrivateKey& ephemeral_private_key);
 
     /**
      * Generate the approperiate authentication token check its equality
@@ -190,62 +108,31 @@ class Participant
      *
      * throw and exception if authentication fails
      */
-    void be_authenticated(std::string authenicator_id, const Token auth_token,
-                          AsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto);
+    void be_authenticated(const std::string& nickname, const Hash& key_confirmation,
+                          const PrivateKey& long_term_private_key, const PrivateKey& ephemeral_private_key);
 
     /**
      * default constructor
      * TODO: This only exists because stl asks for it
      * don't use it
      */
-    Participant() : long_term_pub_key(nullptr), key_share_contributed(false)
+    Participant()
     {
         logger.abort("not suppose to actually use the default constructor of Participant class");
     }
 
-    Participant(const std::string& nickname, uint8_t* long_term_pub_key, uint8_t* ephemeral_pub_key):
-        id(nickname, long_term_pub_key),
-        long_term_pub_key(reconstruct_public_key_sexp(hash_to_string_buff(long_term_pub_key))),
-          authenticated(false), authed_to(false), key_share_contributed(false)
-    {
-        set_ephemeral_key(ephemeral_pub_key);
-    }
-
-    // destructor
-    ~Participant()
-    {
-        // release gcrypt stuff
-        release_crypto_resource(this->ephemeral_key);
-        release_crypto_resource(this->long_term_pub_key);
-        // TODO - Verify with Vmon that these are necessary
-        //secure_wipe(ephemeral_key, c_hash_length);
-        //secure_wipe(raw_ephemeral_key, c_hash_length);
-        //secure_wipe(future_raw_ephemeral_key, c_hash_length);
-        secure_wipe(cur_keyshare, c_hash_length);
-        secure_wipe(p2p_key, c_hash_length);
-        //logger.debug("Wiped ephemeral_key from Participant");
-        //logger.debug("Wiped raw_ephemeral_key from Participant");
-        //logger.debug("Wiped cur_keyshare from Participant");
-        logger.debug("Wiped future_raw_ephemeral_key from Participant");
-        logger.debug("Wiped p2p_key from Participant");
-    }
+    Participant(const std::string& nickname, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key):
+        nickname(nickname),
+        long_term_public_key(long_term_public_key),
+        ephemeral_public_key(ephemeral_public_key),
+        authenticated(false),
+        authed_to(false),
+        key_share_contributed(false)
+    {}
 };
 
 typedef std::map<std::string, Participant> ParticipantMap;
 
-/**
- * To be used in std::sort to sort the particpant list
- * in a way that is consistent way between all participants
- */
-bool sort_by_long_term_pub_key(const AsymmetricKey lhs, const AsymmetricKey rhs);
-
-/**
- * operator < needed by map class not clear why but it doesn't compile
- * It first does nick name check then public key check. in reality
- * public key check is not needed as the nickname are supposed to be
- * unique (that is why nickname is more approperiate for sorting than
- * public key)
- */
 bool operator<(const Participant& rhs, const Participant& lhs);
 
 /**
@@ -257,12 +144,6 @@ ParticipantMap operator+(const ParticipantMap& lhs, const ParticipantMap& rhs);
  * this is basically the difference function
  */
 ParticipantMap operator-(const ParticipantMap& lhs, const ParticipantMap& rhs);
-
-/**
- * get a ParticipantMap and make a string containing the names
- * of the participant suitable for printing out
- */
-std::string participants_to_string(const ParticipantMap& plist);
 
 } // namespace np1sec
 

@@ -20,6 +20,8 @@
 // this header files contains the structure needed for transcript consistency
 // check it moved out of session.h to make the code easier to read and follow
 
+#include "crypto.h"
+
 namespace np1sec
 {
 
@@ -33,7 +35,7 @@ class Session;
 struct AckTimerOps {
     Session* session;
     Participant* participant;
-    MessageId message_id;
+    uint32_t message_id;
 
     AckTimerOps() : session(nullptr), participant(nullptr){}; // This is to make [] of map
     // working, but soon we'll move to another type
@@ -46,7 +48,7 @@ struct AckTimerOps {
 
 struct ParticipantConsistencyBlock {
     bool have_transcript_hash;
-    HashBlock transcript_hash;
+    Hash transcript_hash;
     void* consistency_timer;
     AckTimerOps ack_timer_ops;
 };

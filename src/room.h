@@ -22,15 +22,13 @@
 #include <string>
 #include <map>
 
-#include "common.h"
-#include "crypt.h"
 #include "interface.h"
 #include "session.h"
 
 namespace np1sec
 {
 
-typedef std::map<std::string, Session*> SessionMap;
+typedef std::map<SessionId, Session*> SessionMap;
 
 /**
  * Manage all sessions associated to a room, this is follow the concurrent
@@ -58,22 +56,25 @@ class Room
   protected:
     std::string name; // room name given in creation by user_state
     UserState* user_state;
-    ParticipantId myself;
+
+    std::string nickname;
+    PrivateKey long_term_private_key;
+
     size_t room_size = 0; // we only need keep track of
     // the room size till we become a current user. after that
     // the session can take care of that
 
-    // with exception of possibly one session, every
-    // session has session id.
     enum UserInRoomState {
-        JOINING, //, LEAVING_USER //TODO: sit and think if we need this?
+        JOINING,
         CURRENT_USER
     };
 
     UserInRoomState user_in_room_state;
-    Cryptic np1sec_ephemeral_crypto; // We keep ephemeral crypo constant
-    // during join request to avoid repeated need for authentication
-    // forward serecy procedure can update it consequently.
+
+    // The ephemeral private key used during the joining process
+    PrivateKey join_ephemeral_private_key;
+
+
     SessionMap session_universe;
 
     // list of sessions in limbo, they need to give birth to new
@@ -81,8 +82,8 @@ class Room
     // std::list<Session*> limbo; //no need for this limbo every
     // session beside current session.
 
-    SessionId active_session;
-    SessionId next_in_activation_line;
+    Session* active_session;
+    Session* next_in_activation_line;
 
     /**
      * manages activating a session which concerns an additional
@@ -93,7 +94,7 @@ class Room
      *        from all particpants and is ready to be the default session of
      *        the room
      */
-    void activate_session(SessionId newly_activated_session);
+    void activate_session(Session *session);
 
     /**
      * Mark in-limbo sessions which are not valid any more as stale so
@@ -101,7 +102,7 @@ class Room
      * mark them stale prevent them from replying to confimation etc and
      * misleading joining participants in moving forward
      */
-    void stale_in_limbo_sessions_presume_heir(SessionId new_successor);
+    void stale_in_limbo_sessions_presume_heir(Session *session);
 
     /**
      *  When a new sesison generates key we need to update all session in limbo
@@ -110,7 +111,7 @@ class Room
      * if somebody leaves, as soon as they live you need to update them cause
      * they are useless and the leaving person aren't going to confirmed any of them
      */
-    void refresh_stale_in_limbo_sessions(SessionId new_parent_session_id);
+    void refresh_stale_in_limbo_sessions(Session *session);
 
   public:
     /**
@@ -118,7 +119,7 @@ class Room
      * by default.
      *
      */
-    Room(std::string room_name, UserState* user_state, uint32_t room_size);
+    Room(std::string room_name, UserState* user_state, const std::string& nickname, const PrivateKey& long_term_private_key, uint32_t room_size);
 
     /**
      * called by UserState, everytime the user trys to join a room

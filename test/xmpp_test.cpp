@@ -29,7 +29,6 @@ extern "C" {
 }
 
 #include "src/userstate.h"
-#include "src/common.h"
 #include "src/interface.h"
 
 #define CUSTOM_USER_DIRECTORY "/tmp/test_user"

@@ -19,7 +19,6 @@
 
 // np1sec functionality
 #include "src/userstate.h"
-#include "src/common.h"
 
 // Types of messages prefixing incoming messages
 const std::string JOIN = "@<o>@JOIN@<o>@";

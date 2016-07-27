@@ -19,6 +19,7 @@
 #include "ui.h"
 #include <json/json.h>
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>

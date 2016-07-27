@@ -17,31 +17,13 @@
  */
 
 #include <algorithm>
+#include <cstring>
 
+#include "exceptions.h"
 #include "participant.h"
 
 namespace np1sec
 {
-
-std::string participants_to_string(const ParticipantMap& plist)
-{
-    std::string string_plist;
-    for (auto& cur_participant : plist)
-        string_plist += ", " + cur_participant.first;
-
-    string_plist.erase(0, 2);
-
-    return string_plist;
-}
-
-/**
- * To be used in std::sort to sort the particpant list
- * in a way that is consistent way between all participants
- */
-bool sort_by_long_term_pub_key(const AsymmetricKey lhs, const AsymmetricKey rhs)
-{
-    return public_key_to_stringbuff(lhs) < public_key_to_stringbuff(rhs);
-}
 
 /**
  * operator < needed by map class not clear why but it doesn't compile
@@ -52,10 +34,13 @@ bool sort_by_long_term_pub_key(const AsymmetricKey lhs, const AsymmetricKey rhs)
  */
 bool operator<(const Participant& lhs, const Participant& rhs)
 {
-    if (lhs.id.nickname < rhs.id.nickname)
+    if (lhs.nickname < rhs.nickname) {
         return true;
-
-    return sort_by_long_term_pub_key(lhs.long_term_pub_key, rhs.long_term_pub_key);
+    } else if (lhs.nickname > rhs.nickname) {
+        return false;
+    } else {
+        return lhs.long_term_public_key < rhs.long_term_public_key;
+    }
 }
 
 /**
@@ -70,46 +55,36 @@ bool operator<(const Participant& lhs, const Participant& rhs)
  *
  * @return true if peer's authenticity could be established
  */
-void Participant::be_authenticated(const std::string authenticator_id, const Token auth_token,
-                                   const AsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto)
+void Participant::be_authenticated(const std::string& nickname, const Hash& key_confirmation,
+                                   const PrivateKey& long_term_private_key, const PrivateKey& ephemeral_private_key)
 {
-    compute_p2p_private(thread_user_id_key, thread_user_crypto);
+    compute_p2p_private(long_term_private_key, ephemeral_private_key);
 
-    std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
-    to_be_hashed += authenticator_id;
-    Token regenerated_auth_token;
-
-    hash(to_be_hashed.c_str(), to_be_hashed.size(), regenerated_auth_token);
-
-    if (compare_hash(regenerated_auth_token, auth_token)) {
-        logger.warn("participant " + id.nickname + " failed TDH authentication");
-        throw AuthenticationException();
-    } else {
+    std::string hash_buffer;
+    hash_buffer += p2p_key.key.as_string();
+    hash_buffer += nickname;
+    hash_buffer += long_term_private_key.public_key().as_string();
+    if (key_confirmation == crypto::hash(hash_buffer, true)) {
         this->authenticated = true;
+    } else {
+        logger.warn("participant " + nickname + " failed TDH authentication");
+        throw AuthenticationException();
     }
 }
 
 /**
  * Generate the approperiate authentication token check its equality
  * to authenticate the alleged participant
- *
- * @param auth_token authentication token received as a message
- * @param thread_user_id_key the key (pub & prive) of the user running the
- *        thread
- *
- * @return true if peer's authenticity could be established
  */
-void Participant::authenticate_to(Token auth_token, const AsymmetricKey thread_user_id_key,
-                                  Cryptic* thread_user_crypto)
+Hash Participant::authenticate_to(const PrivateKey& long_term_private_key, const PrivateKey& ephemeral_private_key)
 {
+    compute_p2p_private(long_term_private_key, ephemeral_private_key);
 
-    compute_p2p_private(thread_user_id_key, thread_user_crypto);
-
-    std::string to_be_hashed(reinterpret_cast<const char*>(p2p_key), sizeof(HashBlock));
-    to_be_hashed += id.id_to_stringbuffer(); // the question is that why should we include the public
-    // key here?
-
-    hash(to_be_hashed.c_str(), to_be_hashed.size(), auth_token);
+    std::string hash_buffer;
+    hash_buffer += p2p_key.key.as_string();
+    hash_buffer += nickname;
+    hash_buffer += long_term_public_key.as_string();
+    return crypto::hash(hash_buffer, true);
 }
 
 /**
@@ -117,10 +92,15 @@ void Participant::authenticate_to(Token auth_token, const AsymmetricKey thread_u
  *
  * @return true on success
  */
-void Participant::compute_p2p_private(AsymmetricKey thread_user_id_key, Cryptic* thread_user_crypto)
+void Participant::compute_p2p_private(const PrivateKey& long_term_private_key, const PrivateKey& ephemeral_private_key)
 {
-    thread_user_crypto->triple_ed_dh(ephemeral_key, long_term_pub_key, thread_user_id_key,
-                                     sort_by_long_term_pub_key(this->long_term_pub_key, thread_user_id_key), &p2p_key);
+    p2p_key.key = crypto::triple_diffie_hellman(
+        long_term_private_key,
+        ephemeral_private_key,
+        long_term_public_key,
+        ephemeral_public_key,
+        long_term_public_key < long_term_private_key.public_key()
+    );
 }
 
 /**

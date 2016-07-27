@@ -29,6 +29,8 @@ extern "C" {
 
 #include "src/userstate.h"
 
+#define UNUSED(x) ((void)(x))
+
 struct Jabberite
 {
     PurpleAccount* account;

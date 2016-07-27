@@ -22,8 +22,6 @@
 #include "src/session.h"
 #include "src/userstate.h"
 
-#include "src/crypt.h"
-#include "src/common.h"
 #include "src/message.h"
 #include "src/interface.h"
 
@@ -260,7 +258,6 @@ TEST_F(TimeredSessionTest, test_resession_forward_secrecy)
     mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
 
     UserState user_state(username, mockops);
-    user_state.init();
 
     pair<UserState*, ChatMocker*> user_server_state(&user_state, &mock_server);
 

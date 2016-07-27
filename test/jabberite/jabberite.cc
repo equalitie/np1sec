@@ -112,10 +112,6 @@ void setup_np1sec(Jabberite *settings, std::string nick)
     ops->axe_timer = np1sec_unset_timer;
 
     settings->user_state = new np1sec::UserState(nick, ops);
-    if (!settings->user_state->init()) {
-        fprintf(stderr, "Failed to initiate the userstate.\n");
-        abort();
-    }
     np1sec::logger.debug("Initialized user_state");
 }
 

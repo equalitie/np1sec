@@ -22,8 +22,6 @@
 #include <string>
 #include <map>
 
-#include "common.h"
-#include "crypt.h"
 #include "interface.h"
 
 #include "room.h"
@@ -42,9 +40,9 @@ class UserState
 {
   public:
     // TODO: protect these guys
-    ParticipantId* myself;
-    LongTermIDKey long_term_key_pair; // private and public key
-    // AsymmetricKey long_term_pub_key;
+    std::string nickname;
+    PrivateKey long_term_private_key;
+
     std::map<std::string, Room*> chatrooms;
     AppOps* ops;
 
@@ -58,21 +56,9 @@ class UserState
      * @param key_pair the binary blob which contains the long term identity key
      *                 pair for ED25519.
      */
-    UserState(std::string name, AppOps* ops, uint8_t* key_pair = nullptr);
+    UserState(std::string name, AppOps* ops /*, std::string private_key = "" */);
 
-    bool init();
-
-    /**
-     * access function for nick
-     */
-    std::string user_id() { return myself->id_to_stringbuffer(); }
-
-    std::string user_nick() { return myself->nickname; }
-
-    /**
-     * access function for for long term id key
-     */
-    KeyPair user_id_key() { return long_term_key_pair.get_key_pair(); }
+    std::string user_nick() const { return nickname; }
 
     /**
      * The client need to call this function when the user is joining a room.
@@ -164,8 +150,6 @@ class UserState
      * @return the current session if it exists.
      */
     Session* retrieve_session(std::string room_name);
-
-    ~UserState();
 };
 
 } // namespace np1sec

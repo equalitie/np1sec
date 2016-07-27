@@ -20,6 +20,7 @@
 #define SRC_USERSTATE_CC_
 
 #include <string>
+#include <cassert>
 
 #include "src/interface.h"
 #include "src/userstate.h"
@@ -43,59 +44,11 @@ namespace np1sec
  * constructor is not able to return value, our only option is
  * to throw an exception.
  */
-UserState::UserState(std::string name, AppOps* ops, uint8_t* key_pair) : myself(nullptr), ops(ops)
+UserState::UserState(std::string name, AppOps* ops /*, std::string private_key*/):
+    nickname(name),
+    long_term_private_key(PrivateKey::generate()),
+    ops(ops)
 {
-    if (key_pair) {
-        logger.info("intitiating UserState with pre-generated key pair");
-        long_term_key_pair.set_key_pair(key_pair);
-        // we also populate our id key to send it to other
-        // during join.
-        try {
-            myself = new ParticipantId(name, public_key_to_stringbuff(long_term_key_pair.get_public_key()));
-        } catch (std::exception& e) {
-            logger.error("failed to initiate user state with provided key " + (std::string)(e.what()));
-
-            // we can't recover we need to rethrow
-            throw;
-        }
-
-        // if the client doesn't initiate the public
-        // key now it needs to call init sometimes before
-        // join or join fails due to lack of crypto material
-    } else {
-        myself = new ParticipantId(name, "");
-        logger.warn("no long term key is provided for particiant " + myself->nickname);
-    }
-}
-
-UserState::~UserState()
-{
-    delete myself;
-    // long_term_key_pair destructor takes care of zeroising
-    // the memory
-}
-
-/**
- * Exceptions:
- *
- * If the generation of the long term key fails, mainly due to lack
- * of randomness, then the client need to be informed that we are not
- * able to connect to any room in this situation.
- */
-bool UserState::init()
-{
-    if (long_term_key_pair.is_initiated()) {
-        return true;
-    }
-    logger.info("generating long term key for participant " + myself->nickname);
-    try {
-        long_term_key_pair.generate();
-        myself->set_fingerprint(public_key_to_stringbuff(long_term_key_pair.get_public_key()));
-        return true;
-    } catch (CryptoException& crypto_exception) {
-        logger.error("failed to generate long term key for participant " + myself->nickname);
-        return false;
-    }
 }
 
 /**
@@ -116,23 +69,16 @@ bool UserState::init()
  */
 bool UserState::join_room(std::string room_name, uint32_t room_size)
 {
-    // we can't join without id key
-    if (!long_term_key_pair.is_initiated()) {
-        logger.error(myself->nickname + "doesn't have sufficient credential to join room" + room_name +
-                     ". Long term id key has not been initiated for " + myself->nickname);
-        throw InsufficientCredentialException();
-    }
-
     // we join the room, the room make a join session
 
     // if the room is not made, we make it.
     if (chatrooms.find(room_name) == chatrooms.end()) {
         // room creation triger joining
         try {
-            chatrooms[room_name] = new Room(room_name, this, room_size);
+            chatrooms[room_name] = new Room(room_name, this, nickname, long_term_private_key, room_size);
         } catch (std::exception& e) {
-            logger.error(e.what(), __FUNCTION__, myself->nickname);
-            logger.error("unable to join the room", __FUNCTION__, myself->nickname);
+            logger.error(e.what(), __FUNCTION__);
+            logger.error("unable to join the room", __FUNCTION__);
         }
     } else {
         // we asks the room to re-join.
@@ -174,8 +120,7 @@ void UserState::leave_room(std::string room_name)
 {
     // if there is no room, it was a mistake to give us the message
     if (chatrooms.find(room_name) == chatrooms.end()) {
-        logger.error("unable to leave from room " + room_name + ". user " + myself->nickname + " is not in the room",
-                     __FUNCTION__, myself->nickname);
+        logger.error("unable to leave from room " + room_name + ". user " + nickname + " is not in the room", __FUNCTION__);
         throw InvalidRoomException();
     }
 
@@ -196,14 +141,14 @@ void UserState::shrink(std::string room_name, std::string leaving_user_id)
 {
     // if there is no room, it was a mistake to give us the message
     if (chatrooms.find(room_name) == chatrooms.end()) {
-        logger.error("unable to shrink room " + room_name + ". user " + myself->nickname + "is not in the room");
+        logger.error("unable to shrink room " + room_name + ". user " + nickname + "is not in the room");
         throw InvalidRoomException();
     }
 
     // we really should start shrinking here. the other
     // session will take care of consistency
-    logger.info(leaving_user_id + " is leaving " + room_name, __FUNCTION__, myself->nickname);
-    logger.info(room_name + " shrinking", __FUNCTION__, myself->nickname);
+    logger.info(leaving_user_id + " is leaving " + room_name, __FUNCTION__);
+    logger.info(room_name + " shrinking", __FUNCTION__);
     chatrooms[room_name]->shrink(leaving_user_id);
 }
 
@@ -225,7 +170,7 @@ void UserState::shrink(std::string room_name, std::string leaving_user_id)
  */
 void UserState::receive_handler(std::string room_name, std::string sender_nickname, std::string received_message)
 {
-    logger.debug("receiving message...", __FUNCTION__, myself->nickname);
+    logger.debug("receiving message...", __FUNCTION__);
     try {
         // if there is no room, it was a mistake to give us the message
         logger.assert_or_die(chatrooms.find(room_name) != chatrooms.end(),
@@ -235,7 +180,7 @@ void UserState::receive_handler(std::string room_name, std::string sender_nickna
         chatrooms[room_name]->receive_handler(received_message, sender_nickname);
     } catch (std::exception& e) { // any unhandled error till here, we just
         // ignore as bad message
-        logger.error(e.what(), __FUNCTION__, myself->nickname);
+        logger.error(e.what(), __FUNCTION__);
         logger.warn("unable to handle received message from " + sender_nickname);
     }
 }
@@ -257,8 +202,8 @@ void UserState::send_handler(std::string room_name, std::string plain_message)
         chatrooms[room_name]->send_user_message(plain_message);
     } catch (std::exception& e) { // any unhandled error till here, we just
         // ignore as bad message
-        logger.error(e.what(), __FUNCTION__, myself->nickname);
-        logger.warn("unable to send  message to " + room_name, __FUNCTION__, myself->nickname);
+        logger.error(e.what(), __FUNCTION__);
+        logger.warn("unable to send  message to " + room_name, __FUNCTION__);
     }
 }
 

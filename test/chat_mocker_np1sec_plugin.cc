@@ -32,7 +32,6 @@
 
 // npsec1 functions
 #include "src/userstate.h"
-#include "src/common.h"
 
 using namespace std;
 using namespace np1sec;
@@ -67,11 +66,7 @@ void chat_mocker_np1sec_plugin_receive_handler(std::string room_name, std::strin
         string joining_nick = np1sec_message.substr(strlen("@<o>@JOIN@<o>@"));
 
         if (user_server_state->first->user_nick() == joining_nick) {
-            try {
-              user_server_state->first->join_room(room_name, user_server_state->second->participant_list(room_name).size());
-            } catch (InsufficientCredentialException& e) {
-                logger.error(joining_nick + " failed to join room" + room_name);
-            }
+            user_server_state->first->join_room(room_name, user_server_state->second->participant_list(room_name).size());
         } else {
             user_server_state->first->increment_room_size(room_name);
             // we don't need to react, (we can, the protocol doesn't stop us

@@ -26,12 +26,10 @@
 #include <utility>
 #include <algorithm>
 
-#include "common.h"
 #include "interface.h"
 #include "participant.h"
 #include "message.h"
-#include "crypt.h"
-#include "session_id.h"
+#include "crypto.h"
 
 #include "transcript_consistency.h"
 
@@ -79,6 +77,9 @@ class RoomAction
 
 const RoomAction c_no_room_action;
 
+typedef Hash SessionId;
+typedef uint32_t MessageId;
+
 /**
  * This class is encapsulating all information and action, a user needs and
  * performs in a session.
@@ -90,13 +91,10 @@ class Session
     Room *room;
     std::string room_name;
 
-    // TODO:: we should probably delete this and just directly use UserState->myself
-    // no reason to copy the same thing for every session.
-    ParticipantId myself; // to keep the nickname and the long term id key
-    // these are necessary to send join request
-
-    Cryptic cryptic;
-    Cryptic future_cryptic;
+    std::string nickname;
+    PrivateKey long_term_private_key;
+    PrivateKey ephemeral_private_key;
+    PrivateKey next_ephemeral_private_key;
 
     size_t my_index;
 
@@ -192,8 +190,7 @@ class Session
     void stop_acking_timer();
 
     SessionId session_id;
-    // TODO - Move these into the Cryptic class where appropriate
-    HashBlock session_key;
+    SymmetricKey session_key;
 
     void* send_ack_timer = nullptr; // to send an ack to acknowledge all messages up to now
     void* farewell_deadline_timer = nullptr; // wait till you get everybody's hash to check before leave actually
@@ -214,69 +211,10 @@ class Session
     static const int32_t c_my_left = -1;
 
     /**
-     * it is invoked only once to compute the session id
-     * if one need session id then they need a new session
-     * as such it dies on re-computation.
-     */
-    void compute_session_id();
-
-    /**
      * compute the right secret share
      * @param side  either c_my_right = 1 or c_my_left = 1
      */
-    void secret_share_on(int32_t side, HashBlock hb);
-
-    void populate_peers_from_participants()
-    {
-        peers.clear();
-        for (ParticipantMap::iterator it = participants.begin(); it != participants.end(); it++) {
-            peers.push_back(it->first);
-        }
-
-        keep_peers_in_order_spot_myself();
-        // session id doesn't need peers vector to be computed
-        // so we just check if it is not set, it is the time to be computed
-        if (!session_id.get())
-            compute_session_id();
-    }
-
-    /**
-     * everytime that peers are modified we need to call this function to
-     * to keep it in order
-     *
-     * @return if we can't spot ourselves the session isn't meant for us
-     *
-     */
-    void keep_peers_in_order_spot_myself()
-    {
-
-        std::sort(peers.begin(), peers.end());
-
-        std::vector<std::string>::iterator my_entry = std::find(peers.begin(), peers.end(), myself.nickname);
-        if (my_entry == peers.end()) {
-            logger.debug("the message wasn't meant to us", __FUNCTION__, myself.nickname);
-            throw InvalidRoomException(); // The idea is that if we got an invalid room
-            // then we don't go for creating session;
-        }
-
-        my_index = std::distance(peers.begin(), my_entry);
-
-        // we trust ourselves so no need to auth ourselves neither be_authed_to
-        participants[peers[my_index]].authenticated = true;
-        participants[peers[my_index]].authed_to = true;
-
-        for (size_t i = 0; i < peers.size(); i++) {
-            // participants[peers[i]].thread_user_as_participant = &participants[peers[my_index]];
-            // if we copy the session the pointer
-            // //to thread user as participant is not valid anymore. This is obviously digusting
-            // //we need a respectable copy constructor for Session
-            participants[peers[i]].index = i;
-        }
-
-        // flush the confirmation
-        confirmed_peers.clear();
-        confirmed_peers.resize(peers.size());
-    }
+    Hash secret_share_on(int32_t side);
 
     /**
      * prepare a new list of participant for a new session
@@ -490,11 +428,8 @@ class Session
      *  @param conceiver: the role of thread user in the session being constructed
      */
     Session(SessionConceiverCondition conceiver, UserState* us, Room *room, std::string room_name,
-                  Cryptic* current_ephemeral_crypto, const ParticipantMap& current_participants = ParticipantMap(),
-                  const ParticipantMap& parent_plist = ParticipantMap());
-
-    // Session(UserState *us, std::string room_name,  Cryptic* current_ephemeral_crypto, Message
-    // join_message, ParticipantMap current_authed_participants);
+                const std::string& nickname, const PrivateKey& long_term_private_key, const PrivateKey& ephemeral_private_key,
+                const ParticipantMap& current_participants = ParticipantMap(), const ParticipantMap& parent_plist = ParticipantMap());
 
     /**
      * access function for session_id;

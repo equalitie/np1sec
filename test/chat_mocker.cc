@@ -22,7 +22,6 @@
  */
 
 #include "src/userstate.h"
-#include "src/common.h"
 #include "test/chat_mocker.h"
 
 using namespace np1sec;

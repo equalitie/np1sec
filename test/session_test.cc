@@ -22,8 +22,6 @@
 #include "src/session.h"
 #include "src/userstate.h"
 
-#include "src/crypt.h"
-#include "src/common.h"
 #include "src/message.h"
 #include "src/interface.h"
 
@@ -101,7 +99,6 @@ TEST_F(SessionTest, test_init)
     logger.debug("Set bare_sender_data");
 
     UserState user_state(username, mockops);
-    ASSERT_TRUE(user_state.init());
     logger.debug("Initialized user_state");
 
     pair<UserState*, ChatMocker*> user_server_state(&user_state, &mock_server);
@@ -148,7 +145,6 @@ TEST_F(SessionTest, test_second_join)
     std::pair<ChatMocker*, string> mock_aux_creator_data(&mock_server, creator);
     creator_mockops.bare_sender_data = static_cast<void*>(&mock_aux_creator_data);
     UserState creator_state(creator, &creator_mockops);
-    creator_state.init();
 
     AppOps joiner_mockops = *mockops;
     string joiner = "joiner";
@@ -156,7 +152,6 @@ TEST_F(SessionTest, test_second_join)
     joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
     UserState joiner_state(joiner, &joiner_mockops);
     // They can use the same mock up as they are using the same mock server
-    joiner_state.init();
 
     pair<UserState*, ChatMocker*> creator_server_state(&creator_state, &mock_server);
     pair<UserState*, ChatMocker*> joiner_server_state(&joiner_state, &mock_server);
@@ -195,7 +190,6 @@ TEST_F(SessionTest, test_solitary_talk)
     std::pair<ChatMocker*, string> mock_aux_data(&mock_server, username);
     mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
     UserState* user_state = new UserState(username, mockops);
-    user_state->init();
 
     pair<UserState*, ChatMocker*> user_server_state(user_state, &mock_server);
 
@@ -227,7 +221,6 @@ TEST_F(SessionTest, test_join_talk)
     std::pair<ChatMocker*, string> mock_aux_creator_data(&mock_server, creator);
     creator_mockops.bare_sender_data = static_cast<void*>(&mock_aux_creator_data);
     UserState creator_state(creator, &creator_mockops);
-    creator_state.init();
 
     AppOps joiner_mockops = *mockops;
     string joiner = "joiner";
@@ -235,7 +228,6 @@ TEST_F(SessionTest, test_join_talk)
     joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
     UserState joiner_state(joiner, &joiner_mockops);
     // They can use the same mock up as they are using the same mock server
-    joiner_state.init();
 
     pair<UserState*, ChatMocker*> creator_server_state(&creator_state, &mock_server);
     pair<UserState*, ChatMocker*> joiner_server_state(&joiner_state, &mock_server);
@@ -284,7 +276,6 @@ TEST_F(SessionTest, test_three_party_chat)
     std::pair<ChatMocker*, string> mock_aux_alice_data(&mock_server, alice);
     alice_mockops.bare_sender_data = static_cast<void*>(&mock_aux_alice_data);
     UserState* alice_state = new UserState(alice, &alice_mockops);
-    alice_state->init();
 
     AppOps bob_mockops = *mockops;
     string bob = "bob";
@@ -292,14 +283,12 @@ TEST_F(SessionTest, test_three_party_chat)
     bob_mockops.bare_sender_data = static_cast<void*>(&mock_aux_bob_data);
     UserState* bob_state = new UserState(bob, &bob_mockops);
     // They can use the same mock up as they are using the same mock server
-    bob_state->init();
 
     AppOps charlie_mockops = *mockops;
     string charlie = "charlie";
     std::pair<ChatMocker*, string> mock_aux_charlie_data(&mock_server, charlie);
     charlie_mockops.bare_sender_data = static_cast<void*>(&mock_aux_charlie_data);
     UserState* charlie_state = new UserState(charlie, &charlie_mockops);
-    charlie_state->init();
 
     pair<UserState*, ChatMocker*> alice_server_state(alice_state, &mock_server);
     pair<UserState*, ChatMocker*> bob_server_state(bob_state, &mock_server);
@@ -371,7 +360,6 @@ TEST_F(SessionTest, test_ten_party_chat)
         participant_mockops[i].bare_sender_data = static_cast<void*>(&mock_aux_participant_data[i]);
         ;
         participant_state[i] = new UserState(cur_participant_name, &participant_mockops[i]);
-        participant_state[i]->init();
 
         participant_server_state[i] = pair<UserState*, ChatMocker*>(participant_state[i], &mock_server);
 
@@ -396,7 +384,6 @@ TEST_F(SessionTest, test_solitary_leave)
     std::pair<ChatMocker*, string> mock_aux_data(&mock_server, username);
     mockops->bare_sender_data = static_cast<void*>(&mock_aux_data);
     UserState user_state(username, mockops);
-    user_state.init();
 
     pair<UserState*, ChatMocker*> user_server_state(&user_state, &mock_server);
 
@@ -423,7 +410,6 @@ TEST_F(SessionTest, test_leave_from_2p_conv)
     std::pair<ChatMocker*, string> mock_aux_creator_data(&mock_server, creator);
     creator_mockops.bare_sender_data = static_cast<void*>(&mock_aux_creator_data);
     UserState* creator_state = new UserState(creator, &creator_mockops);
-    creator_state->init();
 
     AppOps joiner_mockops = *mockops;
     string joiner = "joiner";
@@ -431,7 +417,6 @@ TEST_F(SessionTest, test_leave_from_2p_conv)
     joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
     UserState* joiner_state = new UserState(joiner, &joiner_mockops);
     // They can use the same mock up as they are using the same mock server
-    joiner_state->init();
 
     pair<UserState*, ChatMocker*> creator_server_state(creator_state, &mock_server);
     pair<UserState*, ChatMocker*> joiner_server_state(joiner_state, &mock_server);
@@ -479,7 +464,6 @@ TEST_F(SessionTest, test_immature_leave_from_2p_conv)
     std::pair<ChatMocker*, string> mock_aux_creator_data(&mock_server, creator);
     creator_mockops.bare_sender_data = static_cast<void*>(&mock_aux_creator_data);
     UserState* creator_state = new UserState(creator, &creator_mockops);
-    creator_state->init();
 
     AppOps joiner_mockops = *mockops;
     string joiner = "joiner";
@@ -487,7 +471,6 @@ TEST_F(SessionTest, test_immature_leave_from_2p_conv)
     joiner_mockops.bare_sender_data = static_cast<void*>(&mock_aux_joiner_data);
     UserState* joiner_state = new UserState(joiner, &joiner_mockops);
     // They can use the same mock up as they are using the same mock server
-    joiner_state->init();
 
     pair<UserState*, ChatMocker*> creator_server_state(creator_state, &mock_server);
     pair<UserState*, ChatMocker*> joiner_server_state(joiner_state, &mock_server);
@@ -531,7 +514,6 @@ TEST_F(SessionTest, test_concurrent_join)
     std::pair<ChatMocker*, string> mock_aux_alice_data(&mock_server, alice);
     alice_mockops.bare_sender_data = static_cast<void*>(&mock_aux_alice_data);
     UserState* alice_state = new UserState(alice, &alice_mockops);
-    alice_state->init();
 
     AppOps bob_mockops = *mockops;
     string bob = "bob";
@@ -539,14 +521,12 @@ TEST_F(SessionTest, test_concurrent_join)
     bob_mockops.bare_sender_data = static_cast<void*>(&mock_aux_bob_data);
     UserState* bob_state = new UserState(bob, &bob_mockops);
     // They can use the same mock up as they are using the same mock server
-    bob_state->init();
 
     AppOps charlie_mockops = *mockops;
     string charlie = "charlie";
     std::pair<ChatMocker*, string> mock_aux_charlie_data(&mock_server, charlie);
     charlie_mockops.bare_sender_data = static_cast<void*>(&mock_aux_charlie_data);
     UserState* charlie_state = new UserState(charlie, &charlie_mockops);
-    charlie_state->init();
 
     pair<UserState*, ChatMocker*> alice_server_state(alice_state, &mock_server);
     pair<UserState*, ChatMocker*> bob_server_state(bob_state, &mock_server);
@@ -597,7 +577,6 @@ TEST_F(SessionTest, test_concurrent_join_leave)
     std::pair<ChatMocker*, string> mock_aux_alice_data(&mock_server, alice);
     alice_mockops.bare_sender_data = static_cast<void*>(&mock_aux_alice_data);
     UserState* alice_state = new UserState(alice, &alice_mockops);
-    alice_state->init();
 
     AppOps bob_mockops = *mockops;
     string bob = "bob";
@@ -605,21 +584,18 @@ TEST_F(SessionTest, test_concurrent_join_leave)
     bob_mockops.bare_sender_data = static_cast<void*>(&mock_aux_bob_data);
     UserState* bob_state = new UserState(bob, &bob_mockops);
     // They can use the same mock up as they are using the same mock server
-    bob_state->init();
 
     AppOps charlie_mockops = *mockops;
     string charlie = "charlie";
     std::pair<ChatMocker*, string> mock_aux_charlie_data(&mock_server, charlie);
     charlie_mockops.bare_sender_data = static_cast<void*>(&mock_aux_charlie_data);
     UserState* charlie_state = new UserState(charlie, &charlie_mockops);
-    charlie_state->init();
 
     AppOps david_mockops = *mockops;
     string david = "david";
     std::pair<ChatMocker*, string> mock_aux_david_data(&mock_server, david);
     david_mockops.bare_sender_data = static_cast<void*>(&mock_aux_david_data);
     UserState* david_state = new UserState(david, &david_mockops);
-    david_state->init();
 
     pair<UserState*, ChatMocker*> alice_server_state(alice_state, &mock_server);
     pair<UserState*, ChatMocker*> bob_server_state(bob_state, &mock_server);

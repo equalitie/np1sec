@@ -16,11 +16,18 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "base64.h"
 #include "message.h"
-#include "crypt.h"
+
+#include <cassert>
 
 namespace np1sec
 {
+
+const std::string c_np1sec_protocol_name(":o3np1sec:");
+const uint16_t c_np1sec_protocol_version = 0x0001;
+
+
 
 void MessageBuffer::add_8(uint8_t byte)
 {
@@ -52,14 +59,14 @@ void MessageBuffer::add_opaque(const std::string& buffer)
     append(buffer);
 }
 
-void MessageBuffer::check_empty() throw(MessageFormatException)
+void MessageBuffer::check_empty()
 {
     if (!empty()) {
         throw MessageFormatException();
     }
 }
 
-uint8_t MessageBuffer::remove_8() throw(MessageFormatException)
+uint8_t MessageBuffer::remove_8()
 {
     if (size() < 1) {
         throw MessageFormatException();
@@ -72,7 +79,7 @@ uint8_t MessageBuffer::remove_8() throw(MessageFormatException)
     return result;
 }
 
-uint16_t MessageBuffer::remove_16() throw(MessageFormatException)
+uint16_t MessageBuffer::remove_16()
 {
     if (size() < 2) {
         throw MessageFormatException();
@@ -87,7 +94,7 @@ uint16_t MessageBuffer::remove_16() throw(MessageFormatException)
     return result;
 }
 
-uint32_t MessageBuffer::remove_32() throw(MessageFormatException)
+uint32_t MessageBuffer::remove_32()
 {
     if (size() < 4) {
         throw MessageFormatException();
@@ -104,7 +111,7 @@ uint32_t MessageBuffer::remove_32() throw(MessageFormatException)
     return result;
 }
 
-std::string MessageBuffer::remove_bytes(size_t size) throw(MessageFormatException)
+std::string MessageBuffer::remove_bytes(size_t size)
 {
     if (this->size() < size) {
         throw MessageFormatException();
@@ -117,7 +124,7 @@ std::string MessageBuffer::remove_bytes(size_t size) throw(MessageFormatExceptio
     return result;
 }
 
-std::string MessageBuffer::remove_opaque() throw(MessageFormatException)
+std::string MessageBuffer::remove_opaque()
 {
     return remove_bytes(remove_32());
 }
@@ -132,7 +139,7 @@ std::string Message::encode() const
     buffer.add_bytes(payload);
 
     char* base64_buffer = new char[((buffer.size() + 3 - 1) / 3) * 4];
-    size_t base64_size = otrl_base64_encode(base64_buffer, reinterpret_cast<const unsigned char*>(buffer.data()), buffer.size());
+    size_t base64_size = base64_encode(base64_buffer, reinterpret_cast<const unsigned char*>(buffer.data()), buffer.size());
     std::string base64_encoded(base64_buffer, base64_size);
     delete[] base64_buffer;
 
@@ -141,7 +148,7 @@ std::string Message::encode() const
     return result;
 }
 
-Message Message::decode(const std::string& encoded) throw(MessageFormatException)
+Message Message::decode(const std::string& encoded)
 {
     if (encoded.size() < c_np1sec_protocol_name.size()) {
         throw MessageFormatException();
@@ -151,7 +158,7 @@ Message Message::decode(const std::string& encoded) throw(MessageFormatException
     }
     std::string base64_payload = encoded.substr(c_np1sec_protocol_name.size());
     unsigned char* base64_buffer = new unsigned char[((base64_payload.size() + 4 - 1) / 4) * 3];
-    size_t base64_size = otrl_base64_decode(base64_buffer, base64_payload.data(), base64_payload.size());
+    size_t base64_size = base64_decode(base64_buffer, base64_payload.data(), base64_payload.size());
     std::string base64_decoded(reinterpret_cast<char *>(base64_buffer), base64_size);
     delete[] base64_buffer;
 
@@ -178,7 +185,7 @@ Message SessionMessage::encode() const
     return result;
 }
 
-SessionMessage SessionMessage::decode(const Message& message) throw(MessageFormatException)
+SessionMessage SessionMessage::decode(const Message& message)
 {
     SessionMessage result;
     result.type = message.type;
@@ -200,23 +207,18 @@ std::string UnsignedSessionMessage::signed_body() const
     return buffer;
 }
 
-bool SignedSessionMessage::verify(PublicKey key) const
+bool SignedSessionMessage::verify(const PublicKey& key) const
 {
-    return Cryptic::verify(signed_body(), signature.buffer, key);
+    return crypto::verify(signed_body(), signature, key);
 }
 
-SignedSessionMessage SignedSessionMessage::sign(const UnsignedSessionMessage& message, Cryptic* key)
+SignedSessionMessage SignedSessionMessage::sign(const UnsignedSessionMessage& message, const PrivateKey& key)
 {
-    unsigned char* signature;
-    size_t signature_size;
-    key->sign(&signature, &signature_size, message.signed_body());
-
     SignedSessionMessage result;
     result.type = message.type;
     result.session_id = message.session_id;
     result.payload = message.payload;
-    assert(signature_size == sizeof(result.signature.buffer));
-    memcpy(result.signature.buffer, signature, sizeof(result.signature.buffer));
+    result.signature = crypto::sign(message.signed_body(), key);
     return result;
 }
 
@@ -233,7 +235,7 @@ SessionMessage SignedSessionMessage::encode() const
     return result;
 }
 
-SignedSessionMessage SignedSessionMessage::decode(const SessionMessage& message) throw(MessageFormatException)
+SignedSessionMessage SignedSessionMessage::decode(const SessionMessage& message)
 {
     MessageBuffer buffer(message.payload);
     if (buffer.size() < c_signature_length) {
@@ -247,22 +249,22 @@ SignedSessionMessage SignedSessionMessage::decode(const SessionMessage& message)
     return result;
 }
 
-SessionMessage SignedSessionMessage::encrypt(Cryptic* key) const
+SessionMessage SignedSessionMessage::encrypt(const SymmetricKey& key) const
 {
     SessionMessage unencrypted_message = encode();
     SessionMessage result;
     result.type = unencrypted_message.type;
     result.session_id = unencrypted_message.session_id;
-    result.payload = key->Encrypt(unencrypted_message.payload);
+    result.payload = crypto::encrypt(unencrypted_message.payload, key);
     return result;
 }
 
-SignedSessionMessage SignedSessionMessage::decrypt(const SessionMessage& message, Cryptic* key) throw(MessageFormatException)
+SignedSessionMessage SignedSessionMessage::decrypt(const SessionMessage& message, const SymmetricKey& key)
 {
     SessionMessage decrypted_message;
     decrypted_message.type = message.type;
     decrypted_message.session_id = message.session_id;
-    decrypted_message.payload = key->Decrypt(message.payload);
+    decrypted_message.payload = crypto::decrypt(message.payload, key);
     return SignedSessionMessage::decode(decrypted_message);
 }
 
@@ -272,8 +274,8 @@ Message JoinRequestMessage::encode() const
 {
     MessageBuffer buffer;
     buffer.add_bytes(nickname);
-    buffer.add_raw_public_key(long_term_public_key);
-    buffer.add_raw_public_key(ephemeral_public_key);
+    buffer.add_public_key(long_term_public_key);
+    buffer.add_public_key(ephemeral_public_key);
     buffer.add_8(1);
 
     Message result;
@@ -282,16 +284,16 @@ Message JoinRequestMessage::encode() const
     return result;
 }
 
-JoinRequestMessage JoinRequestMessage::decode(const Message& message) throw(MessageFormatException)
+JoinRequestMessage JoinRequestMessage::decode(const Message& message)
 {
     assert(message.type == Message::JOIN_REQUEST);
 
     JoinRequestMessage result;
 
     MessageBuffer buffer(message.payload);
-    result.nickname = buffer.remove_bytes(buffer.size() - sizeof(RawPublicKey) - sizeof(RawPublicKey) - 1);
-    result.long_term_public_key = buffer.remove_raw_public_key();
-    result.ephemeral_public_key = buffer.remove_raw_public_key();
+    result.nickname = buffer.remove_bytes(buffer.size() - sizeof(PublicKey) - sizeof(PublicKey) - 1);
+    result.long_term_public_key = buffer.remove_public_key();
+    result.ephemeral_public_key = buffer.remove_public_key();
     buffer.remove_8(); // ignored
     buffer.check_empty();
     return result;
@@ -304,8 +306,8 @@ UnsignedCurrentSessionMessage ParticipantsInfoMessage::encode() const
     for (size_t i = 0; i < participants.size(); i++) {
         MessageBuffer participant_buffer;
         participant_buffer.add_bytes(participants[i].nickname);
-        participant_buffer.add_raw_public_key(participants[i].long_term_public_key);
-        participant_buffer.add_raw_public_key(participants[i].ephemeral_public_key);
+        participant_buffer.add_public_key(participants[i].long_term_public_key);
+        participant_buffer.add_public_key(participants[i].ephemeral_public_key);
         participant_buffer.add_8(participants[i].authenticated);
         participants_buffer.add_opaque(participant_buffer);
     }
@@ -321,7 +323,7 @@ UnsignedCurrentSessionMessage ParticipantsInfoMessage::encode() const
     return result;
 }
 
-ParticipantsInfoMessage ParticipantsInfoMessage::decode(const UnsignedCurrentSessionMessage& message) throw(MessageFormatException)
+ParticipantsInfoMessage ParticipantsInfoMessage::decode(const UnsignedCurrentSessionMessage& message)
 {
     assert(message.type == Message::PARTICIPANTS_INFO);
 
@@ -332,9 +334,9 @@ ParticipantsInfoMessage ParticipantsInfoMessage::decode(const UnsignedCurrentSes
     while (!participants_buffer.empty()) {
         MessageBuffer participant_buffer = participants_buffer.remove_opaque();
         ParticipantInfo participant;
-        participant.nickname = participant_buffer.remove_bytes(participant_buffer.size() - sizeof(RawPublicKey) - sizeof(RawPublicKey) - 1);
-        participant.long_term_public_key = participant_buffer.remove_raw_public_key();
-        participant.ephemeral_public_key = participant_buffer.remove_raw_public_key();
+        participant.nickname = participant_buffer.remove_bytes(participant_buffer.size() - sizeof(PublicKey) - sizeof(PublicKey) - 1);
+        participant.long_term_public_key = participant_buffer.remove_public_key();
+        participant.ephemeral_public_key = participant_buffer.remove_public_key();
         participant.authenticated = (participant_buffer.remove_8() != 0);
         result.participants.push_back(participant);
     }
@@ -362,7 +364,7 @@ UnsignedCurrentSessionMessage JoinerAuthMessage::encode() const
     return result;
 }
 
-JoinerAuthMessage JoinerAuthMessage::decode(const UnsignedCurrentSessionMessage& message) throw(MessageFormatException)
+JoinerAuthMessage JoinerAuthMessage::decode(const UnsignedCurrentSessionMessage& message)
 {
     assert(message.type == Message::JOINER_AUTH);
 
@@ -391,7 +393,7 @@ UnsignedCurrentSessionMessage GroupShareMessage::encode() const
     return result;
 }
 
-GroupShareMessage GroupShareMessage::decode(const UnsignedCurrentSessionMessage& message) throw(MessageFormatException)
+GroupShareMessage GroupShareMessage::decode(const UnsignedCurrentSessionMessage& message)
 {
     assert(message.type == Message::GROUP_SHARE);
 
@@ -407,7 +409,7 @@ UnsignedCurrentSessionMessage SessionConfirmationMessage::encode() const
 {
     MessageBuffer buffer;
     buffer.add_hash(session_confirmation);
-    buffer.add_raw_public_key(next_ephemeral_public_key);
+    buffer.add_public_key(next_ephemeral_public_key);
 
     UnsignedCurrentSessionMessage result;
     result.type = Message::SESSION_CONFIRMATION;
@@ -415,7 +417,7 @@ UnsignedCurrentSessionMessage SessionConfirmationMessage::encode() const
     return result;
 }
 
-SessionConfirmationMessage SessionConfirmationMessage::decode(const UnsignedCurrentSessionMessage& message) throw(MessageFormatException)
+SessionConfirmationMessage SessionConfirmationMessage::decode(const UnsignedCurrentSessionMessage& message)
 {
     assert(message.type == Message::SESSION_CONFIRMATION);
 
@@ -423,7 +425,7 @@ SessionConfirmationMessage SessionConfirmationMessage::decode(const UnsignedCurr
 
     MessageBuffer buffer(message.payload);
     result.session_confirmation = buffer.remove_hash();
-    result.next_ephemeral_public_key = buffer.remove_raw_public_key();
+    result.next_ephemeral_public_key = buffer.remove_public_key();
     buffer.check_empty();
     return result;
 }
@@ -455,7 +457,7 @@ UnsignedCurrentSessionMessage InSessionMessage::encode() const
     return result;
 }
 
-InSessionMessage InSessionMessage::decode(const UnsignedCurrentSessionMessage& message) throw(MessageFormatException)
+InSessionMessage InSessionMessage::decode(const UnsignedCurrentSessionMessage& message)
 {
     assert(message.type == Message::IN_SESSION_MESSAGE);
 

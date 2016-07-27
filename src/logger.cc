@@ -21,7 +21,6 @@
 
 #include "logger.h"
 
-#include "common.h"
 #include "session.h"
 #include "message.h"
 
