@@ -31,15 +31,11 @@
 #include "message.h"
 #include "crypto.h"
 
-#include "transcript_consistency.h"
-
 namespace np1sec
 {
 
-class UserState;
 class Session;
 class Room;
-
 
 class RoomAction
 {
@@ -87,9 +83,8 @@ typedef uint32_t MessageId;
 class Session
 {
   protected:
-    UserState* us;
+    Application* application;
     Room *room;
-    std::string room_name;
 
     std::string nickname;
     PrivateKey long_term_private_key;
@@ -97,6 +92,14 @@ class Session
     PrivateKey next_ephemeral_private_key;
 
     size_t my_index;
+
+    struct ParticipantConsistencyBlock {
+        bool have_transcript_hash;
+        Hash transcript_hash;
+        Timer consistency_timer;
+    };
+
+    typedef std::vector<ParticipantConsistencyBlock> ConsistencyBlockVector;
 
     /**
      * Stores Transcritp chain hashes indexed by received message id
@@ -192,10 +195,10 @@ class Session
     SessionId session_id;
     SymmetricKey session_key;
 
-    void* send_ack_timer = nullptr; // to send an ack to acknowledge all messages up to now
-    void* farewell_deadline_timer = nullptr; // wait till you get everybody's hash to check before leave actually
-    void* rejoin_timer = nullptr; // try to rejoin
-    void* session_life_timer = nullptr; // start new session with the same participant but different keys
+    Timer send_ack_timer; // to send an ack to acknowledge all messages up to now
+    Timer farewell_deadline_timer; // wait till you get everybody's hash to check before leave actually
+    Timer rejoin_timer; // try to rejoin
+    Timer session_life_timer; // start new session with the same participant but different keys
 
     MessageId last_received_message_id = 0;
     MessageId own_message_counter = 0; // sent message counter
@@ -376,11 +379,6 @@ class Session
     /**
      * tells if rejoin is active
      */
-    bool is_rejoin_timer_active() { return (rejoin_timer != nullptr); };
-
-    /**
-     * tells if rejoin is active
-     */
     void arm_rejoin_timer();
 
     /**
@@ -427,7 +425,7 @@ class Session
      *
      *  @param conceiver: the role of thread user in the session being constructed
      */
-    Session(SessionConceiverCondition conceiver, UserState* us, Room *room, std::string room_name,
+    Session(SessionConceiverCondition conceiver, Application* application, Room *room,
                 const std::string& nickname, const PrivateKey& long_term_private_key, const PrivateKey& ephemeral_private_key,
                 const ParticipantMap& current_participants = ParticipantMap(), const ParticipantMap& parent_plist = ParticipantMap());
 
@@ -451,22 +449,8 @@ class Session
 
     void send(const UnsignedCurrentSessionMessage& message);
 
-    /**
-     * Destructor, session should be destroyed at leave.
-     */
-    ~Session();
-
-    // friend all timer call backs
-    friend void cb_send_heartbeat(void* arg);
-    friend void cb_send_ack(void* arg);
-    friend void cb_ack_not_received(void* arg);
-    friend void cb_ack_not_sent(void* arg);
-    friend void cb_leave(void* arg);
-
-    friend void cb_rejoin(void* arg);
-    friend void cb_re_session(void* arg);
-
     friend Room;
+
 };
 
 } // namespace np1sec

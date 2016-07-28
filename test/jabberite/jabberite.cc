@@ -23,6 +23,7 @@
 #include <string>
 
 #include "src/interface.h"
+#include "src/logger.h"
 
 #define CUSTOM_USER_DIRECTORY "/tmp/test_user"
 #define CUSTOM_PLUGIN_PATH ""

@@ -21,118 +21,12 @@
 #include <string>
 #include <cassert>
 
-#include "session.h"
 #include "exceptions.h"
-#include "userstate.h"
+#include "session.h"
+#include "room.h"
 
 namespace np1sec
 {
-
-void cb_re_session(void* arg)
-{
-    Session* session = (static_cast<Session*>(arg));
-    logger.assert_or_die(session->my_state != Session::DEAD, "postmortem racheting?");
-
-    logger.info("RESESSION: forward secrecy ratcheting", __FUNCTION__);
-
-    Session* new_child_session = new Session(Session::PEER, session->us, session->room, session->room_name,
-                                             session->nickname, session->long_term_private_key, session->next_ephemeral_private_key,
-                                             session->future_participants());
-
-    try {
-        logger.assert_or_die(session->us->chatrooms.find(session->room_name) != session->us->chatrooms.end(),
-                             "np1sec can not add session to room " + session->room_name +
-                                 " which apparenly doesn't exists",
-                             __FUNCTION__);
-
-        session->us->chatrooms[session->room_name]->insert_session(new_child_session);
-    } catch (std::exception& e) {
-        logger.error("Failed to resession to ensure forward secrecy", __FUNCTION__);
-    }
-
-    session->session_life_timer = nullptr;
-}
-
-void cb_ack_not_received(void* arg)
-{
-    // Construct message for ack
-    AckTimerOps* ack_timer_ops = static_cast<AckTimerOps*>(arg);
-
-    if (ack_timer_ops->session->my_state == Session::DEAD)
-        logger.debug("postmortem consistency chcek", __FUNCTION__);
-
-    std::string ack_failure_message = ack_timer_ops->participant->nickname + " failed to ack";
-    ack_timer_ops->session->us->ops->display_message(ack_timer_ops->session->room_name, "np1sec directive",
-                                                     ack_failure_message, ack_timer_ops->session->us->ops->bare_sender_data);
-    logger.warn(ack_failure_message + " in room " + ack_timer_ops->session->room_name, __FUNCTION__);
-}
-
-void cb_send_ack(void* arg)
-{
-    // Construct message with p.id
-    Session* session = (static_cast<Session*>(arg));
-
-    if (session->my_state == Session::DEAD)
-        logger.debug("postmortem consistency chcek", __FUNCTION__);
-
-    session->send_ack_timer = nullptr;
-
-    logger.debug("long time, no messege! acknowledging received messages", __FUNCTION__);
-
-    session->send("", InSessionMessage::JUST_ACK);
-}
-
-/**
- * The timer set upon of sending a message.
- * when this timer is timed out means that
- * we haven't received our own message
- */
-void cb_ack_not_sent(void* arg)
-{
-    // Construct message with p.id
-    AckTimerOps* ack_timer_ops = static_cast<AckTimerOps*>(arg);
-
-    if (ack_timer_ops->session->my_state == Session::DEAD)
-        logger.debug("postmortem consistency chcek", __FUNCTION__);
-
-    std::string ack_failure_message = "we did not receive our own sent message";
-    ack_timer_ops->session->us->ops->display_message(ack_timer_ops->session->room_name, "np1sec directive",
-                                                     ack_failure_message, ack_timer_ops->session->us->ops->bare_sender_data);
-}
-
-/**
- * when times out, the leaving user check
- * all user's consistency before leaving
- */
-void cb_leave(void* arg)
-{
-    Session* session = (static_cast<Session*>(arg));
-
-    session->check_leave_transcript_consistency();
-    session->commit_suicide();
-}
-
-/**
- * rejoining a room in case joining times out. The hope is that room
- * member kicks the non-responsive user out of the room meanwhile
- */
-void cb_rejoin(void* arg)
-{
-    Session* session = (static_cast<Session*>(arg));
-
-    // just kill myself and ask the room to rejoin
-    session->commit_suicide();
-
-    auto session_room = session->us->chatrooms.find(session->room_name);
-    logger.assert_or_die(session_room != session->us->chatrooms.end(),
-                         "the room which the ssession belongs you has disappeared", __FUNCTION__);
-
-    logger.debug("joining session timed out, trying to rejoin", __FUNCTION__);
-
-    session_room->second->try_rejoin();
-
-    session->rejoin_timer = nullptr;
-}
 
 static SessionId compute_session_id(const ParticipantMap& participants) throw(CryptoException)
 {
@@ -177,12 +71,11 @@ static SessionId compute_session_id(const ParticipantMap& participants) throw(Cr
        - set new session status to RE_SHARED
 
 */
-Session::Session(SessionConceiverCondition conceiver, UserState* us, Room *room, std::string room_name,
+Session::Session(SessionConceiverCondition conceiver, Application* application, Room *room,
                  const std::string& nickname, const PrivateKey& long_term_private_key, const PrivateKey& ephemeral_private_key,
                  const ParticipantMap& current_participants, const ParticipantMap& parent_plist):
-    us(us),
+    application(application),
     room(room),
-    room_name(room_name),
     nickname(nickname),
     long_term_private_key(long_term_private_key),
     ephemeral_private_key(ephemeral_private_key),
@@ -191,7 +84,7 @@ Session::Session(SessionConceiverCondition conceiver, UserState* us, Room *room,
     parental_participants(parent_plist),
     session_id(compute_session_id(participants))
 {
-    logger.info("constructing new session for room " + room_name + " with " + std::to_string(participants.size()) +
+    logger.info("constructing new session for room " + room->name + " with " + std::to_string(participants.size()) +
                     " participants",
                 __FUNCTION__);
 
@@ -503,13 +396,18 @@ RoomAction Session::state_handler(const std::string& sender, SessionMessage mess
                 confirmed_peers[participants[sender].index] = true;
 
                 if (everybody_confirmed()) {
-                    if (rejoin_timer)
-                        us->ops->axe_timer(rejoin_timer, us->ops->bare_sender_data);
-                    rejoin_timer = nullptr;
+                    rejoin_timer.stop();
 
                     account_for_session_and_key_consistency();
 
-                    session_life_timer = us->ops->set_timer(cb_re_session, this, us->ops->c_session_life_span, us->ops->bare_sender_data);
+                    session_life_timer = application->set_timer(application->session_life_span(), [this] {
+                        logger.assert_or_die(my_state != Session::DEAD, "postmorten ratcheting?");
+                        logger.info("RESESSION: forward secrecy ratcheting", __FUNCTION__);
+                        Session* child_session = new Session(Session::PEER, application, room,
+                            nickname, long_term_private_key, next_ephemeral_private_key,
+                            future_participants());
+                        room->insert_session(child_session);
+                    });
 
                     my_state = IN_SESSION;
                 }
@@ -536,7 +434,7 @@ RoomAction Session::shrink(std::string leaving_nick)
 
     auto leaver = participants.find(leaving_nick);
     if (leaver == participants.end()) {
-        logger.warn("participant " + leaving_nick + " is not part of the active session of the room " + room_name +
+        logger.warn("participant " + leaving_nick + " is not part of the active session of the room " + room->name +
                     " from which they are trying to leave, already parted?");
     } else if (zombies.find(leaving_nick) != zombies.end()) { // we haven already shrunk and made a session
         logger.debug("shrunk session for leaving user " + leaving_nick + " has already been generated. nothing to do",
@@ -547,7 +445,7 @@ RoomAction Session::shrink(std::string leaving_nick)
         zombies.insert(*leaver);
 
         Session* new_child_session =
-            new Session(PEER, us, room, room_name, nickname, long_term_private_key, next_ephemeral_private_key, future_participants());
+            new Session(PEER, application, room, nickname, long_term_private_key, next_ephemeral_private_key, future_participants());
 
         new_session_action.action_type = RoomAction::NEW_PRIORITY_SESSION;
         new_session_action.bred_session = new_child_session;
@@ -606,7 +504,7 @@ void Session::leave()
 
         logger.assert_or_die(my_index == 0 && peers.size() == 1, "peers is not sync with participants");
         peers.pop_back();
-        us->ops->leave(room_name, peers, us->ops->bare_sender_data);
+        application->leave(room->name, peers);
         commit_suicide();
     }
 
@@ -615,8 +513,10 @@ void Session::leave()
     leave_parent = last_received_message_id;
     send("", InSessionMessage::LEAVE_MESSAGE);
 
-    farewell_deadline_timer =
-        us->ops->set_timer(cb_leave, this, us->ops->c_inactive_ergo_non_sum_interval, us->ops->bare_sender_data);
+    farewell_deadline_timer = application->set_timer(application->inactive_ergo_non_sum_interval(), [this] {
+        check_leave_transcript_consistency();
+        commit_suicide();
+    });
     my_state = LEAVE_REQUESTED;
 }
 
@@ -634,26 +534,23 @@ void Session::start_ack_timers(const std::string& sender)
         // for myself
         {
             received_transcript_chain[last_received_message_id][(*it).second.index].have_transcript_hash = false;
-            received_transcript_chain[last_received_message_id][(*it).second.index].ack_timer_ops.session = this;
-            received_transcript_chain[last_received_message_id][(*it).second.index].ack_timer_ops.participant =
-                &(it->second);
-            received_transcript_chain[last_received_message_id][(*it).second.index].ack_timer_ops.message_id =
-                last_received_message_id;
-            received_transcript_chain[last_received_message_id][(*it).second.index].consistency_timer =
-                us->ops->set_timer(
-                    cb_ack_not_received,
-                    &(received_transcript_chain[last_received_message_id][(*it).second.index].ack_timer_ops),
-                    us->ops->c_consistency_failure_interval, us->ops->bare_sender_data);
+
+            Participant& participant = it->second;
+            received_transcript_chain[last_received_message_id][(*it).second.index].consistency_timer = application->set_timer(
+                application->consistency_failure_interval(),
+                [this, participant] {
+                    if (my_state == Session::DEAD) {
+                        logger.debug("postmortem consistency check", __FUNCTION__);
+                    }
+                    std::string message = participant.nickname + " failed to ack";
+                    application->display_message(room->name, "np1sec directive", message);
+                    logger.warn(message + " in room " + room->name, __FUNCTION__);
+                }
+            );
         }
     }
 }
 
-// void Session::start_conditional_send_ack_timer() {
-//   //if there is already an ack timer
-//   //then that will take care of acking
-//   //for us as well
-
-// }
 
 /**
  * When we receive a message we start a timer to make sure that we'll
@@ -661,37 +558,20 @@ void Session::start_ack_timers(const std::string& sender)
  */
 void Session::start_acking_timer()
 {
-    if (!send_ack_timer) {
-        logger.debug("arming send ack timer01");
-        send_ack_timer = us->ops->set_timer(cb_send_ack, this, us->ops->c_ack_interval, us->ops->bare_sender_data);
+    if (!send_ack_timer.active()) {
+        send_ack_timer = application->set_timer(application->ack_interval(), [this] {
+            if (my_state == Session::DEAD) {
+                logger.debug("postmorten consistency check", __FUNCTION__);
+            }
+            logger.debug("long time, no message! acknowledging received messages", __FUNCTION__);
+            send("", InSessionMessage::JUST_ACK);
+        });
     }
-    // for (std::map<std::string, Participant>::iterator
-    //      it = participants.begin();
-    //      it != participants.end();
-    //      ++it) {
-    //   if ((*it).second.send_ack_timer) {
-    //     us->ops->axe_timer((*it).second.send_ack_timer, us->ops->bare_sender_data);
-    //     (*it).second.send_ack_timer = nullptr;
-    //   }
-    // }
 }
 
 void Session::stop_acking_timer()
 {
-    if (send_ack_timer) {
-        logger.debug("disarming send ack timer01");
-        us->ops->axe_timer(send_ack_timer, us->ops->bare_sender_data);
-        send_ack_timer = nullptr;
-    }
-    // for (std::map<std::string, Participant>::iterator
-    //      it = participants.begin();
-    //      it != participants.end();
-    //      ++it) {
-    //   if ((*it).second.send_ack_timer) {
-    //     us->ops->axe_timer((*it).second.send_ack_timer, us->ops->bare_sender_data);
-    //     (*it).second.send_ack_timer = nullptr;
-    //   }
-    // }
+    send_ack_timer.stop();
 }
 
 /**
@@ -701,12 +581,17 @@ void Session::stop_acking_timer()
 void Session::update_send_transcript_chain(MessageId own_message_id, std::string message)
 {
     sent_transcript_chain[own_message_id].transcript_hash = crypto::hash(message);
-    sent_transcript_chain[own_message_id].ack_timer_ops = AckTimerOps(this, nullptr, own_message_id);
-
-    sent_transcript_chain[own_message_id].consistency_timer =
-        us->ops->set_timer(cb_ack_not_sent, &(sent_transcript_chain[own_message_id].ack_timer_ops),
-                           us->ops->c_send_receive_interval, us->ops->bare_sender_data);
+    sent_transcript_chain[own_message_id].consistency_timer = application->set_timer(application->send_receive_interval(),
+        [this, own_message_id] {
+            if (my_state == Session::DEAD) {
+                logger.debug("postmorten consistency check", __FUNCTION__);
+            }
+            application->display_message(room->name, "np1sec directive", "we did not receive our own sent message");
+        }
+    );
 }
+
+
 
 /**
  * - check the consistency of all participants for the parent leave message
@@ -723,7 +608,7 @@ bool Session::check_leave_transcript_consistency()
                 if (received_transcript_chain[leave_parent][i].transcript_hash != received_transcript_chain[leave_parent][my_index].transcript_hash)
                 {
                     std::string consistency_failure_message = peers[i] + " transcript doesn't match ours";
-                    us->ops->display_message(room_name, "np1sec directive", consistency_failure_message, us->ops->bare_sender_data);
+                    application->display_message(room->name, "np1sec directive", consistency_failure_message);
                     logger.error(consistency_failure_message, __FUNCTION__);
                 } // not equal
             } // not empty
@@ -737,7 +622,7 @@ void Session::add_message_to_transcript(std::string message, MessageId message_i
 {
     if (received_transcript_chain.find(message_id) == received_transcript_chain.end()) {
         ConsistencyBlockVector chain_block(participants.size());
-        received_transcript_chain.insert(std::pair<MessageId, ConsistencyBlockVector>(message_id, chain_block));
+        received_transcript_chain.insert(std::pair<MessageId, ConsistencyBlockVector>(message_id, std::move(chain_block)));
     }
 
     std::string hash_buffer;
@@ -749,7 +634,6 @@ void Session::add_message_to_transcript(std::string message, MessageId message_i
 
     received_transcript_chain[message_id][my_index].have_transcript_hash = true;
     received_transcript_chain[message_id][my_index].transcript_hash = crypto::hash(hash_buffer);
-    received_transcript_chain[message_id][my_index].consistency_timer = nullptr;
 }
 
 void Session::send(std::string payload, InSessionMessage::Type message_type)
@@ -798,9 +682,7 @@ Session::StateAndAction Session::receive(const std::string& sender, const Signed
 
     if (sender == nickname) {
         logger.debug("own ctr of received message: " + std::to_string(own_message_counter), __FUNCTION__);
-        if (sent_transcript_chain[message.sender_message_id].consistency_timer)
-            us->ops->axe_timer(sent_transcript_chain[message.sender_message_id].consistency_timer, us->ops->bare_sender_data);
-        sent_transcript_chain[message.sender_message_id].consistency_timer = nullptr;
+        sent_transcript_chain[message.sender_message_id].consistency_timer.stop();
     }
 
     // it needs to be called after add as it assumes it is already added
@@ -811,12 +693,10 @@ Session::StateAndAction Session::receive(const std::string& sender, const Signed
             // we are done we can leave
 
             // stop the farewell deadline timer
-            if (farewell_deadline_timer)
-                us->ops->axe_timer(farewell_deadline_timer, us->ops->bare_sender_data);
-            farewell_deadline_timer = nullptr;
+            farewell_deadline_timer.stop();
 
             peers.pop_back();
-            us->ops->leave(room_name, peers, us->ops->bare_sender_data);
+            application->leave(room->name, peers);
             commit_suicide();
             return StateAndAction(DEAD, c_no_room_action);
         }
@@ -825,7 +705,7 @@ Session::StateAndAction Session::receive(const std::string& sender, const Signed
     if (message.subtype == InSessionMessage::JUST_ACK) {
         return StateAndAction(my_state, c_no_room_action);
     } else if (message.subtype == InSessionMessage::USER_MESSAGE) {
-        us->ops->display_message(room_name, sender, message.payload, us->ops->bare_sender_data);
+        application->display_message(room->name, sender, message.payload);
 
         start_acking_timer();
         return StateAndAction(my_state, c_no_room_action);
@@ -880,34 +760,17 @@ void Session::commit_suicide()
  */
 void Session::disarm_all_timers()
 {
-    if (farewell_deadline_timer)
-        us->ops->axe_timer(farewell_deadline_timer, us->ops->bare_sender_data);
-    farewell_deadline_timer = nullptr;
-    if (send_ack_timer)
-        us->ops->axe_timer(send_ack_timer, us->ops->bare_sender_data);
-    send_ack_timer = nullptr;
-
-    if (rejoin_timer)
-        us->ops->axe_timer(rejoin_timer, us->ops->bare_sender_data);
-    rejoin_timer = nullptr;
-
-    if (session_life_timer)
-        us->ops->axe_timer(session_life_timer, us->ops->bare_sender_data);
-    session_life_timer = nullptr;
-
-    for (auto& cur_block : received_transcript_chain)
+    farewell_deadline_timer.stop();
+    send_ack_timer.stop();
+    rejoin_timer.stop();
+    session_life_timer.stop();
+    for (auto& cur_block : received_transcript_chain) {
         for (auto& cur_participant : cur_block.second) {
-            if (cur_participant.consistency_timer) {
-                us->ops->axe_timer(cur_participant.consistency_timer, us->ops->bare_sender_data);
-            }
-            cur_participant.consistency_timer = nullptr;
+            cur_participant.consistency_timer.stop();
         }
-
+    }
     for (auto& cur_block : sent_transcript_chain) {
-        if (cur_block.second.consistency_timer) {
-            us->ops->axe_timer(cur_block.second.consistency_timer, us->ops->bare_sender_data);
-        }
-        cur_block.second.consistency_timer = nullptr;
+        cur_block.second.consistency_timer.stop();
     }
 }
 
@@ -916,10 +779,13 @@ void Session::disarm_all_timers()
  */
 void Session::arm_rejoin_timer()
 {
-    logger.assert_or_die(!rejoin_timer, "no re-arming the rejoin timer!", __FUNCTION__);
+    logger.assert_or_die(!rejoin_timer.active(), "no re-arming the rejoin timer!", __FUNCTION__);
     logger.debug("arming rejoin timer, in case we can't join successfully", __FUNCTION__);
-    rejoin_timer =
-        us->ops->set_timer(cb_rejoin, this, us->ops->c_unresponsive_ergo_non_sum_interval, us->ops->bare_sender_data);
+    rejoin_timer = application->set_timer(application->unresponsive_ergo_non_sum_interval(), [this] {
+        commit_suicide();
+        logger.debug("joining session timed out, trying to rejoin", __FUNCTION__);
+        room->try_rejoin();
+    });
 }
 
 void Session::send(const UnsignedCurrentSessionMessage& message)
@@ -932,10 +798,6 @@ void Session::send(const UnsignedCurrentSessionMessage& message)
     SignedSessionMessage signed_message = SignedSessionMessage::sign(unsigned_message, ephemeral_private_key);
 
     room->send(signed_message.encode().encode());
-}
-
-Session::~Session()
-{
 }
 
 } // namespace np1sec

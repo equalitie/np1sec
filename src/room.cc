@@ -16,7 +16,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "userstate.h"
 #include "room.h"
 
 #include "message.h"
@@ -31,9 +30,9 @@ namespace np1sec
  * by default.
  *
  */
-Room::Room(std::string room_name, UserState* user_state, const std::string& nickname, const PrivateKey& long_term_private_key, uint32_t room_size):
+Room::Room(std::string room_name, Application* application, const std::string& nickname, const PrivateKey& long_term_private_key, uint32_t room_size):
     name(room_name),
-    user_state(user_state),
+    application(application),
     nickname(nickname),
     long_term_private_key(long_term_private_key),
     room_size(room_size),
@@ -59,7 +58,7 @@ void Room::solitary_join()
     Participant self(nickname, long_term_private_key.public_key(), join_ephemeral_private_key.public_key());
     participants.insert(std::pair<std::string, Participant>(nickname, self));
 
-    Session* session = new Session(Session::CREATOR, user_state, this, name, nickname, long_term_private_key, join_ephemeral_private_key, participants);
+    Session* session = new Session(Session::CREATOR, application, this, nickname, long_term_private_key, join_ephemeral_private_key, participants);
 
     session_universe[session->my_session_id()] = session;
 }
@@ -195,7 +194,7 @@ void Room::receive_handler(std::string message_string, std::string sender_nickna
                 next_participants.insert(std::pair<std::string, Participant>(join_request_message.nickname,
                     Participant(join_request_message.nickname, join_request_message.long_term_public_key, join_request_message.ephemeral_public_key)));
                 action_to_take.action_type = RoomAction::NEW_SESSION;
-                action_to_take.bred_session = new Session(Session::ACCEPTOR, user_state, this, name,
+                action_to_take.bred_session = new Session(Session::ACCEPTOR, application, this,
                     nickname, long_term_private_key, next_in_activation_line->next_ephemeral_private_key, next_participants, current_participants);
             }
         }
@@ -233,7 +232,7 @@ void Room::receive_handler(std::string message_string, std::string sender_nickna
                                 )));
                         }
 
-                        Session* new_session = new Session(Session::JOINER, user_state, this, name,
+                        Session* new_session = new Session(Session::JOINER, application, this,
                             nickname, long_term_private_key, join_ephemeral_private_key, participants);
                         if (new_session->get_state() != Session::DEAD) {
                             // we need to get rid of old session if it is dead
@@ -317,7 +316,7 @@ void Room::receive_handler(std::string message_string, std::string sender_nickna
                         }
 
                         action_to_take.action_type = RoomAction::NEW_SESSION;
-                        action_to_take.bred_session = new Session(Session::ACCEPTOR, user_state, this, name,
+                        action_to_take.bred_session = new Session(Session::ACCEPTOR, application, this,
                             nickname, long_term_private_key, next_in_activation_line->next_ephemeral_private_key, next_participants, current_participants);
 
                         action_to_take.bred_session->state_handler(sender_nickname, session_message);
@@ -353,7 +352,7 @@ void Room::receive_handler(std::string message_string, std::string sender_nickna
 
     if (session) {
         if (session != active_session && session->get_state() == Session::IN_SESSION) {
-            user_state->ops->join(name, session->peers, user_state->ops->bare_sender_data);
+            application->join(name, session->peers);
             activate_session(session);
         }
     }
@@ -456,7 +455,7 @@ void Room::refresh_stale_in_limbo_sessions(Session *session)
             ParticipantMap new_participant_list =
                 it->second->delta_plist() + session->future_participants();
 
-            Session *new_session = new Session(Session::ACCEPTOR, user_state, this, name,
+            Session *new_session = new Session(Session::ACCEPTOR, application, this,
                 nickname, long_term_private_key, session->ephemeral_private_key, new_participant_list, session->future_participants());
             refreshed_sessions[new_session->my_session_id()] = new_session;
 
@@ -637,7 +636,7 @@ void Room::insert_session(Session* new_session)
 
 void Room::send(const Message& message)
 {
-    user_state->ops->send_bare(name, message.encode(), user_state->ops->bare_sender_data);
+    application->send_message(name, message.encode());
 }
 
 Room::~Room()

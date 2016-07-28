@@ -22,15 +22,13 @@
 #include <string>
 #include <map>
 
+#include "crypto.h"
 #include "interface.h"
-
-#include "room.h"
-#include "session.h"
 
 namespace np1sec
 {
 
-class UserState;
+class Room;
 
 /**
  * Manages a user with long term identity for participating in a multiparty
@@ -44,7 +42,7 @@ class UserState
     PrivateKey long_term_private_key;
 
     std::map<std::string, Room*> chatrooms;
-    AppOps* ops;
+    Application *application;
 
     /**
      * Constructor
@@ -78,20 +76,6 @@ class UserState
      /* *                    eventually start a solitary session, however it helps not wait. */
 
     bool join_room(std::string room_name, uint32_t room_size);
-
-    // Depricate, join request is triggered through join message
-    /* /\** */
-    /*  * the client need to call this function when a user join the chatroom. */
-    /*  * */
-    /*  * @param room_name the chat room name */
-    /*  * @param new_user_id is the id that the new user is using in the room. */
-    /*  * */
-    /*  * @return true in case initiating the join was successful. This does not */
-    /*  *         mean that the successful join false if process fails */
-    /*  *\/ */
-    /* bool accept_new_user(std::string room_name, std::string new_user_id) */
-    /* {return false; //place holder for now */
-    /* } */
 
     /**
      * When the user uses the client interface to send a message the client need
@@ -140,16 +124,6 @@ class UserState
      * so we know how many people are in the room
      */
     void increment_room_size(std::string room_name);
-
-    /**
-     * Retrieve the session object associated with the given room name. To
-     * allow sending and receiving of messages relative to that session
-     *
-     * @param room_name the chat room_name
-     *
-     * @return the current session if it exists.
-     */
-    Session* retrieve_session(std::string room_name);
 };
 
 } // namespace np1sec

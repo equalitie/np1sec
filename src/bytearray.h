@@ -19,8 +19,9 @@
 #ifndef SRC_BYTEARRAY_H_
 #define SRC_BYTEARRAY_H_
 
-#include <string>
+#include <cstdint>
 #include <cstring>
+#include <string>
 
 namespace np1sec
 {

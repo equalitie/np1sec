@@ -53,9 +53,10 @@ typedef std::map<SessionId, Session*> SessionMap;
  */
 class Room
 {
+  public:
+    std::string name;
   protected:
-    std::string name; // room name given in creation by user_state
-    UserState* user_state;
+    Application* application;
 
     std::string nickname;
     PrivateKey long_term_private_key;
@@ -119,7 +120,7 @@ class Room
      * by default.
      *
      */
-    Room(std::string room_name, UserState* user_state, const std::string& nickname, const PrivateKey& long_term_private_key, uint32_t room_size);
+    Room(std::string room_name, Application* application, const std::string& nickname, const PrivateKey& long_term_private_key, uint32_t room_size);
 
     /**
      * called by UserState, everytime the user trys to join a room

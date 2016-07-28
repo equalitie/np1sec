@@ -23,6 +23,7 @@
  * libreary.
  *
  */
+#include <algorithm>
 #include <utility>
 #include <vector>
 #include <string>
