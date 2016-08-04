@@ -45,6 +45,7 @@ void Logger::initiate_textual_conversions()
     message_type_to_text[Message::JOINER_AUTH] = "JOINER_AUTH";
     message_type_to_text[Message::GROUP_SHARE] = "GROUP_SHARE";
     message_type_to_text[Message::SESSION_CONFIRMATION] = "SESSION_CONFIRMATION";
+    message_type_to_text[Message::IN_SESSION_MESSAGE] = "IN_SESSION_MESSAGE";
 }
 
 // Standard constructor

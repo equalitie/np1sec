@@ -187,7 +187,9 @@ static void process_received_chat(PurpleAccount* account, char* sender, char* me
     UNUSED(flags);
     Jabberite* settings = reinterpret_cast<Jabberite*>(m);
 
-    settings->user_state->receive_handler(conv->name, sender, message);
+    if (!(flags & PURPLE_MESSAGE_DELAYED)) {
+        settings->user_state->receive_handler(conv->name, sender, message);
+    }
 }
 
 static void setup_purple_callbacks(Jabberite* settings)
