@@ -26,13 +26,15 @@ The np1sec library is built as a GNU autotools project. To install it from sourc
 
 ## Installing from source
 
-To install np1sec from a source tarball, which do not yet actually exist, run the following in the source directory:
+To install np1sec from a source tarball <sup>1</sup>, run the following in the source directory:
 
 ```
 $ ./configure
 $ make
 # make install
 ```
+
+<sup>[1]</sup> No np1sec source tarballs have been released as of yet.
 
 
 ## Installing from git
@@ -55,7 +57,7 @@ The np1sec testsuite uses a lot of system entropy. To ensure a sufficient supply
 
 ## Running the testsuite
 
-After building the np1sec library (see "Installing from source"), the np1sec testsuite can be ran to verify that the library code works as expected. Running the tests should not produce any errors. The testsuite can be invoked by running ```make check```. Alternatively, it can be run in a verbose mode by invoking ```./libnp1sec_test``` instead.
+After building the np1sec library (see "Installing from source"), the np1sec testsuite can be run to verify that the library code works as expected. Running the tests should not produce any errors. The testsuite can be invoked by running ```make check```. Alternatively, it can be run in a verbose mode by invoking ```./libnp1sec_test``` instead.
 
 
 ## Running the jabberite test client
