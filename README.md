@@ -1,193 +1,94 @@
 np1sec
 ======
 
-[![Build Status](https://travis-ci.org/equalitie/np1sec.svg?branch=master)](https://travis-ci.org/equalitie/np1sec)
-
 Multiparty communication security implementation of the protocol described by this [paper](https://learn.equalit.ie/wiki/Np1sec)
 
 ![(n+1)sec](https://learn.equalit.ie/mw/images/7/7f/Np1sec-web.jpg)
 
-Debug
-----
-To debug with gdb
 
-libtool --mode=execute gdb -i=mi xmpp_test
+# Building np1sec
 
-# Building
-     
-The following instructions describe the steps required to build np1sec from scratch on a freshly installed system running debian 8.1 stable.  It is assumed that software such as `git` and `build-essential` are already present.
+## Library dependencies
 
-```
-# apt-get install git build-essential automake autoconf pkg-config libevent-dev libpurple-dev libglib2.0 glib-2.0-dev libtool
+The np1sec library requires the following libraries:
+
+* libgcrypt >= 1.6.0
+
+The np1sec testsuite, which for the moment is built as a mandatory component of an installation, further requires the following libraries:
+
+* libglib2
+* libevent
+* libpurple
+* libjsoncpp
+
+The np1sec library is built as a GNU autotools project. To install it from source, you will need pkg-config >= 0.29. To install it from git, you will furthermore need GNU autoconf >= 2.69 and GNU automake >= 1.15.
 
 
-```
+## Installing from source
 
-The following process builds all the necessary dependencies to run the np1sec executable test code.  Once built, running
-the tests allows us to verify that the library code works as expected, at which point developers can use the library in
-their application.  Individuals running the tests should not observe any errors.
-     
-Commands prefixed with `#` are to be run as root or a super user.
-gThose prefixed with `$` can (should) be run as an unprivileged user.
-     
-## autoconf (version >= 2.69)
- 
-```
-$ wget http://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz
-$ tar -xzf autoconf-2.69.tar.gz
-$ cd autoconf-2.69
-$ ./configure
-$ make
-# make install
-$ cd ..
-```
- 
-## automake (version >= 1.15)
- 
-```
-$ wget http://ftp.gnu.org/gnu/automake/automake-1.15.tar.gz
-$ tar -xzf automake-1.15.tar.gz
-$ cd automake-1.15
-$ ./configure
- make
-# make install
-$ cd ..
-```
-
-## pkg-config (version >= 0.29)
+To install np1sec from a source tarball, which do not yet actually exist, run the following in the source directory:
 
 ```
-$ wget https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.1.tar.gz
-$ tar -xvf pkg-config-0.29.1.tar.gz
-$ cd pkg-config-0.29.1/
-$ ./configure
-$ make
-# make install
-$ cd ..
-$ export PKG_CONFIG_PATH=/usr/lib/pkgconfig/:/usr/lib/x86_64-linux-gnu/pkgconfig/
-```
-
-## libtool (version >= 2.4.6)
- 
-```
-$ wget http://gnu.mirror.iweb.com/libtool/libtool-2.4.6.tar.gz
-$ tar -xzf libtool-2.4.6.tar.gz
-$ cd libtool-2.4.6
-$ ./configure
-$ make
-# make install
-$ cd ..
-```
- 
-## libgpg-error
- 
-```
-# apt-get install gettext 
-$ gettext --version
-```
-
-If you do not have version 0.19.3 or newer, you will need to install it from
-source. For example:
-
-```
-$ wget ftp.gnu.org/pub/gnu/gettext/gettext-0.19.7.tar.gz
-$ tar -xzf gettext-0.19.7.tar.gz
-$ cd gettext-0.19.7/
 $ ./configure
 $ make
 # make install
 ```
+
+
+## Installing from git
+
+To install np1sec from a git checkout, it is necessary to first build the autotools scripts by running the following in the source directory:
+
+```
+./autogen.sh
+```
+
+Afterwards, proceed to "Installing from source".
+
+
+# Testing np1sec
 
 ## haveged
- 
-Haveged is used to generate entropy more quickly.  You may or may not want it (but you have to wait a long time to gather enough entropy if you do not install it).
- 
-```
-# apt-get install haveged
-```
- 
-## np1sec
 
-Clone [np1sec](https://github.com/equalitie/np1sec).
+The np1sec testsuite uses a lot of system entropy. To ensure a sufficient supply of entropy, it is recommended to have the _haveged_ entropy daemon running during the np1sec tests, to keep the tests from taking a long time.
 
-```
-$ git clone https://github.com/equalitie/np1sec
-$ cd np1sec/
-$ ./autogen.sh
-$ ./configure
-$ make
-```
 
-If configure fails complaining due to missing package check where .pc files are stored and export the path into PKG_CONFIG_PATH. For example:
+## Running the testsuite
 
+After building the np1sec library (see "Installing from source"), the np1sec testsuite can be ran to verify that the library code works as expected. Running the tests should not produce any errors. The testsuite can be invoked by running ```make check```. Alternatively, it can be run in a verbose mode by invoking ```./libnp1sec_test``` instead.
+
+
+## Running the jabberite test client
+
+The np1sec library comes with a rudimentary chat client used to manually test the np1sec system in practice, called _jabberite_. The jabberite tool is a basic jabber/XMPP multi-user-chat client that uses np1sec for all its communications, and is built as part of the np1sec testsuite.
+
+To run jabberite and connect to a given jabber multi-user-chat server, run the following in the np1sec build directory:
 ```
-$ export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig/
+./jabberite --account=myusername@myserver.example.com --password=verysecret --server=conference.example.com --room=np1sec-test-room
 ```
 
-### Run the tests
- 
-```
-$ ./libnp1sec_test
-```
 
-The following session tests will be run.  Session tests are responsible for ensuring that encrypted multi-party chat
-sessions are conducted securely.
+## Running jabberite locally with prosody
 
-```
-test_ression_forward_secrecy
-test_cb_ack_not_received
-test_cb_send_ack
-test_init
-test_second_join
-test_solitary_talk
-test_join_talk
-test_three_party_chat
-test_solitary_leave
-test_leave_from_2p_conv
-test_immature_leave_from_2p_conv
-test_concurrent_join
-test_concurrent_join_leave
-```
+The np1sec library can be tested using the jabberite test client by running a jabber server on your local testing machine. For example, it can be run using the _prosody_ jabber server, configured as follows:
 
-```
-$ ./libnp1sec_test
-```
-
-to test jabberite client
-
-jabberite clients works with any xmpp server. Here we describe how to run prosody
-
-```
-apt-get install lua5.1 liblua5.1-expat0 lua5.1-socket lua5.1-sec lua5.1-filesystem0
-cd ~/doc/code/np1sec/contrib/prosody-hg
-./configure
-make
-```
-
-Alternatively you can install prosody from debian repo:
-
-```
-apt-get install prosody
-```
-
-We need to edit /etc/prosody/prosody.cfg.lua and edit following lines
+After installing prosody, enable the following settings in ```/etc/prosody/prosody.cfg.lua```:
 ```
 allow_registration = true;
 
 Component "conference.localhost" "muc"
 ```
 
+Reload prosody, and create jabber user accounts for a couple of test users:
 ```
-lua5.1 prosody
-./prosodyctl adduser alice@localhost
-./prosodyctl adduser bob@localhost
-
-cd ../..
-
-./jabberite --account=alice@localhost --password="" --server=conference.localhost --room=np1sectestroom
+# prosodyctl adduser alice@localhost
+# prosodyctl adduser bob@localhost
 ```
-in another terminal
+
+When this is done, a secure chat session can be set up by running multiple instances of jabberite in separate terminals:
 
 ```
-./jabberite --account=bob@localhost --password="" --server=conference.localhost --room=np1sectestroom
+$ ./jabberite --account=alice@localhost --password="alice-password" --server=conference.localhost --room=np1sec-test-room
+
+$ ./jabberite --account=bob@localhost --password="bob-password" --server=conference.localhost --room=np1sec-test-room
 ```
