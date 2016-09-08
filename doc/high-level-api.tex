@@ -1,7 +1,7 @@
 \documentclass{article}
 
 \title{(n+1)sec high level API specification}
-\author{Ruud Koolen}
+\author{eQualit.ie}
 
 \setlength{\parskip}{1em}
 \setlength{\parindent}{0em}
@@ -38,9 +38,9 @@ In order to function, the (n+1)sec protocol requires that the carrier chat syste
 If these properties are not met, this does not compromise the security of the (n+1)sec conversation; rather, the (n+1)sec library will notice the anomaly, and will not be able to establish or continue a conversation.
 In particular, (n+1)sec requires the carrier chat system to satisfy the following requirements:
 \begin{enumerate}
-\item The carrier chat room contains a consistent, well-defined set of users --the \emph{members} of the room-- that are considered part of the room. All users in the room can see this member set, and all members receive all messages sent to the room. Users get notified when the set of room members changes, i.e.\ when new members join the room, or existing members leave the room.
+\item The carrier chat room contains a consistent, well-defined set of users ---the \emph{members} of the room--- that are considered part of the room. All users in the room can see this member set, and all members receive all messages sent to the room. Users get notified when the set of room members changes, i.e.\ when new members join the room, or existing members leave the room.
 \item Room members have a recognizable unique identity that stays stable for at least the duration that the member remains part of the room. Changeable unique nicknames, such as used by the IRC system, are sufficient as long as users receive a notification of the nickname changes.
-\item \label{enum:carrier-chat-model/chat-event-order} Chat events occurring in the room --which include at least chat messages, joining members, leaving members, and nickname changes (if applicable)-- have a strict and consistent order enforced by the carrier chat system. Different members of the room receive the same chat events in the same order. This includes chat events originated by the receiving member; for example, if a member sends a chat message, it should be aware of the timing at which it is received by the room, relative to other chat events in the room.
+\item \label{enum:carrier-chat-model/chat-event-order} Chat events occurring in the room ---which include at least chat messages, joining members, leaving members, and nickname changes (where applicable)--- have a strict and consistent order enforced by the carrier chat system. Different members of the room receive the same chat events in the same order. This includes chat events originated by the receiving member; for example, if a member sends a chat message, it should be aware of the timing at which it is received by the room, relative to other chat events in the room.
 \end{enumerate}
 
 It is a noteworthy observation that not all commonly used chat systems satisfy all these requirements.
@@ -51,7 +51,7 @@ In order to broaden the applicability of the (n+1)sec system, extensions to the 
 The (n+1)sec protocol does not rely on any of the requirements above to ensure any security guarantees; in particular, the security properties described in Section~\ref{sec:np1sec-chat-model} still hold when the carrier chat system does not satisfy these requirements.
 Instead, in such a situation, the (n+1)sec library will not be able to establish secure chat sessions at all; any attempts to use the (n+1)sec system on such a carrier chat system will result in reported error situations such as network timeouts, protocol errors, et cetera.
 As a special case of this general point, per requirement \ref{enum:carrier-chat-model/chat-event-order}, the (n+1)sec system assumes that users have a connection to the carrier chat system that is free from interference, in which attackers cannot interfere with the communication between user and carrier chat system; this can be easily accomplished by the application of proper transport security, as implented by systems such as TLS, to the connection between the user and the carrier chat system.
-If this assumption is violated -- which can happen, for example, when a user uses a plaintext connection to connect to a carrier chat system, and an attacker modifies the message stream sent to or by the user -- then the security properties described in Section~\ref{sec:np1sec-chat-model} still hold, but the user will not be able to successfully join any (n+1)sec sessions.
+If this assumption is violated ---which can happen, for example, when a user uses a plaintext connection to connect to a carrier chat system, and an attacker modifies the message stream sent to or by the user--- then the security properties described in Section~\ref{sec:np1sec-chat-model} still hold, but the user will not be able to successfully join any (n+1)sec sessions.
 
 To perform secure communications, (n+1)sec needs to perform actions in the role of a member of a carrier chat room.
 That is to say, it needs a resource consisting of a user in the carrier chat system that is a member of a chat room, and be able to perform the following operations:
@@ -94,8 +94,8 @@ In order to implement these properties, the process of a participant joining or 
 Whereas most chat systems model the joining and leaving of members as atomic events, both processes when applied to an (n+1)sec channel are multi-step processes.
 To model this, participants of (n+1)sec channels can be in one of four distinct states:
 \begin{itemize}
-\item \emph{authenticating}: A participant is in the \emph{authenticating} state when they have announced their intention to join the channel, but their identity has not yet been confirmed or accepted by all \emph{active} participants of the channel. An authenticating participant has not been established to be the person they claim they are. Authenticating participants can neither send messages to, nor decrypt messages sent to the channel. When authentication completes, the participant moves to the \emph{joining} state.
-\item \emph{joining}: A participant is in the \emph{joining} state when they have been authenticated and approved by all \emph{active} members, but the key exchange process that would enable the participant to decrypt channel messages is still ongoing. Joining participants cannot reliably decrypt messages sent to the channel; however, they may be able to decrypt an unpredictable subset of messages sent to the channel. Once the key exchange process finishes, a joining participant becomes \emph{active}.
+\item \emph{authenticating}: A participant is in the \emph{authenticating} state when they have announced their intention to join the channel, but their identity has not yet been confirmed or accepted by all \emph{active} or \emph{joining} participants of the channel. An authenticating participant has not been established to be the person they claim they are. Authenticating participants can neither send messages to, nor decrypt messages sent to the channel. When authentication completes, the participant moves to the \emph{joining} state.
+\item \emph{joining}: A participant is in the \emph{joining} state when they have been authenticated and approved by all \emph{active} and \emph{joining} members, but the key exchange process that would enable the participant to decrypt channel messages is still ongoing. Joining participants cannot reliably decrypt messages sent to the channel; however, they may be able to decrypt an unpredictable subset of messages sent to the channel. Once the key exchange process finishes, a joining participant becomes \emph{active}.
 \item \emph{active}: A participant is in the \emph{active} state when they have completely finished joining the channel. Active members can both send messages to the channel and decrypt messages sent to the channel. When an active participant wants to leave the channel, they enter the \emph{leaving} state.
 \item \emph{leaving}: A participant is in the \emph{leaving} state when they have announced their intention to leave the channel, but they have yet to verify the transcript consistency of recent chat. A leaving participant can decrypt an unpredictable subset of messages sent to the chat; they cannot send messages. When the transcript consistency status of all chat before the announcement to leave the channel has become clear, the leaving procedure is completed and the leaving participant is removed from the channel.
 \end{itemize}
@@ -134,17 +134,78 @@ The channel object notifies the chat client of the following events:
 A secure chat client can implement (n+1)sec by allocating channel objects as the user tries to join channels, and responding to the event notifications as desired.
 Different configurations of the timeout settings can configure the (n+1)sec protocol for different levels of network reliability; different implementations of the authentication callback can be used to define different authentication models.
 
+\section{Channel behavior}
+\label{sec:channel-behavior}
+
+\subsection{Channel consistency}
+\label{sec:channel-behavior/channel-consistency}
+The previous section introduces the concept of an (n+1)sec \emph{channel} as the basic unit of a secure chat conversation.
+It also defines a number of security properties that the (n+1)sec system guarantees to be true for each channel, which each individual participant can verify by cryptographic means.
+If communication conditions are such that no secure chat satisfying these conditions is possible ---which is the case, for example, if the carrier chat system tries to manipulate the messages sent or received by particular chat members--- then the (n+1)sec system will respond by making sure that no channel can be constructed, and that affected existing channels may break down, making further chat impossible.
+
+An (n+1)sec channel is a distributed cooperation between a set of participants, who are in agreement about such things as the list of authenticated participants, and the active cryptographic session.
+There is no such thing as a central authoritative version of the state of the channel; instead, the system relies entirely on the proposition that the participants are in agreement with each other, and stay that way.
+If, for whatever reason, the participants of a channel find themselves in unexpected disagreement about the state of a channel ---for example, if one subset of a channel is of the opinion that user Alice has been authenticated by the entire channel and is therefore promoted to a \emph{joining} participant, whereas the remainder of the channel is of the opinion that Bob has yet to authenticate Alice--- then the coherence of the channel has broken down, and the channel cannot continue in its present form.
+This situation can arise if the carrier chat system manipulates the contents of the carrier chat, such as by not informing part of the channel that Bob has authenticated Alice; a malicient user might also try to arrange for this situation as a denial of service attack.
+
+When this happens, the (n+1)sec system responds by performing a procedure that ultimately leads to the disagreeing segments of the channel each continuing as a separate, independent channel.
+Each (n+1)sec client, when noticing that part of the channel is in disagreement with the client about the channel status, decides to unilaterally remove all participants from the channel with whom they are in disagreement.
+Because client agreement is an equivalence relation, the consequence of this procedure is that each ``side'' of the disagreement has constructed an internally consistent descendent channel; effectively, the original disagreeing channel has split itself into independent component channels that are once again in agreement.
+From the point of view of any particular participant of the disintegrating channel, this splitting procedure is asymmetric: all participants on the other side of the split have simply been kicked from the channel because of a protocol violation.
+Only from the point of view of an outsider watching the channel does the breakdown of a channel look like a symmetric split.
+
+\subsection{Denial of service}
+The system outline above, consisting of channels with cryptographically enforced security properties that split into consistent components whenever the security requirements can no longer be guaranteed, forms a secure chat system in the sense that all successful communications enjoy the desired security properties described in Section~\ref{sec:np1sec-chat-model}.
+For the resulting system to be usable in practice, however, it needs to satisfy a stronger requirement: the system must be set up in such a way that secure conditions between willing participants cannot easily be disrupted.
+Otherwise, it would be vulnerable to denial of service attacks, in which an attacker aims to make it impossible for honest users to participate in an (n+1)sec channel successfully.
+
+Of course, it is not possible for the (n+1)sec system to function in \emph{arbitrarily} adversarial conditions.
+An (n+1)sec channel relies on a carrier chat room to function as a message transport infrastructure; if this carrier system is malicious, then the (n+1)sec system can never ensure that secure chat is possible.
+Indeed, a sufficiently malicious carrier chat system could simply refuse to accept any messages sent by a particular client, which certainly makes any attempts for that user to participate in a secure chat a hopeless endeavour.
+Because the (n+1)sec system must necessarily assume a sufficiently cooperative carrier chat system, it makes no attempt to achieve any successful secure conversations when using a carrier chat system that does not satisfy the requirements outlined in Section~\ref{sec:carrier-chat-model}.
+
+By a similar reasoning, an (n+1)sec client relies on a connection to the carrier chat system that faithfully transmits messages to and from the carrier chat system without interference or manipulation.
+As above, a malicious carrier chat system connection could simply stop transmitting messages at all, thus behaving similarly to a network interruption, for which no client-side recovery is possible.
+The common availability of countermeasures such as transport layer security provides a further rationale for the reasoning that the (n+1)sec system does not attempt to recover a secure chat conversation when faced with a malicious carrier chat connection.
+
+As long as the above two properties hold, the (n+1)sec system is designed in such a way that honest participants can always construct and maintain secure channels, in which they can hold a secure conversation.
+In other words, a user of the carrier chat room cannot perform denial of service attacks by disrupting (the construction of) chat channels between honest participants; unless that user can compromise and manipulate the behavior of the carrier chat infrastructure, in which case no defense is possible.
+This guarantee can be formalized in greater detail as a list of requirements that the carrier chat system must satisfy, followed by a list of properties on the behavior of channels that the (n+1)sec system can guarantee are true.
+Specifically, the (n+1)sec system assumes the following \emph{carrier chat system requirements}:
+
+\begin{itemize}
+\item The carrier chat system relays messages between members of the room, without interference, in accordance with the properties listed in Section~\ref{sec:carrier-chat-model}.
+\item The carrier chat system relays messages between room members in a timely manner; that is, messages are relayed fast enough not to trigger network disconnect timeouts.
+\end{itemize}
+
+A \emph{cooperative} member of the carrier chat room is a member whose connection to the carrier chat system relays messages without interference and in a timely manner.
+Based on that definition, we can formalize the following properties about the behavior of channels that the (n+1)sec system can guarantee:
+
+\begin{itemize}
+\item A cooperative non-participant ---that is, a potential joiner of a channel--- is able to learn and maintain the state of any channel in which they are interested.
+\item The participants of a channel always agree about the status of the channel.
+\item A cooperative non-participant can become an \emph{authenticating} participant of any channel at any time.
+\item An \emph{authenticating} participant eventually becomes a \emph{joining} participant if and only if the participant is authorized by all \emph{joining} and \emph{active} participants in the channel.
+\item A cooperative \emph{joining} participant eventually becomes an \emph{active} participant.
+\item An \emph{active} participant can decrypt all messages sent to the channel.
+\item A cooperative \emph{active} participant can send messages to the channel.
+\item If a participant stops replying to a channel, or stops replying to particular events in a channel, eventually the participant is removed from the channel by means of a timeout.
+\end{itemize}
+
+The (n+1)sec system behaves in such a way that as long as the carrier chat system requirements hold, the above properties are guaranteed.
+This defines the degree to which the (n+1)sec system is resilient to denial of service attacks.
+
 \section{Joining and constructing (n+1)sec channels}
 \label{sec:joining-and-constructing-np1sec-channels}
 
-The previous section describes how (n+1)sec channels behave once one has started the procedure of joining one.
+The previous sections describe how (n+1)sec channels behave once one has started the procedure of joining one.
 What this section does not describe is how one can join a channel in the first place; or, alternatively, how to create an empty one from scratch.
 
 Ideally, the concept of (n+1)sec channels is nearly identified with the concept of carrier chat rooms.
 Each carrier chat room may contain an (n+1)sec channel; if one wants to hold a secure chat inside a particular carrier chat room, one queries whether one exists; sends a join request if it does; or starts a one-person channel if it does not.
 
 Unfortunately, this simple model isn't one that can be sustained.
-Several different sets of members of a carrier chat room might try to hold separate (n+1)sec channels inside the room; while it would be rare for this situation to arise spontaneously, it can certainly be crafted deliberately as a denial of service attack.
+Several different sets of members of a carrier chat room might try to hold separate (n+1)sec channels inside the room; a split event as described in Section~\ref{sec:channel-behavior/channel-consistency} can cause this to happen, and it can also be crafted deliberately as a denial of service attack.
 When this happens, the simple interaction model described above breaks down.
 
 As a consequence, the procedure of joining the (n+1)sec channel inside a carrier chat room is a bit more involved.
@@ -155,9 +216,6 @@ The process of joining (n+1)sec channels in a carrier chat room progresses throu
 \item While the user has yet to choose an (n+1)sec channel to join, the list of available channels is kept updated to reflect events happening in the available channels: new users joining, participants leaving the channel, et cetera.
 \item Eventually, the user either chooses to join one of the (n+1)sec channels inside the room, or creates a single-person channel.
 \end{itemize}
-Clearly, this model of joining an (n+1)sec secure discussion in a chat room is more complex than one would prefer it to be; this complication may prove to be a barrier for usability of the (n+1)sec system.
-This is all the more jarring because the model described here is only necessary in the uncommon situation in which a carrier chat room contains multiple (n+1)sec channels; in the presumably vastly more common situation where no more than one (n+1)sec channel exists in a room, the simplified ideal model described at the beginning of this section should be quite sufficient.
-For this reason, we recommend that any implementing clients take care to only display the extra step of selecting an (n+1)sec channel to join when the presence of multiple channels makes this necessary, and to automatically do the right thing in the uncomplicated case in which only one (or zero) existing channels are involved.
 
 The process of searching for (n+1)sec channels to join in a given carrier chat room consists of a model in which the (n+1)sec library maintains a list of available channels for the user to join, which is continuously updated until the user chooses a channel to join.
 This list is represented as an initially empty set of \emph{channel} objects as described in Section~\ref{sec:np1sec-chat-model}, which can be displayed in a user interface.
@@ -165,9 +223,9 @@ During the channel-search procedure, the following events can happen that change
 \begin{itemize}
 \item The search process can report the existence of a newly identified channel;
 \item A channel on the list can change its set of users, which happens when a user joins or leaves the channel, or a user in the channel becomes authenticated;
-\item A channel on the list can dissolve while its last remaining user leaves the channel;
+\item A channel on the list can dissolve when its last remaining user leaves the channel;
 \item A new channel can be created by a user in the carrier chat room;
-\item A channel on the list can split itself into two (or more) disjoint channels, such that each of the original channel's participants ends up as a participant of one of the post-split channels. This eventuality can occur when the participants of a channel elect to kick a subset of the participants out of the channel; it may also happen when a channel participant tries to sabotage the chat activity inside that channel, in which case the other channel participants decide to continue the chat channel without the troublemaker. From the point of view of the participants of the channel, a split event is modeled as a sequence of participants suddenly leaving the chat; it is only for a user trying to join a channel that a split must be modeled as a symmetric event.
+\item A channel on the list has split into multiple channels in response to a synchronization inconsistency, as outlined in Section~\ref{sec:channel-behavior/channel-consistency}.
 \end{itemize}
 The channel-searching procedure does not have a natural end; the (n+1)sec library keeps the list of available channels up-to-date in response to room events until the chat client chooses to terminate the procedure.
 The chat client can perform one of the following two events to terminate a channel-searching procedure:
