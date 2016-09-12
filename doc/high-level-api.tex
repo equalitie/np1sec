@@ -146,10 +146,10 @@ If communication conditions are such that no secure chat satisfying these condit
 An (n+1)sec channel is a distributed cooperation between a set of participants, who are in agreement about such things as the list of authenticated participants, and the active cryptographic session.
 There is no such thing as a central authoritative version of the state of the channel; instead, the system relies entirely on the proposition that the participants are in agreement with each other, and stay that way.
 If, for whatever reason, the participants of a channel find themselves in unexpected disagreement about the state of a channel ---for example, if one subset of a channel is of the opinion that user Alice has been authenticated by the entire channel and is therefore promoted to a \emph{joining} participant, whereas the remainder of the channel is of the opinion that Bob has yet to authenticate Alice--- then the coherence of the channel has broken down, and the channel cannot continue in its present form.
-This situation can arise if the carrier chat system manipulates the contents of the carrier chat, such as by not informing part of the channel that Bob has authenticated Alice; a malicient user might also try to arrange for this situation as a denial of service attack.
+This situation can arise if the carrier chat system manipulates the contents of the carrier chat, such as by not informing part of the channel that Bob has authenticated Alice; a malicient user might also try to arrange this situation as a denial of service attack.
 
-When this happens, the (n+1)sec system responds by performing a procedure that ultimately leads to the disagreeing segments of the channel each continuing as a separate, independent channel.
-Each (n+1)sec client, when noticing that part of the channel is in disagreement with the client about the channel status, decides to unilaterally remove all participants from the channel with whom they are in disagreement.
+When this happens, the (n+1)sec system responds by performing a procedure that ultimately leads to the disagreeing segments of the channel each continuing as separate, independent channels.
+Each (n+1)sec client, when noticing that part of the channel is in disagreement with the client about the channel status, decides to unilaterally drop all participants from the channel with whom they are in disagreement.
 Because client agreement is an equivalence relation, the consequence of this procedure is that each ``side'' of the disagreement has constructed an internally consistent descendent channel; effectively, the original disagreeing channel has split itself into independent component channels that are once again in agreement.
 From the point of view of any particular participant of the disintegrating channel, this splitting procedure is asymmetric: all participants on the other side of the split have simply been kicked from the channel because of a protocol violation.
 Only from the point of view of an outsider watching the channel does the breakdown of a channel look like a symmetric split.
@@ -171,7 +171,7 @@ The common availability of countermeasures such as transport layer security prov
 As long as the above two properties hold, the (n+1)sec system is designed in such a way that honest participants can always construct and maintain secure channels, in which they can hold a secure conversation.
 In other words, a user of the carrier chat room cannot perform denial of service attacks by disrupting (the construction of) chat channels between honest participants; unless that user can compromise and manipulate the behavior of the carrier chat infrastructure, in which case no defense is possible.
 This guarantee can be formalized in greater detail as a list of requirements that the carrier chat system must satisfy, followed by a list of properties on the behavior of channels that the (n+1)sec system can guarantee are true.
-Specifically, the (n+1)sec system assumes the following \emph{carrier chat system requirements}:
+In this vein, the (n+1)sec system assumes the following \emph{carrier chat system requirements}:
 
 \begin{itemize}
 \item The carrier chat system relays messages between members of the room, without interference, in accordance with the properties listed in Section~\ref{sec:carrier-chat-model}.
