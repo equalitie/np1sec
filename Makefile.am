@@ -27,4 +27,3 @@ libnp1sec_la_LIBADD = \
 	$(LIBEVENT_LIBS)
 
 include test/Makefile.inc
-include Makefile.am.lint
