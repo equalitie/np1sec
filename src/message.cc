@@ -228,25 +228,25 @@ Message ChannelStatusMessage::encode() const
 		MessageBuffer authorized_peers_buffer;
 		uint8_t authorized_by_byte = 0;
 		uint8_t authorized_peers_byte = 0;
-		int index = 0;
+		int bits = 8;
 		
 		for (const Participant& peer : participants) {
+			bits--;
 			if (participant.authorized_by.count(peer.username)) {
-				authorized_by_byte |= (1 << index);
+				authorized_by_byte |= (1 << bits);
 			}
 			if (participant.authorized_peers.count(peer.username)) {
-				authorized_peers_byte |= (1 << index);
+				authorized_peers_byte |= (1 << bits);
 			}
-			index++;
-			if (index == 8) {
+			if (bits == 0) {
 				authorized_by_buffer.add_8(authorized_by_byte);
 				authorized_peers_buffer.add_8(authorized_peers_byte);
-				index = 0;
+				bits = 8;
 				authorized_by_byte = 0;
 				authorized_peers_byte = 0;
 			}
 		}
-		if (index > 0) {
+		if (bits < 8) {
 			authorized_by_buffer.add_8(authorized_by_byte);
 			authorized_peers_buffer.add_8(authorized_peers_byte);
 		}

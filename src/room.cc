@@ -48,8 +48,14 @@ void Room::join_room()
 
 void Room::search_channels()
 {
-	assert(!m_channel);
-	assert(!m_channel_search);
+	if (m_channel_search) {
+		delete m_channel_search;
+		m_channel_search = 0;
+	}
+	if (m_channel) {
+		delete m_channel;
+		m_channel = 0;
+	}
 	
 	m_channel_search = new ChannelSearch(this);
 	m_channel_search->search();
@@ -57,17 +63,29 @@ void Room::search_channels()
 
 void Room::create_channel()
 {
-	assert(!m_channel);
-	assert(!m_channel_search);
+	if (m_channel_search) {
+		delete m_channel_search;
+		m_channel_search = nullptr;
+	}
+	if (m_channel) {
+		delete m_channel;
+		m_channel = 0;
+	}
 	
 	m_channel = new Channel(this);
 }
 
 void Room::join_channel(Channel* channel)
 {
+	if (m_channel_search) {
+		delete m_channel_search;
+		m_channel_search = 0;
+	}
+	if (m_channel) {
+		delete m_channel;
+		m_channel = 0;
+	}
 	m_channel = channel;
-	delete m_channel_search;
-	m_channel_search = nullptr;
 	
 	m_channel->join();
 }

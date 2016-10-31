@@ -345,7 +345,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 
 void Channel::user_left(const std::string& username)
 {
-	
+	remove_user(username);
 }
 
 
@@ -386,9 +386,24 @@ void Channel::try_promote_unauthorized_participant(Participant* participant)
 
 void Channel::remove_user(const std::string& username)
 {
-	// HACK test only
-	assert(!m_participants.count(username));
+	if (!m_participants.count(username)) {
+		return;
+	}
 	
+	m_participants.erase(username);
+	for (auto& p : m_participants) {
+		if (!p.second.authorized) {
+			p.second.authorized_by.erase(username);
+			p.second.authorized_peers.erase(username);
+		}
+	}
+	dump("Removing participant: " + username);
+	
+	for (auto& p : m_participants) {
+		if (!p.second.authorized) {
+			try_promote_unauthorized_participant(&p.second);
+		}
+	}
 }
 
 void Channel::send_message(const Message& message, std::string debug_description)
