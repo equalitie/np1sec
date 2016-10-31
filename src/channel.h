@@ -41,27 +41,45 @@ class Channel
 	protected:
 	struct Participant
 	{
+		/*
+		 * Part of the shared state machine
+		 */
 		std::string username;
 		PublicKey long_term_public_key;
 		PublicKey ephemeral_public_key;
 		
-		AuthenticationStatus authentication_status;
 		bool authorized;
 		// used only for unauthorized participants
 		std::set<std::string> authorized_by;
 		std::set<std::string> authorized_peers;
+		
+		/*
+		 * Local state
+		 */
+		// Did we confirm this user is part of this channel?
+		bool confirmed;
+		// Did we authenticate this user?
+		AuthenticationStatus authentication_status;
 	};
 	
 	
 	
 	public:
-	Channel(Room *room);
-	Channel(Room *room, const ChannelStatusMessage& channel_status);
+	Channel(Room* room);
+	Channel(Room* room, const ChannelStatusMessage& channel_status);
+	Channel(Room* room, const ChannelAnnouncementMessage& channel_status, const std::string& sender);
 	
+	bool empty() const;
+	bool joined() const;
+	
+	void announce();
+	void confirm_participant(const std::string& username);
 	void join();
+	void activate();
 	void authorize(const std::string& username);
 	
 	void message_received(const std::string& sender, const Message& np1sec_message);
+	void user_joined(const std::string& username);
 	void user_left(const std::string& username);
 	
 	
@@ -81,6 +99,7 @@ class Channel
 	
 	protected:
 	Room* m_room;
+	bool m_joined;
 	bool m_active;
 	bool m_authorized;
 	std::map<std::string, Participant> m_participants;

@@ -19,17 +19,17 @@
 #ifndef SRC_ROOM_H_
 #define SRC_ROOM_H_
 
+#include "channel.h"
+#include "channelsearch.h"
 #include "interface.h"
 #include "message.h"
 #include "timer.h"
 
 #include <map>
+#include <memory>
 
 namespace np1sec
 {
-
-class Channel;
-class ChannelSearch;
 
 class Room
 {
@@ -75,19 +75,21 @@ class Room
 	void join_room();
 	void search_channels();
 	void create_channel();
-	void join_channel(Channel* channel);
+	void join_channel(const std::string& id_hash);
 	void authorize(const std::string& username);
 	
 	/*
 	 * Callbacks
 	 */
 	void message_received(const std::string& sender, const std::string& text_message);
+	void user_joined(const std::string& username);
 	void user_left(const std::string& username);
 	//void left_room();
 	
 	/*
 	 * Internal
 	 */
+	void joined_channel(std::unique_ptr<Channel> channel);
 	void send_message(const Message& message);
 	
 	protected:
@@ -97,8 +99,9 @@ class Room
 	PrivateKey m_long_term_private_key;
 	PrivateKey m_ephemeral_private_key;
 	
-	Channel* m_channel;
-	ChannelSearch* m_channel_search;
+	std::unique_ptr<Channel> m_channel;
+	std::unique_ptr<Channel> m_constructing_channel;
+	std::unique_ptr<ChannelSearch> m_channel_search;
 };
 
 } // namespace np1sec

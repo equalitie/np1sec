@@ -41,6 +41,20 @@ template<int n> struct ByteArray
 		return std::string(reinterpret_cast<const char*>(buffer), n);
 	}
 	
+	std::string dump_hex() const
+	{
+		const char* hex_digits = "0123456789abcdef";
+		std::string output;
+		for (size_t i = 0; i < sizeof(buffer); i++) {
+			if (i > 0) {
+				output += ':';
+			}
+			output += hex_digits[(buffer[i] >> 4) & 0x0f];
+			output += hex_digits[(buffer[i] >> 0) & 0x0f];
+		}
+		return output;
+	}
+	
 	bool operator==(const ByteArray<n>& other) const
 	{
 		return memcmp(buffer, other.buffer, n) == 0;

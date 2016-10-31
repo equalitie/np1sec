@@ -313,6 +313,25 @@ ChannelStatusMessage ChannelStatusMessage::decode(const Message& encoded)
 	return result;
 }
 
+Message ChannelAnnouncementMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_public_key(long_term_public_key);
+	buffer.add_public_key(ephemeral_public_key);
+	
+	return Message(Message::Type::ChannelAnnouncement, buffer);
+}
+
+ChannelAnnouncementMessage ChannelAnnouncementMessage::decode(const Message& encoded)
+{
+	MessageBuffer buffer(get_message_payload(encoded, Message::Type::ChannelAnnouncement));
+	
+	ChannelAnnouncementMessage result;
+	result.long_term_public_key = buffer.remove_public_key();
+	result.ephemeral_public_key = buffer.remove_public_key();
+	return result;
+}
+
 Message JoinRequestMessage::encode() const
 {
 	MessageBuffer buffer;

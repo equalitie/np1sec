@@ -90,10 +90,11 @@ struct Message
 	enum class Type {
 		ChannelSearch = 0x11,
 		ChannelStatus = 0x12,
-		JoinRequest = 0x13,
-		AuthenticationRequest = 0x14,
-		Authentication = 0x15,
-		Authorization = 0x16
+		ChannelAnnouncement = 0x13,
+		JoinRequest = 0x14,
+		AuthenticationRequest = 0x15,
+		Authentication = 0x16,
+		Authorization = 0x17
 	};
 	
 	Message() {}
@@ -143,6 +144,15 @@ struct ChannelStatusMessage
 	
 	Message encode() const;
 	static ChannelStatusMessage decode(const Message& encoded);
+};
+
+struct ChannelAnnouncementMessage
+{
+	PublicKey long_term_public_key;
+	PublicKey ephemeral_public_key;
+	
+	Message encode() const;
+	static ChannelAnnouncementMessage decode(const Message& encoded);
 };
 
 struct JoinRequestMessage

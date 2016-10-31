@@ -20,9 +20,17 @@
 #define SRC_CHANNELSEARCH_H_
 
 #include "channel.h"
+#include "crypto.h"
+#include "message.h"
+
+#include <map>
+#include <memory>
+#include <vector>
 
 namespace np1sec
 {
+
+class Room;
 
 class ChannelSearch
 {
@@ -30,12 +38,38 @@ class ChannelSearch
 	ChannelSearch(Room* room);
 	
 	void search();
+	void join_channel(const std::string& id_hash);
 	
 	void message_received(const std::string& sender, const Message& np1sec_message);
-//	void user_left(const std::string& username);
+	void user_joined(const std::string& username);
+	void user_left(const std::string& username);
+	
+	protected:
+	struct RoomEvent
+	{
+		enum class Type { Message, Join, Leave };
+		std::string sender;
+		Type type;
+		Message message;
+	};
+	void process_event(const RoomEvent& event);
+	void send_event(Channel* channel, const RoomEvent& event);
+	std::unique_ptr<Channel> create_channel(const ChannelStatusMessage& message);
 	
 	protected:
 	Room* m_room;
+	
+	bool m_received_search_message;
+	Hash m_search_nonce;
+	
+	std::string m_joining_channel_id;
+	
+	std::vector<RoomEvent> m_event_log;
+	
+	/*
+	 * Stores each channel, identified by the channel status message payload
+	 */
+	std::map<std::string, std::unique_ptr<Channel>> m_channels;
 };
 
 } // namespace np1sec

@@ -151,10 +151,11 @@ void ui_input(struct Jabberite* settings, std::string line)
 		
 		global_room = new np1sec::Room(global_interface, global_username, private_key);
 		global_room->join_room();
+		global_room->search_channels();
 	} else if (line == "/create") {
 		global_room->create_channel();
-	} else if (line == "/join") {
-		global_room->search_channels();
+	} else if (line.substr(0, 5) == "/join") {
+		global_room->join_channel(line.substr(6));
 	} else if (line.substr(0, 7) == "/accept") {
 		global_room->authorize(line.substr(8));
 	}

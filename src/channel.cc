@@ -24,29 +24,18 @@
 namespace np1sec
 {
 
-static std::string fingerprint(np1sec::PublicKey public_key)
-{
-	std::string output;
-	for (size_t i = 0; i < sizeof(public_key.buffer); i++) {
-		if (i > 0) {
-			output += ':';
-		}
-		output += "0123456789abcdef"[(public_key.buffer[i] >> 4) & 0x0f];
-		output += "0123456789abcdef"[(public_key.buffer[i] >> 0) & 0x0f];
-	}
-	return output;
-}
-
 void Channel::dump(const std::string& message)
 {
 	std::cout << "** " << message << ":\n";
 	std::cout << "Channel status:\n";
+	std::cout << "  Joined: " << (m_joined ? "yes" : "no") << "\n";
 	std::cout << "  Active: " << (m_active ? "yes" : "no") << "\n";
 	std::cout << "  Authorized: " << (m_authorized ? "yes" : "no") << "\n";
 	std::cout << "Participants:\n";
 	for (const auto& p : m_participants) {
 		std::string padding(16 - p.second.username.size(), ' ');
-		std::cout << "  " << p.second.username << padding << " " << fingerprint(p.second.long_term_public_key) << "    " << fingerprint(p.second.ephemeral_public_key) << "\n";
+		std::cout << "  " << p.second.username << padding << " " << p.second.long_term_public_key.dump_hex() << "    " << p.second.ephemeral_public_key.dump_hex() << "\n";
+		std::cout << "    Channel status confirmed: " << (p.second.confirmed ? "yes" : "no") << "\n";
 		std::cout << "    Authentication status: " << (
 			p.second.authentication_status == AuthenticationStatus::Authenticated ? "authenticated" :
 			p.second.authentication_status == AuthenticationStatus::Unauthenticated ? "unauthenticated" :
@@ -67,22 +56,25 @@ void Channel::dump(const std::string& message)
 
 Channel::Channel(Room* room):
 	m_room(room),
-	m_active(true),
+	m_joined(false),
+	m_active(false),
 	m_authorized(true)
 {
 	Participant self;
 	self.username = m_room->username();
 	self.long_term_public_key = m_room->long_term_public_key();
 	self.ephemeral_public_key = m_room->ephemeral_public_key();
-	self.authentication_status = AuthenticationStatus::Authenticated;
 	self.authorized = true;
+	self.confirmed = true;
+	self.authentication_status = AuthenticationStatus::Authenticated;
 	m_participants[self.username] = self;
 	
 	dump("Created channel");
 }
 
-Channel::Channel(Room *room, const ChannelStatusMessage& channel_status):
+Channel::Channel(Room* room, const ChannelStatusMessage& channel_status):
 	m_room(room),
+	m_joined(false),
 	m_active(false),
 	m_authorized(false)
 {
@@ -91,8 +83,9 @@ Channel::Channel(Room *room, const ChannelStatusMessage& channel_status):
 		participant.username = p.username;
 		participant.long_term_public_key = p.long_term_public_key;
 		participant.ephemeral_public_key = p.ephemeral_public_key;
-		participant.authentication_status = AuthenticationStatus::Unauthenticated;
 		participant.authorized = true;
+		participant.confirmed = false;
+		participant.authentication_status = AuthenticationStatus::Unauthenticated;
 		m_participants[participant.username] = std::move(participant);
 	}
 	
@@ -101,8 +94,9 @@ Channel::Channel(Room *room, const ChannelStatusMessage& channel_status):
 		participant.username = p.username;
 		participant.long_term_public_key = p.long_term_public_key;
 		participant.ephemeral_public_key = p.ephemeral_public_key;
-		participant.authentication_status = AuthenticationStatus::Unauthenticated;
 		participant.authorized = false;
+		participant.confirmed = false;
+		participant.authentication_status = AuthenticationStatus::Unauthenticated;
 		
 		for (const std::string& peer : p.authorized_by) {
 			if (m_participants.count(peer)) {
@@ -119,15 +113,63 @@ Channel::Channel(Room *room, const ChannelStatusMessage& channel_status):
 	}
 	
 	dump("Tracking channel");
+}
+
+Channel::Channel(Room* room, const ChannelAnnouncementMessage& channel_status, const std::string& sender):
+	m_room(room),
+	m_joined(false),
+	m_active(false),
+	m_authorized(false)
+{
+	Participant participant;
+	participant.username = sender;
+	participant.long_term_public_key = channel_status.long_term_public_key;
+	participant.ephemeral_public_key = channel_status.ephemeral_public_key;
+	participant.authorized = true;
+	participant.confirmed = false;
+	participant.authentication_status = AuthenticationStatus::Unauthenticated;
+	m_participants[participant.username] = std::move(participant);
 	
-	for (const auto& p : m_participants) {
+	dump("Tracking created channel");
+}
+
+bool Channel::empty() const
+{
+	return m_participants.empty();
+}
+
+bool Channel::joined() const
+{
+	return m_joined;
+}
+
+void Channel::announce()
+{
+	ChannelAnnouncementMessage message;
+	message.long_term_public_key = m_room->long_term_public_key();
+	message.ephemeral_public_key = m_room->ephemeral_public_key();
+	send_message(message.encode(), "announcing channel");
+	
+	dump("Announcing channel");
+}
+
+void Channel::confirm_participant(const std::string& username)
+{
+	assert(m_participants.count(username));
+	
+	Participant& participant = m_participants[username];
+	if (!participant.confirmed) {
+		participant.confirmed = true;
+		
 		AuthenticationRequestMessage request;
 		request.sender_long_term_public_key = m_room->long_term_public_key();
 		request.sender_ephemeral_public_key = m_room->ephemeral_public_key();
-		request.peer_username = p.second.username;
-		request.peer_long_term_public_key = p.second.long_term_public_key;
-		request.peer_ephemeral_public_key = p.second.ephemeral_public_key;
-		send_message(request.encode(), "authentication request");
+		request.peer_username = participant.username;
+		request.peer_long_term_public_key = participant.long_term_public_key;
+		request.peer_ephemeral_public_key = participant.ephemeral_public_key;
+		send_message(request.encode(), "authentication request for user " + username);
+		
+		dump("Confirming user " + username);
 	}
 }
 
@@ -146,23 +188,47 @@ void Channel::join()
 	dump("Joining channel");
 }
 
+void Channel::activate()
+{
+	m_active = true;
+	
+	dump("Activating channel");
+}
+
 void Channel::authorize(const std::string& username)
 {
 	if (!m_participants.count(username)) {
 		return;
 	}
 	
-	Participant& participant = m_participants[username];
-//	if (participant.authorized) {
-//		return;
-//	}
-	if (participant.authorized_by.count(m_room->username())) {
+	if (username == m_room->username()) {
 		return;
+	}
+	
+	Participant& participant = m_participants[username];
+	Participant& self = m_participants[m_room->username()];
+	
+	if (self.authorized) {
+		if (participant.authorized) {
+			return;
+		}
+		
+		if (participant.authorized_by.count(m_room->username())) {
+			return;
+		}
+	} else {
+		if (!participant.authorized) {
+			return;
+		}
+		
+		if (self.authorized_peers.count(username)) {
+			return;
+		}
 	}
 	
 	AuthorizationMessage message;
 	message.username = participant.username;
-	send_message(message.encode());
+	send_message(message.encode(), "authorization for " + username);
 }
 
 
@@ -200,9 +266,30 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 				}
 			}
 			
-			send_message(reply.encode(), "channel status");
+			send_message(reply.encode(), "channel status for user " + sender);
 			
-			dump("Broadcasting channel");
+			dump("Broadcasting channel for user " + sender);
+		}
+	} else if (np1sec_message.type == Message::Type::ChannelAnnouncement) {
+		ChannelAnnouncementMessage message;
+		try {
+			message = ChannelAnnouncementMessage::decode(np1sec_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
+		if (
+			   !m_joined
+			&& m_authorized
+			&& sender == m_room->username()
+			&& message.long_term_public_key == m_room->long_term_public_key()
+			&& message.ephemeral_public_key == m_room->ephemeral_public_key()
+		) {
+			m_joined = true;
+			
+			dump("Joined created channel");
+		} else if (m_participants.count(sender)) {
+			remove_user(sender);
 		}
 	} else if (np1sec_message.type == Message::Type::JoinRequest) {
 		JoinRequestMessage message;
@@ -230,6 +317,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		participant.long_term_public_key = message.long_term_public_key;
 		participant.ephemeral_public_key = message.ephemeral_public_key;
 		participant.authorized = false;
+		participant.confirmed = true;
 		participant.authentication_status = AuthenticationStatus::Unauthenticated;
 		m_participants[sender] = std::move(participant);
 		
@@ -243,7 +331,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			request.peer_username = sender;
 			request.peer_long_term_public_key = message.long_term_public_key;
 			request.peer_ephemeral_public_key = message.ephemeral_public_key;
-			send_message(request.encode(), "authentication request");
+			send_message(request.encode(), "authentication request for user " + sender);
 		}
 		
 		dump("Adding user " + sender);
@@ -343,6 +431,11 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 	}
 }
 
+void Channel::user_joined(const std::string& username)
+{
+	// NOTE do we need this?
+}
+
 void Channel::user_left(const std::string& username)
 {
 	remove_user(username);
@@ -355,7 +448,8 @@ void Channel::user_left(const std::string& username)
 
 void Channel::self_joined()
 {
-	m_active = true;
+	m_joined = true;
+	
 	for (const auto& i : m_participants) {
 		if (i.second.username == m_room->username()) {
 			continue;
@@ -368,6 +462,7 @@ void Channel::self_joined()
 void Channel::try_promote_unauthorized_participant(Participant* participant)
 {
 	assert(!participant->authorized);
+	
 	for (const auto& i : m_participants) {
 		if (i.second.authorized) {
 			if (!participant->authorized_by.count(i.second.username)) {
@@ -381,6 +476,11 @@ void Channel::try_promote_unauthorized_participant(Participant* participant)
 	participant->authorized = true;
 	participant->authorized_by.clear();
 	participant->authorized_peers.clear();
+	
+	if (participant->username == m_room->username()) {
+		m_authorized = true;
+	}
+	
 	dump("Promoting participant to authorized participant: " + participant->username);
 }
 
@@ -425,7 +525,7 @@ void Channel::authenticate_to(const std::string& username, const PublicKey& long
 	message.peer_long_term_public_key = long_term_public_key;
 	message.peer_ephemeral_public_key = ephemeral_public_key;
 	message.authentication_confirmation = authentication_token(username, long_term_public_key, ephemeral_public_key, false);
-	send_message(message.encode(), "authentication");
+	send_message(message.encode(), "authentication for " + username);
 }
 
 Hash Channel::authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, bool for_peer)
@@ -446,6 +546,5 @@ Hash Channel::authentication_token(const std::string& username, const PublicKey&
 	}
 	return crypto::hash(buffer);
 }
-
 
 } // namespace np1sec
