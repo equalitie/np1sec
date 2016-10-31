@@ -1,25 +1,23 @@
-/*
- *  Off-the-Record Messaging library
- *  Copyright (C) 2004-2012  Ian Goldberg, Chris Alexander, Willy Lew,
- *  			     Nikita Borisov
- *                           <otr@cypherpunks.ca>
+/**
+ * (n+1)Sec Multiparty Off-the-Record Messaging library
+ * Copyright (C) 2016, eQualit.ie
  *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of version 2.1 of the GNU Lesser General
- *  Public License as published by the Free Software Foundation.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of version 3 of the GNU Lesser General
+ * Public License as published by the Free Software Foundation.
  *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  Lesser General Public License for more details.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef __B64_H__
-#define __B64_H__
+#ifndef SRC_BASE64_H_
+#define SRC_BASE64_H_
 
 #include <cstddef>
 

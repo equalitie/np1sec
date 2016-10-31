@@ -1,6 +1,6 @@
 /**
- * Multiparty Off-the-Record Messaging library
- * Copyright (C) 2014, eQualit.ie
+ * (n+1)Sec Multiparty Off-the-Record Messaging library
+ * Copyright (C) 2016, eQualit.ie
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of version 3 of the GNU Lesser General
@@ -28,42 +28,48 @@ namespace np1sec
 
 template<int n> struct ByteArray
 {
-    uint8_t buffer[n];
-
-    ByteArray() {}
-    explicit ByteArray(const uint8_t* data) { memcpy(buffer, data, n); }
-
-    std::string as_string() const { return std::string(reinterpret_cast<const char*>(buffer), n); }
-
-    bool operator==(const ByteArray<n>& other) const
-    {
-        return memcmp(buffer, other.buffer, n) == 0;
-    }
-
-    bool operator!=(const ByteArray<n>& other) const
-    {
-        return memcmp(buffer, other.buffer, n) != 0;
-    }
-
-    bool operator<(const ByteArray<n>& other) const
-    {
-        return memcmp(buffer, other.buffer, n) < 0;
-    }
-
-    bool operator>(const ByteArray<n>& other) const
-    {
-        return memcmp(buffer, other.buffer, n) > 0;
-    }
-
-    bool operator<=(const ByteArray<n>& other) const
-    {
-        return memcmp(buffer, other.buffer, n) <= 0;
-    }
-
-    bool operator>=(const ByteArray<n>& other) const
-    {
-        return memcmp(buffer, other.buffer, n) >= 0;
-    }
+	uint8_t buffer[n];
+	
+	ByteArray() {}
+	explicit ByteArray(const uint8_t* data)
+	{
+		memcpy(buffer, data, n);
+	}
+	
+	std::string as_string() const
+	{
+		return std::string(reinterpret_cast<const char*>(buffer), n);
+	}
+	
+	bool operator==(const ByteArray<n>& other) const
+	{
+		return memcmp(buffer, other.buffer, n) == 0;
+	}
+	
+	bool operator!=(const ByteArray<n>& other) const
+	{
+		return memcmp(buffer, other.buffer, n) != 0;
+	}
+	
+	bool operator<(const ByteArray<n>& other) const
+	{
+		return memcmp(buffer, other.buffer, n) < 0;
+	}
+	
+	bool operator>(const ByteArray<n>& other) const
+	{
+		return memcmp(buffer, other.buffer, n) > 0;
+	}
+	
+	bool operator<=(const ByteArray<n>& other) const
+	{
+		return memcmp(buffer, other.buffer, n) <= 0;
+	}
+	
+	bool operator>=(const ByteArray<n>& other) const
+	{
+		return memcmp(buffer, other.buffer, n) >= 0;
+	}
 };
 
 }

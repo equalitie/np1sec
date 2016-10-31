@@ -1,29 +1,22 @@
 ACLOCAL_AMFLAGS = -I m4
 
 AM_CPPFLAGS = -I. -I$(srcdir)/src \
-	-I$(srcdir)/contrib/gtest/include \
 	$(LIBGCRYPT_CFLAGS) \
-	$(LIBEVENT_CFLAGS)
+	$(LIBEVENT_CFLAGS) \
+	$(PURPLE_CFLAGS)
 
-noinst_LTLIBRARIES =
-noinst_PROGRAMS =
+bin_PROGRAMS = jabberling
 
-TESTS =
-
-lib_LTLIBRARIES = libnp1sec.la
-
-libnp1sec_la_SOURCES = \
-	src/crypto.cc \
-	src/logger.cc \
+jabberling_SOURCES = \
 	src/base64.cc \
+	src/crypto.cc \
+	src/jabberling.cc \
+	src/main.cc \
 	src/message.cc \
-	src/participant.cc \
-	src/session.cc \
-	src/room.cc \
-	src/userstate.cc
+	src/room.cc
 
-libnp1sec_la_LIBADD = \
+jabberling_LDADD = \
 	$(LIBGCRYPT_LIBS) \
-	$(LIBEVENT_LIBS)
-
-include test/Makefile.inc
+	$(LIBEVENT_LIBS) \
+	$(PURPLE_LIBS) \
+	-lreadline

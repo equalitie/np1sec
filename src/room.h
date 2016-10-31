@@ -1,6 +1,6 @@
 /**
- * Multiparty Off-the-Record Messaging library
- * Copyright (C) 2014, eQualit.ie
+ * (n+1)Sec Multiparty Off-the-Record Messaging library
+ * Copyright (C) 2016, eQualit.ie
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of version 3 of the GNU Lesser General
@@ -19,195 +19,95 @@
 #ifndef SRC_ROOM_H_
 #define SRC_ROOM_H_
 
-#include <string>
-#include <map>
-
 #include "interface.h"
-#include "session.h"
+#include "message.h"
+
+#include <map>
 
 namespace np1sec
 {
 
-typedef std::map<SessionId, Session*> SessionMap;
-
-/**
- * Manage all sessions associated to a room, this is follow the concurrent
- * join protocol described in the np1sec spec
- *
- * The session-room invarients is that:
- *  - All participant in active session, share the same view about who is in
- *    the active session of the room.
- *
- * nTherefore session creation fololws the following algorithm:
- *
- * User is in active session:
- * - Receive a join join requet-> make a new session immediately with session id.
- * - Receive a leave requet -> make a new session immediately with session id.
- * - Receive a message with wrong sid -> ignore.
- *
- * User not in the active session:
- * - UserState join-> just send join to room without session
- * - receive with existing sid -> goes to sid.
- * - receive with non-existing sid -> generate a new session.
- *
- */
 class Room
 {
-  public:
-    std::string name;
-  protected:
-    Application* application;
-
-    std::string nickname;
-    PrivateKey long_term_private_key;
-
-    size_t room_size = 0; // we only need keep track of
-    // the room size till we become a current user. after that
-    // the session can take care of that
-
-    enum UserInRoomState {
-        JOINING,
-        CURRENT_USER
-    };
-
-    UserInRoomState user_in_room_state;
-
-    // The ephemeral private key used during the joining process
-    PrivateKey join_ephemeral_private_key;
-
-
-    SessionMap session_universe;
-
-    // list of sessions in limbo, they need to give birth to new
-    // sessions in-limbo in case a user join or leave.
-    // std::list<Session*> limbo; //no need for this limbo every
-    // session beside current session.
-
-    Session* active_session;
-    Session* next_in_activation_line;
-
-    /**
-     * manages activating a session which concerns an additional
-     * person joining or an person leaving. it inform all sessions
-     * in limbo to add or drop the person.
-     *
-     * @param newl_activated_session the session that just got confirmation
-     *        from all particpants and is ready to be the default session of
-     *        the room
-     */
-    void activate_session(Session *session);
-
-    /**
-     * Mark in-limbo sessions which are not valid any more as stale so
-     * subsequently one can make a fresh session out of each
-     * mark them stale prevent them from replying to confimation etc and
-     * misleading joining participants in moving forward
-     */
-    void stale_in_limbo_sessions_presume_heir(Session *session);
-
-    /**
-     *  When a new sesison generates key we need to update all session in limbo
-     *  (kill them and generate new one for each) which ad here to this generated
-     *  key session.
-     * if somebody leaves, as soon as they live you need to update them cause
-     * they are useless and the leaving person aren't going to confirmed any of them
-     */
-    void refresh_stale_in_limbo_sessions(Session *session);
-
-  public:
-    /**
-     * constructor: sets room name, make the user status joing
-     * by default.
-     *
-     */
-    Room(std::string room_name, Application* application, const std::string& nickname, const PrivateKey& long_term_private_key, uint32_t room_size);
-
-    /**
-     * called by UserState, everytime the user trys to join a room
-     * it just simply send a join message to the room.
-     */
-    void join();
-
-    /**
-     *  If the user is joiner and already has constructed a session for
-     *  the room and for any reason haven't received a reply from current
-     *  participant this functions resend the join request
-     */
-    void try_rejoin();
-
-    /**
-     * called by room constructor, everytime the user is the first joiner
-     * of an empty room and hence does not need to convince anybody about
-     * their identity, etc.
-     */
-    void solitary_join();
-
-    /**
-     * manages the finite state machine of the sid part of the message
-     * based on sid (or absence of it), it decides what to do with the
-     * message
-     *
-     * User is in active session:
-     * - Receive a join join requet-> make a new session immediately with session id.
-     * - Receive a leave requet -> make a new session immediately with session id.
-     * - Receive a message with wrong sid -> ignore.
-     *
-     * User not in the active session:
-     * - UserState join-> just send join to room without session
-     * - receive with existing sid -> goes to sid.
-     * - receive with non-existing sid -> generate a new session.
-     *
-     *
-     */
-    void receive_handler(std::string received_message, std::string sender_nickname);
-
-    /**
-     *  sends user message given in plain text by the client to the
-     *  active session of the room
-     *
-     *  @param plain_message user text message
-     *
-     *  throw exception if no active session is established for the current
-     *  room
-     */
-    void send_user_message(std::string plain_message);
-
-    /**
-     * Just sends a message for closing the transcript consistency
-     * this also initiate the new session creation for other users
-     */
-    void leave();
-
-    /**
-     * Just sends a message for closing the transcript consistency
-     * this also initiate the new session creation for other users
-     */
-    void shrink(std::string leaving_user_nick);
-
-    /**
-     * called by user state when somebody else joins the
-     * the room to keep track of the room size
-     */
-    void increment_size();
-
-    /**
-     * for Session when it breeds a new session specailly
-     * in the forward secrecy timer to be able to insert it
-     * in the room's session map
-     */
-    void insert_session(Session* new_session);
-
-    /**
-     * Sends a message.
-     */
-    void send(const Message& message);
-
-    /**
-     * Destructor need to clean up the session universe
-     */
-    ~Room();
+	public:
+	Room(RoomInterface* interface, const std::string& username, const PrivateKey& private_key);
+	
+	/*
+	 * Accessors
+	 */
+	const std::string& username() const
+	{
+		return m_username;
+	}
+	
+	const PublicKey& public_key() const
+	{
+		return m_long_term_private_key.public_key();
+	}
+	
+	const PrivateKey& private_key() const
+	{
+		return m_long_term_private_key;
+	}
+	
+	Identity identity() const
+	{
+		Identity identity;
+		identity.username = username();
+		identity.public_key = public_key();
+		return identity;
+	}
+	
+	bool connected() const
+	{
+		return !m_users.empty();
+	}
+	
+	/*
+	 * Operations
+	 */
+	void join();
+	
+	/*
+	 * Callbacks
+	 */
+	void message_received(const std::string& sender, const std::string& text_message);
+	void user_left(const std::string& username);
+	//void left_room();
+	
+	protected:
+	void disconnect();
+	void register_user(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key);
+	Hash authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, bool for_peer);
+	void remove_user(const std::string& username);
+	void send_message(const Message& message);
+	
+	protected:
+	struct User
+	{
+		std::string username;
+		PublicKey long_term_public_key;
+		PublicKey ephemeral_public_key;
+		bool authenticated;
+		
+		Identity identity() const
+		{
+			Identity identity;
+			identity.username = username;
+			identity.public_key = long_term_public_key;
+			return identity;
+		}
+	};
+	
+	RoomInterface* m_interface;
+	
+	std::string m_username;
+	PrivateKey m_long_term_private_key;
+	PrivateKey m_ephemeral_private_key;
+	
+	std::map<std::string, User> m_users;
 };
 
 } // namespace np1sec
 
-#endif // SRC_ROOM_H_
+#endif

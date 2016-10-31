@@ -1,21 +1,19 @@
-/*
- *  Off-the-Record Messaging library
- *  Copyright (C) 2004-2012  Ian Goldberg, Chris Alexander, Willy Lew,
- *  			     Nikita Borisov
- *                           <otr@cypherpunks.ca>
+/**
+ * (n+1)Sec Multiparty Off-the-Record Messaging library
+ * Copyright (C) 2016, eQualit.ie
  *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of version 2.1 of the GNU Lesser General
- *  Public License as published by the Free Software Foundation.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of version 3 of the GNU Lesser General
+ * Public License as published by the Free Software Foundation.
  *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  Lesser General Public License for more details.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 /* Modified from: */
@@ -78,15 +76,15 @@ static const char cd64[] = "|$$$}rstuvwxyz{$$$$$$$>?@ABCDEFGHIJKLMNOPQRSTUVW$$$$
 */
 static void encodeblock(char* out, const unsigned char* in, size_t len)
 {
-    unsigned char in0, in1, in2;
-    in0 = in[0];
-    in1 = len > 1 ? in[1] : 0;
-    in2 = len > 2 ? in[2] : 0;
-
-    out[0] = cb64[in0 >> 2];
-    out[1] = cb64[((in0 & 0x03) << 4) | ((in1 & 0xf0) >> 4)];
-    out[2] = len > 1 ? cb64[((in1 & 0x0f) << 2) | ((in2 & 0xc0) >> 6)] : '=';
-    out[3] = len > 2 ? cb64[in2 & 0x3f] : '=';
+	unsigned char in0, in1, in2;
+	in0 = in[0];
+	in1 = len > 1 ? in[1] : 0;
+	in2 = len > 2 ? in[2] : 0;
+	
+	out[0] = cb64[in0 >> 2];
+	out[1] = cb64[((in0 & 0x03) << 4) | ((in1 & 0xf0) >> 4)];
+	out[2] = len > 1 ? cb64[((in1 & 0x0f) << 2) | ((in2 & 0xc0) >> 6)] : '=';
+	out[3] = len > 2 ? cb64[in2 & 0x3f] : '=';
 }
 
 /*
@@ -97,46 +95,46 @@ static void encodeblock(char* out, const unsigned char* in, size_t len)
  */
 size_t base64_encode(char* base64data, const unsigned char* data, size_t datalen)
 {
-    size_t base64len = 0;
-
-    while (datalen > 2) {
-        encodeblock(base64data, data, 3);
-        base64data += 4;
-        base64len += 4;
-        data += 3;
-        datalen -= 3;
-    }
-    if (datalen > 0) {
-        encodeblock(base64data, data, datalen);
-        base64len += 4;
-    }
-
-    return base64len;
+	size_t base64len = 0;
+	
+	while (datalen > 2) {
+		encodeblock(base64data, data, 3);
+		base64data += 4;
+		base64len += 4;
+		data += 3;
+		datalen -= 3;
+	}
+	if (datalen > 0) {
+		encodeblock(base64data, data, datalen);
+		base64len += 4;
+	}
+	
+	return base64len;
 }
 
 static size_t decode(unsigned char* out, const char* in, size_t b64len)
 {
-    size_t written = 0;
-    unsigned char c = 0;
-
-    if (b64len > 0) {
-        c = in[0] << 2;
-    }
-    if (b64len > 1) {
-        out[0] = c | in[1] >> 4;
-        written = 1;
-        c = in[1] << 4;
-    }
-    if (b64len > 2) {
-        out[1] = c | in[2] >> 2;
-        written = 2;
-        c = in[2] << 6;
-    }
-    if (b64len > 3) {
-        out[2] = c | in[3];
-        written = 3;
-    }
-    return written;
+	size_t written = 0;
+	unsigned char c = 0;
+	
+	if (b64len > 0) {
+		c = in[0] << 2;
+	}
+	if (b64len > 1) {
+		out[0] = c | in[1] >> 4;
+		written = 1;
+		c = in[1] << 4;
+	}
+	if (b64len > 2) {
+		out[1] = c | in[2] >> 2;
+		written = 2;
+		c = in[2] << 6;
+	}
+	if (b64len > 3) {
+		out[2] = c | in[3];
+		written = 3;
+	}
+	return written;
 }
 
 /*
@@ -149,39 +147,39 @@ static size_t decode(unsigned char* out, const char* in, size_t b64len)
  */
 size_t base64_decode(unsigned char* data, const char* base64data, size_t base64len)
 {
-    size_t datalen = 0;
-    char b64[4];
-    size_t b64accum = 0;
-
-    while (base64len > 0) {
-        char b = *base64data;
-        unsigned char bdecode;
-        ++base64data;
-        --base64len;
-        if (b < '+' || b > 'z')
-            continue; /* Skip non-base64 chars */
-        if (b == '=') {
-            /* Force termination */
-            datalen += decode(data, b64, b64accum);
-            base64len = 0;
-        } else {
-            bdecode = cd64[b - '+'];
-            if (bdecode == '$')
-                continue; /* Skip non-base64 chars */
-            b64[b64accum++] = bdecode - '>';
-            if (b64accum == 4) {
-                /* We have a complete block; decode it. */
-                size_t written = decode(data, b64, b64accum);
-                data += written;
-                datalen += written;
-                b64accum = 0;
-            }
-        }
-    }
-
-    /* Just discard any short block at the end. */
-
-    return datalen;
+	size_t datalen = 0;
+	char b64[4];
+	size_t b64accum = 0;
+	
+	while (base64len > 0) {
+		char b = *base64data;
+		unsigned char bdecode;
+		++base64data;
+		--base64len;
+		if (b < '+' || b > 'z')
+			continue; /* Skip non-base64 chars */
+		if (b == '=') {
+			/* Force termination */
+			datalen += decode(data, b64, b64accum);
+			base64len = 0;
+		} else {
+			bdecode = cd64[b - '+'];
+			if (bdecode == '$')
+				continue; /* Skip non-base64 chars */
+			b64[b64accum++] = bdecode - '>';
+			if (b64accum == 4) {
+				/* We have a complete block; decode it. */
+				size_t written = decode(data, b64, b64accum);
+				data += written;
+				datalen += written;
+				b64accum = 0;
+			}
+		}
+	}
+	
+	/* Just discard any short block at the end. */
+	
+	return datalen;
 }
 
 } // namespace np1sec

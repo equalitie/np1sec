@@ -1,4 +1,4 @@
-AC_INIT([libnp1sec], [0.0.0])
+AC_INIT([jabberling], [0.0.0])
 
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
@@ -12,11 +12,6 @@ AC_PROG_CXX
 AC_LANG([C++])
 
 CXXFLAGS+=" -std=c++11 -Wall -Wextra -Werror" #-Wno-error"
-
-GTEST_BASE=contrib/gtest
-GTEST_INCLUDE=${GTEST_BASE}/include
-AC_SUBST(GTEST_BASE)
-AC_SUBST(GTEST_INCLUDE)
 
 PKG_CHECK_MODULES([GLIB], [glib-2.0], [
 	AC_SUBST(GLIB_CFLAGS)
