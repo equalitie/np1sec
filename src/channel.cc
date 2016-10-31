@@ -650,7 +650,7 @@ void Channel::remove_user(const std::string& username)
 void Channel::send_message(const Message& message, std::string debug_description)
 {
 	if (!debug_description.empty()) {
-		m_room->interface()->send_message("sending message: " + debug_description);
+		m_room->send_message("sending message: " + debug_description);
 	}
 	m_room->send_message(message);
 }

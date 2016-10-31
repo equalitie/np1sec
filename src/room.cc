@@ -38,6 +38,12 @@ Room::Room(RoomInterface* interface, const std::string& username, const PrivateK
 void Room::join_room()
 {
 	// NOTE no rejoin support
+	/*
+	 * TODO rejoin support?
+	 *
+	 * We need rejoin in case of timeouts, and after receiving the wrong messages on our end.
+	 * A rejoin operation may be tricky in either case. Hm...
+	 */
 	assert(!m_channel);
 	assert(!m_channel_creation);
 	assert(!m_channel_search);
@@ -73,6 +79,14 @@ void Room::authorize(const std::string& username)
 
 void Room::message_received(const std::string& sender, const std::string& text_message)
 {
+	if (sender == username()) {
+		if (m_message_queue.empty() || m_message_queue.front() != text_message) {
+			disconnect();
+			return;
+		}
+		m_message_queue.pop_front();
+	}
+	
 	Message np1sec_message;
 	try {
 		np1sec_message = Message::decode(text_message);
@@ -118,6 +132,16 @@ void Room::user_left(const std::string& username)
 	}
 }
 
+void Room::disconnect()
+{
+	// TODO fill in details here when we have a proper API.
+	std::cout << "*** Disconnecting\n";
+	m_channel.reset();
+	m_channel_creation.reset();
+	m_channel_search.reset();
+	m_message_queue.clear();
+}
+
 void Room::joined_channel(std::unique_ptr<Channel> channel)
 {
 	assert(channel != m_channel);
@@ -131,7 +155,13 @@ void Room::joined_channel(std::unique_ptr<Channel> channel)
 
 void Room::send_message(const Message& message)
 {
-	m_interface->send_message(message.encode());
+	send_message(message.encode());
+}
+
+void Room::send_message(const std::string& message)
+{
+	m_message_queue.push_back(message);
+	m_interface->send_message(message);
 }
 
 

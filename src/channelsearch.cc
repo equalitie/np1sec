@@ -43,7 +43,7 @@ void ChannelSearch::search()
 	
 	ChannelSearchMessage message;
 	message.nonce = m_search_nonce;
-	m_room->interface()->send_message(message.encode().encode());
+	m_room->send_message(message.encode());
 }
 
 void ChannelSearch::join_channel(const std::string& id_hash)

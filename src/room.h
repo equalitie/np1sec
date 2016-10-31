@@ -26,6 +26,7 @@
 #include "message.h"
 #include "timer.h"
 
+#include <deque>
 #include <map>
 #include <memory>
 
@@ -90,8 +91,10 @@ class Room
 	/*
 	 * Internal
 	 */
+	void disconnect();
 	void joined_channel(std::unique_ptr<Channel> channel);
 	void send_message(const Message& message);
+	void send_message(const std::string& message);
 	
 	protected:
 	RoomInterface* m_interface;
@@ -103,6 +106,8 @@ class Room
 	std::unique_ptr<Channel> m_channel;
 	std::unique_ptr<ChannelCreation> m_channel_creation;
 	std::unique_ptr<ChannelSearch> m_channel_search;
+	
+	std::deque<std::string> m_message_queue;
 };
 
 } // namespace np1sec
