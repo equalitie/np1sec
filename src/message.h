@@ -225,6 +225,8 @@ struct AuthenticationRequestMessage
 	PublicKey peer_long_term_public_key;
 	PublicKey peer_ephemeral_public_key;
 	
+	Hash nonce;
+	
 	Message encode() const;
 	static AuthenticationRequestMessage decode(const Message& encoded);
 };
@@ -238,6 +240,7 @@ struct AuthenticationMessage
 	PublicKey peer_long_term_public_key;
 	PublicKey peer_ephemeral_public_key;
 	
+	Hash nonce;
 	Hash authentication_confirmation;
 	
 	Message encode() const;

@@ -38,7 +38,7 @@ class Channel
 	void dump(const std::string& message);
 	
 	public:
-	enum class AuthenticationStatus { Authenticated, Unauthenticated, AuthenticationFailed };
+	enum class AuthenticationStatus { Unauthenticated, Authenticating, Authenticated, AuthenticationFailed };
 	
 	public:
 	Channel(Room* room);
@@ -77,10 +77,10 @@ class Channel
 		/*
 		 * Local state
 		 */
-		// Did we confirm this user is part of this channel?
-		bool confirmed;
 		// Did we authenticate this user?
 		AuthenticationStatus authentication_status;
+		// used only for Authenticating participants
+		Hash authentication_nonce;
 	};
 	
 	struct Event
@@ -104,8 +104,8 @@ class Channel
 	
 	Message channel_status(const std::string& searcher_username, const Hash& searcher_nonce) const;
 	void hash_message(const std::string& sender, const Message& message);
-	void authenticate_to(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key);
-	Hash authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, bool for_peer);
+	void authenticate_to(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, const Hash& nonce);
+	Hash authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, const Hash& nonce, bool for_peer);
 	void send_consistency_check();
 	std::vector<Event>::iterator first_user_event(const std::string& username);
 	void set_channel_status_timer();

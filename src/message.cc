@@ -425,6 +425,7 @@ Message AuthenticationRequestMessage::encode() const
 	buffer.add_opaque(peer_username);
 	buffer.add_public_key(peer_long_term_public_key);
 	buffer.add_public_key(peer_ephemeral_public_key);
+	buffer.add_hash(nonce);
 	
 	return Message(Message::Type::AuthenticationRequest, buffer);
 }
@@ -439,6 +440,7 @@ AuthenticationRequestMessage AuthenticationRequestMessage::decode(const Message&
 	result.peer_username = buffer.remove_opaque();
 	result.peer_long_term_public_key = buffer.remove_public_key();
 	result.peer_ephemeral_public_key = buffer.remove_public_key();
+	result.nonce = buffer.remove_hash();
 	return result;
 }
 
@@ -450,6 +452,7 @@ Message AuthenticationMessage::encode() const
 	buffer.add_opaque(peer_username);
 	buffer.add_public_key(peer_long_term_public_key);
 	buffer.add_public_key(peer_ephemeral_public_key);
+	buffer.add_hash(nonce);
 	buffer.add_hash(authentication_confirmation);
 	
 	return Message(Message::Type::Authentication, buffer);
@@ -465,6 +468,7 @@ AuthenticationMessage AuthenticationMessage::decode(const Message& encoded)
 	result.peer_username = buffer.remove_opaque();
 	result.peer_long_term_public_key = buffer.remove_public_key();
 	result.peer_ephemeral_public_key = buffer.remove_public_key();
+	result.nonce = buffer.remove_hash();
 	result.authentication_confirmation = buffer.remove_hash();
 	return result;
 }
