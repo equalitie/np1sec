@@ -20,9 +20,9 @@
 #define SRC_MESSAGE_H_
 
 #include <cstdint>
-//#include <map>
+#include <set>
 #include <string>
-//#include <vector>
+#include <vector>
 
 #include "bytearray.h"
 #include "crypto.h"
@@ -88,9 +88,16 @@ class MessageBuffer : public std::string
 struct Message
 {
 	enum class Type {
-		Hello = 0x10,
-		Authentication = 0x11
+		ChannelSearch = 0x11,
+		ChannelStatus = 0x12,
+		JoinRequest = 0x13,
+		AuthenticationRequest = 0x14,
+		Authentication = 0x15,
+		Authorization = 0x16
 	};
+	
+	Message() {}
+	Message(Type type_, const std::string& payload_): type(type_), payload(payload_) {}
 	
 	Type type;
 	std::string payload;
@@ -99,13 +106,67 @@ struct Message
 	static Message decode(const std::string& encoded);
 };
 
-struct HelloMessage
+
+
+struct ChannelSearchMessage
+{
+	Hash nonce;
+	
+	Message encode() const;
+	static ChannelSearchMessage decode(const Message& encoded);
+};
+
+struct ChannelStatusMessage
+{
+	struct Participant
+	{
+		std::string username;
+		PublicKey long_term_public_key;
+		PublicKey ephemeral_public_key;
+	};
+	
+	struct UnauthorizedParticipant
+	{
+		std::string username;
+		PublicKey long_term_public_key;
+		PublicKey ephemeral_public_key;
+		
+		std::set<std::string> authorized_by;
+		std::set<std::string> authorized_peers;
+	};
+	
+	std::string searcher_username;
+	Hash searcher_nonce;
+	
+	std::vector<Participant> participants;
+	std::vector<UnauthorizedParticipant> unauthorized_participants;
+	
+	Message encode() const;
+	static ChannelStatusMessage decode(const Message& encoded);
+};
+
+struct JoinRequestMessage
 {
 	PublicKey long_term_public_key;
 	PublicKey ephemeral_public_key;
 	
+	std::vector<std::string> peer_usernames;
+	
 	Message encode() const;
-	static HelloMessage decode(const Message& encoded);
+	static JoinRequestMessage decode(const Message& encoded);
+};
+
+struct AuthenticationRequestMessage
+{
+	PublicKey sender_long_term_public_key;
+	PublicKey sender_ephemeral_public_key;
+	
+	std::string peer_username;
+	PublicKey peer_long_term_public_key;
+	PublicKey peer_ephemeral_public_key;
+	
+	Message encode() const;
+	static AuthenticationRequestMessage decode(const Message& encoded);
 };
 
 struct AuthenticationMessage
@@ -123,6 +184,13 @@ struct AuthenticationMessage
 	static AuthenticationMessage decode(const Message& encoded);
 };
 
+struct AuthorizationMessage
+{
+	std::string username;
+	
+	Message encode() const;
+	static AuthorizationMessage decode(const Message& encoded);
+};
 
 
 

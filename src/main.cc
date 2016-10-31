@@ -2,12 +2,17 @@
 #include "interface.h"
 #include "room.h"
 
+extern "C" {
+#include "glib.h"
+}
+
 class JabberlingRoomInterface : public np1sec::RoomInterface
 {
 	public:
 	JabberlingRoomInterface(Jabberite* settings): m_settings(settings) {}
 	
 	void send_message(const std::string& message);
+	np1sec::TimerToken* set_timer(uint32_t interval, np1sec::TimerCallback* callback);
 	
 	void disconnected();
 	void user_joined(const np1sec::Identity& identity);
@@ -21,7 +26,7 @@ JabberlingRoomInterface* global_interface = 0;
 std::string global_username;
 np1sec::Room* global_room = 0;
 
-std::string fingerprint(np1sec::PublicKey public_key)
+static std::string fingerprint(np1sec::PublicKey public_key)
 {
 	std::string output;
 	for (size_t i = 0; i < sizeof(public_key.buffer); i++) {
@@ -86,6 +91,35 @@ void JabberlingRoomInterface::send_message(const std::string& message)
 	jabberling_send(m_settings, message);
 }
 
+struct Np1secTimer final : public np1sec::TimerToken
+{
+	np1sec::TimerCallback* callback;
+	guint timer_id;
+	
+	void unset()
+	{
+		g_source_remove(timer_id);
+		delete this;
+	}
+};
+
+static gboolean execute_timer(gpointer np1sec_timer)
+{
+	Np1secTimer* timer = reinterpret_cast<Np1secTimer*>(np1sec_timer);
+	timer->callback->execute();
+	delete timer;
+	// returning 0 stops the timer
+	return 0;
+}
+
+np1sec::TimerToken* JabberlingRoomInterface::set_timer(uint32_t interval, np1sec::TimerCallback* callback)
+{
+	Np1secTimer* timer = new Np1secTimer;
+	timer->callback = callback;
+	timer->timer_id = g_timeout_add(interval, execute_timer, timer);
+	return timer;
+}
+
 void JabberlingRoomInterface::disconnected()
 {
 	jabberling_print("*** disconnected\n");
@@ -116,7 +150,13 @@ void ui_input(struct Jabberite* settings, std::string line)
 		jabberling_print("*** Joining the room as " + global_username + "::" + fingerprint(private_key.public_key()) + "\n");
 		
 		global_room = new np1sec::Room(global_interface, global_username, private_key);
-		global_room->join();
+		global_room->join_room();
+	} else if (line == "/create") {
+		global_room->create_channel();
+	} else if (line == "/join") {
+		global_room->search_channels();
+	} else if (line.substr(0, 7) == "/accept") {
+		global_room->authorize(line.substr(8));
 	}
 }
 

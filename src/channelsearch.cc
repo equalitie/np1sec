@@ -16,49 +16,39 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef SRC_INTERFACE_H_
-#define SRC_INTERFACE_H_
-
+#include "channel.h"
+#include "channelsearch.h"
 #include "crypto.h"
+#include "room.h"
 
 namespace np1sec
 {
 
-struct Identity
+ChannelSearch::ChannelSearch(Room* room):
+	m_room(room)
 {
-	std::string username;
-	PublicKey public_key;
-};
+}
 
-class TimerCallback
+void ChannelSearch::search()
 {
-	public:
-	virtual void execute() = 0;
-};
+	ChannelSearchMessage message;
+	message.nonce = crypto::nonce<c_hash_length>();
+	m_room->interface()->send_message(message.encode().encode());
+}
 
-class TimerToken
+void ChannelSearch::message_received(const std::string& sender, const Message& np1sec_message)
 {
-	public:
-	virtual void unset() = 0;
-};
-
-class RoomInterface
-{
-	public:
-	/*
-	 * Operations
-	 */
-	virtual void send_message(const std::string& message) = 0;
-	virtual TimerToken* set_timer(uint32_t interval, TimerCallback* callback) = 0;
-	
-	/*
-	 * Callbacks
-	 */
-//	virtual void disconnected() = 0;
-//	virtual void user_joined(const Identity& identity) = 0;
-//	virtual void user_left(const Identity& identity) = 0;
-};
+	if (np1sec_message.type == Message::Type::ChannelStatus) {
+		ChannelStatusMessage message;
+		try {
+			message = ChannelStatusMessage::decode(np1sec_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
+		Channel* channel = new Channel(m_room, message);
+		m_room->join_channel(channel);
+	}
+}
 
 } // namespace np1sec
-
-#endif

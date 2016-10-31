@@ -172,29 +172,199 @@ Message Message::decode(const std::string& encoded)
 }
 
 
+static MessageBuffer get_message_payload(const Message& message, Message::Type expected_type)
+{
+	if (message.type != expected_type) {
+		throw MessageFormatException();
+	}
+	return MessageBuffer(message.payload);
+}
 
-Message HelloMessage::encode() const
+
+
+
+
+Message ChannelSearchMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_hash(nonce);
+	
+	return Message(Message::Type::ChannelSearch, buffer);
+}
+
+ChannelSearchMessage ChannelSearchMessage::decode(const Message& encoded)
+{
+	MessageBuffer buffer(get_message_payload(encoded, Message::Type::ChannelSearch));
+	
+	ChannelSearchMessage result;
+	result.nonce = buffer.remove_hash();
+	return result;
+}
+
+Message ChannelStatusMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_opaque(searcher_username);
+	buffer.add_hash(searcher_nonce);
+	
+	MessageBuffer participants_buffer;
+	for (const Participant& participant : participants) {
+		MessageBuffer participant_buffer;
+		participant_buffer.add_opaque(participant.username);
+		participant_buffer.add_public_key(participant.long_term_public_key);
+		participant_buffer.add_public_key(participant.ephemeral_public_key);
+		participants_buffer.add_opaque(participant_buffer);
+	}
+	buffer.add_opaque(participants_buffer);
+	
+	MessageBuffer unauthorized_participants_buffer;
+	for (const UnauthorizedParticipant& participant : unauthorized_participants) {
+		MessageBuffer participant_buffer;
+		participant_buffer.add_opaque(participant.username);
+		participant_buffer.add_public_key(participant.long_term_public_key);
+		participant_buffer.add_public_key(participant.ephemeral_public_key);
+		
+		MessageBuffer authorized_by_buffer;
+		MessageBuffer authorized_peers_buffer;
+		uint8_t authorized_by_byte = 0;
+		uint8_t authorized_peers_byte = 0;
+		int index = 0;
+		
+		for (const Participant& peer : participants) {
+			if (participant.authorized_by.count(peer.username)) {
+				authorized_by_byte |= (1 << index);
+			}
+			if (participant.authorized_peers.count(peer.username)) {
+				authorized_peers_byte |= (1 << index);
+			}
+			index++;
+			if (index == 8) {
+				authorized_by_buffer.add_8(authorized_by_byte);
+				authorized_peers_buffer.add_8(authorized_peers_byte);
+				index = 0;
+				authorized_by_byte = 0;
+				authorized_peers_byte = 0;
+			}
+		}
+		if (index > 0) {
+			authorized_by_buffer.add_8(authorized_by_byte);
+			authorized_peers_buffer.add_8(authorized_peers_byte);
+		}
+		participant_buffer.add_opaque(authorized_by_buffer);
+		participant_buffer.add_opaque(authorized_peers_buffer);
+		
+		unauthorized_participants_buffer.add_opaque(participant_buffer);
+	}
+	buffer.add_opaque(unauthorized_participants_buffer);
+	
+	return Message(Message::Type::ChannelStatus, buffer);
+}
+
+ChannelStatusMessage ChannelStatusMessage::decode(const Message& encoded)
+{
+	MessageBuffer buffer(get_message_payload(encoded, Message::Type::ChannelStatus));
+	
+	ChannelStatusMessage result;
+	result.searcher_username = buffer.remove_opaque();
+	result.searcher_nonce = buffer.remove_hash();
+	
+	MessageBuffer participants_buffer = buffer.remove_opaque();
+	while (!participants_buffer.empty()) {
+		MessageBuffer participant_buffer = participants_buffer.remove_opaque();
+		Participant participant;
+		participant.username = participant_buffer.remove_opaque();
+		participant.long_term_public_key = participant_buffer.remove_public_key();
+		participant.ephemeral_public_key = participant_buffer.remove_public_key();
+		result.participants.push_back(std::move(participant));
+	}
+	
+	MessageBuffer unauthorized_participants_buffer = buffer.remove_opaque();
+	while (!unauthorized_participants_buffer.empty()) {
+		MessageBuffer participant_buffer = unauthorized_participants_buffer.remove_opaque();
+		UnauthorizedParticipant participant;
+		participant.username = participant_buffer.remove_opaque();
+		participant.long_term_public_key = participant_buffer.remove_public_key();
+		participant.ephemeral_public_key = participant_buffer.remove_public_key();
+		
+		MessageBuffer authorized_by_buffer = participant_buffer.remove_opaque();
+		MessageBuffer authorized_peers_buffer = participant_buffer.remove_opaque();
+		uint8_t authorized_by_byte = 0;
+		uint8_t authorized_peers_byte = 0;
+		int bits = 0;
+		
+		for (auto peer = result.participants.begin(); peer != result.participants.end(); peer++) {
+			if (!bits) {
+				authorized_by_byte = authorized_by_buffer.remove_8();
+				authorized_peers_byte = authorized_peers_buffer.remove_8();
+				bits = 8;
+			}
+			bits--;
+			if (authorized_by_byte & (1 << bits)) {
+				participant.authorized_by.insert(peer->username);
+			}
+			if (authorized_peers_byte & (1 << bits)) {
+				participant.authorized_peers.insert(peer->username);
+			}
+		}
+		
+		result.unauthorized_participants.push_back(std::move(participant));
+	}
+	
+	return result;
+}
+
+Message JoinRequestMessage::encode() const
 {
 	MessageBuffer buffer;
 	buffer.add_public_key(long_term_public_key);
 	buffer.add_public_key(ephemeral_public_key);
 	
-	Message result;
-	result.type = Message::Type::Hello;
-	result.payload = buffer;
+	MessageBuffer usernames_buffer;
+	for (const std::string& username : peer_usernames) {
+		usernames_buffer.add_opaque(username);
+	}
+	buffer.add_opaque(usernames_buffer);
+	
+	return Message(Message::Type::JoinRequest, buffer);
+}
+
+JoinRequestMessage JoinRequestMessage::decode(const Message& encoded)
+{
+	MessageBuffer buffer(get_message_payload(encoded, Message::Type::JoinRequest));
+	
+	JoinRequestMessage result;
+	result.long_term_public_key = buffer.remove_public_key();
+	result.ephemeral_public_key = buffer.remove_public_key();
+	
+	MessageBuffer usernames_buffer = buffer.remove_opaque();
+	while (!usernames_buffer.empty()) {
+		result.peer_usernames.push_back(usernames_buffer.remove_opaque());
+	}
 	return result;
 }
 
-HelloMessage HelloMessage::decode(const Message& encoded)
+Message AuthenticationRequestMessage::encode() const
 {
-	if (encoded.type != Message::Type::Hello) {
-		throw MessageFormatException();
-	}
-	MessageBuffer buffer(encoded.payload);
+	MessageBuffer buffer;
+	buffer.add_public_key(sender_long_term_public_key);
+	buffer.add_public_key(sender_ephemeral_public_key);
+	buffer.add_opaque(peer_username);
+	buffer.add_public_key(peer_long_term_public_key);
+	buffer.add_public_key(peer_ephemeral_public_key);
 	
-	HelloMessage result;
-	result.long_term_public_key = buffer.remove_public_key();
-	result.ephemeral_public_key = buffer.remove_public_key();
+	return Message(Message::Type::AuthenticationRequest, buffer);
+}
+
+AuthenticationRequestMessage AuthenticationRequestMessage::decode(const Message& encoded)
+{
+	MessageBuffer buffer(get_message_payload(encoded, Message::Type::AuthenticationRequest));
+	
+	AuthenticationRequestMessage result;
+	result.sender_long_term_public_key = buffer.remove_public_key();
+	result.sender_ephemeral_public_key = buffer.remove_public_key();
+	result.peer_username = buffer.remove_opaque();
+	result.peer_long_term_public_key = buffer.remove_public_key();
+	result.peer_ephemeral_public_key = buffer.remove_public_key();
 	return result;
 }
 
@@ -208,18 +378,12 @@ Message AuthenticationMessage::encode() const
 	buffer.add_public_key(peer_ephemeral_public_key);
 	buffer.add_hash(authentication_confirmation);
 	
-	Message result;
-	result.type = Message::Type::Authentication;
-	result.payload = buffer;
-	return result;
+	return Message(Message::Type::Authentication, buffer);
 }
 
 AuthenticationMessage AuthenticationMessage::decode(const Message& encoded)
 {
-	if (encoded.type != Message::Type::Authentication) {
-		throw MessageFormatException();
-	}
-	MessageBuffer buffer(encoded.payload);
+	MessageBuffer buffer(get_message_payload(encoded, Message::Type::Authentication));
 	
 	AuthenticationMessage result;
 	result.sender_long_term_public_key = buffer.remove_public_key();
@@ -228,6 +392,23 @@ AuthenticationMessage AuthenticationMessage::decode(const Message& encoded)
 	result.peer_long_term_public_key = buffer.remove_public_key();
 	result.peer_ephemeral_public_key = buffer.remove_public_key();
 	result.authentication_confirmation = buffer.remove_hash();
+	return result;
+}
+
+Message AuthorizationMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_opaque(username);
+	
+	return Message(Message::Type::Authorization, buffer);
+}
+
+AuthorizationMessage AuthorizationMessage::decode(const Message& encoded)
+{
+	MessageBuffer buffer(get_message_payload(encoded, Message::Type::Authorization));
+	
+	AuthorizationMessage result;
+	result.username = buffer.remove_opaque();
 	return result;
 }
 

@@ -21,11 +21,15 @@
 
 #include "interface.h"
 #include "message.h"
+#include "timer.h"
 
 #include <map>
 
 namespace np1sec
 {
+
+class Channel;
+class ChannelSearch;
 
 class Room
 {
@@ -40,33 +44,39 @@ class Room
 		return m_username;
 	}
 	
-	const PublicKey& public_key() const
+	const PublicKey& long_term_public_key() const
 	{
 		return m_long_term_private_key.public_key();
 	}
 	
-	const PrivateKey& private_key() const
+	const PrivateKey& long_term_private_key() const
 	{
 		return m_long_term_private_key;
 	}
 	
-	Identity identity() const
+	const PublicKey& ephemeral_public_key() const
 	{
-		Identity identity;
-		identity.username = username();
-		identity.public_key = public_key();
-		return identity;
+		return m_ephemeral_private_key.public_key();
 	}
 	
-	bool connected() const
+	const PrivateKey& ephemeral_private_key() const
 	{
-		return !m_users.empty();
+		return m_ephemeral_private_key;
+	}
+	
+	RoomInterface* interface()
+	{
+		return m_interface;
 	}
 	
 	/*
 	 * Operations
 	 */
-	void join();
+	void join_room();
+	void search_channels();
+	void create_channel();
+	void join_channel(Channel* channel);
+	void authorize(const std::string& username);
 	
 	/*
 	 * Callbacks
@@ -75,37 +85,20 @@ class Room
 	void user_left(const std::string& username);
 	//void left_room();
 	
-	protected:
-	void disconnect();
-	void register_user(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key);
-	Hash authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, bool for_peer);
-	void remove_user(const std::string& username);
+	/*
+	 * Internal
+	 */
 	void send_message(const Message& message);
 	
 	protected:
-	struct User
-	{
-		std::string username;
-		PublicKey long_term_public_key;
-		PublicKey ephemeral_public_key;
-		bool authenticated;
-		
-		Identity identity() const
-		{
-			Identity identity;
-			identity.username = username;
-			identity.public_key = long_term_public_key;
-			return identity;
-		}
-	};
-	
 	RoomInterface* m_interface;
 	
 	std::string m_username;
 	PrivateKey m_long_term_private_key;
 	PrivateKey m_ephemeral_private_key;
 	
-	std::map<std::string, User> m_users;
+	Channel* m_channel;
+	ChannelSearch* m_channel_search;
 };
 
 } // namespace np1sec

@@ -16,47 +16,26 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef SRC_INTERFACE_H_
-#define SRC_INTERFACE_H_
+#ifndef SRC_CHANNELSEARCH_H_
+#define SRC_CHANNELSEARCH_H_
 
-#include "crypto.h"
+#include "channel.h"
 
 namespace np1sec
 {
 
-struct Identity
-{
-	std::string username;
-	PublicKey public_key;
-};
-
-class TimerCallback
+class ChannelSearch
 {
 	public:
-	virtual void execute() = 0;
-};
-
-class TimerToken
-{
-	public:
-	virtual void unset() = 0;
-};
-
-class RoomInterface
-{
-	public:
-	/*
-	 * Operations
-	 */
-	virtual void send_message(const std::string& message) = 0;
-	virtual TimerToken* set_timer(uint32_t interval, TimerCallback* callback) = 0;
+	ChannelSearch(Room* room);
 	
-	/*
-	 * Callbacks
-	 */
-//	virtual void disconnected() = 0;
-//	virtual void user_joined(const Identity& identity) = 0;
-//	virtual void user_left(const Identity& identity) = 0;
+	void search();
+	
+	void message_received(const std::string& sender, const Message& np1sec_message);
+//	void user_left(const std::string& username);
+	
+	protected:
+	Room* m_room;
 };
 
 } // namespace np1sec

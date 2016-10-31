@@ -11,7 +11,7 @@ LT_INIT
 AC_PROG_CXX
 AC_LANG([C++])
 
-CXXFLAGS+=" -std=c++11 -Wall -Wextra -Werror" #-Wno-error"
+CXXFLAGS+=" -std=c++11 -Wall -Wextra -Wno-unused-parameter"
 
 PKG_CHECK_MODULES([GLIB], [glib-2.0], [
 	AC_SUBST(GLIB_CFLAGS)
