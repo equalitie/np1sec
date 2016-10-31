@@ -54,7 +54,7 @@ class ChannelSearch
 	};
 	void process_event(const RoomEvent& event);
 	void send_event(Channel* channel, const RoomEvent& event);
-	std::unique_ptr<Channel> create_channel(const ChannelStatusMessage& message);
+	std::unique_ptr<Channel> create_channel(const ChannelStatusMessage& message, const Message& encoded_message);
 	
 	protected:
 	Room* m_room;

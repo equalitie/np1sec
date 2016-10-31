@@ -72,12 +72,22 @@ Channel::Channel(Room* room):
 	dump("Created channel");
 }
 
-Channel::Channel(Room* room, const ChannelStatusMessage& channel_status):
+Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const Message& encoded_message):
 	m_room(room),
 	m_joined(false),
 	m_active(false),
 	m_authorized(false)
 {
+	/*
+	 * The event queue in the channel_status message does not contain the
+	 * event describing this status message, so we need to construct it.
+	 */
+	Event channel_status_event;
+	channel_status_event.type = Message::Type::ChannelStatus;
+	channel_status_event.channel_status.searcher_username = channel_status.searcher_username;
+	channel_status_event.channel_status.searcher_nonce = channel_status.searcher_nonce;
+	channel_status_event.channel_status.status_message_hash = crypto::hash(encoded_message.payload);
+	
 	for (const ChannelStatusMessage::Participant& p : channel_status.participants) {
 		Participant participant;
 		participant.username = p.username;
@@ -86,7 +96,14 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status):
 		participant.authorized = true;
 		participant.confirmed = false;
 		participant.authentication_status = AuthenticationStatus::Unauthenticated;
+		
+		if (m_participants.count(participant.username)) {
+			throw MessageFormatException();
+		}
+		
 		m_participants[participant.username] = std::move(participant);
+		
+		channel_status_event.remaining_users.insert(p.username);
 	}
 	
 	for (const ChannelStatusMessage::UnauthorizedParticipant& p : channel_status.unauthorized_participants) {
@@ -109,8 +126,28 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status):
 			}
 		}
 		
+		if (m_participants.count(participant.username)) {
+			throw MessageFormatException();
+		}
+		
 		m_participants[participant.username] = std::move(participant);
+		
+		channel_status_event.remaining_users.insert(p.username);
 	}
+	
+	for (const ChannelEvent& channel_event : channel_status.events) {
+		Event event;
+		event.type = channel_event.type;
+		event.remaining_users = channel_event.affected_users;
+		if (channel_event.type == Message::Type::ChannelStatus) {
+			event.channel_status = ChannelStatusEvent::decode(channel_event);
+		} else {
+			throw MessageFormatException();
+		}
+		m_events.push_back(std::move(event));
+	}
+	
+	m_events.push_back(std::move(channel_status_event));
 	
 	dump("Tracking channel");
 }
@@ -155,7 +192,9 @@ void Channel::announce()
 
 void Channel::confirm_participant(const std::string& username)
 {
-	assert(m_participants.count(username));
+	if (!m_participants.count(username)) {
+		return;
+	}
 	
 	Participant& participant = m_participants[username];
 	if (!participant.confirmed) {
@@ -243,32 +282,80 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			return;
 		}
 		
-		if (m_active) {
-			ChannelStatusMessage reply;
-			reply.searcher_username = sender;
-			reply.searcher_nonce = message.nonce;
-			
-			for (const auto& i : m_participants) {
-				if (i.second.authorized) {
-					ChannelStatusMessage::Participant participant;
-					participant.username = i.second.username;
-					participant.long_term_public_key = i.second.long_term_public_key;
-					participant.ephemeral_public_key = i.second.ephemeral_public_key;
-					reply.participants.push_back(participant);
-				} else {
-					ChannelStatusMessage::UnauthorizedParticipant participant;
-					participant.username = i.second.username;
-					participant.long_term_public_key = i.second.long_term_public_key;
-					participant.ephemeral_public_key = i.second.ephemeral_public_key;
-					participant.authorized_by = i.second.authorized_by;
-					participant.authorized_peers = i.second.authorized_peers;
-					reply.unauthorized_participants.push_back(participant);
-				}
+		Event reply_event;
+		reply_event.type = Message::Type::ChannelStatus;
+		reply_event.channel_status.searcher_username = sender;
+		reply_event.channel_status.searcher_nonce = message.nonce;
+		
+		ChannelStatusMessage reply;
+		reply.searcher_username = sender;
+		reply.searcher_nonce = message.nonce;
+		
+		for (const auto& i : m_participants) {
+			if (i.second.authorized) {
+				ChannelStatusMessage::Participant participant;
+				participant.username = i.second.username;
+				participant.long_term_public_key = i.second.long_term_public_key;
+				participant.ephemeral_public_key = i.second.ephemeral_public_key;
+				reply.participants.push_back(participant);
+				
+				reply_event.remaining_users.insert(i.second.username);
+			} else {
+				ChannelStatusMessage::UnauthorizedParticipant participant;
+				participant.username = i.second.username;
+				participant.long_term_public_key = i.second.long_term_public_key;
+				participant.ephemeral_public_key = i.second.ephemeral_public_key;
+				participant.authorized_by = i.second.authorized_by;
+				participant.authorized_peers = i.second.authorized_peers;
+				reply.unauthorized_participants.push_back(participant);
+				
+				reply_event.remaining_users.insert(i.second.username);
 			}
-			
-			send_message(reply.encode(), "channel status for user " + sender);
+		}
+		
+		for (const Event& event : m_events) {
+			if (event.type == Message::Type::ChannelStatus) {
+				ChannelStatusEvent e = event.channel_status;
+				e.affected_users = event.remaining_users;
+				reply.events.push_back(e.encode());
+			} else {
+				assert(false);
+			}
+		}
+		
+		Message encoded = reply.encode();
+		
+		reply_event.channel_status.status_message_hash = crypto::hash(encoded.payload);
+		m_events.push_back(std::move(reply_event));
+		
+		if (m_active) {
+			send_message(encoded, "channel status for user " + sender);
 			
 			dump("Broadcasting channel for user " + sender);
+		}
+	} else if (np1sec_message.type == Message::Type::ChannelStatus) {
+		ChannelStatusMessage message;
+		try {
+			message = ChannelStatusMessage::decode(np1sec_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
+		auto first_event = first_user_event(sender);
+		if (!(
+			   first_event != m_events.end()
+			&& first_event->type == Message::Type::ChannelStatus
+			&& first_event->channel_status.searcher_username == message.searcher_username
+			&& first_event->channel_status.searcher_nonce == message.searcher_nonce
+			&& first_event->channel_status.status_message_hash == crypto::hash(np1sec_message.payload)
+		)) {
+			remove_user(sender);
+			return;
+		}
+		
+		first_event->remaining_users.erase(sender);
+		if (first_event->remaining_users.empty()) {
+			m_events.erase(first_event);
 		}
 	} else if (np1sec_message.type == Message::Type::ChannelAnnouncement) {
 		ChannelAnnouncementMessage message;
@@ -545,6 +632,16 @@ Hash Channel::authentication_token(const std::string& username, const PublicKey&
 		buffer += m_room->username();
 	}
 	return crypto::hash(buffer);
+}
+
+std::vector<Channel::Event>::iterator Channel::first_user_event(const std::string& username)
+{
+	for (std::vector<Event>::iterator i = m_events.begin(); i != m_events.end(); ++i) {
+		if (i->remaining_users.count(username)) {
+			return i;
+		}
+	}
+	return m_events.end();
 }
 
 } // namespace np1sec

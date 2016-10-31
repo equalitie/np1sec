@@ -107,6 +107,17 @@ struct Message
 	static Message decode(const std::string& encoded);
 };
 
+struct ChannelEvent
+{
+	ChannelEvent() {}
+	ChannelEvent(Message::Type type_, const std::set<std::string>& affected_users_, const std::string& payload_):
+		type(type_), affected_users(affected_users_), payload(payload_) {}
+	
+	Message::Type type;
+	std::set<std::string> affected_users;
+	std::string payload;
+};
+
 
 
 struct ChannelSearchMessage
@@ -141,6 +152,8 @@ struct ChannelStatusMessage
 	
 	std::vector<Participant> participants;
 	std::vector<UnauthorizedParticipant> unauthorized_participants;
+	
+	std::vector<ChannelEvent> events;
 	
 	Message encode() const;
 	static ChannelStatusMessage decode(const Message& encoded);
@@ -200,6 +213,25 @@ struct AuthorizationMessage
 	
 	Message encode() const;
 	static AuthorizationMessage decode(const Message& encoded);
+};
+
+
+
+struct ChannelStatusEventBody
+{
+	std::string searcher_username;
+	Hash searcher_nonce;
+	Hash status_message_hash;
+};
+struct ChannelStatusEvent : public ChannelStatusEventBody
+{
+	ChannelStatusEvent() {}
+	ChannelStatusEvent(const ChannelStatusEventBody& b): ChannelStatusEventBody(b) {}
+	
+	std::set<std::string> affected_users;
+	
+	ChannelEvent encode() const;
+	static ChannelStatusEvent decode(const ChannelEvent& encoded);
 };
 
 

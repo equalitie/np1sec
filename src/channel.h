@@ -24,6 +24,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 namespace np1sec
 {
@@ -37,6 +38,25 @@ class Channel
 	
 	public:
 	enum class AuthenticationStatus { Authenticated, Unauthenticated, AuthenticationFailed };
+	
+	public:
+	Channel(Room* room);
+	Channel(Room* room, const ChannelStatusMessage& channel_status, const Message& encoded_message);
+	Channel(Room* room, const ChannelAnnouncementMessage& channel_status, const std::string& sender);
+	
+	bool empty() const;
+	bool joined() const;
+	
+	void announce();
+	void confirm_participant(const std::string& username);
+	void join();
+	void activate();
+	void authorize(const std::string& username);
+	
+	void message_received(const std::string& sender, const Message& np1sec_message);
+	void user_joined(const std::string& username);
+	void user_left(const std::string& username);
+	
 	
 	protected:
 	struct Participant
@@ -62,28 +82,14 @@ class Channel
 		AuthenticationStatus authentication_status;
 	};
 	
+	struct Event
+	{
+		Message::Type type;
+		std::set<std::string> remaining_users;
+		
+		ChannelStatusEventBody channel_status;
+	};
 	
-	
-	public:
-	Channel(Room* room);
-	Channel(Room* room, const ChannelStatusMessage& channel_status);
-	Channel(Room* room, const ChannelAnnouncementMessage& channel_status, const std::string& sender);
-	
-	bool empty() const;
-	bool joined() const;
-	
-	void announce();
-	void confirm_participant(const std::string& username);
-	void join();
-	void activate();
-	void authorize(const std::string& username);
-	
-	void message_received(const std::string& sender, const Message& np1sec_message);
-	void user_joined(const std::string& username);
-	void user_left(const std::string& username);
-	
-	
-	protected:
 	void self_joined();
 	void self_authorized();
 	void try_promote_unauthorized_participant(Participant* participant);
@@ -93,7 +99,7 @@ class Channel
 	
 	void authenticate_to(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key);
 	Hash authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, bool for_peer);
-	
+	std::vector<Event>::iterator first_user_event(const std::string& username);
 	
 	
 	
@@ -103,6 +109,8 @@ class Channel
 	bool m_active;
 	bool m_authorized;
 	std::map<std::string, Participant> m_participants;
+	
+	std::vector<Event> m_events;
 };
 
 } // namespace np1sec

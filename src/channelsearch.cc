@@ -63,7 +63,9 @@ void ChannelSearch::join_channel(const std::string& id_hash)
 	}
 	
 	m_joining_channel_id = identifier;
-	m_channels[identifier]->join();
+	if (m_channels[identifier]) {
+		m_channels[identifier]->join();
+	}
 }
 
 void ChannelSearch::message_received(const std::string& sender, const Message& np1sec_message)
@@ -99,10 +101,13 @@ void ChannelSearch::message_received(const std::string& sender, const Message& n
 			return;
 		}
 		
+		if (message.searcher_username != m_room->username() || message.searcher_nonce != m_search_nonce) {
+			return;
+		}
+		
 		/*
 		 * Ignore channel status messages that do not contain the sender.
 		 */
-		// TODO: more sanity checking. What if a user is both authorized and unauthorized?
 		bool found = false;
 		for (const auto& participant : message.participants) {
 			if (participant.username == sender) {
@@ -124,11 +129,13 @@ void ChannelSearch::message_received(const std::string& sender, const Message& n
 			Hash id_hash = crypto::hash(channel_id);
 			std::cout << "*** Found channel: " << id_hash.dump_hex() << "\n";
 			
-			std::unique_ptr<Channel> channel = create_channel(message);
+			std::unique_ptr<Channel> channel = create_channel(message, np1sec_message);
 			m_channels[channel_id] = std::move(channel);
 		}
 		
-		m_channels[channel_id]->confirm_participant(sender);
+		if (m_channels[channel_id]) {
+			m_channels[channel_id]->confirm_participant(sender);
+		}
 	} else if (np1sec_message.type == Message::Type::ChannelAnnouncement) {
 		if (!m_received_search_message) {
 			return;
@@ -185,12 +192,12 @@ void ChannelSearch::process_event(const RoomEvent& event)
 	
 	m_event_log.push_back(event);
 	
-	for (auto i = m_channels.begin(); i != m_channels.end(); ) {
-		send_event(i->second.get(), event);
-		if (i->second->empty()) {
-			i = m_channels.erase(i);
-		} else {
-			++i;
+	for (auto& i : m_channels) {
+		if (i.second) {
+			send_event(i.second.get(), event);
+			if (i.second->empty()) {
+				i.second.reset();
+			}
 		}
 	}
 }
@@ -199,21 +206,24 @@ void ChannelSearch::send_event(Channel* channel, const RoomEvent& event)
 {
 	if (event.type == RoomEvent::Type::Message) {
 		channel->message_received(event.sender, event.message);
-	} else if (event.type == RoomEvent::Type::Message) {
+	} else if (event.type == RoomEvent::Type::Join) {
 		channel->user_joined(event.sender);
-	} else if (event.type == RoomEvent::Type::Message) {
+	} else if (event.type == RoomEvent::Type::Leave) {
 		channel->user_left(event.sender);
 	} else {
 		assert(false);
 	}
 }
 
-std::unique_ptr<Channel> ChannelSearch::create_channel(const ChannelStatusMessage& message)
+std::unique_ptr<Channel> ChannelSearch::create_channel(const ChannelStatusMessage& message, const Message& encoded_message)
 {
-	std::unique_ptr<Channel> channel(new Channel(m_room, message));
+	std::unique_ptr<Channel> channel(new Channel(m_room, message, encoded_message));
 	
 	for (const auto& event : m_event_log) {
 		send_event(channel.get(), event);
+		if (channel->empty()) {
+			return std::unique_ptr<Channel>();
+		}
 	}
 	
 	return channel;

@@ -180,6 +180,93 @@ static MessageBuffer get_message_payload(const Message& message, Message::Type e
 	return MessageBuffer(message.payload);
 }
 
+static MessageBuffer get_event_payload(const ChannelEvent& event, Message::Type expected_type)
+{
+	if (event.type != expected_type) {
+		throw MessageFormatException();
+	}
+	return MessageBuffer(event.payload);
+}
+
+
+
+static MessageBuffer encode_user_set(const ChannelStatusMessage& status, bool include_authorized, bool include_unauthorized, const std::set<std::string>& users)
+{
+	MessageBuffer buffer;
+	uint8_t byte = 0;
+	int bits = 8;
+	
+	if (include_authorized) {
+		for (const ChannelStatusMessage::Participant& participant : status.participants) {
+			bits--;
+			if (users.count(participant.username)) {
+				byte |= (1 << bits);
+			}
+			if (bits == 0) {
+				buffer.add_8(byte);
+				byte = 0;
+				bits = 8;
+			}
+		}
+	}
+	
+	if (include_unauthorized) {
+		for (const ChannelStatusMessage::UnauthorizedParticipant& participant : status.unauthorized_participants) {
+			bits--;
+			if (users.count(participant.username)) {
+				byte |= (1 << bits);
+			}
+			if (bits == 0) {
+				buffer.add_8(byte);
+				byte = 0;
+				bits = 8;
+			}
+		}
+	}
+	
+	if (bits < 8) {
+		buffer.add_8(byte);
+	}
+	
+	return buffer;
+}
+
+static std::set<std::string> decode_user_set(const ChannelStatusMessage& status, bool include_authorized, bool include_unauthorized, const std::string& encoded)
+{
+	MessageBuffer buffer(encoded);
+	std::set<std::string> output;
+	uint8_t byte = 0;
+	int bits = 0;
+	
+	if (include_authorized) {
+		for (const ChannelStatusMessage::Participant& participant : status.participants) {
+			if (!bits) {
+				byte = buffer.remove_8();
+				bits = 8;
+			}
+			bits--;
+			if (byte & (1 << bits)) {
+				output.insert(participant.username);
+			}
+		}
+	}
+	
+	if (include_unauthorized) {
+		for (const ChannelStatusMessage::UnauthorizedParticipant& participant : status.unauthorized_participants) {
+			if (!bits) {
+				byte = buffer.remove_8();
+				bits = 8;
+			}
+			bits--;
+			if (byte & (1 << bits)) {
+				output.insert(participant.username);
+			}
+		}
+	}
+	
+	return output;
+}
+
 
 
 
@@ -223,39 +310,19 @@ Message ChannelStatusMessage::encode() const
 		participant_buffer.add_opaque(participant.username);
 		participant_buffer.add_public_key(participant.long_term_public_key);
 		participant_buffer.add_public_key(participant.ephemeral_public_key);
-		
-		MessageBuffer authorized_by_buffer;
-		MessageBuffer authorized_peers_buffer;
-		uint8_t authorized_by_byte = 0;
-		uint8_t authorized_peers_byte = 0;
-		int bits = 8;
-		
-		for (const Participant& peer : participants) {
-			bits--;
-			if (participant.authorized_by.count(peer.username)) {
-				authorized_by_byte |= (1 << bits);
-			}
-			if (participant.authorized_peers.count(peer.username)) {
-				authorized_peers_byte |= (1 << bits);
-			}
-			if (bits == 0) {
-				authorized_by_buffer.add_8(authorized_by_byte);
-				authorized_peers_buffer.add_8(authorized_peers_byte);
-				bits = 8;
-				authorized_by_byte = 0;
-				authorized_peers_byte = 0;
-			}
-		}
-		if (bits < 8) {
-			authorized_by_buffer.add_8(authorized_by_byte);
-			authorized_peers_buffer.add_8(authorized_peers_byte);
-		}
-		participant_buffer.add_opaque(authorized_by_buffer);
-		participant_buffer.add_opaque(authorized_peers_buffer);
-		
+		participant_buffer.add_opaque(encode_user_set(*this, true, false, participant.authorized_by));
+		participant_buffer.add_opaque(encode_user_set(*this, true, false, participant.authorized_peers));
 		unauthorized_participants_buffer.add_opaque(participant_buffer);
 	}
 	buffer.add_opaque(unauthorized_participants_buffer);
+	
+	MessageBuffer event_buffer;
+	for (const ChannelEvent& event : events) {
+		event_buffer.add_8(uint8_t(event.type));
+		event_buffer.add_opaque(encode_user_set(*this, true, true, event.affected_users));
+		event_buffer.add_opaque(event.payload);
+	}
+	buffer.add_opaque(event_buffer);
 	
 	return Message(Message::Type::ChannelStatus, buffer);
 }
@@ -285,29 +352,18 @@ ChannelStatusMessage ChannelStatusMessage::decode(const Message& encoded)
 		participant.username = participant_buffer.remove_opaque();
 		participant.long_term_public_key = participant_buffer.remove_public_key();
 		participant.ephemeral_public_key = participant_buffer.remove_public_key();
-		
-		MessageBuffer authorized_by_buffer = participant_buffer.remove_opaque();
-		MessageBuffer authorized_peers_buffer = participant_buffer.remove_opaque();
-		uint8_t authorized_by_byte = 0;
-		uint8_t authorized_peers_byte = 0;
-		int bits = 0;
-		
-		for (auto peer = result.participants.begin(); peer != result.participants.end(); peer++) {
-			if (!bits) {
-				authorized_by_byte = authorized_by_buffer.remove_8();
-				authorized_peers_byte = authorized_peers_buffer.remove_8();
-				bits = 8;
-			}
-			bits--;
-			if (authorized_by_byte & (1 << bits)) {
-				participant.authorized_by.insert(peer->username);
-			}
-			if (authorized_peers_byte & (1 << bits)) {
-				participant.authorized_peers.insert(peer->username);
-			}
-		}
-		
+		participant.authorized_by = decode_user_set(result, true, false, participant_buffer.remove_opaque());
+		participant.authorized_peers = decode_user_set(result, true, false, participant_buffer.remove_opaque());
 		result.unauthorized_participants.push_back(std::move(participant));
+	}
+	
+	MessageBuffer event_buffer = buffer.remove_opaque();
+	while (!event_buffer.empty()) {
+		ChannelEvent event;
+		event.type = Message::Type(event_buffer.remove_8());
+		event.affected_users = decode_user_set(result, true, true, event_buffer.remove_opaque());
+		event.payload = event_buffer.remove_opaque();
+		result.events.push_back(std::move(event));
 	}
 	
 	return result;
@@ -433,6 +489,26 @@ AuthorizationMessage AuthorizationMessage::decode(const Message& encoded)
 
 
 
+ChannelEvent ChannelStatusEvent::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_opaque(searcher_username);
+	buffer.add_hash(searcher_nonce);
+	buffer.add_hash(status_message_hash);
+	
+	return ChannelEvent(Message::Type::ChannelStatus, affected_users, buffer);
+}
 
+ChannelStatusEvent ChannelStatusEvent::decode(const ChannelEvent& encoded)
+{
+	MessageBuffer buffer(get_event_payload(encoded, Message::Type::ChannelStatus));
+	
+	ChannelStatusEvent result;
+	result.affected_users = encoded.affected_users;
+	result.searcher_username = buffer.remove_opaque();
+	result.searcher_nonce = buffer.remove_hash();
+	result.status_message_hash = buffer.remove_hash();
+	return result;
+}
 
 } // namespace np1sec
