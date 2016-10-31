@@ -22,10 +22,11 @@
 namespace np1sec
 {
 
-const std::string c_np1sec_protocol_name(":o3np1sec:");
-const uint16_t c_np1sec_protocol_version = 0x0001;
+const std::string c_np1sec_protocol_name(":o3np1sec1:");
 
 
+
+// TODO: more efficient integer encoding
 
 void MessageBuffer::add_8(uint8_t byte)
 {
@@ -132,7 +133,6 @@ std::string MessageBuffer::remove_opaque()
 std::string Message::encode() const
 {
 	MessageBuffer buffer;
-	buffer.add_16(c_np1sec_protocol_version);
 	buffer.add_8(uint8_t(type));
 	buffer.add_bytes(payload);
 	
@@ -148,9 +148,6 @@ std::string Message::encode() const
 
 Message Message::decode(const std::string& encoded)
 {
-	if (encoded.size() < c_np1sec_protocol_name.size()) {
-		throw MessageFormatException();
-	}
 	if (encoded.substr(0, c_np1sec_protocol_name.size()) != c_np1sec_protocol_name) {
 		throw MessageFormatException();
 	}
@@ -159,12 +156,10 @@ Message Message::decode(const std::string& encoded)
 	size_t base64_size = base64_decode(base64_buffer, base64_payload.data(), base64_payload.size());
 	std::string base64_decoded(reinterpret_cast<char *>(base64_buffer), base64_size);
 	delete[] base64_buffer;
+	// TODO: reject malformed base64 for strict compatibility
 	
 	MessageBuffer buffer(base64_decoded);
 	Message message;
-	if (buffer.remove_16() != c_np1sec_protocol_version) {
-		throw MessageFormatException();
-	}
 	message.type = Message::Type(buffer.remove_8());
 	message.payload = buffer;
 	
@@ -316,10 +311,11 @@ Message ChannelStatusMessage::encode() const
 	}
 	buffer.add_opaque(unauthorized_participants_buffer);
 	
+	buffer.add_hash(channel_status_hash);
+	
 	MessageBuffer event_buffer;
 	for (const ChannelEvent& event : events) {
 		event_buffer.add_8(uint8_t(event.type));
-		event_buffer.add_opaque(encode_user_set(*this, true, true, event.affected_users));
 		event_buffer.add_opaque(event.payload);
 	}
 	buffer.add_opaque(event_buffer);
@@ -357,11 +353,12 @@ ChannelStatusMessage ChannelStatusMessage::decode(const Message& encoded)
 		result.unauthorized_participants.push_back(std::move(participant));
 	}
 	
+	result.channel_status_hash = buffer.remove_hash();
+	
 	MessageBuffer event_buffer = buffer.remove_opaque();
 	while (!event_buffer.empty()) {
 		ChannelEvent event;
 		event.type = Message::Type(event_buffer.remove_8());
-		event.affected_users = decode_user_set(result, true, true, event_buffer.remove_opaque());
 		event.payload = event_buffer.remove_opaque();
 		result.events.push_back(std::move(event));
 	}
@@ -374,6 +371,7 @@ Message ChannelAnnouncementMessage::encode() const
 	MessageBuffer buffer;
 	buffer.add_public_key(long_term_public_key);
 	buffer.add_public_key(ephemeral_public_key);
+	buffer.add_hash(channel_status_hash);
 	
 	return Message(Message::Type::ChannelAnnouncement, buffer);
 }
@@ -385,6 +383,7 @@ ChannelAnnouncementMessage ChannelAnnouncementMessage::decode(const Message& enc
 	ChannelAnnouncementMessage result;
 	result.long_term_public_key = buffer.remove_public_key();
 	result.ephemeral_public_key = buffer.remove_public_key();
+	result.channel_status_hash = buffer.remove_hash();
 	return result;
 }
 
@@ -487,27 +486,66 @@ AuthorizationMessage AuthorizationMessage::decode(const Message& encoded)
 	return result;
 }
 
+std::string UnsignedConsistencyCheckMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_hash(channel_status_hash);
+	return buffer;
+}
+
+UnsignedConsistencyCheckMessage UnsignedConsistencyCheckMessage::decode(const std::string& encoded)
+{
+	MessageBuffer buffer(encoded);
+	UnsignedConsistencyCheckMessage result;
+	result.channel_status_hash = buffer.remove_hash();
+	return result;
+}
 
 
-ChannelEvent ChannelStatusEvent::encode() const
+
+
+
+
+
+ChannelEvent ChannelStatusEvent::encode(const ChannelStatusMessage& status) const
 {
 	MessageBuffer buffer;
 	buffer.add_opaque(searcher_username);
 	buffer.add_hash(searcher_nonce);
 	buffer.add_hash(status_message_hash);
+	buffer.add_opaque(encode_user_set(status, true, true, remaining_users));
 	
-	return ChannelEvent(Message::Type::ChannelStatus, affected_users, buffer);
+	return ChannelEvent(Message::Type::ChannelStatus, buffer);
 }
 
-ChannelStatusEvent ChannelStatusEvent::decode(const ChannelEvent& encoded)
+ChannelStatusEvent ChannelStatusEvent::decode(const ChannelEvent& encoded, const ChannelStatusMessage& status)
 {
 	MessageBuffer buffer(get_event_payload(encoded, Message::Type::ChannelStatus));
 	
 	ChannelStatusEvent result;
-	result.affected_users = encoded.affected_users;
 	result.searcher_username = buffer.remove_opaque();
 	result.searcher_nonce = buffer.remove_hash();
 	result.status_message_hash = buffer.remove_hash();
+	result.remaining_users = decode_user_set(status, true, true, buffer.remove_opaque());
+	return result;
+}
+
+ChannelEvent ConsistencyCheckEvent::encode(const ChannelStatusMessage& status) const
+{
+	MessageBuffer buffer;
+	buffer.add_hash(channel_status_hash);
+	buffer.add_opaque(encode_user_set(status, true, true, remaining_users));
+	
+	return ChannelEvent(Message::Type::ConsistencyCheck, buffer);
+}
+
+ConsistencyCheckEvent ConsistencyCheckEvent::decode(const ChannelEvent& encoded, const ChannelStatusMessage& status)
+{
+	MessageBuffer buffer(get_event_payload(encoded, Message::Type::ConsistencyCheck));
+	
+	ConsistencyCheckEvent result;
+	result.channel_status_hash = buffer.remove_hash();
+	result.remaining_users = decode_user_set(status, true, true, buffer.remove_opaque());
 	return result;
 }
 

@@ -39,8 +39,8 @@ void Room::join_room()
 {
 	// NOTE no rejoin support
 	assert(!m_channel);
+	assert(!m_channel_creation);
 	assert(!m_channel_search);
-	assert(!m_constructing_channel);
 	
 	m_ephemeral_private_key = PrivateKey::generate();
 }
@@ -53,8 +53,8 @@ void Room::search_channels()
 
 void Room::create_channel()
 {
-	m_constructing_channel = std::unique_ptr<Channel>(new Channel(this));
-	m_constructing_channel->announce();
+	m_channel_creation = std::unique_ptr<ChannelCreation>(new ChannelCreation(this));
+	m_channel_creation->create();
 }
 
 void Room::join_channel(const std::string& id_hash)
@@ -90,12 +90,8 @@ void Room::message_received(const std::string& sender, const std::string& text_m
 	if (m_channel) {
 		m_channel->message_received(sender, np1sec_message);
 	}
-	if (m_constructing_channel) {
-		m_constructing_channel->message_received(sender, np1sec_message);
-		
-		if (m_constructing_channel->joined()) {
-			joined_channel(std::move(m_constructing_channel));
-		}
+	if (m_channel_creation) {
+		m_channel_creation->message_received(sender, np1sec_message);
 	}
 	if (m_channel_search) {
 		m_channel_search->message_received(sender, np1sec_message);
@@ -107,9 +103,6 @@ void Room::user_joined(const std::string& username)
 	if (m_channel) {
 		m_channel->user_joined(username);
 	}
-	if (m_constructing_channel) {
-		m_constructing_channel->user_joined(username);
-	}
 	if (m_channel_search) {
 		m_channel_search->user_joined(username);
 	}
@@ -119,9 +112,6 @@ void Room::user_left(const std::string& username)
 {
 	if (m_channel) {
 		m_channel->user_left(username);
-	}
-	if (m_constructing_channel) {
-		m_constructing_channel->user_left(username);
 	}
 	if (m_channel_search) {
 		m_channel_search->user_left(username);
@@ -135,8 +125,8 @@ void Room::joined_channel(std::unique_ptr<Channel> channel)
 	m_channel = std::move(channel);
 	m_channel->activate();
 	
+	m_channel_creation.reset();
 	m_channel_search.reset();
-	m_constructing_channel.reset();
 }
 
 void Room::send_message(const Message& message)

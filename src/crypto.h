@@ -93,6 +93,10 @@ namespace np1sec
 			create_nonce(result.buffer, n);
 			return result;
 		}
+		inline Hash nonce_hash()
+		{
+			return nonce<c_hash_length>();
+		}
 		
 		std::string encrypt(const std::string& plaintext, const SymmetricKey& key);
 		

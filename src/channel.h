@@ -21,6 +21,7 @@
 
 #include "crypto.h"
 #include "message.h"
+#include "timer.h"
 
 #include <map>
 #include <string>
@@ -84,10 +85,14 @@ class Channel
 	
 	struct Event
 	{
-		Message::Type type;
-		std::set<std::string> remaining_users;
+		/*
+		 * This struct is really a union, but I am too lazy to implement a C++11 union.
+		 */
 		
-		ChannelStatusEventBody channel_status;
+		Message::Type type;
+		
+		ChannelStatusEvent channel_status;
+		ConsistencyCheckEvent consistency_check;
 	};
 	
 	void self_joined();
@@ -97,9 +102,13 @@ class Channel
 	void send_message(const Message& message, std::string debug_description = "");
 	
 	
+	Message channel_status(const std::string& searcher_username, const Hash& searcher_nonce) const;
+	void hash_message(const std::string& sender, const Message& message);
 	void authenticate_to(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key);
 	Hash authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, bool for_peer);
+	void send_consistency_check();
 	std::vector<Event>::iterator first_user_event(const std::string& username);
+	void set_channel_status_timer();
 	
 	
 	
@@ -109,8 +118,11 @@ class Channel
 	bool m_active;
 	bool m_authorized;
 	std::map<std::string, Participant> m_participants;
+	Hash m_channel_status_hash;
 	
 	std::vector<Event> m_events;
+	
+	Timer m_channel_status_timer;
 };
 
 } // namespace np1sec

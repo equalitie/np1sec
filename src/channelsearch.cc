@@ -39,7 +39,7 @@ void ChannelSearch::search()
 	m_event_log.clear();
 	m_channels.clear();
 	
-	m_search_nonce = crypto::nonce<c_hash_length>();
+	m_search_nonce = crypto::nonce_hash();
 	
 	ChannelSearchMessage message;
 	message.nonce = m_search_nonce;
@@ -217,7 +217,12 @@ void ChannelSearch::send_event(Channel* channel, const RoomEvent& event)
 
 std::unique_ptr<Channel> ChannelSearch::create_channel(const ChannelStatusMessage& message, const Message& encoded_message)
 {
-	std::unique_ptr<Channel> channel(new Channel(m_room, message, encoded_message));
+	std::unique_ptr<Channel> channel;
+	try {
+		channel = std::unique_ptr<Channel>(new Channel(m_room, message, encoded_message));
+	} catch(MessageFormatException) {
+		return std::unique_ptr<Channel>();
+	}
 	
 	for (const auto& event : m_event_log) {
 		send_event(channel.get(), event);

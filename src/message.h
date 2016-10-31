@@ -94,7 +94,10 @@ struct Message
 		JoinRequest = 0x14,
 		AuthenticationRequest = 0x15,
 		Authentication = 0x16,
-		Authorization = 0x17
+		Authorization = 0x17,
+		
+		ConsistencyStatus = 0x21,
+		ConsistencyCheck = 0x22,
 	};
 	
 	Message() {}
@@ -107,14 +110,46 @@ struct Message
 	static Message decode(const std::string& encoded);
 };
 
+template<class MessageBody>
+struct SignedMessage : public MessageBody
+{
+	bool valid;
+	std::string payload;
+	
+	static Message sign(const MessageBody& message, const PrivateKey& key)
+	{
+		std::string encoded_body = message.encode();
+		MessageBuffer buffer;
+		buffer.add_signature(crypto::sign(encoded_body, key));
+		buffer.add_bytes(encoded_body);
+		return Message(MessageBody::type, buffer);
+	}
+	
+	static SignedMessage verify(const Message& encoded, const PublicKey& key)
+	{
+		if (encoded.type != MessageBody::type) {
+			throw MessageFormatException();
+		}
+		MessageBuffer buffer(encoded.payload);
+		Signature signature = buffer.remove_signature();
+		SignedMessage result;
+		result.payload = buffer;
+		result.valid = crypto::verify(result.payload, std::move(signature), key);
+		return result;
+	}
+	
+	MessageBody decode() const
+	{
+		return MessageBody::decode(payload);
+	}
+};
+
 struct ChannelEvent
 {
 	ChannelEvent() {}
-	ChannelEvent(Message::Type type_, const std::set<std::string>& affected_users_, const std::string& payload_):
-		type(type_), affected_users(affected_users_), payload(payload_) {}
+	ChannelEvent(Message::Type type_, const std::string& payload_): type(type_), payload(payload_) {}
 	
 	Message::Type type;
-	std::set<std::string> affected_users;
 	std::string payload;
 };
 
@@ -153,6 +188,7 @@ struct ChannelStatusMessage
 	std::vector<Participant> participants;
 	std::vector<UnauthorizedParticipant> unauthorized_participants;
 	
+	Hash channel_status_hash;
 	std::vector<ChannelEvent> events;
 	
 	Message encode() const;
@@ -163,6 +199,7 @@ struct ChannelAnnouncementMessage
 {
 	PublicKey long_term_public_key;
 	PublicKey ephemeral_public_key;
+	Hash channel_status_hash;
 	
 	Message encode() const;
 	static ChannelAnnouncementMessage decode(const Message& encoded);
@@ -217,21 +254,44 @@ struct AuthorizationMessage
 
 
 
-struct ChannelStatusEventBody
+struct ConsistencyStatusMessage
+{
+	static Message encode()
+	{
+		return Message(Message::Type::ConsistencyStatus, std::string());
+	}
+};
+
+struct UnsignedConsistencyCheckMessage
+{
+	Hash channel_status_hash;
+	
+	std::string encode() const;
+	static UnsignedConsistencyCheckMessage decode(const std::string& encoded);
+	static const Message::Type type = Message::Type::ConsistencyCheck;
+};
+typedef SignedMessage<UnsignedConsistencyCheckMessage> ConsistencyCheckMessage;
+
+
+
+struct ChannelStatusEvent
 {
 	std::string searcher_username;
 	Hash searcher_nonce;
 	Hash status_message_hash;
+	std::set<std::string> remaining_users;
+	
+	ChannelEvent encode(const ChannelStatusMessage& status) const;
+	static ChannelStatusEvent decode(const ChannelEvent& encoded, const ChannelStatusMessage& status);
 };
-struct ChannelStatusEvent : public ChannelStatusEventBody
+
+struct ConsistencyCheckEvent
 {
-	ChannelStatusEvent() {}
-	ChannelStatusEvent(const ChannelStatusEventBody& b): ChannelStatusEventBody(b) {}
+	Hash channel_status_hash;
+	std::set<std::string> remaining_users;
 	
-	std::set<std::string> affected_users;
-	
-	ChannelEvent encode() const;
-	static ChannelStatusEvent decode(const ChannelEvent& encoded);
+	ChannelEvent encode(const ChannelStatusMessage& status) const;
+	static ConsistencyCheckEvent decode(const ChannelEvent& encoded, const ChannelStatusMessage& status);
 };
 
 

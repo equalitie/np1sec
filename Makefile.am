@@ -10,6 +10,7 @@ bin_PROGRAMS = jabberling
 jabberling_SOURCES = \
 	src/base64.cc \
 	src/channel.cc \
+	src/channelcreation.cc \
 	src/channelsearch.cc \
 	src/crypto.cc \
 	src/jabberling.cc \

@@ -20,6 +20,7 @@
 #define SRC_ROOM_H_
 
 #include "channel.h"
+#include "channelcreation.h"
 #include "channelsearch.h"
 #include "interface.h"
 #include "message.h"
@@ -100,7 +101,7 @@ class Room
 	PrivateKey m_ephemeral_private_key;
 	
 	std::unique_ptr<Channel> m_channel;
-	std::unique_ptr<Channel> m_constructing_channel;
+	std::unique_ptr<ChannelCreation> m_channel_creation;
 	std::unique_ptr<ChannelSearch> m_channel_search;
 };
 
