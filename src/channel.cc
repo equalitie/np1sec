@@ -275,12 +275,10 @@ void Channel::authorize(const std::string& username)
 		}
 	}
 	
-	AuthorizationMessage message;
+	UnsignedAuthorizationMessage message;
 	message.username = participant.username;
-	send_message(message.encode(), "authorization for " + username);
+	send_message(AuthorizationMessage::sign(message, m_ephemeral_private_key, m_signature_id++), "authorization for " + username);
 }
-
-
 
 void Channel::message_received(const std::string& sender, const Message& np1sec_message)
 {
@@ -468,16 +466,21 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			}
 		}
 	} else if (np1sec_message.type == Message::Type::Authorization) {
-		AuthorizationMessage message;
-		try {
-			message = AuthorizationMessage::decode(np1sec_message);
-		} catch(MessageFormatException) {
+		if (!m_participants.count(sender)) {
 			return;
 		}
 		
-		if (!(m_participants.count(sender) && m_participants.count(message.username))) {
+		AuthorizationMessage signed_message;
+		try {
+			signed_message = AuthorizationMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key, m_participants[sender].signature_id++);
+		} catch(MessageFormatException) {
 			return;
 		}
+		if (!signed_message.valid) {
+			remove_user(sender);
+			return;
+		}
+		UnsignedAuthorizationMessage message = signed_message.decode();
 		
 		Participant* authorized;
 		Participant* unauthorized;

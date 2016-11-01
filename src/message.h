@@ -96,10 +96,10 @@ struct Message
 		JoinRequest = 0x14,
 		AuthenticationRequest = 0x15,
 		Authentication = 0x16,
-		Authorization = 0x17,
 		
-		ConsistencyStatus = 0x21,
-		ConsistencyCheck = 0x22,
+		Authorization = 0x21,
+		ConsistencyStatus = 0x22,
+		ConsistencyCheck = 0x23,
 	};
 	
 	Message() {}
@@ -255,15 +255,17 @@ struct AuthenticationMessage
 	static AuthenticationMessage decode(const Message& encoded);
 };
 
-struct AuthorizationMessage
+
+
+struct UnsignedAuthorizationMessage
 {
 	std::string username;
 	
-	Message encode() const;
-	static AuthorizationMessage decode(const Message& encoded);
+	std::string encode() const;
+	static UnsignedAuthorizationMessage decode(const std::string& encoded);
+	static const Message::Type type = Message::Type::Authorization;
 };
-
-
+typedef struct SignedMessage<UnsignedAuthorizationMessage> AuthorizationMessage;
 
 struct ConsistencyStatusMessage
 {

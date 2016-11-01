@@ -514,19 +514,17 @@ AuthenticationMessage AuthenticationMessage::decode(const Message& encoded)
 	return result;
 }
 
-Message AuthorizationMessage::encode() const
+std::string UnsignedAuthorizationMessage::encode() const
 {
 	MessageBuffer buffer;
 	buffer.add_opaque(username);
-	
-	return Message(Message::Type::Authorization, buffer);
+	return buffer;
 }
 
-AuthorizationMessage AuthorizationMessage::decode(const Message& encoded)
+UnsignedAuthorizationMessage UnsignedAuthorizationMessage::decode(const std::string& encoded)
 {
-	MessageBuffer buffer(get_message_payload(encoded, Message::Type::Authorization));
-	
-	AuthorizationMessage result;
+	MessageBuffer buffer(encoded);
+	UnsignedAuthorizationMessage result;
 	result.username = buffer.remove_opaque();
 	return result;
 }
@@ -545,6 +543,7 @@ UnsignedConsistencyCheckMessage UnsignedConsistencyCheckMessage::decode(const st
 	result.channel_status_hash = buffer.remove_hash();
 	return result;
 }
+
 
 
 
