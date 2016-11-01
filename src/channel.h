@@ -45,8 +45,20 @@ class Channel
 	Channel(Room* room, const ChannelStatusMessage& channel_status, const Message& encoded_message);
 	Channel(Room* room, const ChannelAnnouncementMessage& channel_status, const std::string& sender);
 	
-	bool empty() const;
-	bool joined() const;
+	const PublicKey& ephemeral_public_key() const
+	{
+		return m_ephemeral_private_key.public_key();
+	}
+	
+	bool empty() const
+	{
+		return m_participants.empty();
+	}
+	
+	bool joined() const
+	{
+		return m_joined;
+	}
 	
 	void announce();
 	void confirm_participant(const std::string& username);
@@ -68,6 +80,7 @@ class Channel
 		std::string username;
 		PublicKey long_term_public_key;
 		PublicKey ephemeral_public_key;
+		uint64_t signature_id;
 		
 		bool authorized;
 		// used only for unauthorized participants
@@ -114,6 +127,9 @@ class Channel
 	
 	protected:
 	Room* m_room;
+	PrivateKey m_ephemeral_private_key;
+	uint64_t m_signature_id;
+	
 	bool m_joined;
 	bool m_active;
 	bool m_authorized;

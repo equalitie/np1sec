@@ -50,7 +50,7 @@ void ChannelCreation::message_received(const std::string& sender, const Message&
 		if (
 			   sender == m_room->username()
 			&& message.long_term_public_key == m_room->long_term_public_key()
-			&& message.ephemeral_public_key == m_room->ephemeral_public_key()
+			&& message.ephemeral_public_key == m_channel->ephemeral_public_key()
 		) {
 			m_room->joined_channel(std::move(m_channel));
 		}

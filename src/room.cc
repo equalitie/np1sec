@@ -47,8 +47,6 @@ void Room::join_room()
 	assert(!m_channel);
 	assert(!m_channel_creation);
 	assert(!m_channel_search);
-	
-	m_ephemeral_private_key = PrivateKey::generate();
 }
 
 void Room::search_channels()

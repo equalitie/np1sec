@@ -56,16 +56,6 @@ class Room
 		return m_long_term_private_key;
 	}
 	
-	const PublicKey& ephemeral_public_key() const
-	{
-		return m_ephemeral_private_key.public_key();
-	}
-	
-	const PrivateKey& ephemeral_private_key() const
-	{
-		return m_ephemeral_private_key;
-	}
-	
 	RoomInterface* interface()
 	{
 		return m_interface;
@@ -101,7 +91,6 @@ class Room
 	
 	std::string m_username;
 	PrivateKey m_long_term_private_key;
-	PrivateKey m_ephemeral_private_key;
 	
 	std::unique_ptr<Channel> m_channel;
 	std::unique_ptr<ChannelCreation> m_channel_creation;

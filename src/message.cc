@@ -47,6 +47,18 @@ void MessageBuffer::add_32(uint32_t number)
 	push_back((number >>  0) & 0xff);
 }
 
+void MessageBuffer::add_64(uint64_t number)
+{
+	push_back((number >> 56) & 0xff);
+	push_back((number >> 48) & 0xff);
+	push_back((number >> 40) & 0xff);
+	push_back((number >> 32) & 0xff);
+	push_back((number >> 24) & 0xff);
+	push_back((number >> 16) & 0xff);
+	push_back((number >>  8) & 0xff);
+	push_back((number >>  0) & 0xff);
+}
+
 void MessageBuffer::add_bytes(const std::string& buffer)
 {
 	append(buffer);
@@ -106,6 +118,27 @@ uint32_t MessageBuffer::remove_32()
 		(byte(3) <<  0);
 	
 	erase(0, 4);
+	
+	return result;
+}
+
+uint64_t MessageBuffer::remove_64()
+{
+	if (size() < 8) {
+		throw MessageFormatException();
+	}
+	
+	uint64_t result =
+		((uint64_t)byte(0) << 56) |
+		((uint64_t)byte(1) << 48) |
+		((uint64_t)byte(2) << 40) |
+		((uint64_t)byte(3) << 32) |
+		((uint64_t)byte(4) << 24) |
+		((uint64_t)byte(5) << 16) |
+		((uint64_t)byte(6) <<  8) |
+		((uint64_t)byte(7) <<  0);
+	
+	erase(0, 8);
 	
 	return result;
 }
@@ -295,6 +328,7 @@ Message ChannelStatusMessage::encode() const
 		participant_buffer.add_opaque(participant.username);
 		participant_buffer.add_public_key(participant.long_term_public_key);
 		participant_buffer.add_public_key(participant.ephemeral_public_key);
+		participant_buffer.add_64(participant.signature_id);
 		participants_buffer.add_opaque(participant_buffer);
 	}
 	buffer.add_opaque(participants_buffer);
@@ -305,6 +339,7 @@ Message ChannelStatusMessage::encode() const
 		participant_buffer.add_opaque(participant.username);
 		participant_buffer.add_public_key(participant.long_term_public_key);
 		participant_buffer.add_public_key(participant.ephemeral_public_key);
+		participant_buffer.add_64(participant.signature_id);
 		participant_buffer.add_opaque(encode_user_set(*this, true, false, participant.authorized_by));
 		participant_buffer.add_opaque(encode_user_set(*this, true, false, participant.authorized_peers));
 		unauthorized_participants_buffer.add_opaque(participant_buffer);
@@ -338,6 +373,7 @@ ChannelStatusMessage ChannelStatusMessage::decode(const Message& encoded)
 		participant.username = participant_buffer.remove_opaque();
 		participant.long_term_public_key = participant_buffer.remove_public_key();
 		participant.ephemeral_public_key = participant_buffer.remove_public_key();
+		participant.signature_id = participant_buffer.remove_64();
 		result.participants.push_back(std::move(participant));
 	}
 	
@@ -348,6 +384,7 @@ ChannelStatusMessage ChannelStatusMessage::decode(const Message& encoded)
 		participant.username = participant_buffer.remove_opaque();
 		participant.long_term_public_key = participant_buffer.remove_public_key();
 		participant.ephemeral_public_key = participant_buffer.remove_public_key();
+		participant.signature_id = participant_buffer.remove_64();
 		participant.authorized_by = decode_user_set(result, true, false, participant_buffer.remove_opaque());
 		participant.authorized_peers = decode_user_set(result, true, false, participant_buffer.remove_opaque());
 		result.unauthorized_participants.push_back(std::move(participant));
@@ -371,6 +408,7 @@ Message ChannelAnnouncementMessage::encode() const
 	MessageBuffer buffer;
 	buffer.add_public_key(long_term_public_key);
 	buffer.add_public_key(ephemeral_public_key);
+	buffer.add_64(signature_id);
 	buffer.add_hash(channel_status_hash);
 	
 	return Message(Message::Type::ChannelAnnouncement, buffer);
@@ -383,6 +421,7 @@ ChannelAnnouncementMessage ChannelAnnouncementMessage::decode(const Message& enc
 	ChannelAnnouncementMessage result;
 	result.long_term_public_key = buffer.remove_public_key();
 	result.ephemeral_public_key = buffer.remove_public_key();
+	result.signature_id = buffer.remove_64();
 	result.channel_status_hash = buffer.remove_hash();
 	return result;
 }
@@ -392,6 +431,7 @@ Message JoinRequestMessage::encode() const
 	MessageBuffer buffer;
 	buffer.add_public_key(long_term_public_key);
 	buffer.add_public_key(ephemeral_public_key);
+	buffer.add_64(signature_id);
 	
 	MessageBuffer usernames_buffer;
 	for (const std::string& username : peer_usernames) {
@@ -409,6 +449,7 @@ JoinRequestMessage JoinRequestMessage::decode(const Message& encoded)
 	JoinRequestMessage result;
 	result.long_term_public_key = buffer.remove_public_key();
 	result.ephemeral_public_key = buffer.remove_public_key();
+	result.signature_id = buffer.remove_64();
 	
 	MessageBuffer usernames_buffer = buffer.remove_opaque();
 	while (!usernames_buffer.empty()) {

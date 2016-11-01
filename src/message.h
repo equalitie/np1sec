@@ -43,6 +43,7 @@ class MessageBuffer : public std::string
 	void add_8(uint8_t byte);
 	void add_16(uint16_t number);
 	void add_32(uint32_t number);
+	void add_64(uint64_t number);
 	
 	template<int n> void add_byte_array(const ByteArray<n>& data)
 	{
@@ -59,6 +60,7 @@ class MessageBuffer : public std::string
 	uint8_t remove_8();
 	uint16_t remove_16();
 	uint32_t remove_32();
+	uint64_t remove_64();
 	
 	template<int n> ByteArray<n> remove_byte_array()
 	{
@@ -116,25 +118,27 @@ struct SignedMessage : public MessageBody
 	bool valid;
 	std::string payload;
 	
-	static Message sign(const MessageBody& message, const PrivateKey& key)
+	static Message sign(const MessageBody& message, const PrivateKey& key, uint64_t signature_id)
 	{
 		std::string encoded_body = message.encode();
 		MessageBuffer buffer;
 		buffer.add_signature(crypto::sign(encoded_body, key));
+		buffer.add_64(signature_id);
 		buffer.add_bytes(encoded_body);
 		return Message(MessageBody::type, buffer);
 	}
 	
-	static SignedMessage verify(const Message& encoded, const PublicKey& key)
+	static SignedMessage verify(const Message& encoded, const PublicKey& key, uint64_t signature_id)
 	{
 		if (encoded.type != MessageBody::type) {
 			throw MessageFormatException();
 		}
 		MessageBuffer buffer(encoded.payload);
 		Signature signature = buffer.remove_signature();
+		uint64_t sent_signature_id = buffer.remove_64();
 		SignedMessage result;
 		result.payload = buffer;
-		result.valid = crypto::verify(result.payload, std::move(signature), key);
+		result.valid = crypto::verify(result.payload, std::move(signature), key) && sent_signature_id == signature_id;
 		return result;
 	}
 	
@@ -170,6 +174,7 @@ struct ChannelStatusMessage
 		std::string username;
 		PublicKey long_term_public_key;
 		PublicKey ephemeral_public_key;
+		uint64_t signature_id;
 	};
 	
 	struct UnauthorizedParticipant
@@ -177,6 +182,7 @@ struct ChannelStatusMessage
 		std::string username;
 		PublicKey long_term_public_key;
 		PublicKey ephemeral_public_key;
+		uint64_t signature_id;
 		
 		std::set<std::string> authorized_by;
 		std::set<std::string> authorized_peers;
@@ -199,6 +205,7 @@ struct ChannelAnnouncementMessage
 {
 	PublicKey long_term_public_key;
 	PublicKey ephemeral_public_key;
+	uint64_t signature_id;
 	Hash channel_status_hash;
 	
 	Message encode() const;
@@ -209,6 +216,7 @@ struct JoinRequestMessage
 {
 	PublicKey long_term_public_key;
 	PublicKey ephemeral_public_key;
+	uint64_t signature_id;
 	
 	std::vector<std::string> peer_usernames;
 	
