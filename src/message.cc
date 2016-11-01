@@ -19,6 +19,8 @@
 #include "base64.h"
 #include "message.h"
 
+#include <climits>
+
 namespace np1sec
 {
 
@@ -26,7 +28,49 @@ const std::string c_np1sec_protocol_name(":o3np1sec1:");
 
 
 
-// TODO: more efficient integer encoding
+template<typename T>
+void encode_integer(MessageBuffer* buffer, T value)
+{
+	int bits_remaining = (sizeof(T) * CHAR_BIT);
+	do {
+		if (bits_remaining == 8) {
+			buffer->add_8((uint8_t)value);
+			return;
+		}
+		
+		uint8_t byte = (uint8_t)(value & 0x7f);
+		value = value >> 7;
+		bits_remaining -= 7;
+		buffer->add_8(value ? (byte | 0x80) : byte);
+	} while(value);
+}
+
+template<typename T>
+T decode_integer(MessageBuffer* buffer)
+{
+	int shift = 0;
+	T result = 0;
+	while (true) {
+		uint8_t byte = buffer->remove_8();
+		int bits_remaining = (sizeof(T) * CHAR_BIT) - shift;
+		if (bits_remaining == 8) {
+			result |= ((T)byte << shift);
+			return result;
+		} else if (bits_remaining < 8) {
+			if (byte >> bits_remaining) {
+				throw MessageFormatException();
+			}
+			result |= ((T)byte << shift);
+			return result;
+		} else {
+			result |= ((T)(byte & 0x7f) << shift);
+			shift += 7;
+			if (!(byte & 0x80)) {
+				return result;
+			}
+		}
+	}
+}
 
 void MessageBuffer::add_8(uint8_t byte)
 {
@@ -35,28 +79,17 @@ void MessageBuffer::add_8(uint8_t byte)
 
 void MessageBuffer::add_16(uint16_t number)
 {
-	push_back((number >> 8) & 0xff);
-	push_back((number >> 0) & 0xff);
+	encode_integer<uint16_t>(this, number);
 }
 
 void MessageBuffer::add_32(uint32_t number)
 {
-	push_back((number >> 24) & 0xff);
-	push_back((number >> 16) & 0xff);
-	push_back((number >>  8) & 0xff);
-	push_back((number >>  0) & 0xff);
+	encode_integer<uint32_t>(this, number);
 }
 
 void MessageBuffer::add_64(uint64_t number)
 {
-	push_back((number >> 56) & 0xff);
-	push_back((number >> 48) & 0xff);
-	push_back((number >> 40) & 0xff);
-	push_back((number >> 32) & 0xff);
-	push_back((number >> 24) & 0xff);
-	push_back((number >> 16) & 0xff);
-	push_back((number >>  8) & 0xff);
-	push_back((number >>  0) & 0xff);
+	encode_integer<uint64_t>(this, number);
 }
 
 void MessageBuffer::add_bytes(const std::string& buffer)
@@ -92,55 +125,17 @@ uint8_t MessageBuffer::remove_8()
 
 uint16_t MessageBuffer::remove_16()
 {
-	if (size() < 2) {
-		throw MessageFormatException();
-	}
-	
-	uint16_t result =
-		(byte(0) << 8) |
-		(byte(1) << 0);
-	
-	erase(0, 2);
-	
-	return result;
+	return decode_integer<uint16_t>(this);
 }
 
 uint32_t MessageBuffer::remove_32()
 {
-	if (size() < 4) {
-		throw MessageFormatException();
-	}
-	
-	uint32_t result =
-		(byte(0) << 24) |
-		(byte(1) << 16) |
-		(byte(2) <<  8) |
-		(byte(3) <<  0);
-	
-	erase(0, 4);
-	
-	return result;
+	return decode_integer<uint32_t>(this);
 }
 
 uint64_t MessageBuffer::remove_64()
 {
-	if (size() < 8) {
-		throw MessageFormatException();
-	}
-	
-	uint64_t result =
-		((uint64_t)byte(0) << 56) |
-		((uint64_t)byte(1) << 48) |
-		((uint64_t)byte(2) << 40) |
-		((uint64_t)byte(3) << 32) |
-		((uint64_t)byte(4) << 24) |
-		((uint64_t)byte(5) << 16) |
-		((uint64_t)byte(6) <<  8) |
-		((uint64_t)byte(7) <<  0);
-	
-	erase(0, 8);
-	
-	return result;
+	return decode_integer<uint64_t>(this);
 }
 
 std::string MessageBuffer::remove_bytes(size_t size)
