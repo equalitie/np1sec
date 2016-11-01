@@ -563,11 +563,13 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 
 void Channel::user_joined(const std::string& username)
 {
-	// NOTE do we need this?
+	hash_payload(username, 0, "joined");
 }
 
 void Channel::user_left(const std::string& username)
 {
+	hash_payload(username, 0, "left");
+	
 	remove_user(username);
 }
 
@@ -709,13 +711,18 @@ Message Channel::channel_status(const std::string& searcher_username, const Hash
 
 void Channel::hash_message(const std::string& sender, const Message& message)
 {
+	hash_payload(sender, uint8_t(message.type), message.payload);
+}
+
+void Channel::hash_payload(const std::string& sender, uint8_t type, const std::string& message)
+{
 	Hash zero;
 	memset(zero.buffer, 0, sizeof(zero.buffer));
 	
 	std::string buffer = channel_status(std::string(), zero).payload;
 	buffer += sender;
-	buffer += uint8_t(message.type);
-	buffer += message.payload;
+	buffer += type;
+	buffer += message;
 	m_channel_status_hash = crypto::hash(buffer);
 }
 

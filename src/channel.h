@@ -117,6 +117,7 @@ class Channel
 	
 	Message channel_status(const std::string& searcher_username, const Hash& searcher_nonce) const;
 	void hash_message(const std::string& sender, const Message& message);
+	void hash_payload(const std::string& sender, uint8_t type, const std::string& message);
 	void authenticate_to(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, const Hash& nonce);
 	Hash authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, const Hash& nonce, bool for_peer);
 	void send_consistency_check();
