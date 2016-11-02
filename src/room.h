@@ -39,6 +39,18 @@ class Room
 	Room(RoomInterface* interface, const std::string& username, const PrivateKey& private_key);
 	
 	/*
+	 * Provisional public API. This will be redesigned later.
+	 */
+	void join_room();
+	void search_channels();
+	void create_channel();
+	void join_channel(Channel* channel);
+	void authorize(const std::string& username);
+	
+	
+	
+	
+	/*
 	 * Accessors
 	 */
 	const std::string& username() const
@@ -61,14 +73,6 @@ class Room
 		return m_interface;
 	}
 	
-	/*
-	 * Operations
-	 */
-	void join_room();
-	void search_channels();
-	void create_channel();
-	void join_channel(const std::string& id_hash);
-	void authorize(const std::string& username);
 	
 	/*
 	 * Callbacks

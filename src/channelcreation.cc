@@ -52,6 +52,9 @@ void ChannelCreation::message_received(const std::string& sender, const Message&
 			&& message.long_term_public_key == m_room->long_term_public_key()
 			&& message.ephemeral_public_key == m_channel->ephemeral_public_key()
 		) {
+			ChannelInterface* interface = m_room->interface()->new_channel(m_channel.get());
+			m_channel->set_interface(interface);
+			
 			m_room->joined_channel(std::move(m_channel));
 		}
 	}

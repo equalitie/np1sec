@@ -24,12 +24,6 @@
 namespace np1sec
 {
 
-struct Identity
-{
-	std::string username;
-	PublicKey public_key;
-};
-
 class TimerCallback
 {
 	public:
@@ -41,6 +35,64 @@ class TimerToken
 	public:
 	virtual void unset() = 0;
 };
+
+class Channel;
+
+class ChannelInterface
+{
+	public:
+	/*
+	 * A user joined this channel. No cryptographic identity is known yet.
+	 */
+	virtual void user_joined(const std::string& username) = 0;
+	
+	/*
+	 * A user left the channel.
+	 */
+	virtual void user_left(const std::string& username) = 0;
+	
+	/*
+	 * The cryptographic identity of a user was confirmed.
+	 */
+	virtual void user_authenticated(const std::string& username, const PublicKey& public_key) = 0;
+	
+	/*
+	 * A user failed to authenticate. This indicates an attack!
+	 */
+	virtual void user_authentication_failed(const std::string& username) = 0;
+	
+	/*
+	 * A user <authenticatee> was accepted into the channel by a user <authenticator>.
+	 */
+	virtual void user_authorized_by(const std::string& user, std::string target) = 0;
+	
+	/*
+	 * A user got authorized by all participants and is now a full participant.
+	 */
+	virtual void user_promoted(const std::string& username) = 0;
+	
+	
+	/*
+	 * You joined this channel.
+	 */
+	virtual void joined() = 0;
+	
+	/*
+	 * You got authorized by all participants and are now a full participant.
+	 */
+	virtual void authorized() = 0;
+	
+	
+	/*
+	 * Not implemented yet.
+	 */
+	// virtual void message_received(const std::string& username, const std::string& message) = 0;
+	
+	// DEBUG
+	virtual void dump() = 0;
+};
+
+
 
 class RoomInterface
 {
@@ -54,9 +106,10 @@ class RoomInterface
 	/*
 	 * Callbacks
 	 */
-//	virtual void disconnected() = 0;
-//	virtual void user_joined(const Identity& identity) = 0;
-//	virtual void user_left(const Identity& identity) = 0;
+	virtual ChannelInterface* new_channel(Channel* channel) = 0;
+	virtual void channel_removed(Channel* channel) = 0;
+	virtual void joined_channel(Channel* channel) = 0;
+	virtual void disconnected() = 0;
 };
 
 } // namespace np1sec

@@ -35,15 +35,98 @@ class Room;
 class Channel
 {
 	public:
-	void dump(const std::string& message);
-	
-	public:
 	enum class AuthenticationStatus { Unauthenticated, Authenticating, Authenticated, AuthenticationFailed };
 	
 	public:
 	Channel(Room* room);
 	Channel(Room* room, const ChannelStatusMessage& channel_status, const Message& encoded_message);
 	Channel(Room* room, const ChannelAnnouncementMessage& channel_status, const std::string& sender);
+	
+	/*
+	 * Provisional public API. This will be redesigned later.
+	 */
+	class InvalidUserException {};
+	// user list
+	std::vector<std::string> users() const
+	{
+		std::vector<std::string> result;
+		for (const auto& i : m_participants) {
+			result.push_back(i.first);
+		}
+		return result;
+	}
+	
+	// authentication status. Unauthenticated and Authenticating are equivalent.
+	AuthenticationStatus user_authentication(const std::string& username) const
+	{
+		if (!m_participants.count(username)) {
+			throw InvalidUserException();
+		}
+		return m_participants.at(username).authentication_status;
+	}
+	
+	// user's public key. Defined only for Authenticated users.
+	PublicKey user_key(const std::string& username) const
+	{
+		if (!m_participants.count(username)) {
+			throw InvalidUserException();
+		}
+		if (m_participants.at(username).authentication_status != AuthenticationStatus::Authenticated) {
+			throw InvalidUserException();
+		}
+		return m_participants.at(username).long_term_public_key;
+	}
+	
+	// returns whether a user is a full member of the channel.
+	bool user_is_authorized(const std::string& username) const
+	{
+		if (!m_participants.count(username)) {
+			throw InvalidUserException();
+		}
+		return m_participants.at(username).authorized;
+	}
+	
+	// returns whether <user> has authorized <target>
+	bool user_has_authorized(const std::string& user, const std::string& target) const
+	{
+		if (!m_participants.count(user)) {
+			throw InvalidUserException();
+		}
+		if (!m_participants.count(target)) {
+			throw InvalidUserException();
+		}
+		if (m_participants.at(user).authorized) {
+			if (m_participants.at(target).authorized) {
+				return true;
+			} else {
+				return m_participants.at(target).authorized_peers.count(user) != 0;
+			}
+		} else {
+			if (m_participants.at(target).authorized) {
+				return m_participants.at(user).authorized_by.count(target) != 0;
+			} else {
+				return false;
+			}
+		}
+	}
+	
+	// returns whether you are a member of this channel
+	bool am_member() const
+	{
+		return m_joined;
+	}
+	
+	// returns whether you are authorized
+	bool am_authorized() const
+	{
+		return m_authorized;
+	}
+	
+	
+	
+	
+	
+	
 	
 	const PublicKey& ephemeral_public_key() const
 	{
@@ -55,9 +138,9 @@ class Channel
 		return m_participants.empty();
 	}
 	
-	bool joined() const
+	void set_interface(ChannelInterface* interface)
 	{
-		return m_joined;
+		m_interface = interface;
 	}
 	
 	void announce();
@@ -112,7 +195,7 @@ class Channel
 	void self_authorized();
 	void try_promote_unauthorized_participant(Participant* participant);
 	void remove_user(const std::string& username);
-	void send_message(const Message& message, std::string debug_description = "");
+	void send_message(const Message& message);
 	
 	
 	Message channel_status(const std::string& searcher_username, const Hash& searcher_nonce) const;
@@ -130,6 +213,7 @@ class Channel
 	Room* m_room;
 	PrivateKey m_ephemeral_private_key;
 	uint64_t m_signature_id;
+	ChannelInterface* m_interface;
 	
 	bool m_joined;
 	bool m_active;

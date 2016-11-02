@@ -22,8 +22,6 @@
 
 #include <cassert>
 
-#include <iostream>
-
 namespace np1sec
 {
 
@@ -61,11 +59,11 @@ void Room::create_channel()
 	m_channel_creation->create();
 }
 
-void Room::join_channel(const std::string& id_hash)
+void Room::join_channel(Channel* channel)
 {
 	assert(m_channel_search);
 	
-	m_channel_search->join_channel(id_hash);
+	m_channel_search->join_channel(channel);
 }
 
 void Room::authorize(const std::string& username)
@@ -133,11 +131,12 @@ void Room::user_left(const std::string& username)
 void Room::disconnect()
 {
 	// TODO fill in details here when we have a proper API.
-	std::cout << "*** Disconnecting\n";
 	m_channel.reset();
 	m_channel_creation.reset();
 	m_channel_search.reset();
 	m_message_queue.clear();
+	
+	m_interface->disconnected();
 }
 
 void Room::joined_channel(std::unique_ptr<Channel> channel)
@@ -149,6 +148,8 @@ void Room::joined_channel(std::unique_ptr<Channel> channel)
 	
 	m_channel_creation.reset();
 	m_channel_search.reset();
+	
+	m_interface->joined_channel(m_channel.get());
 }
 
 void Room::send_message(const Message& message)

@@ -21,8 +21,6 @@
 
 #include <cassert>
 
-#include <iostream>
-
 namespace np1sec
 {
 
@@ -46,13 +44,13 @@ void ChannelSearch::search()
 	m_room->send_message(message.encode());
 }
 
-void ChannelSearch::join_channel(const std::string& id_hash)
+void ChannelSearch::join_channel(Channel* channel)
 {
 	assert(m_joining_channel_id.empty());
 	
 	std::string identifier;
 	for (const auto& i : m_channels) {
-		if (crypto::hash(i.first).dump_hex() == id_hash) {
+		if (i.second.get() == channel) {
 			identifier = i.first;
 			break;
 		}
@@ -126,11 +124,12 @@ void ChannelSearch::message_received(const std::string& sender, const Message& n
 		}
 		
 		if (!m_channels.count(channel_id)) {
-			Hash id_hash = crypto::hash(channel_id);
-			std::cout << "*** Found channel: " << id_hash.dump_hex() << "\n";
+			m_channels[channel_id] = create_channel(message, np1sec_message);
 			
-			std::unique_ptr<Channel> channel = create_channel(message, np1sec_message);
-			m_channels[channel_id] = std::move(channel);
+			if (m_channels[channel_id]) {
+				ChannelInterface* interface = m_room->interface()->new_channel(m_channels[channel_id].get());
+				m_channels[channel_id]->set_interface(interface);
+			}
 		}
 		
 		if (m_channels[channel_id]) {
@@ -151,16 +150,18 @@ void ChannelSearch::message_received(const std::string& sender, const Message& n
 		}
 		
 		if (!m_channels.count(channel_id)) {
-			Hash id_hash = crypto::hash(channel_id);
-			std::cout << "*** Found channel: " << id_hash.dump_hex() << "\n";
-			
 			m_channels[channel_id] = std::unique_ptr<Channel>(new Channel(m_room, message, sender));
+			
+			if (m_channels[channel_id]) {
+				ChannelInterface* interface = m_room->interface()->new_channel(m_channels[channel_id].get());
+				m_channels[channel_id]->set_interface(interface);
+			}
 		}
 		
 		m_channels[channel_id]->confirm_participant(sender);
 	}
 	
-	if (!m_joining_channel_id.empty() && m_channels[m_joining_channel_id]->joined()) {
+	if (!m_joining_channel_id.empty() && m_channels[m_joining_channel_id]->am_member()) {
 		std::unique_ptr<Channel> joining_channel = std::move(m_channels[m_joining_channel_id]);
 		m_channels.clear();
 		m_joining_channel_id.clear();
@@ -196,6 +197,7 @@ void ChannelSearch::process_event(const RoomEvent& event)
 		if (i.second) {
 			send_event(i.second.get(), event);
 			if (i.second->empty()) {
+				m_room->interface()->channel_removed(i.second.get());
 				i.second.reset();
 			}
 		}

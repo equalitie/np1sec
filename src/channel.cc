@@ -19,46 +19,14 @@
 #include "channel.h"
 #include "room.h"
 
-#include <iostream>
-
 namespace np1sec
 {
-
-void Channel::dump(const std::string& message)
-{
-	std::cout << "** " << message << ":\n";
-	std::cout << "Channel status:\n";
-	std::cout << "  Joined: " << (m_joined ? "yes" : "no") << "\n";
-	std::cout << "  Active: " << (m_active ? "yes" : "no") << "\n";
-	std::cout << "  Authorized: " << (m_authorized ? "yes" : "no") << "\n";
-	std::cout << "  Hash: " << m_channel_status_hash.dump_hex() << "\n";
-	std::cout << "Participants:\n";
-	for (const auto& p : m_participants) {
-		std::string padding(16 - p.second.username.size(), ' ');
-		std::cout << "  " << p.second.username << padding << " " << p.second.long_term_public_key.dump_hex() << "    " << p.second.ephemeral_public_key.dump_hex() << "\n";
-		std::cout << "    Authentication status: " << (
-			p.second.authentication_status == AuthenticationStatus::Unauthenticated ? "unauthenticated" :
-			p.second.authentication_status == AuthenticationStatus::Authenticating ? "authenticating" :
-			p.second.authentication_status == AuthenticationStatus::Authenticated ? "authenticated" :
-			"failed"
-		) << "\n";
-		std::cout << "    Authorized: " << (p.second.authorized ? "yes" : "no") << "\n";
-		if (!p.second.authorized) {
-			for (const auto& pp : m_participants) {
-				if (pp.second.authorized) {
-					std::cout << "      " << pp.second.username << ":\n";
-					std::cout << "        " << p.second.username << " authorized by " << pp.second.username << ": " << (p.second.authorized_by.count(pp.second.username) ? "yes" : "no") << "\n";
-					std::cout << "        " << pp.second.username << " authorized by " << p.second.username << ": " << (p.second.authorized_peers.count(pp.second.username) ? "yes" : "no") << "\n";
-				}
-			}
-		}
-	}
-}
 
 Channel::Channel(Room* room):
 	m_room(room),
 	m_ephemeral_private_key(PrivateKey::generate()),
 	m_signature_id(1),
+	m_interface(nullptr),
 	m_joined(true),
 	m_active(false),
 	m_authorized(true),
@@ -72,14 +40,13 @@ Channel::Channel(Room* room):
 	self.authorized = true;
 	self.authentication_status = AuthenticationStatus::Authenticated;
 	m_participants[self.username] = self;
-	
-	dump("Created channel");
 }
 
 Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const Message& encoded_message):
 	m_room(room),
 	m_ephemeral_private_key(PrivateKey::generate()),
 	m_signature_id(1),
+	m_interface(nullptr),
 	m_joined(false),
 	m_active(false),
 	m_authorized(false)
@@ -157,14 +124,13 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 	}
 	
 	m_events.push_back(std::move(channel_status_event));
-	
-	dump("Tracking channel");
 }
 
 Channel::Channel(Room* room, const ChannelAnnouncementMessage& channel_status, const std::string& sender):
 	m_room(room),
 	m_ephemeral_private_key(PrivateKey::generate()),
 	m_signature_id(1),
+	m_interface(nullptr),
 	m_joined(false),
 	m_active(false),
 	m_authorized(false)
@@ -179,8 +145,6 @@ Channel::Channel(Room* room, const ChannelAnnouncementMessage& channel_status, c
 	participant.authorized = true;
 	participant.authentication_status = AuthenticationStatus::Unauthenticated;
 	m_participants[participant.username] = std::move(participant);
-	
-	dump("Tracking created channel");
 }
 
 void Channel::announce()
@@ -190,9 +154,7 @@ void Channel::announce()
 	message.ephemeral_public_key = ephemeral_public_key();
 	message.signature_id = m_signature_id;
 	message.channel_status_hash = m_channel_status_hash;
-	send_message(message.encode(), "announcing channel");
-	
-	dump("Announcing channel");
+	send_message(message.encode());
 }
 
 void Channel::confirm_participant(const std::string& username)
@@ -213,9 +175,7 @@ void Channel::confirm_participant(const std::string& username)
 		request.peer_long_term_public_key = participant.long_term_public_key;
 		request.peer_ephemeral_public_key = participant.ephemeral_public_key;
 		request.nonce = participant.authentication_nonce;
-		send_message(request.encode(), "authentication request for user " + username);
-		
-		dump("Confirming user " + username);
+		send_message(request.encode());
 	}
 }
 
@@ -230,16 +190,12 @@ void Channel::join()
 		message.peer_usernames.push_back(i.first);
 	}
 	
-	send_message(message.encode(), "join request");
-	
-	dump("Joining channel");
+	send_message(message.encode());
 }
 
 void Channel::activate()
 {
 	m_active = true;
-	
-	dump("Activating channel");
 	
 	set_channel_status_timer();
 }
@@ -277,7 +233,7 @@ void Channel::authorize(const std::string& username)
 	
 	UnsignedAuthorizationMessage message;
 	message.username = participant.username;
-	send_message(AuthorizationMessage::sign(message, m_ephemeral_private_key, m_signature_id++), "authorization for " + username);
+	send_message(AuthorizationMessage::sign(message, m_ephemeral_private_key, m_signature_id++));
 }
 
 void Channel::message_received(const std::string& sender, const Message& np1sec_message)
@@ -303,7 +259,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		if (m_active) {
 			UnsignedConsistencyCheckMessage consistency_check_message;
 			consistency_check_message.channel_status_hash = m_channel_status_hash;
-			send_message(ConsistencyCheckMessage::sign(consistency_check_message, m_ephemeral_private_key, m_signature_id++), "consistency check");
+			send_message(ConsistencyCheckMessage::sign(consistency_check_message, m_ephemeral_private_key, m_signature_id++));
 		}
 		
 		Message reply = channel_status(sender, message.nonce);
@@ -319,9 +275,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		m_events.push_back(std::move(reply_event));
 		
 		if (m_active) {
-			send_message(reply, "channel status for user " + sender);
-			
-			dump("Broadcasting channel for user " + sender);
+			send_message(reply);
 		}
 	} else if (np1sec_message.type == Message::Type::ChannelStatus) {
 		ChannelStatusMessage message;
@@ -391,7 +345,6 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		
 		if (sender == m_room->username()) {
 			m_participants[sender].authentication_status = AuthenticationStatus::Authenticated;
-			self_joined();
 		} else if (!m_active) {
 			m_participants[sender].authentication_status = AuthenticationStatus::Authenticating;
 			m_participants[sender].authentication_nonce = crypto::nonce_hash();
@@ -403,13 +356,19 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			request.peer_long_term_public_key = message.long_term_public_key;
 			request.peer_ephemeral_public_key = message.ephemeral_public_key;
 			request.nonce = m_participants[sender].authentication_nonce;
-			send_message(request.encode(), "authentication request for user " + sender);
+			send_message(request.encode());
 		} else {
 			m_participants[sender].authentication_status = AuthenticationStatus::Authenticating;
 			m_participants[sender].authentication_nonce = m_channel_status_hash;
 		}
 		
-		dump("Adding user " + sender);
+		if (m_interface) {
+			m_interface->user_joined(sender);
+		}
+		
+		if (sender == m_room->username()) {
+			self_joined();
+		}
 	} else if (np1sec_message.type == Message::Type::AuthenticationRequest) {
 		AuthenticationRequestMessage message;
 		try {
@@ -457,11 +416,15 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 				if (message.authentication_confirmation == correct_token) {
 					participant.authentication_status = AuthenticationStatus::Authenticated;
 					
-					dump("Authenticating user " + sender);
+					if (m_interface) {
+						m_interface->user_authenticated(sender, participant.long_term_public_key);
+					}
 				} else {
 					participant.authentication_status = AuthenticationStatus::AuthenticationFailed;
 					
-					dump("Authentication failed for user " + sender);
+					if (m_interface) {
+						m_interface->user_authentication_failed(sender);
+					}
 				}
 			}
 		}
@@ -506,7 +469,9 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			unauthorized->authorized_peers.insert(authorized->username);
 		}
 		
-		dump("User " + sender + " has authorized user " + message.username);
+		if (m_interface) {
+			m_interface->user_authorized_by(sender, message.username);
+		}
 		
 		try_promote_unauthorized_participant(unauthorized);
 	} else if (np1sec_message.type == Message::Type::ConsistencyStatus) {
@@ -517,7 +482,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		if (sender == m_room->username()) {
 			UnsignedConsistencyCheckMessage message;
 			message.channel_status_hash = m_channel_status_hash;
-			send_message(ConsistencyCheckMessage::sign(message, m_ephemeral_private_key, m_signature_id++), "consistency check");
+			send_message(ConsistencyCheckMessage::sign(message, m_ephemeral_private_key, m_signature_id++));
 		}
 		
 		Event event;
@@ -556,8 +521,6 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		if (first_event->consistency_check.remaining_users.empty()) {
 			m_events.erase(first_event);
 		}
-		
-		dump("Verified consistency hash " + message.channel_status_hash.dump_hex() + " for user " + sender);
 	}
 }
 
@@ -589,6 +552,10 @@ void Channel::self_joined()
 		
 		authenticate_to(i.second.username, i.second.long_term_public_key, i.second.ephemeral_public_key, m_channel_status_hash);
 	}
+	
+	if (m_interface) {
+		m_interface->joined();
+	}
 }
 
 void Channel::try_promote_unauthorized_participant(Participant* participant)
@@ -613,7 +580,14 @@ void Channel::try_promote_unauthorized_participant(Participant* participant)
 		m_authorized = true;
 	}
 	
-	dump("Promoting participant to authorized participant: " + participant->username);
+	if (m_interface) {
+		m_interface->user_promoted(participant->username);
+	}
+	
+	if (m_interface && participant->username == m_room->username()) {
+		m_interface->authorized();
+	}
+	
 }
 
 void Channel::remove_user(const std::string& username)
@@ -650,7 +624,9 @@ void Channel::remove_user(const std::string& username)
 		}
 	}
 	
-	dump("Removing participant: " + username);
+	if (m_interface) {
+		m_interface->user_left(username);
+	}
 	
 	for (auto& p : m_participants) {
 		if (!p.second.authorized) {
@@ -659,11 +635,8 @@ void Channel::remove_user(const std::string& username)
 	}
 }
 
-void Channel::send_message(const Message& message, std::string debug_description)
+void Channel::send_message(const Message& message)
 {
-	if (!debug_description.empty()) {
-		m_room->send_message("sending message: " + debug_description);
-	}
 	m_room->send_message(message);
 }
 
@@ -736,7 +709,7 @@ void Channel::authenticate_to(const std::string& username, const PublicKey& long
 	message.peer_ephemeral_public_key = ephemeral_public_key;
 	message.nonce = nonce;
 	message.authentication_confirmation = authentication_token(username, long_term_public_key, ephemeral_public_key, nonce, false);
-	send_message(message.encode(), "authentication for " + username);
+	send_message(message.encode());
 }
 
 Hash Channel::authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, const Hash& nonce, bool for_peer)
@@ -783,7 +756,7 @@ std::vector<Channel::Event>::iterator Channel::first_user_event(const std::strin
 void Channel::set_channel_status_timer()
 {
 	m_channel_status_timer = Timer(m_room->interface(), 10000, [this] {
-		send_message(ConsistencyStatusMessage::encode(), "consistency status");
+		send_message(ConsistencyStatusMessage::encode());
 		set_channel_status_timer();
 	});
 }

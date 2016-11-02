@@ -38,7 +38,7 @@ class ChannelSearch
 	ChannelSearch(Room* room);
 	
 	void search();
-	void join_channel(const std::string& id_hash);
+	void join_channel(Channel* channel);
 	
 	void message_received(const std::string& sender, const Message& np1sec_message);
 	void user_joined(const std::string& username);
