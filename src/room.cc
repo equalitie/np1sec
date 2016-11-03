@@ -108,16 +108,6 @@ void Room::message_received(const std::string& sender, const std::string& text_m
 	}
 }
 
-void Room::user_joined(const std::string& username)
-{
-	if (m_channel) {
-		m_channel->user_joined(username);
-	}
-	if (m_channel_search) {
-		m_channel_search->user_joined(username);
-	}
-}
-
 void Room::user_left(const std::string& username)
 {
 	if (m_channel) {

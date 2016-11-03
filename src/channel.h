@@ -150,7 +150,6 @@ class Channel
 	void authorize(const std::string& username);
 	
 	void message_received(const std::string& sender, const Message& np1sec_message);
-	void user_joined(const std::string& username);
 	void user_left(const std::string& username);
 	
 	

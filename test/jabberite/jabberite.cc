@@ -1,6 +1,6 @@
 /**
- * Multiparty Off-the-Record Messaging library
- * Copyright (C) 2014, eQualit.ie
+ * (n+1)Sec Multiparty Off-the-Record Messaging library
+ * Copyright (C) 2016, eQualit.ie
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of version 3 of the GNU Lesser General
@@ -18,199 +18,19 @@
 
 #include "ui.h"
 
-#include <unistd.h>
-#include <getopt.h>
-#include <string>
-
 #include "src/interface.h"
-#include "src/logger.h"
+#include "src/room.h"
+
+#include <unistd.h>
+
 
 #define CUSTOM_USER_DIRECTORY "/tmp/test_user"
 #define CUSTOM_PLUGIN_PATH ""
 #define PLUGIN_SAVE_PREF "/tmp/test_client/plugins/saved"
-#define UI_ID "test_client"
+#define UI_ID "jabberite"
 
 
 
-struct Np1secTimer
-{
-    guint timer_id;
-    void (*timer_callback)(void* opdata);
-    void *opdata;
-};
-
-static gboolean np1sec_execute_timer(gpointer np1sec_timer)
-{
-    Np1secTimer* timer = reinterpret_cast<Np1secTimer*>(np1sec_timer);
-
-    timer->timer_callback(timer->opdata);
-    delete timer;
-    // Returning 0 stops the timer.
-    return 0;
-}
-
-void* np1sec_set_timer(void (*timer_callback)(void* opdata), void* opdata, uint32_t interval, void* data)
-{
-    UNUSED(data);
-
-    Np1secTimer* timer = new Np1secTimer;
-    timer->timer_callback = timer_callback;
-    timer->opdata = opdata;
-    timer->timer_id = g_timeout_add(interval, np1sec_execute_timer, timer);
-    return timer;
-}
-
-void np1sec_unset_timer(void* identifier, void* data)
-{
-    UNUSED(data);
-    Np1secTimer* timer = reinterpret_cast<Np1secTimer*>(identifier);
-
-    g_source_remove(timer->timer_id);
-    delete timer;
-}
-
-void np1sec_new_session(std::string room, std::vector<std::string> users, void* data)
-{
-    Jabberite* settings = reinterpret_cast<Jabberite*>(data);
-
-    if (!settings->joined) {
-        settings->joined = true;
-        ui_np1sec_join_succeeded(room, settings->username, users, settings->ui_data);
-    }
-
-    ui_new_session(room, users, settings->ui_data);
-}
-
-void np1sec_incoming_message(std::string room, std::string sender, std::string message, void* data)
-{
-    Jabberite* settings = reinterpret_cast<Jabberite*>(data);
-
-    ui_incoming_message(room, sender, message, settings->ui_data);
-}
-
-void np1sec_send(std::string room, std::string message, void* data)
-{
-    Jabberite* settings = reinterpret_cast<Jabberite*>(data);
-
-    PurpleConversation* conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_CHAT, room.c_str(), settings->account);
-    purple_conv_chat_send(PURPLE_CONV_CHAT(conv), message.c_str());
-}
-
-void setup_np1sec(Jabberite *settings, std::string nick)
-{
-    // AppOps(uint32_t ACK_GRACE_INTERVAL,
-    //        uint32_t REKEY_GRACE_INTERVAL,
-    //        uint32_t INTERACTION_GRACE_INTERVAL,
-    //        uint32_t BROADCAST_LATENCY)
-    static np1sec::AppOps* ops = new np1sec::AppOps(15000, 60000, 2000, 2000);
-
-    ops->bare_sender_data = settings;
-    ops->send_bare = np1sec_send;
-    ops->join = np1sec_new_session;
-    ops->leave = np1sec_new_session;
-    ops->display_message = np1sec_incoming_message;
-    ops->set_timer = np1sec_set_timer;
-    ops->axe_timer = np1sec_unset_timer;
-
-    settings->user_state = new np1sec::UserState(nick, ops);
-    np1sec::logger.debug("Initialized user_state");
-}
-
-
-
-
-
-static void process_connection_error(PurpleConnection *gc, PurpleConnectionError err, const gchar *desc)
-{
-    UNUSED(gc);
-
-    ui_connection_error(err, desc);
-}
-
-static void process_signed_on(PurpleConnection* conn, void *m)
-{
-    Jabberite* settings = reinterpret_cast<Jabberite*>(m);
-
-    PurpleAccount* account = purple_connection_get_account(conn);
-    ui_signed_on(account->username, settings->ui_data);
-
-    GHashTable* components = g_hash_table_new(g_str_hash, g_str_equal);
-    g_hash_table_insert(components, strdup("room"), strdup(settings->room.c_str()));
-    g_hash_table_insert(components, strdup("server"), strdup(settings->server.c_str()));
-    serv_join_chat(conn, components);
-}
-
-static void process_chat_join_failed(PurpleConnection* gc, GHashTable* components, void* m)
-{
-    UNUSED(gc);
-    UNUSED(components);
-    Jabberite* settings = reinterpret_cast<Jabberite*>(m);
-
-    ui_join_failed(settings->ui_data);
-}
-
-static void process_buddy_chat_joined(PurpleConversation* conv, const char* name, PurpleConvChatBuddyFlags flags, gboolean new_arrival, void* m)
-{
-    UNUSED(flags);
-    UNUSED(new_arrival);
-    Jabberite* settings = reinterpret_cast<Jabberite*>(m);
-
-    if (!new_arrival && settings->user_state->user_nick() == name) {
-        std::vector<std::string> user_vector;
-        GList* user_list = purple_conv_chat_get_users(PURPLE_CONV_CHAT(conv));
-        while (user_list) {
-            PurpleConvChatBuddy* buddy = reinterpret_cast<PurpleConvChatBuddy*>(user_list->data);
-            user_vector.push_back(purple_conv_chat_cb_get_name(buddy));
-            user_list = user_list->next;
-        }
-
-        ui_try_np1sec_join(conv->name, name, user_vector, settings->ui_data);
-        settings->user_state->join_room(conv->name, user_vector.size());
-    } else if (new_arrival) {
-        ui_user_joined(name, settings->ui_data);
-    }
-}
-
-static void process_chat_buddy_left(PurpleConversation* conv, const char* name, const char* reason, void* m)
-{
-    UNUSED(conv);
-    UNUSED(reason);
-    Jabberite* settings = reinterpret_cast<Jabberite*>(m);
-
-    ui_user_left(name, settings->ui_data);
-}
-
-static void process_received_chat(PurpleAccount* account, char* sender, char* message, PurpleConversation* conv, int flags, void* m)
-{
-    UNUSED(account);
-    UNUSED(sender);
-    UNUSED(flags);
-    Jabberite* settings = reinterpret_cast<Jabberite*>(m);
-
-    if (!(flags & PURPLE_MESSAGE_DELAYED)) {
-        settings->user_state->receive_handler(conv->name, sender, message);
-    }
-}
-
-static void setup_purple_callbacks(Jabberite* settings)
-{
-    static int handle;
-    void* conn_handle = purple_connections_get_handle();
-    void* conv_handle = purple_conversations_get_handle();
-
-    purple_signal_connect(conn_handle, "connection-error", &handle, PURPLE_CALLBACK(process_connection_error), settings);
-    purple_signal_connect(conn_handle, "signed-on", &handle, PURPLE_CALLBACK(process_signed_on), settings);
-    purple_signal_connect(conv_handle, "chat-join-failed", &handle, PURPLE_CALLBACK(process_chat_join_failed), settings);
-    purple_signal_connect(conv_handle, "chat-buddy-joined", &handle, PURPLE_CALLBACK(process_buddy_chat_joined), settings);
-    purple_signal_connect(conv_handle, "chat-buddy-left", &handle, PURPLE_CALLBACK(process_chat_buddy_left), settings);
-    purple_signal_connect(conv_handle, "received-chat-msg", &handle, PURPLE_CALLBACK(process_received_chat), settings);
-}
-
-
-
-/*
- * This structure plugs libpurple into the glib event loop.
- */
 /*
  * START copied from libpurple example
  */
@@ -219,72 +39,72 @@ static void setup_purple_callbacks(Jabberite* settings)
 #define PURPLE_GLIB_WRITE_COND (G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL)
 
 typedef struct _PurpleGLibIOClosure {
-    PurpleInputFunction function;
-    guint result;
-    gpointer data;
+	PurpleInputFunction function;
+	guint result;
+	gpointer data;
 } PurpleGLibIOClosure;
 
 void purple_glib_io_destroy(gpointer data)
 {
-    g_free(data);
+	g_free(data);
 }
 
 gboolean purple_glib_io_invoke(GIOChannel* source, GIOCondition condition, gpointer data)
 {
-    PurpleGLibIOClosure* closure = static_cast<PurpleGLibIOClosure*>(data);
-    int purple_cond = 0;
-
-    if (condition & PURPLE_GLIB_READ_COND)
-        purple_cond |= PURPLE_INPUT_READ;
-    if (condition & PURPLE_GLIB_WRITE_COND)
-        purple_cond |= PURPLE_INPUT_WRITE;
-
-    closure->function(closure->data, g_io_channel_unix_get_fd(source), static_cast<PurpleInputCondition>(purple_cond));
-
-    return TRUE;
+	PurpleGLibIOClosure* closure = static_cast<PurpleGLibIOClosure*>(data);
+	int purple_cond = 0;
+	
+	if (condition & PURPLE_GLIB_READ_COND)
+		purple_cond |= PURPLE_INPUT_READ;
+	if (condition & PURPLE_GLIB_WRITE_COND)
+		purple_cond |= PURPLE_INPUT_WRITE;
+	
+	closure->function(closure->data, g_io_channel_unix_get_fd(source), static_cast<PurpleInputCondition>(purple_cond));
+	
+	return TRUE;
 }
 
 guint glib_input_add(gint fd, PurpleInputCondition condition, PurpleInputFunction function, gpointer data)
 {
-    PurpleGLibIOClosure* closure = g_new0(PurpleGLibIOClosure, 1);
-    GIOChannel* channel;
-    int cond = 0;
-
-    closure->function = function;
-    closure->data = data;
-
-    if (condition & PURPLE_INPUT_READ)
-        cond |= PURPLE_GLIB_READ_COND;
-    if (condition & PURPLE_INPUT_WRITE)
-        cond |= PURPLE_GLIB_WRITE_COND;
+	PurpleGLibIOClosure* closure = g_new0(PurpleGLibIOClosure, 1);
+	GIOChannel* channel;
+	int cond = 0;
+	
+	closure->function = function;
+	closure->data = data;
+	
+	if (condition & PURPLE_INPUT_READ)
+		cond |= PURPLE_GLIB_READ_COND;
+	if (condition & PURPLE_INPUT_WRITE)
+		cond |= PURPLE_GLIB_WRITE_COND;
 
 #if defined _WIN32 && !defined WINPIDGIN_USE_GLIB_IO_CHANNEL
-    channel = wpurple_g_io_channel_win32_new_socket(fd);
+	channel = wpurple_g_io_channel_win32_new_socket(fd);
 #else
-    channel = g_io_channel_unix_new(fd);
-#endif
-    closure->result = g_io_add_watch_full(channel, G_PRIORITY_DEFAULT, static_cast<GIOCondition>(cond),
-                                          purple_glib_io_invoke, closure, purple_glib_io_destroy);
-
-    g_io_channel_unref(channel);
-    return closure->result;
+	channel = g_io_channel_unix_new(fd);
+	#endif
+	closure->result = g_io_add_watch_full(channel, G_PRIORITY_DEFAULT, static_cast<GIOCondition>(cond),
+	                                      purple_glib_io_invoke, closure, purple_glib_io_destroy);
+	
+	g_io_channel_unref(channel);
+	return closure->result;
 }
 
 PurpleEventLoopUiOps glib_eventloops = 
 {
-    g_timeout_add,
-    g_source_remove,
-    glib_input_add,
-    g_source_remove,
-    NULL,
+	g_timeout_add,
+	g_source_remove,
+	glib_input_add,
+	g_source_remove,
+	NULL,
 #if GLIB_CHECK_VERSION(2, 14, 0)
-    g_timeout_add_seconds,
+	g_timeout_add_seconds,
 #else
-    NULL,
+	NULL,
 #endif
-    NULL,
-    NULL,
-    NULL
+	NULL,
+	NULL,
+	NULL
 };
 
 /*
@@ -293,215 +113,498 @@ PurpleEventLoopUiOps glib_eventloops =
 
 void setup_purple(void)
 {
-    purple_util_set_user_dir(CUSTOM_USER_DIRECTORY);
-    purple_debug_set_enabled(FALSE);
-    purple_eventloop_set_ui_ops(&glib_eventloops);
-    purple_plugins_add_search_path(CUSTOM_PLUGIN_PATH);
-
-    if (!purple_core_init(UI_ID)) {
-        fprintf(stderr, "initializing libpurple failed\n");
-        abort();
-    }
-
-    purple_set_blist(purple_blist_new());
-    purple_blist_load();
-    purple_prefs_load();
-    purple_plugins_load_saved(PLUGIN_SAVE_PREF);
-    purple_pounces_load();
+	purple_util_set_user_dir(CUSTOM_USER_DIRECTORY);
+	purple_debug_set_enabled(FALSE);
+	purple_eventloop_set_ui_ops(&glib_eventloops);
+	purple_plugins_add_search_path(CUSTOM_PLUGIN_PATH);
+	
+	if (!purple_core_init(UI_ID)) {
+		fprintf(stderr, "initializing libpurple failed\n");
+		abort();
+	}
+	
+	purple_set_blist(purple_blist_new());
+	purple_blist_load();
+	purple_prefs_load();
+	purple_plugins_load_saved(PLUGIN_SAVE_PREF);
+	purple_pounces_load();
 }
 
 
 
-void jabberite_connect(Jabberite *settings)
+static void process_connection_error(PurpleConnection*, PurpleConnectionError, const gchar*, void *m)
 {
-    purple_account_set_enabled(settings->account, UI_ID, TRUE);
-    purple_savedstatus_activate(purple_savedstatus_new(NULL, PURPLE_STATUS_AVAILABLE));
+	Jabberite* jabberite = reinterpret_cast<Jabberite*>(m);
+	jabberite->connection_error();
 }
 
-void do_jabberite(std::string username, std::string password, std::string server, std::string room, int port, std::string ec_socket)
+static void process_signed_on(PurpleConnection* connection, void *m)
 {
-    GMainLoop* loop = g_main_loop_new(NULL, FALSE);
-
-    setup_purple();
-    std::string xmpp = "XMPP";
-    GList* iter = purple_plugins_get_protocols();
-    const char* prpl = NULL;
-    for (; iter; iter = iter->next) {
-        PurplePlugin* plugin = static_cast<PurplePlugin*>(iter->data);
-        PurplePluginInfo* info = plugin->info;
-        if (info && info->name && !strcmp(xmpp.c_str(), info->name)) {
-            prpl = info->id;
-            break;
-        }
-    }
-    if (!prpl) {
-        fprintf(stderr, "Failed to get protocol.");
-        abort();
-    }
-
-
-
-    std::string nick(username);
-    size_t at_pos = nick.find('@');
-    if (at_pos != std::string::npos) {
-        nick = nick.substr(0, at_pos);
-    }
-
-
-
-    Jabberite *settings = new Jabberite;
-    settings->joined = false;
-    settings->username = username;
-    settings->password = password;
-    settings->server = server;
-    settings->room = room;
-    settings->port = port;
-    settings->ec_socket = ec_socket;
-
-    setup_np1sec(settings, nick);
-
-
-
-    settings->account = purple_account_new(username.c_str(), prpl);
-    purple_account_set_password(settings->account, password.c_str());
-    if (port != -1) {
-        purple_account_set_int(settings->account, "port", port);
-    }
-
-    setup_purple_callbacks(settings);
-
-
-
-    settings->ui_data = ui_main(settings);
-
-    g_main_loop_run(loop);
+	Jabberite* jabberite = reinterpret_cast<Jabberite*>(m);
+	jabberite->connection = connection;
+	
+	GHashTable* components = g_hash_table_new(g_str_hash, g_str_equal);
+	g_hash_table_insert(components, strdup("room"), strdup(jabberite->room_name.c_str()));
+	g_hash_table_insert(components, strdup("server"), strdup(jabberite->server.c_str()));
+	serv_join_chat(connection, components);
 }
 
-void print_usage(FILE* stream, const char *program_name, int exit_code)
+static void process_chat_joined(PurpleConversation* conversation, void* m)
 {
-    fprintf (stream, "Usage: %s options [ inputfile ... ]\n", program_name);
-    fprintf (stream, " -h --help                       Display this usage information.\n"
-                     " -a --account    xmpp account    The xmpp account used for login\n"
-                     " -p --password   password        The password for the login\n"
-                     " -s --server     server name     The conference server\n"
-                     " -r --room       room name       The room name to join\n"
-                     " -P --port       port number     The port to connect on; defaults to 5222\n"
-                     " -e --ec-socket  EC socket name  The socket name through which EchoChamber communicating with jabberite\n"
-    );
-    exit (exit_code);
+	Jabberite* jabberite = reinterpret_cast<Jabberite*>(m);
+	jabberite->conversation = conversation;
+	
+	jabberite->room->search_channels();
+	jabberite->connected();
 }
 
-int main(int argc, char* argv[])
+static void process_chat_join_failed(PurpleConnection*, GHashTable*, void* m)
 {
-    char *username = NULL;
-    char *password = NULL;
-    char *server = NULL;
-    char *room = NULL;
-    int port = -1;
-    const char *ec_socket = "";
+	Jabberite* jabberite = reinterpret_cast<Jabberite*>(m);
+	jabberite->connection_error();
+}
+
+static void process_chat_buddy_left(PurpleConversation*, const char* name, const char*, void* m)
+{
+	Jabberite* jabberite = reinterpret_cast<Jabberite*>(m);
+	jabberite->room->user_left(std::string(name));
+}
+
+static void process_received_chat(PurpleAccount*, char* sender, char* message, PurpleConversation*, int flags, void* m)
+{
+	Jabberite* jabberite = reinterpret_cast<Jabberite*>(m);
+	
+	// skip historic messages
+	if (!(flags & PURPLE_MESSAGE_DELAYED)) {
+		jabberite->room->message_received(std::string(sender), std::string(message));
+	}
+}
+
+static void setup_purple_callbacks(Jabberite* jabberite)
+{
+	static int handle;
+	void* conn_handle = purple_connections_get_handle();
+	void* conv_handle = purple_conversations_get_handle();
+	
+	purple_signal_connect(conn_handle, "connection-error", &handle, PURPLE_CALLBACK(process_connection_error), jabberite);
+	purple_signal_connect(conn_handle, "signed-on", &handle, PURPLE_CALLBACK(process_signed_on), jabberite);
+	purple_signal_connect(conv_handle, "chat-joined", &handle, PURPLE_CALLBACK(process_chat_joined), jabberite);
+	purple_signal_connect(conv_handle, "chat-join-failed", &handle, PURPLE_CALLBACK(process_chat_join_failed), jabberite);
+	purple_signal_connect(conv_handle, "chat-buddy-left", &handle, PURPLE_CALLBACK(process_chat_buddy_left), jabberite);
+	purple_signal_connect(conv_handle, "received-chat-msg", &handle, PURPLE_CALLBACK(process_received_chat), jabberite);
+}
 
 
-    const char* const short_options = "ha:p:s:P:r:e:";
-    const struct option long_options[] = {
-        { "help", 0, NULL, 'h' },
-        { "account", 1, NULL, 'a' },
-        { "password", 1, NULL, 'p' },
-        { "server", 1, NULL, 's' },
-        { "room", 1, NULL, 'r' },
-        { "port", 1, NULL, 'P' },
-        { "ec-fd", 1, NULL, 'e' },
-        { NULL, 0, NULL, 0 }
-    };
 
-    int next_option;
-    do {
-        next_option = getopt_long (argc, argv, short_options, long_options, NULL);
-        switch (next_option)
-        {
-        case 'h':
-            /* -h or --help */
-            print_usage(stdout, argv[0], 0);
-            break;
-        case 'a':
-            /* -a or --account */
-            username = optarg;
-            break;
-        case 'p':
-            /* -o or --password */
-            password = optarg;
-            break;
-        case 's':
-            /* -s or --server */
-            server = optarg;
-            break;
-        case 'r':
-            /* -r or --room */
-            room = optarg;
-            break;
-        case 'P':
-            /* -P or --port */
-            try {
-                port = std::stoi(std::string(optarg));
-            } catch(std::invalid_argument) {
-                print_usage(stdout, argv[0], 1);
-            }
-            break;
-        case 'e':
-            /* -e or --ec-sock */
-            ec_socket = optarg;
-            break;
-        case '?':
-            /* Invalid option */
-            print_usage(stderr, argv[0], 1);
-            break;
-        case -1:
-            /* Done with options */
-            break;
-        default:
-            /* Something else: unexpected.*/
-            abort ();
-        }
-    } while (next_option != -1);
+class JabberiteChannelInterface final : public np1sec::ChannelInterface
+{
+	public:
+	JabberiteChannelInterface(Jabberite* jabberite_, np1sec::Channel* channel_): jabberite(jabberite_), channel(channel_) {}
+	void user_joined(const std::string& username);
+	void user_left(const std::string& username);
+	void user_authenticated(const std::string& username, const np1sec::PublicKey& public_key);
+	void user_authentication_failed(const std::string& username);
+	void user_authorized_by(const std::string& user, const std::string& target);
+	void user_promoted(const std::string& username);
+	
+	void joined();
+	void authorized();
+	
+	// DEBUG
+	void dump() {}
+	
+	protected:
+	int id() { return jabberite->channel_id(channel); }
+	
+	public:
+	Jabberite* jabberite;
+	np1sec::Channel* channel;
+};
 
-    if (!username) {
-        username = new char[128];
-        printf("XMPP account: ");
-        if (!fgets(username, 128, stdin)) {
-            fprintf(stderr, "Failed to read user name.");
-            abort();
-        }
-        if (strrchr(username, '\n')) {
-            *strrchr(username, '\n') = 0;
-        }
-    }
+void JabberiteChannelInterface::user_joined(const std::string& username)
+{
+	jabberite->user_joined(id(), username);
+}
 
-    if (!password) {
-        password = getpass("Password: ");
-    }
+void JabberiteChannelInterface::user_left(const std::string& username)
+{
+	jabberite->user_left(id(), username);
+}
 
-    if (!server) {
-        server = new char[1024];
-        printf("Conference server: ");
-        if (!fgets(server, 1024, stdin)) {
-            fprintf(stderr, "Failed to read conference server.");
-            abort();
-        }
-        if (strrchr(server, '\n')) {
-            *strrchr(server, '\n') = 0;
-        }
-    }
+void JabberiteChannelInterface::user_authenticated(const std::string& username, const np1sec::PublicKey& public_key)
+{
+	jabberite->user_authenticated(id(), username, public_key);
+}
 
-    if (!room) {
-        room = new char[128];
-        printf("Room name: ");
-        if (!fgets(room, 128, stdin)) {
-            fprintf(stderr, "Failed to read room's name.");
-            abort();
-        }
-        if (strrchr(room, '\n')) {
-            *strrchr(room, '\n') = 0;
-        }
-    }
+void JabberiteChannelInterface::user_authentication_failed(const std::string& username)
+{
+	jabberite->user_authentication_failed(id(), username);
+}
 
-    do_jabberite(username, password, server, room, port, ec_socket);
+void JabberiteChannelInterface::user_authorized_by(const std::string& user, const std::string& target)
+{
+	jabberite->user_authorized_by(id(), user, target);
+}
+
+void JabberiteChannelInterface::user_promoted(const std::string& username)
+{
+	jabberite->user_promoted(id(), username);
+}
+
+void JabberiteChannelInterface::joined()
+{
+	jabberite->joined(id());
+}
+
+void JabberiteChannelInterface::authorized()
+{
+	jabberite->authorized(id());
+}
+
+
+
+class JabberiteRoomInterface : public np1sec::RoomInterface
+{
+	public:
+	JabberiteRoomInterface(Jabberite* jabberite): m_jabberite(jabberite) {}
+	void send_message(const std::string& message);
+	np1sec::TimerToken* set_timer(uint32_t interval, np1sec::TimerCallback* callback);
+	
+	np1sec::ChannelInterface* new_channel(np1sec::Channel* channel);
+	void channel_removed(np1sec::Channel* channel);
+	void joined_channel(np1sec::Channel* channel);
+	void disconnected();
+	
+	protected:
+	Jabberite* m_jabberite;
+};
+
+void JabberiteRoomInterface::send_message(const std::string& message)
+{
+	purple_conv_chat_send(PURPLE_CONV_CHAT(m_jabberite->conversation), message.c_str());
+}
+
+struct JabberiteTimer final : public np1sec::TimerToken
+{
+	np1sec::TimerCallback* callback;
+	guint timer_id;
+	
+	void unset()
+	{
+		g_source_remove(timer_id);
+		delete this;
+	}
+};
+
+static gboolean execute_timer(gpointer jabberite_timer)
+{
+	JabberiteTimer* timer = reinterpret_cast<JabberiteTimer*>(jabberite_timer);
+	timer->callback->execute();
+	delete timer;
+	// returning 0 stops the timer
+	return 0;
+}
+
+np1sec::TimerToken* JabberiteRoomInterface::set_timer(uint32_t interval, np1sec::TimerCallback* callback)
+{
+	JabberiteTimer* timer = new JabberiteTimer;
+	timer->callback = callback;
+	timer->timer_id = g_timeout_add(interval, execute_timer, timer);
+	return timer;
+}
+
+np1sec::ChannelInterface* JabberiteRoomInterface::new_channel(np1sec::Channel* channel)
+{
+	JabberiteChannelInterface* interface = new JabberiteChannelInterface(m_jabberite, channel);
+	int id = m_jabberite->add_channel(interface);
+	m_jabberite->new_channel(id, channel);
+	return interface;
+}
+
+void JabberiteRoomInterface::channel_removed(np1sec::Channel* channel)
+{
+	int id = m_jabberite->remove_channel(channel);
+	m_jabberite->channel_removed(id);
+}
+
+void JabberiteRoomInterface::joined_channel(np1sec::Channel* channel)
+{
+	int id = m_jabberite->channel_id(channel);
+	m_jabberite->joined_channel(id);
+}
+
+void JabberiteRoomInterface::disconnected()
+{
+	m_jabberite->disconnected();
+}
+
+
+
+Jabberite::Jabberite():
+	account(nullptr),
+	connection(nullptr),
+	conversation(nullptr),
+	room(nullptr)
+{
+}
+
+void Jabberite::create_channel()
+{
+	if (room) {
+		room->create_channel();
+	}
+}
+
+void Jabberite::join_channel(int id)
+{
+	if (room) {
+		np1sec::Channel* channel = this->channel(id);
+		if (channel) {
+			room->join_channel(channel);
+		}
+	}
+}
+
+void Jabberite::authorize(std::string username)
+{
+	if (room) {
+		room->authorize(username);
+	}
+}
+
+np1sec::Channel* Jabberite::channel(int id)
+{
+	if (id < 0 || (size_t) id >= channels.size()) {
+		return nullptr;
+	}
+	if (!channels[id]) {
+		return nullptr;
+	}
+	return channels[id]->channel;
+}
+
+int Jabberite::channel_id(np1sec::Channel* channel)
+{
+	for (int i = 0; (size_t)i < channels.size(); i++) {
+		if (channels[i] && channels[i]->channel == channel) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+int Jabberite::add_channel(JabberiteChannelInterface* interface)
+{
+	int id = channels.size();
+	channels.push_back(interface);
+	return id;
+}
+
+int Jabberite::remove_channel(np1sec::Channel* channel)
+{
+	int id = channel_id(channel);
+	if (id != -1) {
+		if (channels[id]) {
+			delete channels[id];
+			channels[id] = nullptr;
+		}
+	}
+	return id;
+}
+
+
+
+
+
+
+void Jabberite::do_run()
+{
+	GMainLoop* loop = g_main_loop_new(NULL, FALSE);
+	
+	setup_purple();
+	const char* prpl = NULL;
+	for (GList* iter = purple_plugins_get_protocols(); iter; iter = iter->next) {
+		PurplePlugin* plugin = static_cast<PurplePlugin*>(iter->data);
+		PurplePluginInfo* info = plugin->info;
+		if (info && info->name && !strcmp("XMPP", info->name)) {
+			prpl = info->id;
+			break;
+		}
+	}
+	if (!prpl) {
+		fprintf(stderr, "Failed to get protocol.");
+		abort();
+	}
+	
+	
+	
+	std::string nick(username);
+	size_t at_pos = nick.find('@');
+	if (at_pos != std::string::npos) {
+		nick = nick.substr(0, at_pos);
+	}
+	JabberiteRoomInterface* interface = new JabberiteRoomInterface(this);
+	room = new np1sec::Room(interface, nick, np1sec::PrivateKey::generate());
+	
+	
+	
+	account = purple_account_new(username.c_str(), prpl);
+	purple_account_set_password(account, password.c_str());
+	if (port != -1) {
+		purple_account_set_int(account, "port", port);
+	}
+	
+	setup_purple_callbacks(this);
+	
+	purple_account_set_enabled(account, UI_ID, TRUE);
+	purple_savedstatus_activate(purple_savedstatus_new(NULL, PURPLE_STATUS_AVAILABLE));
+	
+	g_main_loop_run(loop);
+}
+
+void Jabberite::print_usage(std::string program_name, std::vector<option> extra_options)
+{
+	fprintf(stderr, "Usage: %s options [ inputfile ... ]\n", program_name.c_str());
+	fprintf(stderr, " -h --help                       Display this usage information.\n"
+	                " -a --account    xmpp account    The xmpp account used for login\n"
+	                " -p --password   password        The password for the login\n"
+	                " -s --server     server name     The conference server\n"
+	                " -r --room       room name       The room name to join\n"
+	                " -P --port       port number     The port to connect on; defaults to 5222\n"
+	);
+	
+	for (const option& option : extra_options) {
+		std::string description = explain_option(option.val);
+		std::string parameter = "";
+		if (option.has_arg) {
+			parameter = explain_parameter(option.val);
+		}
+		fprintf(stderr, " -%c --%-11s%-16s%s\n", option.val, option.name, parameter.c_str(), description.c_str());
+	}
+	
+	exit(1);
+}
+
+void Jabberite::run(int argc, char** argv)
+{
+	port = -1;
+	
+	std::string short_options = "ha:p:s:P:r:";
+	const struct option basic_long_options[] = {
+		{ "help", 0, NULL, 'h' },
+		{ "account", 1, NULL, 'a' },
+		{ "password", 1, NULL, 'p' },
+		{ "server", 1, NULL, 's' },
+		{ "room", 1, NULL, 'r' },
+		{ "port", 1, NULL, 'P' },
+	};
+	std::vector<option> long_options(basic_long_options, basic_long_options + (sizeof(basic_long_options) / sizeof(*basic_long_options)));
+	
+	std::vector<option> extra_options = this->extra_options();
+	for (const option& option : extra_options) {
+		long_options.push_back(option);
+		short_options += option.val;
+		if (option.has_arg) {
+			short_options += ':';
+		}
+	}
+	long_options.insert(long_options.end(), extra_options.begin(), extra_options.end());
+	
+	option empty = { NULL, 0, NULL, 0 };
+	long_options.push_back(empty);
+	
+	
+	int next_option;
+	do {
+		next_option = getopt_long (argc, argv, short_options.c_str(), &long_options[0], NULL);
+		switch (next_option)
+		{
+		case 'h':
+			/* -h or --help */
+			print_usage(argv[0], extra_options);
+			break;
+		case 'a':
+			/* -a or --account */
+			username = std::string(optarg);
+			break;
+		case 'p':
+			/* -o or --password */
+			password = std::string(optarg);
+			break;
+		case 's':
+			/* -s or --server */
+			server = std::string(optarg);
+			break;
+		case 'r':
+			/* -r or --room */
+			room_name = std::string(optarg);
+			break;
+		case 'P':
+			/* -P or --port */
+			try {
+				port = std::stoi(std::string(optarg));
+			} catch(std::invalid_argument) {
+				print_usage(argv[0], extra_options);
+			}
+			break;
+		case '?':
+			/* Invalid option */
+			print_usage(argv[0], extra_options);
+			break;
+		case -1:
+			/* Done with options */
+			break;
+		default:
+			if (!process_option(next_option, optarg)) {
+				/* Something else: unexpected.*/
+				abort ();
+			}
+		}
+	} while (next_option != -1);
+	
+	if (username.empty()) {
+		char username_buffer[128];
+		printf("XMPP account: ");
+		if (!fgets(username_buffer, sizeof(username_buffer), stdin)) {
+			fprintf(stderr, "Failed to read username.\n");
+			abort();
+		}
+		if (strchr(username_buffer, '\n')) {
+			*strchr(username_buffer, '\n') = 0;
+		}
+		username = std::string(username_buffer);
+	}
+	
+	if (password.empty()) {
+		char* password_buffer = getpass("Password: ");
+		password = std::string(password_buffer);
+	}
+	
+	if (server.empty()) {
+		char server_buffer[128];
+		printf("Conference server: ");
+		if (!fgets(server_buffer, sizeof(server_buffer), stdin)) {
+			fprintf(stderr, "Failed to read conference server.\n");
+			abort();
+		}
+		if (strchr(server_buffer, '\n')) {
+			*strchr(server_buffer, '\n') = 0;
+		}
+		server = std::string(server_buffer);
+	}
+	
+	if (room_name.empty()) {
+		char room_buffer[128];
+		printf("Room name: ");
+		if (!fgets(room_buffer, sizeof(room_buffer), stdin)) {
+			fprintf(stderr, "Failed to read room name.\n");
+			abort();
+		}
+		if (strchr(room_buffer, '\n')) {
+			*strchr(room_buffer, '\n') = 0;
+		}
+		room_name = std::string(room_buffer);
+	}
+	
+	do_run();
 }

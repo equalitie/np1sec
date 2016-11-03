@@ -524,11 +524,6 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 	}
 }
 
-void Channel::user_joined(const std::string& username)
-{
-	hash_payload(username, 0, "joined");
-}
-
 void Channel::user_left(const std::string& username)
 {
 	hash_payload(username, 0, "left");

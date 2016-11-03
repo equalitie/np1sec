@@ -64,7 +64,7 @@ class ChannelInterface
 	/*
 	 * A user <authenticatee> was accepted into the channel by a user <authenticator>.
 	 */
-	virtual void user_authorized_by(const std::string& user, std::string target) = 0;
+	virtual void user_authorized_by(const std::string& user, const std::string& target) = 0;
 	
 	/*
 	 * A user got authorized by all participants and is now a full participant.

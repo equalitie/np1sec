@@ -1,6 +1,6 @@
 /**
- * Multiparty Off-the-Record Messaging library
- * Copyright (C) 2014, eQualit.ie
+ * (n+1)Sec Multiparty Off-the-Record Messaging library
+ * Copyright (C) 2016, eQualit.ie
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of version 3 of the GNU Lesser General
@@ -17,131 +17,264 @@
  */
 
 #include "ui.h"
-#include <stdio.h>
-#include <stdlib.h>
+
 #include <unistd.h>
 
-void ui_connection_error(int error_code, std::string description)
+#define USE_VARARGS 1
+#define PREFER_STDARG 1
+#include <readline/readline.h>
+
+class CliJabberite final : public Jabberite
 {
-    fprintf(stderr, "Failed to connect to server. Error %d: %s", error_code, description.c_str());
-    abort();
-}
-
-void ui_signed_on(std::string username, void* data)
-{
-    UNUSED(data);
-
-    printf("Account connected: %s\n", username.c_str());
-}
-
-void ui_try_np1sec_join(std::string room, std::string username, std::vector<std::string> users, void* data)
-{
-    UNUSED(data);
-
-    printf("Initiating np1sec join of room '%s' as '%s', participants:", room.c_str(), username.c_str());
-    for (size_t i = 0; i < users.size(); i++) {
-        printf(" %s", users[i].c_str());
-    }
-    printf("\n");
-}
-
-void ui_join_failed(void* data)
-{
-    UNUSED(data);
-
-    printf("Unable to join room\n");
-}
-
-void ui_user_joined(std::string username, void* data)
-{
-    UNUSED(data);
-
-    printf("%s joined the chat\n", username.c_str());
-}
-
-void ui_user_left(std::string username, void* data)
-{
-    UNUSED(data);
-
-    printf("%s left the chat\n", username.c_str());
-}
-
-void ui_np1sec_join_succeeded(std::string room, std::string username, std::vector<std::string> users, void* data)
-{
-    UNUSED(data);
-
-    printf("Finished joining room '%s' as '%s', participants: ", room.c_str(), username.c_str());
-    for (size_t i = 0; i < users.size(); i++) {
-        printf(" %s", users[i].c_str());
-    }
-    printf("\n");
-}
-
-void ui_new_session(std::string room, std::vector<std::string> users, void* data)
-{
-    UNUSED(data);
-
-    printf("Starting new np1sec session in room '%s' with participants:", room.c_str());
-    for (size_t i = 0; i < users.size(); i++) {
-        printf(" %s", users[i].c_str());
-    }
-    printf("\n");
-}
-
-void ui_incoming_message(std::string room, std::string sender, std::string message, void* data)
-{
-    UNUSED(data);
-
-    printf("%s@%s: %s\n", sender.c_str(), room.c_str(), message.c_str());
-}
-
-
-
-struct StdinData
-{
-    Jabberite* settings;
-    std::string line_buffer;
+	public:
+	CliJabberite(): m_verbose(false) {}
+	std::vector<option> extra_options();
+	bool process_option(char option, char* argument);
+	std::string explain_option(char option);
+	std::string explain_parameter(char option);
+	
+	void connected();
+	void connection_error();
+	void disconnected();
+	
+	void new_channel(int id, np1sec::Channel* channel);
+	void channel_removed(int id);
+	void joined_channel(int id);
+	
+	void user_joined(int channel_id, std::string username);
+	void user_left(int channel_id, std::string username);
+	void user_authenticated(int channel_id, std::string username, np1sec::PublicKey public_key);
+	void user_authentication_failed(int channel_id, std::string username);
+	void user_authorized_by(int channel_id, std::string user, std::string target);
+	void user_promoted(int channel_id, std::string username);
+	
+	void joined(int channel_id);
+	void authorized(int channel_id);
+	
+	void dump(int channel_id);
+	void print(const std::string& message);
+	
+	void parse_command(const std::string& line);
+	
+	protected:
+	bool m_verbose;
 };
 
-static gboolean stdin_callback(GIOChannel* io, GIOCondition condition, gpointer p)
+
+std::vector<option> CliJabberite::extra_options()
 {
-    UNUSED(condition);
-    StdinData* data = reinterpret_cast<StdinData*>(p);
-
-    gchar in;
-    GError* error = NULL;
-
-    switch (g_io_channel_read_chars(io, &in, 1, NULL, &error)) {
-    case G_IO_STATUS_NORMAL:
-        if (in != '\n') {
-            data->line_buffer += in;
-        } else {
-            data->settings->user_state->send_handler(data->settings->room + "@" + data->settings->server, data->line_buffer);
-            data->line_buffer.clear();
-        }
-        return TRUE;
-    case G_IO_STATUS_ERROR:
-        g_printerr("IO error: %s\n", error->message);
-        g_error_free(error);
-        return FALSE;
-    case G_IO_STATUS_EOF:
-    case G_IO_STATUS_AGAIN:
-        return TRUE;
-        break;
-    }
-
-    return FALSE;
+	option verbose = { "verbose", 0, NULL, 'v' };
+	
+	std::vector<option> options;
+	options.push_back(verbose);
+	return options;
 }
 
-void* ui_main(Jabberite* settings)
+bool CliJabberite::process_option(char option, char* /*argument */)
 {
-    StdinData *data = new StdinData;
-    data->settings = settings;
+	if (option == 'v') {
+		m_verbose = true;
+		return true;
+	} else {
+		return false;
+	}
+}
 
-    GIOChannel* io = g_io_channel_unix_new(STDIN_FILENO);
-    g_io_add_watch(io, G_IO_IN, stdin_callback, data);
+std::string CliJabberite::explain_option(char option)
+{
+	if (option == 'v') {
+		return "Enable verbose channel status reporting";
+	} else {
+		return "";
+	}
+}
 
-    jabberite_connect(settings);
+std::string CliJabberite::explain_parameter(char /* option */)
+{
+	return "";
+}
 
-    return NULL;
+void CliJabberite::connected()
+{
+	print("** Connected\n");
+}
+
+void CliJabberite::connection_error()
+{
+	print("** Connection error\n");
+}
+
+void CliJabberite::disconnected()
+{
+	print("** Disconnected\n");
+}
+
+void CliJabberite::new_channel(int id, np1sec::Channel*)
+{
+	print("** Found channel " + std::to_string(id) + ":\n");
+	dump(id);
+}
+
+void CliJabberite::channel_removed(int id)
+{
+	print("** Removed channel " + std::to_string(id) + "\n");
+}
+
+void CliJabberite::joined_channel(int id)
+{
+	print("** Joined channel " + std::to_string(id) + ":\n");
+	dump(id);
+}
+
+void CliJabberite::user_joined(int channel_id, std::string username)
+{
+	print("** User " + username + " joined the channel\n");
+	dump(channel_id);
+}
+
+void CliJabberite::user_left(int channel_id, std::string username)
+{
+	print("** User " + username + " left the channel\n");
+	dump(channel_id);
+}
+
+void CliJabberite::user_authenticated(int channel_id, std::string username, np1sec::PublicKey public_key)
+{
+	print("** User " + username + " authenticated as " + public_key.dump_hex() + "\n");
+	dump(channel_id);
+}
+
+void CliJabberite::user_authentication_failed(int channel_id, std::string username)
+{
+	print("** User " + username + " failed authentication\n");
+	dump(channel_id);
+}
+
+void CliJabberite::user_authorized_by(int channel_id, std::string user, std::string target)
+{
+	print("** User " + target + " was authorized by " + user + "\n");
+	dump(channel_id);
+}
+
+void CliJabberite::user_promoted(int channel_id, std::string username)
+{
+	print("** User " + username + " was promoted\n");
+	dump(channel_id);
+}
+
+void CliJabberite::joined(int channel_id)
+{
+	print("** You joined the channel\n");
+	dump(channel_id);
+}
+
+void CliJabberite::authorized(int channel_id)
+{
+	print("** You were promoted\n");
+	dump(channel_id);
+}
+
+void CliJabberite::dump(int channel_id)
+{
+	if (!m_verbose) {
+		return;
+	}
+	
+	np1sec::Channel* channel = this->channel(channel_id);
+	print(std::string("Channel status:\n"));
+	print(std::string("  Member: ") + (channel->am_member() ? "yes" : "no") + "\n");
+	print(std::string("  Authorized: ") + (channel->am_authorized() ? "yes" : "no") + "\n");
+	print(std::string("Participants:\n"));
+	for (const std::string& username : channel->users()) {
+		print(std::string("  ") + username + "\n");
+		if (channel->user_authentication(username) == np1sec::Channel::AuthenticationStatus::Authenticated) {
+			print(std::string("    Identity: ") + channel->user_key(username).dump_hex() + "\n");
+		} else if (channel->user_authentication(username) == np1sec::Channel::AuthenticationStatus::AuthenticationFailed) {
+			print(std::string("    Identity: FAILED\n"));
+		} else {
+			print(std::string("    Identity: Unauthenticated\n"));
+		}
+		print(std::string("    Authorized: ") + (channel->user_is_authorized(username) ? "yes" : "no") + "\n");
+		if (!channel->user_is_authorized(username)) {
+			for (const std::string& peer : channel->users()) {
+				if (channel->user_is_authorized(peer)) {
+					print(std::string("      ") + peer + ":\n");
+					print(std::string("        ") + username + " authorized by " + peer + ": " + (channel->user_has_authorized(peer, username) ? "yes" : "no") + "\n");
+					print(std::string("        ") + peer + " authorized by " + username + ": " + (channel->user_has_authorized(username, peer) ? "yes" : "no") + "\n");
+				}
+			}
+		}
+	}
+}
+
+void readline_print(std::string message);
+
+void CliJabberite::print(const std::string& message)
+{
+	readline_print(message);
+}
+
+void CliJabberite::parse_command(const std::string& line)
+{
+	if (line == "/create") {
+		create_channel();
+	} else if (line.substr(0, 5) == "/join") {
+		size_t id = std::stoi(line.substr(6));
+		join_channel(id);
+	} else if (line.substr(0, 7) == "/accept") {
+		authorize(line.substr(8));
+	}
+}
+
+
+
+
+CliJabberite* readline_cli_jabberite;
+int readline_eof = 0;
+bool readline_in_callback = false;
+
+void readline_input_line(char *line)
+{
+	if (!line) {
+		readline_eof = 1;
+		return;
+	}
+	
+	readline_in_callback = true;
+	readline_cli_jabberite->parse_command(std::string(line));
+	readline_in_callback = false;
+}
+
+void readline_print(std::string message)
+{
+	if (readline_in_callback) {
+		printf("%s", message.c_str());
+	} else {
+		rl_save_prompt();
+		rl_message("%s", message.c_str());
+		rl_clear_message();
+		rl_restore_prompt();
+	}
+}
+
+static gboolean readline_stdin_callback(GIOChannel*, GIOCondition, gpointer)
+{
+	rl_callback_read_char();
+	
+	return readline_eof == 0;
+}
+
+int main(int argc, char** argv)
+{
+	readline_cli_jabberite = new CliJabberite();
+	
+	rl_callback_handler_install("", readline_input_line);
+	atexit(rl_callback_handler_remove);
+	
+	GIOChannel* io = g_io_channel_unix_new(STDIN_FILENO);
+	g_io_add_watch(io, G_IO_IN, readline_stdin_callback, NULL);
+	
+	readline_cli_jabberite->run(argc, argv);
+	
+	return 0;
 }

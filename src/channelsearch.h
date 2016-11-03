@@ -41,13 +41,12 @@ class ChannelSearch
 	void join_channel(Channel* channel);
 	
 	void message_received(const std::string& sender, const Message& np1sec_message);
-	void user_joined(const std::string& username);
 	void user_left(const std::string& username);
 	
 	protected:
 	struct RoomEvent
 	{
-		enum class Type { Message, Join, Leave };
+		enum class Type { Message, Leave };
 		std::string sender;
 		Type type;
 		Message message;

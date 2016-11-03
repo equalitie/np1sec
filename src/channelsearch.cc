@@ -169,14 +169,6 @@ void ChannelSearch::message_received(const std::string& sender, const Message& n
 	}
 }
 
-void ChannelSearch::user_joined(const std::string& sender)
-{
-	RoomEvent event;
-	event.sender = sender;
-	event.type = RoomEvent::Type::Join;
-	process_event(event);
-}
-
 void ChannelSearch::user_left(const std::string& sender)
 {
 	RoomEvent event;
@@ -208,8 +200,6 @@ void ChannelSearch::send_event(Channel* channel, const RoomEvent& event)
 {
 	if (event.type == RoomEvent::Type::Message) {
 		channel->message_received(event.sender, event.message);
-	} else if (event.type == RoomEvent::Type::Join) {
-		channel->user_joined(event.sender);
 	} else if (event.type == RoomEvent::Type::Leave) {
 		channel->user_left(event.sender);
 	} else {

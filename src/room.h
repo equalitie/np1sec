@@ -78,7 +78,6 @@ class Room
 	 * Callbacks
 	 */
 	void message_received(const std::string& sender, const std::string& text_message);
-	void user_joined(const std::string& username);
 	void user_left(const std::string& username);
 	//void left_room();
 	
