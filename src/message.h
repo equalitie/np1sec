@@ -52,6 +52,7 @@ class MessageBuffer : public std::string
 	
 	void add_hash(const Hash& hash) { add_byte_array(hash); }
 	void add_public_key(const PublicKey& key) { add_byte_array(key); }
+	void add_private_key(const SerializedPrivateKey& key) { add_byte_array(key); }
 	void add_signature(const Signature& signature) { add_byte_array(signature); }
 	void add_bytes(const std::string& buffer);
 	void add_opaque(const std::string& buffer);
@@ -80,6 +81,7 @@ class MessageBuffer : public std::string
 	
 	Hash remove_hash() { return remove_byte_array<c_hash_length>(); }
 	PublicKey remove_public_key() { return remove_byte_array<c_public_key_length>(); }
+	SerializedPrivateKey remove_private_key() { return remove_byte_array<c_private_key_length>(); }
 	Signature remove_signature() { return remove_byte_array<c_signature_length>(); }
 	std::string remove_bytes(size_t size);
 	std::string remove_opaque();
@@ -100,6 +102,12 @@ struct Message
 		Authorization = 0x21,
 		ConsistencyStatus = 0x22,
 		ConsistencyCheck = 0x23,
+		
+		KeyExchangePublicKey = 0x31,
+		KeyExchangeSecretShare = 0x32,
+		KeyExchangeAcceptance = 0x33,
+		KeyExchangeReveal = 0x34,
+		//KeyActivation = 0x35,
 	};
 	
 	Message() {}
@@ -157,6 +165,55 @@ struct ChannelEvent
 	std::string payload;
 };
 
+struct KeyExchangeState
+{
+	enum class State {
+		PublicKey = 1,
+		SecretShare = 2,
+		Acceptance = 3,
+		Reveal = 4,
+	};
+	
+	Hash key_id;
+	State state;
+	std::string payload;
+};
+
+template<class ParticipantState>
+struct ParticipantKeyExchangeState
+{
+	typedef ParticipantState Participant;
+	Hash key_id;
+	std::vector<ParticipantState> participants;
+	
+	KeyExchangeState encode() const
+	{
+		MessageBuffer buffer;
+		for (const ParticipantState& participant : participants) {
+			participant.ParticipantState::encode_to(&buffer);
+		}
+		KeyExchangeState result;
+		result.key_id = key_id;
+		result.state = ParticipantState::state;
+		result.payload = buffer;
+		return result;
+	}
+	
+	static ParticipantKeyExchangeState decode(const KeyExchangeState& encoded)
+	{
+		if (encoded.state != ParticipantState::state) {
+			throw MessageFormatException();
+		}
+		ParticipantKeyExchangeState result;
+		result.key_id = encoded.key_id;
+		MessageBuffer buffer(encoded.payload);
+		while (!buffer.empty()) {
+			result.participants.push_back(ParticipantState::decode_from(&buffer));
+		}
+		return result;
+	}
+};
+
 
 
 struct ChannelSearchMessage
@@ -195,6 +252,7 @@ struct ChannelStatusMessage
 	std::vector<UnauthorizedParticipant> unauthorized_participants;
 	
 	Hash channel_status_hash;
+	std::vector<KeyExchangeState> key_exchanges;
 	std::vector<ChannelEvent> events;
 	
 	Message encode() const;
@@ -287,6 +345,65 @@ typedef SignedMessage<UnsignedConsistencyCheckMessage> ConsistencyCheckMessage;
 
 
 
+struct UnsignedKeyExchangePublicKeyMessage
+{
+	Hash key_id;
+	PublicKey public_key;
+	
+	std::string encode() const;
+	static UnsignedKeyExchangePublicKeyMessage decode(const std::string& encoded);
+	static const Message::Type type = Message::Type::KeyExchangePublicKey;
+};
+typedef SignedMessage<UnsignedKeyExchangePublicKeyMessage> KeyExchangePublicKeyMessage;
+
+struct UnsignedKeyExchangeSecretShareMessage
+{
+	Hash key_id;
+	Hash group_hash;
+	Hash secret_share;
+	
+	std::string encode() const;
+	static UnsignedKeyExchangeSecretShareMessage decode(const std::string& encoded);
+	static const Message::Type type = Message::Type::KeyExchangeSecretShare;
+};
+typedef SignedMessage<UnsignedKeyExchangeSecretShareMessage> KeyExchangeSecretShareMessage;
+
+struct UnsignedKeyExchangeAcceptanceMessage
+{
+	Hash key_id;
+	Hash key_hash;
+	
+	std::string encode() const;
+	static UnsignedKeyExchangeAcceptanceMessage decode(const std::string& encoded);
+	static const Message::Type type = Message::Type::KeyExchangeAcceptance;
+};
+typedef SignedMessage<UnsignedKeyExchangeAcceptanceMessage> KeyExchangeAcceptanceMessage;
+
+struct UnsignedKeyExchangeRevealMessage
+{
+	Hash key_id;
+	SerializedPrivateKey private_key;
+	
+	std::string encode() const;
+	static UnsignedKeyExchangeRevealMessage decode(const std::string& encoded);
+	static const Message::Type type = Message::Type::KeyExchangeReveal;
+};
+typedef SignedMessage<UnsignedKeyExchangeRevealMessage> KeyExchangeRevealMessage;
+
+/*
+struct UnsignedKeyActivationMessage
+{
+	Hash key_id;
+	
+	std::string encode() const;
+	static UnsignedKeyActivationMessage decode(const std::string& encoded);
+	static const Message::Type type = Message::Type::KeyActivation;
+};
+typedef SignedMessage<UnsignedKeyActivationMessage> KeyActivationMessage;
+*/
+
+
+
 struct ChannelStatusEvent
 {
 	std::string searcher_username;
@@ -306,6 +423,75 @@ struct ConsistencyCheckEvent
 	ChannelEvent encode(const ChannelStatusMessage& status) const;
 	static ConsistencyCheckEvent decode(const ChannelEvent& encoded, const ChannelStatusMessage& status);
 };
+
+struct KeyExchangeEvent
+{
+	Message::Type type;
+	Hash key_id;
+	
+	ChannelEvent encode(const ChannelStatusMessage& status) const;
+	static KeyExchangeEvent decode(const ChannelEvent& encooded, const ChannelStatusMessage& status);
+};
+
+
+
+struct PublicKeyParticipant
+{
+	std::string username;
+	PublicKey long_term_public_key;
+	bool has_ephemeral_public_key;
+	PublicKey ephemeral_public_key;
+	
+	void encode_to(MessageBuffer* buffer) const;
+	static PublicKeyParticipant decode_from(MessageBuffer* buffer);
+	static const KeyExchangeState::State state = KeyExchangeState::State::PublicKey;
+};
+typedef ParticipantKeyExchangeState<PublicKeyParticipant> PublicKeyKeyExchangeState;
+
+struct SecretShareParticipant
+{
+	std::string username;
+	PublicKey long_term_public_key;
+	PublicKey ephemeral_public_key;
+	bool has_secret_share;
+	Hash secret_share;
+	
+	void encode_to(MessageBuffer* buffer) const;
+	static SecretShareParticipant decode_from(MessageBuffer* buffer);
+	static const KeyExchangeState::State state = KeyExchangeState::State::SecretShare;
+};
+typedef ParticipantKeyExchangeState<SecretShareParticipant> SecretShareKeyExchangeState;
+
+struct AcceptanceParticipant
+{
+	std::string username;
+	PublicKey long_term_public_key;
+	PublicKey ephemeral_public_key;
+	Hash secret_share;
+	bool has_key_hash;
+	Hash key_hash;
+	
+	void encode_to(MessageBuffer* buffer) const;
+	static AcceptanceParticipant decode_from(MessageBuffer* buffer);
+	static const KeyExchangeState::State state = KeyExchangeState::State::Acceptance;
+};
+typedef ParticipantKeyExchangeState<AcceptanceParticipant> AcceptanceKeyExchangeState;
+
+struct RevealParticipant
+{
+	std::string username;
+	PublicKey long_term_public_key;
+	PublicKey ephemeral_public_key;
+	Hash secret_share;
+	Hash key_hash;
+	bool has_ephemeral_private_key;
+	SerializedPrivateKey ephemeral_private_key;
+	
+	void encode_to(MessageBuffer* buffer) const;
+	static RevealParticipant decode_from(MessageBuffer* buffer);
+	static const KeyExchangeState::State state = KeyExchangeState::State::Reveal;
+};
+typedef ParticipantKeyExchangeState<RevealParticipant> RevealKeyExchangeState;
 
 
 

@@ -33,6 +33,7 @@ namespace np1sec
 	const size_t c_hash_length = 32;
 	const size_t c_signature_length = 64;
 	const size_t c_public_key_length = 32;
+	const size_t c_private_key_length = 32;
 	
 	typedef ByteArray<c_hash_length> Hash;
 	
@@ -44,6 +45,8 @@ namespace np1sec
 	};
 	
 	typedef ByteArray<c_public_key_length> PublicKey;
+	
+	typedef ByteArray<c_private_key_length> SerializedPrivateKey;
 	
 	class PrivateKey
 	{
@@ -76,8 +79,8 @@ namespace np1sec
 		
 		static PrivateKey generate();
 		
-		//std::string serialize() const;
-		//static PrivateKey unserialize(const std::string& serialized_key);
+		SerializedPrivateKey serialize() const;
+		static PrivateKey unserialize(const SerializedPrivateKey& serialized_key);
 	};
 	
 	typedef ByteArray<c_signature_length> Signature;
@@ -111,6 +114,12 @@ namespace np1sec
 			const PrivateKey& my_ephemeral_key,
 			const PublicKey& peer_long_term_key,
 			const PublicKey& peer_ephemeral_key
+		);
+		Hash reconstruct_triple_diffie_hellman(
+			const PublicKey& long_term_public_key_1,
+			const PrivateKey& ephemeral_private_key_1,
+			const PublicKey& long_term_public_key_2,
+			const PrivateKey& ephemeral_private_key_2
 		);
 	}
 }

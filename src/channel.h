@@ -20,10 +20,12 @@
 #define SRC_CHANNEL_H_
 
 #include "crypto.h"
+#include "keyexchange.h"
 #include "message.h"
 #include "timer.h"
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -188,15 +190,18 @@ class Channel
 		
 		ChannelStatusEvent channel_status;
 		ConsistencyCheckEvent consistency_check;
+		Hash key_id;
 	};
 	
 	void self_joined();
 	void self_authorized();
-	void try_promote_unauthorized_participant(Participant* participant);
+	bool try_promote_unauthorized_participant(Participant* participant);
 	void remove_user(const std::string& username);
+	void do_remove_user(const std::string& username);
+	void start_key_exchange();
+	
+	
 	void send_message(const Message& message);
-	
-	
 	Message channel_status(const std::string& searcher_username, const Hash& searcher_nonce) const;
 	void hash_message(const std::string& sender, const Message& message);
 	void hash_payload(const std::string& sender, uint8_t type, const std::string& message);
@@ -204,6 +209,7 @@ class Channel
 	Hash authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, const Hash& nonce, bool for_peer);
 	void send_consistency_check();
 	std::vector<Event>::iterator first_user_event(const std::string& username);
+	void remove_key_exchange(const Hash& key_id);
 	void set_channel_status_timer();
 	
 	
@@ -220,6 +226,8 @@ class Channel
 	std::map<std::string, Participant> m_participants;
 	Hash m_channel_status_hash;
 	
+	std::map<Hash, std::unique_ptr<KeyExchange>> m_key_exchanges;
+	std::vector<Hash> m_key_exchange_queue;
 	std::vector<Event> m_events;
 	
 	Timer m_channel_status_timer;

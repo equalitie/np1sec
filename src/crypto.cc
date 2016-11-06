@@ -70,12 +70,47 @@ PrivateKey::PrivateKey():
 	m_private_key(nullptr)
 {}
 
+/*
+	gcry_ctx_t public_key_parameters;
+	if (gcry_mpi_ec_new(&public_key_parameters, public_key, NULL)) {
+		return nullptr;
+	}
+	
+	gcry_mpi_t scalar = gcry_mpi_ec_get_mpi("q", public_key_parameters, 0);
+	gcry_ctx_release(public_key_parameters);
+	if (!scalar) {
+		return nullptr;
+	}
+	
+	gcry_sexp_t key_sexp;
+	gcry_error_t err = gcry_sexp_build(&key_sexp, NULL, "(public-key (ecc (curve Ed25519) (flags eddsa) (q %m)))", scalar);
+	gcry_mpi_release(scalar);
+	if (err) {
+		return nullptr;
+	}
+	
+	return key_sexp;
+*/
+
 PrivateKey::PrivateKey(gcry_sexp_t sexp)
 {
-	gcry_sexp_t q = gcry_sexp_find_token(sexp, "q", 0);
-	if (!q) {
+	gcry_ctx_t public_key_parameters;
+	if (gcry_mpi_ec_new(&public_key_parameters, sexp, NULL)) {
 		throw CryptoException();
 	}
+	gcry_sexp_t public_key_sexp;
+	if (gcry_pubkey_get_sexp(&public_key_sexp, GCRY_PK_GET_PUBKEY, public_key_parameters)) {
+		gcry_ctx_release(public_key_parameters);
+		throw CryptoException();
+	}
+	gcry_ctx_release(public_key_parameters);
+	
+	gcry_sexp_t q = gcry_sexp_find_token(public_key_sexp, "q", 0);
+	if (!q) {
+		gcry_sexp_release(public_key_sexp);
+		throw CryptoException();
+	}
+	gcry_sexp_release(public_key_sexp);
 	size_t q_size;
 	const char *q_buffer = gcry_sexp_nth_data(q, 1, &q_size);
 	if (!q_buffer) {
@@ -142,6 +177,42 @@ PrivateKey PrivateKey::generate()
 	PrivateKey result(key_sexp);
 	gcry_sexp_release(key_sexp);
 	return result;
+}
+
+SerializedPrivateKey PrivateKey::serialize() const
+{
+	gcry_sexp_t d = gcry_sexp_find_token(m_private_key, "d", 0);
+	if (!d) {
+		throw CryptoException();
+	}
+	size_t d_size;
+	const char *d_buffer = gcry_sexp_nth_data(d, 1, &d_size);
+	if (!d_buffer) {
+		gcry_sexp_release(d);
+		throw CryptoException();
+	}
+	assert(d_size == c_private_key_length);
+	SerializedPrivateKey output;
+	memcpy(output.buffer, d_buffer, c_private_key_length);
+	gcry_sexp_release(d);
+	return output;
+}
+
+PrivateKey PrivateKey::unserialize(const SerializedPrivateKey& serialized_key)
+{
+	gcry_sexp_t key_sexp;
+	if (gcry_sexp_build(&key_sexp, NULL, "(private-key (ecc (curve Ed25519) (flags eddsa) (d %b)))", sizeof(serialized_key.buffer), serialized_key.buffer)) {
+		throw CryptoException();
+	}
+	
+	try {
+		PrivateKey key(key_sexp);
+		gcry_sexp_release(key_sexp);
+		return key;
+	} catch(...) {
+		gcry_sexp_release(key_sexp);
+		throw;
+	}
 }
 
 
@@ -475,6 +546,45 @@ static ByteArray<c_tdh_point_length> compute_dh_token(const PrivateKey& private_
 	return result;
 }
 
+static Hash triple_diffie_hellman_token(
+	const ByteArray<c_tdh_point_length>& part_1,
+	const ByteArray<c_tdh_point_length>& part_2,
+	const ByteArray<c_tdh_point_length>& part_3
+)
+{
+	std::string hash_buffer;
+	if (part_1 <= part_2 && part_1 <= part_3) {
+		hash_buffer += part_1.as_string();
+		if (part_2 <= part_3) {
+			hash_buffer += part_2.as_string();
+			hash_buffer += part_3.as_string();
+		} else {
+			hash_buffer += part_3.as_string();
+			hash_buffer += part_2.as_string();
+		}
+	} else if (part_2 <= part_1 && part_2 <= part_3) {
+		hash_buffer += part_2.as_string();
+		if (part_1 <= part_3) {
+			hash_buffer += part_1.as_string();
+			hash_buffer += part_3.as_string();
+		} else {
+			hash_buffer += part_3.as_string();
+			hash_buffer += part_1.as_string();
+		}
+	} else {
+		hash_buffer += part_3.as_string();
+		if (part_1 <= part_2) {
+			hash_buffer += part_1.as_string();
+			hash_buffer += part_2.as_string();
+		} else {
+			hash_buffer += part_2.as_string();
+			hash_buffer += part_1.as_string();
+		}
+	}
+	
+	return crypto::hash(hash_buffer, true);
+}
+
 Hash triple_diffie_hellman(
 	const PrivateKey& my_long_term_key,
 	const PrivateKey& my_ephemeral_key,
@@ -482,27 +592,23 @@ Hash triple_diffie_hellman(
 	const PublicKey& peer_ephemeral_key
 )
 {
-	bool peer_is_first;
-	if (peer_long_term_key < my_long_term_key.public_key()) {
-		peer_is_first = true;
-	} else if (peer_long_term_key > my_long_term_key.public_key()) {
-		peer_is_first = false;
-	} else {
-		peer_is_first = peer_ephemeral_key < my_ephemeral_key.public_key();
-	}
-	
 	ByteArray<c_tdh_point_length> part_1 = compute_dh_token(my_long_term_key, peer_ephemeral_key);
 	ByteArray<c_tdh_point_length> part_2 = compute_dh_token(my_ephemeral_key, peer_long_term_key);
 	ByteArray<c_tdh_point_length> part_3 = compute_dh_token(my_ephemeral_key, peer_ephemeral_key);
-	
-	std::string hash_buffer;
-	if (peer_is_first) {
-		hash_buffer = part_2.as_string() + part_1.as_string() + part_3.as_string();
-	} else {
-		hash_buffer = part_1.as_string() + part_2.as_string() + part_3.as_string();
-	}
-	
-	return crypto::hash(hash_buffer, true);
+	return triple_diffie_hellman_token(part_1, part_2, part_3);
+}
+
+Hash reconstruct_triple_diffie_hellman(
+	const PublicKey& long_term_public_key_1,
+	const PrivateKey& ephemeral_private_key_1,
+	const PublicKey& long_term_public_key_2,
+	const PrivateKey& ephemeral_private_key_2
+)
+{
+	ByteArray<c_tdh_point_length> part_1 = compute_dh_token(ephemeral_private_key_1, long_term_public_key_2);
+	ByteArray<c_tdh_point_length> part_2 = compute_dh_token(ephemeral_private_key_2, long_term_public_key_1);
+	ByteArray<c_tdh_point_length> part_3 = compute_dh_token(ephemeral_private_key_1, ephemeral_private_key_2.public_key());
+	return triple_diffie_hellman_token(part_1, part_2, part_3);
 }
 
 } // namespace crypto

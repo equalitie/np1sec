@@ -19,12 +19,13 @@
 #include "base64.h"
 #include "message.h"
 
+#include <cassert>
 #include <climits>
 
 namespace np1sec
 {
 
-const std::string c_np1sec_protocol_name(":o3np1sec1:");
+const std::string c_np1sec_protocol_name(":o3np1sec0:");
 
 
 
@@ -343,6 +344,14 @@ Message ChannelStatusMessage::encode() const
 	
 	buffer.add_hash(channel_status_hash);
 	
+	MessageBuffer key_exchange_buffer;
+	for (const KeyExchangeState& exchange : key_exchanges) {
+		key_exchange_buffer.add_hash(exchange.key_id);
+		key_exchange_buffer.add_8(uint8_t(exchange.state));
+		key_exchange_buffer.add_opaque(exchange.payload);
+	}
+	buffer.add_opaque(key_exchange_buffer);
+	
 	MessageBuffer event_buffer;
 	for (const ChannelEvent& event : events) {
 		event_buffer.add_8(uint8_t(event.type));
@@ -386,6 +395,15 @@ ChannelStatusMessage ChannelStatusMessage::decode(const Message& encoded)
 	}
 	
 	result.channel_status_hash = buffer.remove_hash();
+	
+	MessageBuffer key_exchange_buffer = buffer.remove_opaque();
+	while (!key_exchange_buffer.empty()) {
+		KeyExchangeState exchange;
+		exchange.key_id = key_exchange_buffer.remove_hash();
+		exchange.state = KeyExchangeState::State(key_exchange_buffer.remove_8());
+		exchange.payload = key_exchange_buffer.remove_opaque();
+		result.key_exchanges.push_back(std::move(exchange));
+	}
 	
 	MessageBuffer event_buffer = buffer.remove_opaque();
 	while (!event_buffer.empty()) {
@@ -539,10 +557,91 @@ UnsignedConsistencyCheckMessage UnsignedConsistencyCheckMessage::decode(const st
 	return result;
 }
 
+std::string UnsignedKeyExchangePublicKeyMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_hash(key_id);
+	buffer.add_public_key(public_key);
+	return buffer;
+}
 
+UnsignedKeyExchangePublicKeyMessage UnsignedKeyExchangePublicKeyMessage::decode(const std::string& encoded)
+{
+	MessageBuffer buffer(encoded);
+	UnsignedKeyExchangePublicKeyMessage result;
+	result.key_id = buffer.remove_hash();
+	result.public_key = buffer.remove_public_key();
+	return result;
+}
 
+std::string UnsignedKeyExchangeSecretShareMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_hash(key_id);
+	buffer.add_hash(group_hash);
+	buffer.add_hash(secret_share);
+	return buffer;
+}
 
+UnsignedKeyExchangeSecretShareMessage UnsignedKeyExchangeSecretShareMessage::decode(const std::string& encoded)
+{
+	MessageBuffer buffer(encoded);
+	UnsignedKeyExchangeSecretShareMessage result;
+	result.key_id = buffer.remove_hash();
+	result.group_hash = buffer.remove_hash();
+	result.secret_share = buffer.remove_hash();
+	return result;
+}
 
+std::string UnsignedKeyExchangeAcceptanceMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_hash(key_id);
+	buffer.add_hash(key_hash);
+	return buffer;
+}
+
+UnsignedKeyExchangeAcceptanceMessage UnsignedKeyExchangeAcceptanceMessage::decode(const std::string& encoded)
+{
+	MessageBuffer buffer(encoded);
+	UnsignedKeyExchangeAcceptanceMessage result;
+	result.key_id = buffer.remove_hash();
+	result.key_hash = buffer.remove_hash();
+	return result;
+}
+
+std::string UnsignedKeyExchangeRevealMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_hash(key_id);
+	buffer.add_private_key(private_key);
+	return buffer;
+}
+
+UnsignedKeyExchangeRevealMessage UnsignedKeyExchangeRevealMessage::decode(const std::string& encoded)
+{
+	MessageBuffer buffer(encoded);
+	UnsignedKeyExchangeRevealMessage result;
+	result.key_id = buffer.remove_hash();
+	result.private_key = buffer.remove_private_key();
+	return result;
+}
+/*
+std::string UnsignedKeyActivationMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_hash(key_id);
+	return buffer;
+}
+
+UnsignedKeyActivationMessage UnsignedKeyActivationMessage::decode(const std::string& encoded)
+{
+	MessageBuffer buffer(encoded);
+	UnsignedKeyActivationMessage result;
+	result.key_id = buffer.remove_hash();
+	return result;
+}
+*/
 
 
 
@@ -585,6 +684,156 @@ ConsistencyCheckEvent ConsistencyCheckEvent::decode(const ChannelEvent& encoded,
 	ConsistencyCheckEvent result;
 	result.channel_status_hash = buffer.remove_hash();
 	result.remaining_users = decode_user_set(status, true, true, buffer.remove_opaque());
+	return result;
+}
+
+ChannelEvent KeyExchangeEvent::encode(const ChannelStatusMessage&) const
+{
+	assert(
+		   type == Message::Type::KeyExchangePublicKey
+		|| type == Message::Type::KeyExchangeSecretShare
+		|| type == Message::Type::KeyExchangeAcceptance
+		|| type == Message::Type::KeyExchangeReveal
+	);
+	MessageBuffer buffer;
+	buffer.add_hash(key_id);
+	
+	return ChannelEvent(type, buffer);
+}
+
+KeyExchangeEvent KeyExchangeEvent::decode(const ChannelEvent& encoded, const ChannelStatusMessage&)
+{
+	if (!(
+		   encoded.type == Message::Type::KeyExchangePublicKey
+		|| encoded.type == Message::Type::KeyExchangeSecretShare
+		|| encoded.type == Message::Type::KeyExchangeAcceptance
+		|| encoded.type == Message::Type::KeyExchangeReveal
+	)) {
+		throw MessageFormatException();
+	}
+	MessageBuffer buffer(encoded.payload);
+	
+	KeyExchangeEvent result;
+	result.type = encoded.type;
+	result.key_id = buffer.remove_hash();
+	return result;
+}
+
+
+
+void PublicKeyParticipant::encode_to(MessageBuffer* buffer) const
+{
+	buffer->add_opaque(username);
+	buffer->add_public_key(long_term_public_key);
+	if (has_ephemeral_public_key) {
+		buffer->add_8(1);
+		buffer->add_public_key(ephemeral_public_key);
+	} else {
+		buffer->add_8(0);
+	}
+}
+
+PublicKeyParticipant PublicKeyParticipant::decode_from(MessageBuffer* buffer)
+{
+	PublicKeyParticipant result;
+	result.username = buffer->remove_opaque();
+	result.long_term_public_key = buffer->remove_public_key();
+	if (buffer->remove_8()) {
+		result.has_ephemeral_public_key = true;
+		result.ephemeral_public_key = buffer->remove_public_key();
+	} else {
+		result.has_ephemeral_public_key = false;
+	}
+	return result;
+}
+
+void SecretShareParticipant::encode_to(MessageBuffer* buffer) const
+{
+	buffer->add_opaque(username);
+	buffer->add_public_key(long_term_public_key);
+	buffer->add_public_key(ephemeral_public_key);
+	if (has_secret_share) {
+		buffer->add_8(1);
+		buffer->add_hash(secret_share);
+	} else {
+		buffer->add_8(0);
+	}
+}
+
+SecretShareParticipant SecretShareParticipant::decode_from(MessageBuffer* buffer)
+{
+	SecretShareParticipant result;
+	result.username = buffer->remove_opaque();
+	result.long_term_public_key = buffer->remove_public_key();
+	result.ephemeral_public_key = buffer->remove_public_key();
+	if (buffer->remove_8()) {
+		result.has_secret_share = true;
+		result.secret_share = buffer->remove_hash();
+	} else {
+		result.has_secret_share = false;
+	}
+	return result;
+}
+
+void AcceptanceParticipant::encode_to(MessageBuffer* buffer) const
+{
+	buffer->add_opaque(username);
+	buffer->add_public_key(long_term_public_key);
+	buffer->add_public_key(ephemeral_public_key);
+	buffer->add_hash(secret_share);
+	if (has_key_hash) {
+		buffer->add_8(1);
+		buffer->add_hash(key_hash);
+	} else {
+		buffer->add_8(0);
+	}
+}
+
+AcceptanceParticipant AcceptanceParticipant::decode_from(MessageBuffer* buffer)
+{
+	AcceptanceParticipant result;
+	result.username = buffer->remove_opaque();
+	result.long_term_public_key = buffer->remove_public_key();
+	result.ephemeral_public_key = buffer->remove_public_key();
+	result.secret_share = buffer->remove_hash();
+	if (buffer->remove_8()) {
+		result.has_key_hash = true;
+		result.key_hash = buffer->remove_hash();
+	} else {
+		result.has_key_hash = false;
+	}
+	return result;
+}
+
+void RevealParticipant::encode_to(MessageBuffer* buffer) const
+{
+	buffer->add_opaque(username);
+	buffer->add_public_key(long_term_public_key);
+	buffer->add_public_key(ephemeral_public_key);
+	buffer->add_hash(secret_share);
+	buffer->add_hash(key_hash);
+	if (has_ephemeral_private_key) {
+		buffer->add_8(1);
+		buffer->add_private_key(ephemeral_private_key);
+	} else {
+		buffer->add_8(0);
+	}
+}
+
+RevealParticipant RevealParticipant::decode_from(MessageBuffer* buffer)
+{
+	RevealParticipant result;
+	result.username = buffer->remove_opaque();
+	result.long_term_public_key = buffer->remove_public_key();
+	result.ephemeral_public_key = buffer->remove_public_key();
+	result.secret_share = buffer->remove_hash();
+	result.key_hash = buffer->remove_hash();
+	if (buffer->remove_8()) {
+		result.has_ephemeral_private_key = true;
+		result.ephemeral_private_key = buffer->remove_private_key();
+	} else {
+		result.has_ephemeral_private_key = false;
+	}
 	return result;
 }
 
