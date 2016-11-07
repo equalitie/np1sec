@@ -26,6 +26,7 @@ add_library(np1sec
 	src/channelcreation.cc
 	src/channelsearch.cc
 	src/crypto.cc
+	src/encryptedchat.cc
 	src/keyexchange.cc
 	src/message.cc
 	src/room.cc

@@ -20,6 +20,7 @@
 #define SRC_CHANNEL_H_
 
 #include "crypto.h"
+#include "encryptedchat.h"
 #include "keyexchange.h"
 #include "message.h"
 #include "timer.h"
@@ -135,6 +136,16 @@ class Channel
 		return m_ephemeral_private_key.public_key();
 	}
 	
+	const PrivateKey& ephemeral_private_key() const
+	{
+		return m_ephemeral_private_key;
+	}
+	
+	uint64_t new_signature_id()
+	{
+		return m_signature_id++;
+	}
+	
 	bool empty() const
 	{
 		return m_participants.empty();
@@ -145,6 +156,16 @@ class Channel
 		m_interface = interface;
 	}
 	
+	const Hash& channel_status_hash() const
+	{
+		return m_channel_status_hash;
+	}
+	
+	Room* room()
+	{
+		return m_room;
+	}
+	
 	void announce();
 	void confirm_participant(const std::string& username);
 	void join();
@@ -153,6 +174,13 @@ class Channel
 	
 	void message_received(const std::string& sender, const Message& np1sec_message);
 	void user_left(const std::string& username);
+	
+	
+	
+	void add_key_exchange_event(Message::Type type, const Hash& key_id);
+	void remove_key_exchange_event(const Hash& key_id);
+	void remove_user(const std::string& username);
+	void remove_users(const std::set<std::string>& usernames);
 	
 	
 	protected:
@@ -196,9 +224,7 @@ class Channel
 	void self_joined();
 	void self_authorized();
 	bool try_promote_unauthorized_participant(Participant* participant);
-	void remove_user(const std::string& username);
 	void do_remove_user(const std::string& username);
-	void start_key_exchange();
 	
 	
 	void send_message(const Message& message);
@@ -209,7 +235,6 @@ class Channel
 	Hash authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, const Hash& nonce, bool for_peer);
 	void send_consistency_check();
 	std::vector<Event>::iterator first_user_event(const std::string& username);
-	void remove_key_exchange(const Hash& key_id);
 	void set_channel_status_timer();
 	
 	
@@ -226,9 +251,9 @@ class Channel
 	std::map<std::string, Participant> m_participants;
 	Hash m_channel_status_hash;
 	
-	std::map<Hash, std::unique_ptr<KeyExchange>> m_key_exchanges;
-	std::vector<Hash> m_key_exchange_queue;
 	std::vector<Event> m_events;
+	
+	EncryptedChat m_encrypted_chat;
 	
 	Timer m_channel_status_timer;
 };
