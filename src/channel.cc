@@ -116,15 +116,18 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 	
 	m_channel_status_hash = channel_status.channel_status_hash;
 	
+	std::set<Hash> key_exchange_ids;
+	std::set<Hash> key_exchange_event_ids;
+	std::set<Hash> key_activation_event_ids;
 	std::set<Hash> key_ids_seen;
 	for (const KeyExchangeState& exchange : channel_status.key_exchanges) {
-		if (key_ids_seen.count(exchange.key_id)) {
+		if (key_exchange_ids.count(exchange.key_id)) {
 			throw MessageFormatException();
 		}
 		
 		m_encrypted_chat.unserialize_key_exchange(exchange);
 		
-		key_ids_seen.insert(exchange.key_id);
+		key_exchange_ids.insert(exchange.key_id);
 	}
 	
 	for (const ChannelEvent& channel_event : channel_status.events) {
@@ -140,11 +143,31 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 			|| channel_event.type == Message::Type::KeyExchangeAcceptance
 			|| channel_event.type == Message::Type::KeyExchangeReveal
 		) {
-			event.key_id = KeyExchangeEvent::decode(channel_event, channel_status).key_id;
-			if (!key_ids_seen.count(event.key_id)) {
+			KeyExchangeEvent e = KeyExchangeEvent::decode(channel_event, channel_status);
+			event.key_event.key_id = e.key_id;
+			if (e.cancelled) {
+				if (key_exchange_ids.count(event.key_event.key_id)) {
+					throw MessageFormatException();
+				}
+				event.key_event.remaining_users = e.remaining_users;
+			} else {
+				if (!key_exchange_ids.count(event.key_event.key_id)) {
+					throw MessageFormatException();
+				}
+				if (key_exchange_event_ids.count(event.key_event.key_id)) {
+					throw MessageFormatException();
+				}
+				key_exchange_event_ids.insert(event.key_event.key_id);
+			}
+		} else if (channel_event.type == Message::Type::KeyActivation) {
+			event.key_event = KeyActivationEvent::decode(channel_event, channel_status);
+			if (key_exchange_ids.count(event.key_event.key_id)) {
 				throw MessageFormatException();
 			}
-			key_ids_seen.erase(event.key_id);
+			if (key_activation_event_ids.count(event.key_event.key_id)) {
+				throw MessageFormatException();
+			}
+			key_activation_event_ids.insert(event.key_event.key_id);
 		} else {
 			throw MessageFormatException();
 		}
@@ -154,7 +177,7 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 	/*
 	 * Each key exchange key ID must appear as exactly one key-exchange event.
 	 */
-	if (!key_ids_seen.empty()) {
+	if (key_exchange_ids.size() != key_exchange_event_ids.size()) {
 		throw MessageFormatException();
 	}
 	
@@ -183,6 +206,11 @@ Channel::Channel(Room* room, const ChannelAnnouncementMessage& channel_status, c
 	m_participants[participant.username] = std::move(participant);
 	
 	m_encrypted_chat.do_add_user(sender, channel_status.long_term_public_key);
+}
+
+void Channel::send_chat(const std::string& message)
+{
+	m_encrypted_chat.send_message(message);
 }
 
 void Channel::announce()
@@ -580,10 +608,15 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		if (!(
 			   first_event != m_events.end()
 			&& first_event->type == Message::Type::KeyExchangePublicKey
-			&& first_event->key_id == message.key_id
+			&& first_event->key_event.key_id == message.key_id
 		)) {
 			remove_user(sender);
 			return;
+		}
+		
+		first_event->key_event.remaining_users.erase(sender);
+		if (first_event->key_event.remaining_users.empty()) {
+			m_events.erase(first_event);
 		}
 		
 		m_encrypted_chat.user_public_key(sender, message.key_id, message.public_key);
@@ -608,9 +641,18 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		if (!(
 			   first_event != m_events.end()
 			&& first_event->type == Message::Type::KeyExchangeSecretShare
-			&& first_event->key_id == message.key_id
+			&& first_event->key_event.key_id == message.key_id
 		)) {
 			remove_user(sender);
+			return;
+		}
+		
+		first_event->key_event.remaining_users.erase(sender);
+		if (first_event->key_event.remaining_users.empty()) {
+			m_events.erase(first_event);
+		}
+		
+		if (!m_encrypted_chat.have_key_exchange(message.key_id)) {
 			return;
 		}
 		
@@ -636,9 +678,18 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		if (!(
 			   first_event != m_events.end()
 			&& first_event->type == Message::Type::KeyExchangeAcceptance
-			&& first_event->key_id == message.key_id
+			&& first_event->key_event.key_id == message.key_id
 		)) {
 			remove_user(sender);
+			return;
+		}
+		
+		first_event->key_event.remaining_users.erase(sender);
+		if (first_event->key_event.remaining_users.empty()) {
+			m_events.erase(first_event);
+		}
+		
+		if (!m_encrypted_chat.have_key_exchange(message.key_id)) {
 			return;
 		}
 		
@@ -664,13 +715,66 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		if (!(
 			   first_event != m_events.end()
 			&& first_event->type == Message::Type::KeyExchangeReveal
-			&& first_event->key_id == message.key_id
+			&& first_event->key_event.key_id == message.key_id
 		)) {
 			remove_user(sender);
 			return;
 		}
 		
+		first_event->key_event.remaining_users.erase(sender);
+		if (first_event->key_event.remaining_users.empty()) {
+			m_events.erase(first_event);
+		}
+		
+		if (!m_encrypted_chat.have_key_exchange(message.key_id)) {
+			return;
+		}
+		
 		m_encrypted_chat.user_private_key(sender, message.key_id, message.private_key);
+	} else if (np1sec_message.type == Message::Type::KeyActivation) {
+		if (!m_participants.count(sender)) {
+			return;
+		}
+		
+		KeyActivationMessage signed_message;
+		try {
+			signed_message = KeyActivationMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key, m_participants[sender].signature_id++);
+		} catch(MessageFormatException) {
+			return;
+		}
+		if (!signed_message.valid) {
+			remove_user(sender);
+			return;
+		}
+		auto message = signed_message.decode();
+		
+		auto first_event = first_user_event(sender);
+		if (!(
+			   first_event != m_events.end()
+			&& first_event->type == Message::Type::KeyActivation
+			&& first_event->key_event.key_id == message.key_id
+		)) {
+			remove_user(sender);
+			return;
+		}
+		
+		first_event->key_event.remaining_users.erase(sender);
+		if (first_event->key_event.remaining_users.empty()) {
+			m_events.erase(first_event);
+		}
+		
+		if (m_encrypted_chat.have_session(message.key_id)) {
+			m_encrypted_chat.user_activation(sender, message.key_id);
+		}
+	} else if (np1sec_message.type == Message::Type::Chat) {
+		ChatMessage message;
+		try {
+			message = ChatMessage::decode(np1sec_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
+		m_encrypted_chat.decrypt_message(sender, message);
 	}
 }
 
@@ -681,29 +785,22 @@ void Channel::user_left(const std::string& username)
 	remove_user(username);
 }
 
-void Channel::add_key_exchange_event(Message::Type type, const Hash& key_id)
+void Channel::add_key_exchange_event(Message::Type type, const Hash& key_id, const std::set<std::string>& usernames)
 {
 	Event event;
 	event.type = type;
-	event.key_id = key_id;
+	event.key_event.remaining_users = usernames;
+	event.key_event.key_id = key_id;
 	m_events.push_back(event);
 }
 
-void Channel::remove_key_exchange_event(const Hash& key_id)
+void Channel::add_key_activation_event(const Hash& key_id, const std::set<std::string>& usernames)
 {
-	for (std::vector<Event>::iterator i = m_events.begin(); i != m_events.end(); ++i) {
-		if (
-			   i->type == Message::Type::KeyExchangePublicKey
-			|| i->type == Message::Type::KeyExchangeSecretShare
-			|| i->type == Message::Type::KeyExchangeAcceptance
-			|| i->type == Message::Type::KeyExchangeReveal
-		) {
-			if (i->key_id == key_id) {
-				m_events.erase(i);
-				return;
-			}
-		}
-	}
+	Event event;
+	event.type = Message::Type::KeyActivation;
+	event.key_event.key_id = key_id;
+	event.key_event.remaining_users = usernames;
+	m_events.push_back(event);
 }
 
 
@@ -814,12 +911,22 @@ void Channel::do_remove_user(const std::string& username)
 			} else {
 				++i;
 			}
+		} else if (
+			   i->type == Message::Type::KeyExchangePublicKey
+			|| i->type == Message::Type::KeyExchangeSecretShare
+			|| i->type == Message::Type::KeyExchangeAcceptance
+			|| i->type == Message::Type::KeyExchangeReveal
+			|| i->type == Message::Type::KeyActivation
+		) {
+			i->key_event.remaining_users.erase(username);
+			if (i->key_event.remaining_users.empty()) {
+				i = m_events.erase(i);
+			} else {
+				++i;
+			}
 		} else {
 			++i;
 		}
-		/*
-		 * Key exchange events are cleared up by EncryptedChat.
-		 */
 	}
 	
 	if (m_interface) {
@@ -876,8 +983,19 @@ Message Channel::channel_status(const std::string& searcher_username, const Hash
 		) {
 			KeyExchangeEvent key_exchange_event;
 			key_exchange_event.type = event.type;
-			key_exchange_event.key_id = event.key_id;
+			key_exchange_event.key_id = event.key_event.key_id;
+			if (m_encrypted_chat.have_key_exchange(event.key_event.key_id)) {
+				key_exchange_event.cancelled = false;
+			} else {
+				key_exchange_event.cancelled = true;
+				key_exchange_event.remaining_users = event.key_event.remaining_users;
+			}
 			result.events.push_back(key_exchange_event.encode(result));
+		} else if (event.type == Message::Type::KeyActivation) {
+			KeyActivationEvent key_activation_event;
+			key_activation_event.key_id = event.key_event.key_id;
+			key_activation_event.remaining_users = event.key_event.remaining_users;
+			result.events.push_back(key_activation_event.encode(result));
 		} else {
 			assert(false);
 		}
@@ -952,8 +1070,9 @@ std::vector<Channel::Event>::iterator Channel::first_user_event(const std::strin
 			|| i->type == Message::Type::KeyExchangeSecretShare
 			|| i->type == Message::Type::KeyExchangeAcceptance
 			|| i->type == Message::Type::KeyExchangeReveal
+			|| i->type == Message::Type::KeyActivation
 		) {
-			if (m_encrypted_chat.key_exchange_waiting_for(i->key_id, username)) {
+			if (i->key_event.remaining_users.count(username)) {
 				return i;
 			}
 		} else {

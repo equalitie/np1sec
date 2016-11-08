@@ -47,6 +47,11 @@ class Room
 	void join_channel(Channel* channel);
 	void authorize(const std::string& username);
 	
+	void send_chat(const std::string& message)
+	{
+		m_channel->send_chat(message);
+	}
+	
 	
 	
 	

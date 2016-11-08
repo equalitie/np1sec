@@ -107,7 +107,9 @@ struct Message
 		KeyExchangeSecretShare = 0x32,
 		KeyExchangeAcceptance = 0x33,
 		KeyExchangeReveal = 0x34,
-		//KeyActivation = 0x35,
+		
+		KeyActivation = 0x41,
+		Chat = 0x42,
 	};
 	
 	Message() {}
@@ -121,7 +123,7 @@ struct Message
 };
 
 template<class MessageBody>
-struct SignedMessage : public MessageBody
+struct SignedMessage
 {
 	bool valid;
 	std::string payload;
@@ -390,7 +392,8 @@ struct UnsignedKeyExchangeRevealMessage
 };
 typedef SignedMessage<UnsignedKeyExchangeRevealMessage> KeyExchangeRevealMessage;
 
-/*
+
+
 struct UnsignedKeyActivationMessage
 {
 	Hash key_id;
@@ -400,7 +403,42 @@ struct UnsignedKeyActivationMessage
 	static const Message::Type type = Message::Type::KeyActivation;
 };
 typedef SignedMessage<UnsignedKeyActivationMessage> KeyActivationMessage;
-*/
+
+struct ChatMessage
+{
+	Hash key_id;
+	std::string encrypted_payload;
+	
+	Message encode() const;
+	static ChatMessage decode(const Message& encoded);
+	
+	std::string decrypt(const SymmetricKey& symmetric_key) const;
+	static ChatMessage encrypt(std::string plaintext, const Hash& key_id, const SymmetricKey& symmetric_key);
+};
+struct UnsignedChatMessagePayload
+{
+	std::string message;
+	uint64_t message_id;
+	
+	std::string encode() const;
+	static UnsignedChatMessagePayload decode(const std::string& encoded);
+	
+};
+struct ChatMessagePayload
+{
+	bool valid;
+	std::string payload;
+	
+	/*
+	 * TODO: unify this with SignedMessage after the signature_id infrastructure is removed
+	 */
+	static std::string sign(const UnsignedChatMessagePayload payload, const PrivateKey& key);
+	static ChatMessagePayload verify(std::string signed_message, const PublicKey& key);
+	UnsignedChatMessagePayload decode() const
+	{
+		return UnsignedChatMessagePayload::decode(payload);
+	}
+};
 
 
 
@@ -428,9 +466,20 @@ struct KeyExchangeEvent
 {
 	Message::Type type;
 	Hash key_id;
+	bool cancelled;
+	std::set<std::string> remaining_users;
 	
 	ChannelEvent encode(const ChannelStatusMessage& status) const;
 	static KeyExchangeEvent decode(const ChannelEvent& encooded, const ChannelStatusMessage& status);
+};
+
+struct KeyActivationEvent
+{
+	Hash key_id;
+	std::set<std::string> remaining_users;
+	
+	ChannelEvent encode(const ChannelStatusMessage& status) const;
+	static KeyActivationEvent decode(const ChannelEvent& encoded, const ChannelStatusMessage& status);
 };
 
 

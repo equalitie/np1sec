@@ -30,6 +30,7 @@ add_library(np1sec
 	src/keyexchange.cc
 	src/message.cc
 	src/room.cc
+	src/session.cc
 )
 target_link_libraries(np1sec
 	${GCRYPT_LIBRARY}

@@ -49,6 +49,15 @@ class KeyExchange
 	
 	KeyExchangeState encode() const;
 	
+	std::set<std::string> users() const
+	{
+		std::set<std::string> output;
+		for (const auto& i : m_participants) {
+			output.insert(i.second.username);
+		}
+		return output;
+	}
+	
 	const Hash& key_id() const
 	{
 		return m_key_id;
@@ -75,7 +84,13 @@ class KeyExchange
 		return m_ephemeral_private_key.public_key();
 	}
 	
-	SerializedPrivateKey private_key() const
+	const PrivateKey& private_key() const
+	{
+		assert(m_room);
+		return m_ephemeral_private_key;
+	}
+	
+	SerializedPrivateKey serialized_private_key() const
 	{
 		assert(m_room);
 		return m_ephemeral_private_key.serialize();
@@ -118,13 +133,22 @@ class KeyExchange
 	}
 	
 	/* Defined for the KeyAccepted state only. */
-	std::map<std::string, PublicKey> public_keys() const
+	struct AcceptedUser
+	{
+		std::string username;
+		PublicKey long_term_public_key;
+		PublicKey ephemeral_public_key;
+	};
+	std::vector<AcceptedUser> accepted_users() const
 	{
 		assert(m_state == State::KeyAccepted);
-		std::map<std::string, PublicKey> output;
+		std::vector<AcceptedUser> output;
 		for (const auto& i : m_participants) {
-			assert(i.second.has_ephemeral_public_key);
-			output[i.second.username] = i.second.ephemeral_public_key;
+			AcceptedUser user;
+			user.username = i.second.username;
+			user.long_term_public_key = i.second.long_term_public_key;
+			user.ephemeral_public_key = i.second.ephemeral_public_key;
+			output.push_back(user);
 		}
 		return output;
 	}

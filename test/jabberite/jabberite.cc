@@ -372,6 +372,13 @@ void Jabberite::authorize(std::string username)
 	}
 }
 
+void Jabberite::send_chat(std::string message)
+{
+	if (room) {
+		room->send_chat(message);
+	}
+}
+
 np1sec::Channel* Jabberite::channel(int id)
 {
 	if (id < 0 || (size_t) id >= channels.size()) {

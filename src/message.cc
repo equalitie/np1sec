@@ -626,7 +626,7 @@ UnsignedKeyExchangeRevealMessage UnsignedKeyExchangeRevealMessage::decode(const 
 	result.private_key = buffer.remove_private_key();
 	return result;
 }
-/*
+
 std::string UnsignedKeyActivationMessage::encode() const
 {
 	MessageBuffer buffer;
@@ -641,7 +641,74 @@ UnsignedKeyActivationMessage UnsignedKeyActivationMessage::decode(const std::str
 	result.key_id = buffer.remove_hash();
 	return result;
 }
-*/
+
+Message ChatMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_hash(key_id);
+	buffer.add_opaque(encrypted_payload);
+	
+	return Message(Message::Type::Chat, buffer);
+}
+
+ChatMessage ChatMessage::decode(const Message& encoded)
+{
+	MessageBuffer buffer(get_message_payload(encoded, Message::Type::Chat));
+	
+	ChatMessage result;
+	result.key_id = buffer.remove_hash();
+	result.encrypted_payload = buffer.remove_opaque();
+	return result;
+}
+
+std::string ChatMessage::decrypt(const SymmetricKey& symmetric_key) const
+{
+	return crypto::decrypt(encrypted_payload, symmetric_key);
+}
+
+ChatMessage ChatMessage::encrypt(std::string plaintext, const Hash& key_id, const SymmetricKey& symmetric_key)
+{
+	ChatMessage result;
+	result.key_id = key_id;
+	result.encrypted_payload = crypto::encrypt(plaintext, symmetric_key);
+	return result;
+}
+
+std::string UnsignedChatMessagePayload::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_opaque(message);
+	buffer.add_64(message_id);
+	return buffer;
+}
+
+UnsignedChatMessagePayload UnsignedChatMessagePayload::decode(const std::string& encoded)
+{
+	MessageBuffer buffer(encoded);
+	UnsignedChatMessagePayload result;
+	result.message = buffer.remove_opaque();
+	result.message_id = buffer.remove_64();
+	return result;
+}
+
+std::string ChatMessagePayload::sign(const UnsignedChatMessagePayload payload, const PrivateKey& key)
+{
+	std::string encoded_body = payload.encode();
+	MessageBuffer buffer;
+	buffer.add_signature(crypto::sign(encoded_body, key));
+	buffer.add_bytes(encoded_body);
+	return buffer;
+}
+
+ChatMessagePayload ChatMessagePayload::verify(std::string signed_message, const PublicKey& key)
+{
+	MessageBuffer buffer(signed_message);
+	Signature signature = buffer.remove_signature();
+	ChatMessagePayload result;
+	result.payload = buffer;
+	result.valid = crypto::verify(result.payload, std::move(signature), key);
+	return result;
+}
 
 
 
@@ -687,7 +754,7 @@ ConsistencyCheckEvent ConsistencyCheckEvent::decode(const ChannelEvent& encoded,
 	return result;
 }
 
-ChannelEvent KeyExchangeEvent::encode(const ChannelStatusMessage&) const
+ChannelEvent KeyExchangeEvent::encode(const ChannelStatusMessage& status) const
 {
 	assert(
 		   type == Message::Type::KeyExchangePublicKey
@@ -697,11 +764,17 @@ ChannelEvent KeyExchangeEvent::encode(const ChannelStatusMessage&) const
 	);
 	MessageBuffer buffer;
 	buffer.add_hash(key_id);
+	if (cancelled) {
+		buffer.add_8(1);
+		buffer.add_opaque(encode_user_set(status, true, false, remaining_users));
+	} else {
+		buffer.add_8(0);
+	}
 	
 	return ChannelEvent(type, buffer);
 }
 
-KeyExchangeEvent KeyExchangeEvent::decode(const ChannelEvent& encoded, const ChannelStatusMessage&)
+KeyExchangeEvent KeyExchangeEvent::decode(const ChannelEvent& encoded, const ChannelStatusMessage& status)
 {
 	if (!(
 		   encoded.type == Message::Type::KeyExchangePublicKey
@@ -716,6 +789,31 @@ KeyExchangeEvent KeyExchangeEvent::decode(const ChannelEvent& encoded, const Cha
 	KeyExchangeEvent result;
 	result.type = encoded.type;
 	result.key_id = buffer.remove_hash();
+	if (buffer.remove_8()) {
+		result.cancelled = true;
+		result.remaining_users = decode_user_set(status, true, false, buffer.remove_opaque());
+	} else {
+		result.cancelled = false;
+	}
+	return result;
+}
+
+ChannelEvent KeyActivationEvent::encode(const ChannelStatusMessage& status) const
+{
+	MessageBuffer buffer;
+	buffer.add_hash(key_id);
+	buffer.add_opaque(encode_user_set(status, true, false, remaining_users));
+	
+	return ChannelEvent(Message::Type::KeyActivation, buffer);
+}
+
+KeyActivationEvent KeyActivationEvent::decode(const ChannelEvent& encoded, const ChannelStatusMessage& status)
+{
+	MessageBuffer buffer(get_event_payload(encoded, Message::Type::KeyActivation));
+	
+	KeyActivationEvent result;
+	result.key_id = buffer.remove_hash();
+	result.remaining_users = decode_user_set(status, true, false, buffer.remove_opaque());
 	return result;
 }
 

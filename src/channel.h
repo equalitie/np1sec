@@ -166,6 +166,10 @@ class Channel
 		return m_room;
 	}
 	
+	
+	// HACK HACK HACK temporary function
+	void send_chat(const std::string& message);
+	
 	void announce();
 	void confirm_participant(const std::string& username);
 	void join();
@@ -177,8 +181,8 @@ class Channel
 	
 	
 	
-	void add_key_exchange_event(Message::Type type, const Hash& key_id);
-	void remove_key_exchange_event(const Hash& key_id);
+	void add_key_exchange_event(Message::Type type, const Hash& key_id, const std::set<std::string>& usernames);
+	void add_key_activation_event(const Hash& key_id, const std::set<std::string>& usernames);
 	void remove_user(const std::string& username);
 	void remove_users(const std::set<std::string>& usernames);
 	
@@ -218,7 +222,8 @@ class Channel
 		
 		ChannelStatusEvent channel_status;
 		ConsistencyCheckEvent consistency_check;
-		Hash key_id;
+		// used for key exchanges and key activations
+		KeyActivationEvent key_event;
 	};
 	
 	void self_joined();

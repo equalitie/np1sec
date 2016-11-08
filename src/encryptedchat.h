@@ -22,8 +22,10 @@
 #include "keyexchange.h"
 #include "session.h"
 
+#include <deque>
 #include <map>
 #include <memory>
+#include <set>
 #include <vector>
 
 namespace np1sec
@@ -41,7 +43,10 @@ class EncryptedChat
 	{
 		return m_key_exchanges.count(key_id) > 0;
 	}
-	bool key_exchange_waiting_for(const Hash& key_id, const std::string& username) const;
+	bool have_session(const Hash& key_id) const
+	{
+		return m_sessions.count(key_id) > 0;
+	}
 	std::vector<KeyExchangeState> encode_key_exchanges() const;
 	
 	void add_user(const std::string& username, const PublicKey& long_term_public_key);
@@ -53,26 +58,64 @@ class EncryptedChat
 	void user_key_hash(const std::string& username, const Hash& key_id, const Hash& key_hash);
 	void user_private_key(const std::string& username, const Hash& key_id, const SerializedPrivateKey& private_key);
 	
+	void user_activation(const std::string& username, const Hash& key_id);
 	
+	
+	
+	void send_message(const std::string& message);
+	void decrypt_message(const std::string& sender, const ChatMessage& encrypted_message);
 	
 	protected:
 	void create_key_exchange();
+	void create_session(const Hash& key_id);
+	void progress_sessions();
 	
 	
 	protected:
-	struct Participant
+	struct Identity
 	{
 		std::string username;
 		PublicKey long_term_public_key;
+		
+		bool operator<(const Identity rhs) const
+		{
+			return username < rhs.username || (username == rhs.username && long_term_public_key < rhs.long_term_public_key);
+		}
+	};
+	
+	struct Participant : public Identity
+	{
 		bool active;
+		bool have_active_session;
+		Hash active_session;
+		std::deque<Hash> session_list;
+	};
+	
+	struct FormerParticipant : public Identity
+	{
+		std::deque<Hash> session_list;
+	};
+	
+	struct SessionData
+	{
+		std::unique_ptr<Session> session;
+		bool active;
+		std::set<Identity> participants;
+		std::set<Identity> former_participants;
 	};
 	
 	
 	Channel* m_channel;
 	
 	std::map<std::string, Participant> m_participants;
+	std::map<Identity, FormerParticipant> m_former_participants;
+	
 	std::map<Hash, std::unique_ptr<KeyExchange>> m_key_exchanges;
 	std::vector<Hash> m_key_exchange_queue;
+	
+	std::map<Hash, SessionData> m_sessions;
+	std::deque<Hash> m_session_queue;
+	
 };
 
 } // namespace np1sec

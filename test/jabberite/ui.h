@@ -51,6 +51,7 @@ class Jabberite
 	void create_channel();
 	void join_channel(int id);
 	void authorize(std::string username);
+	void send_chat(std::string message);
 	
 	np1sec::Channel* channel(int id);
 	
