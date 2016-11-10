@@ -49,7 +49,9 @@ class Room
 	
 	void send_chat(const std::string& message)
 	{
-		m_channel->send_chat(message);
+		if (m_channel && m_channel->in_chat()) {
+			m_channel->send_chat(message);
+		}
 	}
 	
 	

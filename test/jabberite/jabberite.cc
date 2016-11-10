@@ -210,8 +210,9 @@ class JabberiteChannelInterface final : public np1sec::ChannelInterface
 	void joined();
 	void authorized();
 	
-	// DEBUG
-	void dump() {}
+	void joined_chat();
+	void user_joined_chat(const std::string& username);
+	void message_received(const std::string& username, const std::string& message);
 	
 	protected:
 	int id() { return jabberite->channel_id(channel); }
@@ -259,6 +260,21 @@ void JabberiteChannelInterface::joined()
 void JabberiteChannelInterface::authorized()
 {
 	jabberite->authorized(id());
+}
+
+void JabberiteChannelInterface::joined_chat()
+{
+	jabberite->joined_chat(id());
+}
+
+void JabberiteChannelInterface::user_joined_chat(const std::string& username)
+{
+	jabberite->user_joined_chat(id(), username);
+}
+
+void JabberiteChannelInterface::message_received(const std::string& username, const std::string& message)
+{
+	jabberite->message_received(id(), username, message);
 }
 
 

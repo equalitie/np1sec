@@ -22,8 +22,6 @@
 
 #include <cassert>
 
-#include <iostream>
-
 namespace np1sec
 {
 
@@ -48,6 +46,16 @@ std::vector<KeyExchangeState> EncryptedChat::encode_key_exchanges() const
 		output.push_back(m_key_exchanges.at(key_id)->encode());
 	}
 	return output;
+}
+
+bool EncryptedChat::in_chat() const
+{
+	return user_in_chat(m_channel->room()->username());
+}
+
+bool EncryptedChat::user_in_chat(const std::string& username) const
+{
+	return m_participants.count(username) && m_participants.at(username).active;
 }
 
 void EncryptedChat::add_user(const std::string& username, const PublicKey& long_term_public_key)
@@ -312,13 +320,22 @@ void EncryptedChat::progress_sessions()
 				}
 			}
 			if (activated) {
+				bool self_active = in_chat();
+				
 				for (const Identity& identity : data.participants) {
 					// user joined / self joined
 					if (!m_participants[identity.username].active) {
 						m_participants[identity.username].active = true;
+						if (!self_active) {
+							m_channel->interface()->user_joined_chat(identity.username);
+						}
 					}
 				}
 				m_sessions[key_id].active = true;
+				
+				if (self_active) {
+					m_channel->interface()->joined_chat();
+				}
 			}
 		}
 		

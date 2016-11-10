@@ -83,13 +83,24 @@ class ChannelInterface
 	virtual void authorized() = 0;
 	
 	
+	
+	/*
+	 * The following is a quick sketch and will be redesigned soon.
+	 */
+	/*
+	 * You are now part of the chat, and can send and receive messages.
+	 */
+	virtual void joined_chat() = 0;
+	
+	/*
+	 * A user joined the chat, and can send and receive messages.
+	 */
+	virtual void user_joined_chat(const std::string& username) = 0;
+	
 	/*
 	 * Not implemented yet.
 	 */
-	// virtual void message_received(const std::string& username, const std::string& message) = 0;
-	
-	// DEBUG
-	virtual void dump() = 0;
+	virtual void message_received(const std::string& username, const std::string& message) = 0;
 };
 
 

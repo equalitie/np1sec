@@ -125,6 +125,18 @@ class Channel
 		return m_authorized;
 	}
 	
+	// returns whether you are in chat
+	bool in_chat() const
+	{
+		return m_encrypted_chat.in_chat();
+	}
+	
+	// returns whether a user is in chat
+	bool user_in_chat(const std::string& username) const
+	{
+		return m_encrypted_chat.user_in_chat(username);
+	}
+	
 	
 	
 	
@@ -154,6 +166,11 @@ class Channel
 	void set_interface(ChannelInterface* interface)
 	{
 		m_interface = interface;
+	}
+	
+	ChannelInterface* interface() const
+	{
+		return m_interface;
 	}
 	
 	const Hash& channel_status_hash() const

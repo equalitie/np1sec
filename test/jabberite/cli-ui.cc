@@ -51,6 +51,10 @@ class CliJabberite final : public Jabberite
 	void joined(int channel_id);
 	void authorized(int channel_id);
 	
+	void joined_chat(int channel_id);
+	void user_joined_chat(int channel_id, std::string username);
+	void message_received(int channel_id, std::string username, std::string message);
+	
 	void dump(int channel_id);
 	void print(const std::string& message);
 	
@@ -173,6 +177,24 @@ void CliJabberite::authorized(int channel_id)
 	print("** You were promoted\n");
 	dump(channel_id);
 }
+
+void CliJabberite::joined_chat(int channel_id)
+{
+	print("** You joined che chat\n");
+	dump(channel_id);
+}
+
+void CliJabberite::user_joined_chat(int channel_id, std::string username)
+{
+	print("** " + username + " joined the chat\n");
+	dump(channel_id);
+}
+
+void CliJabberite::message_received(int /*channel_id*/, std::string username, std::string message)
+{
+	print("<" + username + "> " + message + "\n");
+}
+
 
 void CliJabberite::dump(int channel_id)
 {

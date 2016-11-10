@@ -20,8 +20,6 @@
 #include "room.h"
 #include "session.h"
 
-#include <iostream>
-
 namespace np1sec
 {
 
@@ -74,7 +72,7 @@ void Session::decrypt_message(const std::string& sender, const ChatMessage& encr
 		}
 		m_participants[sender].signature_id++;
 		
-		std::cerr << "<" << sender << "> " << payload.message << "\n";
+		m_channel->interface()->message_received(sender, payload.message);
 	} catch(MessageFormatException) {}
 }
 

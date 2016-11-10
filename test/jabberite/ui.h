@@ -75,6 +75,9 @@ class Jabberite
 	virtual void joined(int channel_id) = 0;
 	virtual void authorized(int channel_id) = 0;
 	
+	virtual void joined_chat(int channel_id) = 0;
+	virtual void user_joined_chat(int channel_id, std::string username) = 0;
+	virtual void message_received(int channel_id, std::string username, std::string message) = 0;
 	
 	
 	int channel_id(np1sec::Channel* channel);

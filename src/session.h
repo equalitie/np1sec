@@ -37,8 +37,6 @@ class Session
 	void send_message(const std::string& message);
 	void decrypt_message(const std::string& sender, const ChatMessage& encrypted_message);
 	
-	const SymmetricKey& key() const { return m_symmetric_key; }
-	
 	protected:
 	struct Participant
 	{

@@ -49,6 +49,9 @@ class EncryptedChat
 	}
 	std::vector<KeyExchangeState> encode_key_exchanges() const;
 	
+	bool in_chat() const;
+	bool user_in_chat(const std::string& username) const;
+	
 	void add_user(const std::string& username, const PublicKey& long_term_public_key);
 	void do_add_user(const std::string& username, const PublicKey& long_term_public_key);
 	void remove_users(const std::set<std::string>& usernames);
