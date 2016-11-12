@@ -276,10 +276,17 @@ void readline_print(std::string message)
 	if (readline_in_callback) {
 		printf("%s", message.c_str());
 	} else {
+		char* line = rl_copy_text(0, rl_end);
 		rl_save_prompt();
-		rl_message("%s", message.c_str());
-		rl_clear_message();
+		rl_replace_line("", 0);
+		rl_redisplay();
+		
+		printf("%s", message.c_str());
+		
+		rl_replace_line(line, 0);
+		free(line);
 		rl_restore_prompt();
+		rl_redisplay();
 	}
 }
 
