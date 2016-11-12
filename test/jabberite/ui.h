@@ -98,6 +98,7 @@ class Jabberite
 	std::string server;
 	std::string room_name;
 	int port;
+	std::string nickname;
 	
 	PurpleAccount* account;
 	PurpleConnection* connection;

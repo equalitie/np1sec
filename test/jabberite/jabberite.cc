@@ -146,6 +146,7 @@ static void process_signed_on(PurpleConnection* connection, void *m)
 	GHashTable* components = g_hash_table_new(g_str_hash, g_str_equal);
 	g_hash_table_insert(components, strdup("room"), strdup(jabberite->room_name.c_str()));
 	g_hash_table_insert(components, strdup("server"), strdup(jabberite->server.c_str()));
+	g_hash_table_insert(components, strdup("handle"), strdup(jabberite->nickname.c_str()));
 	serv_join_chat(connection, components);
 }
 
@@ -461,13 +462,8 @@ void Jabberite::run()
 	
 	
 	
-	std::string nick(username);
-	size_t at_pos = nick.find('@');
-	if (at_pos != std::string::npos) {
-		nick = nick.substr(0, at_pos);
-	}
 	JabberiteRoomInterface* interface = new JabberiteRoomInterface(this);
-	room = new np1sec::Room(interface, nick, np1sec::PrivateKey::generate());
+	room = new np1sec::Room(interface, nickname, np1sec::PrivateKey::generate());
 	
 	
 	
@@ -520,6 +516,7 @@ void Jabberite::parse_options(int argc, char** argv)
 		{ "server", 1, NULL, 's' },
 		{ "room", 1, NULL, 'r' },
 		{ "port", 1, NULL, 'P' },
+		{ "nickname", 1, NULL, 'n' },
 	};
 	std::vector<option> long_options(basic_long_options, basic_long_options + (sizeof(basic_long_options) / sizeof(*basic_long_options)));
 	
@@ -569,6 +566,10 @@ void Jabberite::parse_options(int argc, char** argv)
 			} catch(std::invalid_argument) {
 				print_usage(argv[0], extra_options);
 			}
+			break;
+		case 'n':
+			/* -n or --nickname */
+			nickname = std::string(optarg);
 			break;
 		case '?':
 			/* Invalid option */
@@ -627,5 +628,14 @@ void Jabberite::parse_options(int argc, char** argv)
 			*strchr(room_buffer, '\n') = 0;
 		}
 		room_name = std::string(room_buffer);
+	}
+	
+	if (nickname.empty()) {
+		size_t at_pos = username.find('@');
+		if (at_pos == std::string::npos) {
+			nickname = username;
+		} else {
+			nickname = username.substr(0, at_pos);
+		}
 	}
 }
