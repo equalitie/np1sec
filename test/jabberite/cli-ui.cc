@@ -293,6 +293,7 @@ static gboolean readline_stdin_callback(GIOChannel*, GIOCondition, gpointer)
 int main(int argc, char** argv)
 {
 	readline_cli_jabberite = new CliJabberite();
+	readline_cli_jabberite->parse_options(argc, argv);
 	
 	rl_callback_handler_install("", readline_input_line);
 	atexit(rl_callback_handler_remove);
@@ -300,7 +301,7 @@ int main(int argc, char** argv)
 	GIOChannel* io = g_io_channel_unix_new(STDIN_FILENO);
 	g_io_add_watch(io, G_IO_IN, readline_stdin_callback, NULL);
 	
-	readline_cli_jabberite->run(argc, argv);
+	readline_cli_jabberite->run();
 	
 	return 0;
 }

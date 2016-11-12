@@ -40,7 +40,8 @@ class Jabberite
 	public:
 	Jabberite();
 	
-	void run(int argc, char** argv);
+	void parse_options(int argc, char** argv);
+	void run();
 	virtual std::vector<option> extra_options() = 0;
 	virtual bool process_option(char option, char* argument) = 0;
 	virtual std::string explain_option(char option) = 0;

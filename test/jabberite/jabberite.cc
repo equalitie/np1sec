@@ -440,7 +440,7 @@ int Jabberite::remove_channel(np1sec::Channel* channel)
 
 
 
-void Jabberite::do_run()
+void Jabberite::run()
 {
 	GMainLoop* loop = g_main_loop_new(NULL, FALSE);
 	
@@ -508,7 +508,7 @@ void Jabberite::print_usage(std::string program_name, std::vector<option> extra_
 	exit(1);
 }
 
-void Jabberite::run(int argc, char** argv)
+void Jabberite::parse_options(int argc, char** argv)
 {
 	port = -1;
 	
@@ -628,6 +628,4 @@ void Jabberite::run(int argc, char** argv)
 		}
 		room_name = std::string(room_buffer);
 	}
-	
-	do_run();
 }
