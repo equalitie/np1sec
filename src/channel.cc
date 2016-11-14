@@ -41,7 +41,7 @@ Channel::Channel(Room* room):
 	self.authentication_status = AuthenticationStatus::Authenticated;
 	m_participants[self.username] = self;
 	
-	m_encrypted_chat.do_add_user(m_room->username(), m_room->long_term_public_key());
+	m_encrypted_chat.create_solo_session();
 }
 
 Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const Message& encoded_message):

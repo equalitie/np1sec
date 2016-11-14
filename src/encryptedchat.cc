@@ -58,6 +58,39 @@ bool EncryptedChat::user_in_chat(const std::string& username) const
 	return m_participants.count(username) && m_participants.at(username).active;
 }
 
+void EncryptedChat::create_solo_session()
+{
+	Hash session_id = crypto::nonce_hash();
+	
+	Participant self;
+	self.username = m_channel->room()->username();
+	self.long_term_public_key = m_channel->room()->long_term_public_key();
+	self.active = true;
+	self.have_active_session = true;
+	self.active_session = session_id;
+	self.session_list.push_back(session_id);
+	m_participants[self.username] = self;
+	
+	m_session_queue.push_back(session_id);
+	
+	PrivateKey session_private_key = PrivateKey::generate();
+	KeyExchange::AcceptedUser self_user;
+	self_user.username = m_channel->room()->username();
+	self_user.long_term_public_key = m_channel->room()->long_term_public_key();
+	self_user.ephemeral_public_key = session_private_key.public_key();
+	std::vector<KeyExchange::AcceptedUser> accepted_users;
+	accepted_users.push_back(std::move(self_user));
+	
+	SymmetricKey session_symmetric_key;
+	session_symmetric_key.key = crypto::nonce_hash();
+	
+	SessionData session;
+	session.active = true;
+	session.participants.insert(self);
+	session.session = std::unique_ptr<Session>(new Session(m_channel, session_id, accepted_users, session_symmetric_key, session_private_key));
+	m_sessions[session_id] = std::move(session);
+}
+
 void EncryptedChat::add_user(const std::string& username, const PublicKey& long_term_public_key)
 {
 	do_add_user(username, long_term_public_key);
