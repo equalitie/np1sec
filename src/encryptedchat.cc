@@ -71,6 +71,8 @@ void EncryptedChat::do_add_user(const std::string& username, const PublicKey& lo
 	Participant participant;
 	participant.username = username;
 	participant.long_term_public_key = long_term_public_key;
+	participant.active = false;
+	participant.have_active_session = false;
 	m_participants[username] = participant;
 }
 
@@ -135,7 +137,7 @@ void EncryptedChat::user_public_key(const std::string& username, const Hash& key
 			message.key_id = key_id;
 			message.group_hash = m_key_exchanges[key_id]->group_hash();
 			message.secret_share = m_key_exchanges[key_id]->secret_share();
-			m_channel->room()->send_message(KeyExchangeSecretShareMessage::sign(message, m_channel->ephemeral_private_key(), m_channel->new_signature_id()));
+			m_channel->room()->send_message(KeyExchangeSecretShareMessage::sign(message, m_channel->ephemeral_private_key()));
 		}
 	}
 }
@@ -157,7 +159,7 @@ void EncryptedChat::user_secret_share(const std::string& username, const Hash& k
 			UnsignedKeyExchangeAcceptanceMessage message;
 			message.key_id = key_id;
 			message.key_hash = m_key_exchanges[key_id]->key_hash();
-			m_channel->room()->send_message(KeyExchangeAcceptanceMessage::sign(message, m_channel->ephemeral_private_key(), m_channel->new_signature_id()));
+			m_channel->room()->send_message(KeyExchangeAcceptanceMessage::sign(message, m_channel->ephemeral_private_key()));
 		}
 	}
 }
@@ -188,7 +190,7 @@ void EncryptedChat::user_key_hash(const std::string& username, const Hash& key_i
 			UnsignedKeyExchangeRevealMessage message;
 			message.key_id = key_id;
 			message.private_key = m_key_exchanges[key_id]->serialized_private_key();
-			m_channel->room()->send_message(KeyExchangeRevealMessage::sign(message, m_channel->ephemeral_private_key(), m_channel->new_signature_id()));
+			m_channel->room()->send_message(KeyExchangeRevealMessage::sign(message, m_channel->ephemeral_private_key()));
 		}
 	}
 }
@@ -269,7 +271,7 @@ void EncryptedChat::create_key_exchange()
 		UnsignedKeyExchangePublicKeyMessage message;
 		message.key_id = key_id;
 		message.public_key = m_key_exchanges[key_id]->public_key();
-		m_channel->room()->send_message(KeyExchangePublicKeyMessage::sign(message, m_channel->ephemeral_private_key(), m_channel->new_signature_id()));
+		m_channel->room()->send_message(KeyExchangePublicKeyMessage::sign(message, m_channel->ephemeral_private_key()));
 	}
 }
 
@@ -299,7 +301,7 @@ void EncryptedChat::create_session(const Hash& key_id)
 	
 	UnsignedKeyActivationMessage message;
 	message.key_id = key_id;
-	m_channel->room()->send_message(KeyActivationMessage::sign(message, m_channel->ephemeral_private_key(), m_channel->new_signature_id()));
+	m_channel->room()->send_message(KeyActivationMessage::sign(message, m_channel->ephemeral_private_key()));
 }
 
 void EncryptedChat::progress_sessions()
@@ -326,14 +328,14 @@ void EncryptedChat::progress_sessions()
 					// user joined / self joined
 					if (!m_participants[identity.username].active) {
 						m_participants[identity.username].active = true;
-						if (!self_active) {
+						if (self_active) {
 							m_channel->interface()->user_joined_chat(identity.username);
 						}
 					}
 				}
 				m_sessions[key_id].active = true;
 				
-				if (self_active) {
+				if (!self_active) {
 					m_channel->interface()->joined_chat();
 				}
 			}

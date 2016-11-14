@@ -122,34 +122,32 @@ struct Message
 	static Message decode(const std::string& encoded);
 };
 
-template<class MessageBody>
-struct SignedMessage
+struct SignedMessageBody
 {
 	bool valid;
 	std::string payload;
 	
-	static Message sign(const MessageBody& message, const PrivateKey& key, uint64_t signature_id)
+	static std::string sign(const std::string& payload, Message::Type type, const PrivateKey& key);
+	static SignedMessageBody verify(const std::string& encoded, Message::Type type, const PublicKey& key);
+};
+
+template<class MessageBody>
+struct SignedMessage : public SignedMessageBody
+{
+	SignedMessage() {}
+	SignedMessage(SignedMessageBody b): SignedMessageBody(b) {}
+	
+	static Message sign(const MessageBody& message, const PrivateKey& key)
 	{
-		std::string encoded_body = message.encode();
-		MessageBuffer buffer;
-		buffer.add_signature(crypto::sign(encoded_body, key));
-		buffer.add_64(signature_id);
-		buffer.add_bytes(encoded_body);
-		return Message(MessageBody::type, buffer);
+		return Message(MessageBody::type, SignedMessageBody::sign(message.encode(), MessageBody::type, key));
 	}
 	
-	static SignedMessage verify(const Message& encoded, const PublicKey& key, uint64_t signature_id)
+	static SignedMessage verify(const Message& encoded, const PublicKey& key)
 	{
 		if (encoded.type != MessageBody::type) {
 			throw MessageFormatException();
 		}
-		MessageBuffer buffer(encoded.payload);
-		Signature signature = buffer.remove_signature();
-		uint64_t sent_signature_id = buffer.remove_64();
-		SignedMessage result;
-		result.payload = buffer;
-		result.valid = crypto::verify(result.payload, std::move(signature), key) && sent_signature_id == signature_id;
-		return result;
+		return SignedMessageBody::verify(encoded.payload, encoded.type, key);
 	}
 	
 	MessageBody decode() const
@@ -233,16 +231,11 @@ struct ChannelStatusMessage
 		std::string username;
 		PublicKey long_term_public_key;
 		PublicKey ephemeral_public_key;
-		uint64_t signature_id;
+		Hash authorization_nonce;
 	};
 	
-	struct UnauthorizedParticipant
+	struct UnauthorizedParticipant : public Participant
 	{
-		std::string username;
-		PublicKey long_term_public_key;
-		PublicKey ephemeral_public_key;
-		uint64_t signature_id;
-		
 		std::set<std::string> authorized_by;
 		std::set<std::string> authorized_peers;
 	};
@@ -265,7 +258,6 @@ struct ChannelAnnouncementMessage
 {
 	PublicKey long_term_public_key;
 	PublicKey ephemeral_public_key;
-	uint64_t signature_id;
 	Hash channel_status_hash;
 	
 	Message encode() const;
@@ -276,7 +268,6 @@ struct JoinRequestMessage
 {
 	PublicKey long_term_public_key;
 	PublicKey ephemeral_public_key;
-	uint64_t signature_id;
 	
 	std::vector<std::string> peer_usernames;
 	
@@ -320,6 +311,9 @@ struct AuthenticationMessage
 struct UnsignedAuthorizationMessage
 {
 	std::string username;
+	PublicKey long_term_public_key;
+	PublicKey ephemeral_public_key;
+	Hash authorization_nonce;
 	
 	std::string encode() const;
 	static UnsignedAuthorizationMessage decode(const std::string& encoded);
@@ -422,18 +416,23 @@ struct UnsignedChatMessagePayload
 	
 	std::string encode() const;
 	static UnsignedChatMessagePayload decode(const std::string& encoded);
-	
+	static const Message::Type type = Message::Type::Chat;
 };
-struct ChatMessagePayload
+struct ChatMessagePayload : public SignedMessageBody
 {
-	bool valid;
-	std::string payload;
+	ChatMessagePayload() {}
+	ChatMessagePayload(SignedMessageBody b): SignedMessageBody(b) {}
 	
-	/*
-	 * TODO: unify this with SignedMessage after the signature_id infrastructure is removed
-	 */
-	static std::string sign(const UnsignedChatMessagePayload payload, const PrivateKey& key);
-	static ChatMessagePayload verify(std::string signed_message, const PublicKey& key);
+	static std::string sign(const UnsignedChatMessagePayload payload, const PrivateKey& key)
+	{
+		return SignedMessageBody::sign(payload.encode(), Message::Type::Chat, key);
+	}
+	
+	static ChatMessagePayload verify(std::string signed_message, const PublicKey& key)
+	{
+		return SignedMessageBody::verify(signed_message, Message::Type::Chat, key);
+	}
+
 	UnsignedChatMessagePayload decode() const
 	{
 		return UnsignedChatMessagePayload::decode(payload);

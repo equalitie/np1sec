@@ -196,6 +196,35 @@ Message Message::decode(const std::string& encoded)
 }
 
 
+
+std::string SignedMessageBody::sign(const std::string& payload, Message::Type type, const PrivateKey& key)
+{
+	std::string signed_body;
+	signed_body.push_back(uint8_t(type));
+	signed_body += payload;
+	
+	MessageBuffer buffer;
+	buffer.add_signature(crypto::sign(std::move(signed_body), key));
+	buffer.add_bytes(payload);
+	return buffer;
+}
+
+SignedMessageBody SignedMessageBody::verify(const std::string& encoded, Message::Type type, const PublicKey& key)
+{
+	MessageBuffer buffer(encoded);
+	Signature signature = buffer.remove_signature();
+	std::string signed_body;
+	signed_body.push_back(uint8_t(type));
+	signed_body += buffer;
+	
+	SignedMessageBody result;
+	result.valid = crypto::verify(std::move(signed_body), std::move(signature), key);
+	result.payload = buffer;
+	return result;
+}
+
+
+
 static MessageBuffer get_message_payload(const Message& message, Message::Type expected_type)
 {
 	if (message.type != expected_type) {
@@ -211,8 +240,6 @@ static MessageBuffer get_event_payload(const ChannelEvent& event, Message::Type 
 	}
 	return MessageBuffer(event.payload);
 }
-
-
 
 static MessageBuffer encode_user_set(const ChannelStatusMessage& status, bool include_authorized, bool include_unauthorized, const std::set<std::string>& users)
 {
@@ -324,7 +351,7 @@ Message ChannelStatusMessage::encode() const
 		participant_buffer.add_opaque(participant.username);
 		participant_buffer.add_public_key(participant.long_term_public_key);
 		participant_buffer.add_public_key(participant.ephemeral_public_key);
-		participant_buffer.add_64(participant.signature_id);
+		participant_buffer.add_hash(participant.authorization_nonce);
 		participants_buffer.add_opaque(participant_buffer);
 	}
 	buffer.add_opaque(participants_buffer);
@@ -335,7 +362,7 @@ Message ChannelStatusMessage::encode() const
 		participant_buffer.add_opaque(participant.username);
 		participant_buffer.add_public_key(participant.long_term_public_key);
 		participant_buffer.add_public_key(participant.ephemeral_public_key);
-		participant_buffer.add_64(participant.signature_id);
+		participant_buffer.add_hash(participant.authorization_nonce);
 		participant_buffer.add_opaque(encode_user_set(*this, true, false, participant.authorized_by));
 		participant_buffer.add_opaque(encode_user_set(*this, true, false, participant.authorized_peers));
 		unauthorized_participants_buffer.add_opaque(participant_buffer);
@@ -377,7 +404,7 @@ ChannelStatusMessage ChannelStatusMessage::decode(const Message& encoded)
 		participant.username = participant_buffer.remove_opaque();
 		participant.long_term_public_key = participant_buffer.remove_public_key();
 		participant.ephemeral_public_key = participant_buffer.remove_public_key();
-		participant.signature_id = participant_buffer.remove_64();
+		participant.authorization_nonce = participant_buffer.remove_hash();
 		result.participants.push_back(std::move(participant));
 	}
 	
@@ -388,7 +415,7 @@ ChannelStatusMessage ChannelStatusMessage::decode(const Message& encoded)
 		participant.username = participant_buffer.remove_opaque();
 		participant.long_term_public_key = participant_buffer.remove_public_key();
 		participant.ephemeral_public_key = participant_buffer.remove_public_key();
-		participant.signature_id = participant_buffer.remove_64();
+		participant.authorization_nonce = participant_buffer.remove_hash();
 		participant.authorized_by = decode_user_set(result, true, false, participant_buffer.remove_opaque());
 		participant.authorized_peers = decode_user_set(result, true, false, participant_buffer.remove_opaque());
 		result.unauthorized_participants.push_back(std::move(participant));
@@ -421,7 +448,6 @@ Message ChannelAnnouncementMessage::encode() const
 	MessageBuffer buffer;
 	buffer.add_public_key(long_term_public_key);
 	buffer.add_public_key(ephemeral_public_key);
-	buffer.add_64(signature_id);
 	buffer.add_hash(channel_status_hash);
 	
 	return Message(Message::Type::ChannelAnnouncement, buffer);
@@ -434,7 +460,6 @@ ChannelAnnouncementMessage ChannelAnnouncementMessage::decode(const Message& enc
 	ChannelAnnouncementMessage result;
 	result.long_term_public_key = buffer.remove_public_key();
 	result.ephemeral_public_key = buffer.remove_public_key();
-	result.signature_id = buffer.remove_64();
 	result.channel_status_hash = buffer.remove_hash();
 	return result;
 }
@@ -444,7 +469,6 @@ Message JoinRequestMessage::encode() const
 	MessageBuffer buffer;
 	buffer.add_public_key(long_term_public_key);
 	buffer.add_public_key(ephemeral_public_key);
-	buffer.add_64(signature_id);
 	
 	MessageBuffer usernames_buffer;
 	for (const std::string& username : peer_usernames) {
@@ -462,7 +486,6 @@ JoinRequestMessage JoinRequestMessage::decode(const Message& encoded)
 	JoinRequestMessage result;
 	result.long_term_public_key = buffer.remove_public_key();
 	result.ephemeral_public_key = buffer.remove_public_key();
-	result.signature_id = buffer.remove_64();
 	
 	MessageBuffer usernames_buffer = buffer.remove_opaque();
 	while (!usernames_buffer.empty()) {
@@ -531,6 +554,9 @@ std::string UnsignedAuthorizationMessage::encode() const
 {
 	MessageBuffer buffer;
 	buffer.add_opaque(username);
+	buffer.add_public_key(long_term_public_key);
+	buffer.add_public_key(ephemeral_public_key);
+	buffer.add_hash(authorization_nonce);
 	return buffer;
 }
 
@@ -539,6 +565,9 @@ UnsignedAuthorizationMessage UnsignedAuthorizationMessage::decode(const std::str
 	MessageBuffer buffer(encoded);
 	UnsignedAuthorizationMessage result;
 	result.username = buffer.remove_opaque();
+	result.long_term_public_key = buffer.remove_public_key();
+	result.ephemeral_public_key = buffer.remove_public_key();
+	result.authorization_nonce = buffer.remove_hash();
 	return result;
 }
 
@@ -688,25 +717,6 @@ UnsignedChatMessagePayload UnsignedChatMessagePayload::decode(const std::string&
 	UnsignedChatMessagePayload result;
 	result.message = buffer.remove_opaque();
 	result.message_id = buffer.remove_64();
-	return result;
-}
-
-std::string ChatMessagePayload::sign(const UnsignedChatMessagePayload payload, const PrivateKey& key)
-{
-	std::string encoded_body = payload.encode();
-	MessageBuffer buffer;
-	buffer.add_signature(crypto::sign(encoded_body, key));
-	buffer.add_bytes(encoded_body);
-	return buffer;
-}
-
-ChatMessagePayload ChatMessagePayload::verify(std::string signed_message, const PublicKey& key)
-{
-	MessageBuffer buffer(signed_message);
-	Signature signature = buffer.remove_signature();
-	ChatMessagePayload result;
-	result.payload = buffer;
-	result.valid = crypto::verify(result.payload, std::move(signature), key);
 	return result;
 }
 

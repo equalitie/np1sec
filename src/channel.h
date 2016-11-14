@@ -38,7 +38,7 @@ class Room;
 class Channel
 {
 	public:
-	enum class AuthenticationStatus { Unauthenticated, Authenticating, Authenticated, AuthenticationFailed };
+	enum class AuthenticationStatus { Unauthenticated, Authenticating, AuthenticatingWithNonce, Authenticated, AuthenticationFailed };
 	
 	public:
 	Channel(Room* room);
@@ -153,11 +153,6 @@ class Channel
 		return m_ephemeral_private_key;
 	}
 	
-	uint64_t new_signature_id()
-	{
-		return m_signature_id++;
-	}
-	
 	bool empty() const
 	{
 		return m_participants.empty();
@@ -213,7 +208,7 @@ class Channel
 		std::string username;
 		PublicKey long_term_public_key;
 		PublicKey ephemeral_public_key;
-		uint64_t signature_id;
+		Hash authorization_nonce;
 		
 		bool authorized;
 		// used only for unauthorized participants
@@ -225,8 +220,6 @@ class Channel
 		 */
 		// Did we authenticate this user?
 		AuthenticationStatus authentication_status;
-		// used only for Authenticating participants
-		Hash authentication_nonce;
 	};
 	
 	struct Event
@@ -264,7 +257,6 @@ class Channel
 	protected:
 	Room* m_room;
 	PrivateKey m_ephemeral_private_key;
-	uint64_t m_signature_id;
 	ChannelInterface* m_interface;
 	
 	bool m_joined;
@@ -276,6 +268,8 @@ class Channel
 	std::vector<Event> m_events;
 	
 	EncryptedChat m_encrypted_chat;
+	
+	Hash m_authentication_nonce;
 	
 	Timer m_channel_status_timer;
 };

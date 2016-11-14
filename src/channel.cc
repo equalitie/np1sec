@@ -25,7 +25,6 @@ namespace np1sec
 Channel::Channel(Room* room):
 	m_room(room),
 	m_ephemeral_private_key(PrivateKey::generate()),
-	m_signature_id(1),
 	m_interface(nullptr),
 	m_joined(true),
 	m_active(false),
@@ -37,7 +36,7 @@ Channel::Channel(Room* room):
 	self.username = m_room->username();
 	self.long_term_public_key = m_room->long_term_public_key();
 	self.ephemeral_public_key = ephemeral_public_key();
-	self.signature_id = m_signature_id;
+	self.authorization_nonce = m_channel_status_hash;
 	self.authorized = true;
 	self.authentication_status = AuthenticationStatus::Authenticated;
 	m_participants[self.username] = self;
@@ -48,12 +47,12 @@ Channel::Channel(Room* room):
 Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const Message& encoded_message):
 	m_room(room),
 	m_ephemeral_private_key(PrivateKey::generate()),
-	m_signature_id(1),
 	m_interface(nullptr),
 	m_joined(false),
 	m_active(false),
 	m_authorized(false),
-	m_encrypted_chat(this)
+	m_encrypted_chat(this),
+	m_authentication_nonce(crypto::nonce_hash())
 {
 	/*
 	 * The event queue in the channel_status message does not contain the
@@ -70,7 +69,7 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 		participant.username = p.username;
 		participant.long_term_public_key = p.long_term_public_key;
 		participant.ephemeral_public_key = p.ephemeral_public_key;
-		participant.signature_id = p.signature_id;
+		participant.authorization_nonce = p.authorization_nonce;
 		participant.authorized = true;
 		participant.authentication_status = AuthenticationStatus::Unauthenticated;
 		
@@ -90,7 +89,7 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 		participant.username = p.username;
 		participant.long_term_public_key = p.long_term_public_key;
 		participant.ephemeral_public_key = p.ephemeral_public_key;
-		participant.signature_id = p.signature_id;
+		participant.authorization_nonce = p.authorization_nonce;
 		participant.authorized = false;
 		participant.authentication_status = AuthenticationStatus::Unauthenticated;
 		
@@ -187,12 +186,12 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 Channel::Channel(Room* room, const ChannelAnnouncementMessage& channel_status, const std::string& sender):
 	m_room(room),
 	m_ephemeral_private_key(PrivateKey::generate()),
-	m_signature_id(1),
 	m_interface(nullptr),
 	m_joined(false),
 	m_active(false),
 	m_authorized(false),
-	m_encrypted_chat(this)
+	m_encrypted_chat(this),
+	m_authentication_nonce(crypto::nonce_hash())
 {
 	m_channel_status_hash = channel_status.channel_status_hash;
 	
@@ -200,7 +199,7 @@ Channel::Channel(Room* room, const ChannelAnnouncementMessage& channel_status, c
 	participant.username = sender;
 	participant.long_term_public_key = channel_status.long_term_public_key;
 	participant.ephemeral_public_key = channel_status.ephemeral_public_key;
-	participant.signature_id = channel_status.signature_id;
+	participant.authorization_nonce = channel_status.channel_status_hash;
 	participant.authorized = true;
 	participant.authentication_status = AuthenticationStatus::Unauthenticated;
 	m_participants[participant.username] = std::move(participant);
@@ -218,7 +217,6 @@ void Channel::announce()
 	ChannelAnnouncementMessage message;
 	message.long_term_public_key = m_room->long_term_public_key();
 	message.ephemeral_public_key = ephemeral_public_key();
-	message.signature_id = m_signature_id;
 	message.channel_status_hash = m_channel_status_hash;
 	send_message(message.encode());
 }
@@ -231,8 +229,7 @@ void Channel::confirm_participant(const std::string& username)
 	
 	Participant& participant = m_participants[username];
 	if (participant.authentication_status == AuthenticationStatus::Unauthenticated) {
-		participant.authentication_status = AuthenticationStatus::Authenticating;
-		participant.authentication_nonce = crypto::nonce_hash();
+		participant.authentication_status = AuthenticationStatus::AuthenticatingWithNonce;
 		
 		AuthenticationRequestMessage request;
 		request.sender_long_term_public_key = m_room->long_term_public_key();
@@ -240,7 +237,7 @@ void Channel::confirm_participant(const std::string& username)
 		request.peer_username = participant.username;
 		request.peer_long_term_public_key = participant.long_term_public_key;
 		request.peer_ephemeral_public_key = participant.ephemeral_public_key;
-		request.nonce = participant.authentication_nonce;
+		request.nonce = m_authentication_nonce;
 		send_message(request.encode());
 	}
 }
@@ -250,7 +247,6 @@ void Channel::join()
 	JoinRequestMessage message;
 	message.long_term_public_key = m_room->long_term_public_key();
 	message.ephemeral_public_key = ephemeral_public_key();
-	message.signature_id = m_signature_id;
 	
 	for (const auto& i : m_participants) {
 		message.peer_usernames.push_back(i.first);
@@ -299,7 +295,10 @@ void Channel::authorize(const std::string& username)
 	
 	UnsignedAuthorizationMessage message;
 	message.username = participant.username;
-	send_message(AuthorizationMessage::sign(message, m_ephemeral_private_key, m_signature_id++));
+	message.long_term_public_key = participant.long_term_public_key;
+	message.ephemeral_public_key = participant.ephemeral_public_key;
+	message.authorization_nonce = participant.authorization_nonce;
+	send_message(AuthorizationMessage::sign(message, m_ephemeral_private_key));
 }
 
 void Channel::message_received(const std::string& sender, const Message& np1sec_message)
@@ -325,7 +324,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		if (m_active) {
 			UnsignedConsistencyCheckMessage consistency_check_message;
 			consistency_check_message.channel_status_hash = m_channel_status_hash;
-			send_message(ConsistencyCheckMessage::sign(consistency_check_message, m_ephemeral_private_key, m_signature_id++));
+			send_message(ConsistencyCheckMessage::sign(consistency_check_message, m_ephemeral_private_key));
 		}
 		
 		Message reply = channel_status(sender, message.nonce);
@@ -403,15 +402,14 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		participant.username = sender;
 		participant.long_term_public_key = message.long_term_public_key;
 		participant.ephemeral_public_key = message.ephemeral_public_key;
-		participant.signature_id = message.signature_id;
+		participant.authorization_nonce = m_channel_status_hash;
 		participant.authorized = false;
 		m_participants[sender] = std::move(participant);
 		
 		if (sender == m_room->username()) {
 			m_participants[sender].authentication_status = AuthenticationStatus::Authenticated;
 		} else if (!m_active) {
-			m_participants[sender].authentication_status = AuthenticationStatus::Authenticating;
-			m_participants[sender].authentication_nonce = crypto::nonce_hash();
+			m_participants[sender].authentication_status = AuthenticationStatus::AuthenticatingWithNonce;
 			
 			AuthenticationRequestMessage request;
 			request.sender_long_term_public_key = m_room->long_term_public_key();
@@ -419,11 +417,10 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			request.peer_username = sender;
 			request.peer_long_term_public_key = message.long_term_public_key;
 			request.peer_ephemeral_public_key = message.ephemeral_public_key;
-			request.nonce = m_participants[sender].authentication_nonce;
+			request.nonce = m_authentication_nonce;
 			send_message(request.encode());
 		} else {
 			m_participants[sender].authentication_status = AuthenticationStatus::Authenticating;
-			m_participants[sender].authentication_nonce = m_channel_status_hash;
 		}
 		
 		if (m_interface) {
@@ -460,36 +457,50 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			return;
 		}
 		
-		if (
+		if (!(
 			   message.peer_username == m_room->username()
 			&& message.peer_long_term_public_key == m_room->long_term_public_key()
 			&& message.peer_ephemeral_public_key == ephemeral_public_key()
-		) {
-			if (!m_participants.count(sender)) {
+		)) {
+			return;
+		}
+		
+		if (!m_participants.count(sender)) {
+			return;
+		}
+		
+		Participant& participant = m_participants[sender];
+		if (!(
+			   message.sender_long_term_public_key == participant.long_term_public_key
+			&& message.sender_ephemeral_public_key == participant.ephemeral_public_key
+		)) {
+			return;
+		}
+		
+		if (participant.authentication_status == AuthenticationStatus::Authenticating) {
+			if (message.nonce != participant.authorization_nonce) {
 				return;
 			}
+		} else if (participant.authentication_status == AuthenticationStatus::AuthenticatingWithNonce) {
+			if (message.nonce != participant.authorization_nonce && message.nonce != m_authentication_nonce) {
+				return;
+			}
+		} else {
+			return;
+		}
+		
+		Hash correct_token = authentication_token(sender, participant.long_term_public_key, participant.ephemeral_public_key, message.nonce, true);
+		if (message.authentication_confirmation == correct_token) {
+			participant.authentication_status = AuthenticationStatus::Authenticated;
 			
-			Participant& participant = m_participants[sender];
-			if (
-				   participant.authentication_status == AuthenticationStatus::Authenticating
-				&& message.sender_long_term_public_key == participant.long_term_public_key
-				&& message.sender_ephemeral_public_key == participant.ephemeral_public_key
-				&& message.nonce == participant.authentication_nonce
-			) {
-				Hash correct_token = authentication_token(sender, participant.long_term_public_key, participant.ephemeral_public_key, participant.authentication_nonce, true);
-				if (message.authentication_confirmation == correct_token) {
-					participant.authentication_status = AuthenticationStatus::Authenticated;
-					
-					if (m_interface) {
-						m_interface->user_authenticated(sender, participant.long_term_public_key);
-					}
-				} else {
-					participant.authentication_status = AuthenticationStatus::AuthenticationFailed;
-					
-					if (m_interface) {
-						m_interface->user_authentication_failed(sender);
-					}
-				}
+			if (m_interface) {
+				m_interface->user_authenticated(sender, participant.long_term_public_key);
+			}
+		} else {
+			participant.authentication_status = AuthenticationStatus::AuthenticationFailed;
+			
+			if (m_interface) {
+				m_interface->user_authentication_failed(sender);
 			}
 		}
 	} else if (np1sec_message.type == Message::Type::Authorization) {
@@ -499,7 +510,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		
 		AuthorizationMessage signed_message;
 		try {
-			signed_message = AuthorizationMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key, m_participants[sender].signature_id++);
+			signed_message = AuthorizationMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key);
 		} catch(MessageFormatException) {
 			return;
 		}
@@ -508,6 +519,15 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			return;
 		}
 		auto message = signed_message.decode();
+		
+		if (!(
+			   m_participants.count(message.username)
+			&& m_participants.at(message.username).long_term_public_key == message.long_term_public_key
+			&& m_participants.at(message.username).ephemeral_public_key == message.ephemeral_public_key
+			&& m_participants.at(message.username).authorization_nonce == message.authorization_nonce
+		)) {
+			return;
+		}
 		
 		Participant* authorized;
 		Participant* unauthorized;
@@ -548,7 +568,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		if (m_active && sender == m_room->username()) {
 			UnsignedConsistencyCheckMessage message;
 			message.channel_status_hash = m_channel_status_hash;
-			send_message(ConsistencyCheckMessage::sign(message, m_ephemeral_private_key, m_signature_id++));
+			send_message(ConsistencyCheckMessage::sign(message, m_ephemeral_private_key));
 		}
 		
 		Event event;
@@ -563,7 +583,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		
 		ConsistencyCheckMessage signed_message;
 		try {
-			signed_message = ConsistencyCheckMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key, m_participants[sender].signature_id++);
+			signed_message = ConsistencyCheckMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key);
 		} catch(MessageFormatException) {
 			return;
 		}
@@ -594,7 +614,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		
 		KeyExchangePublicKeyMessage signed_message;
 		try {
-			signed_message = KeyExchangePublicKeyMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key, m_participants[sender].signature_id++);
+			signed_message = KeyExchangePublicKeyMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key);
 		} catch(MessageFormatException) {
 			return;
 		}
@@ -627,7 +647,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		
 		KeyExchangeSecretShareMessage signed_message;
 		try {
-			signed_message = KeyExchangeSecretShareMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key, m_participants[sender].signature_id++);
+			signed_message = KeyExchangeSecretShareMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key);
 		} catch(MessageFormatException) {
 			return;
 		}
@@ -664,7 +684,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		
 		KeyExchangeAcceptanceMessage signed_message;
 		try {
-			signed_message = KeyExchangeAcceptanceMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key, m_participants[sender].signature_id++);
+			signed_message = KeyExchangeAcceptanceMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key);
 		} catch(MessageFormatException) {
 			return;
 		}
@@ -701,7 +721,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		
 		KeyExchangeRevealMessage signed_message;
 		try {
-			signed_message = KeyExchangeRevealMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key, m_participants[sender].signature_id++);
+			signed_message = KeyExchangeRevealMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key);
 		} catch(MessageFormatException) {
 			return;
 		}
@@ -738,7 +758,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		
 		KeyActivationMessage signed_message;
 		try {
-			signed_message = KeyActivationMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key, m_participants[sender].signature_id++);
+			signed_message = KeyActivationMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key);
 		} catch(MessageFormatException) {
 			return;
 		}
@@ -954,14 +974,14 @@ Message Channel::channel_status(const std::string& searcher_username, const Hash
 			participant.username = i.second.username;
 			participant.long_term_public_key = i.second.long_term_public_key;
 			participant.ephemeral_public_key = i.second.ephemeral_public_key;
-			participant.signature_id = i.second.signature_id;
+			participant.authorization_nonce = i.second.authorization_nonce;
 			result.participants.push_back(participant);
 		} else {
 			ChannelStatusMessage::UnauthorizedParticipant participant;
 			participant.username = i.second.username;
 			participant.long_term_public_key = i.second.long_term_public_key;
 			participant.ephemeral_public_key = i.second.ephemeral_public_key;
-			participant.signature_id = i.second.signature_id;
+			participant.authorization_nonce = i.second.authorization_nonce;
 			participant.authorized_by = i.second.authorized_by;
 			participant.authorized_peers = i.second.authorized_peers;
 			result.unauthorized_participants.push_back(participant);

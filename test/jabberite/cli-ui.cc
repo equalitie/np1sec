@@ -180,7 +180,7 @@ void CliJabberite::authorized(int channel_id)
 
 void CliJabberite::joined_chat(int channel_id)
 {
-	print("** You joined che chat\n");
+	print("** You joined the chat\n");
 	dump(channel_id);
 }
 
