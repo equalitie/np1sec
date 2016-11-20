@@ -17,6 +17,7 @@
  */
 
 #include "channel.h"
+#include "partition.h"
 #include "room.h"
 
 namespace np1sec
@@ -64,7 +65,7 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 	channel_status_event.channel_status.searcher_nonce = channel_status.searcher_nonce;
 	channel_status_event.channel_status.status_message_hash = crypto::hash(encoded_message.payload);
 	
-	for (const ChannelStatusMessage::Participant& p : channel_status.participants) {
+	for (const ChannelStatusMessage::AuthorizedParticipant& p : channel_status.participants) {
 		Participant participant;
 		participant.username = p.username;
 		participant.long_term_public_key = p.long_term_public_key;
@@ -82,6 +83,21 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 		channel_status_event.channel_status.remaining_users.insert(p.username);
 		
 		m_encrypted_chat.do_add_user(p.username, p.long_term_public_key);
+	}
+	
+	for (const ChannelStatusMessage::AuthorizedParticipant& p : channel_status.participants) {
+		for (const std::string& username : p.timeout_peers) {
+			if (!m_participants.count(username)) {
+				throw MessageFormatException();
+			}
+			m_participants[p.username].timeout_peers.insert(username);
+		}
+		for (const std::string& username : p.votekick_peers) {
+			if (!m_participants.count(username)) {
+				throw MessageFormatException();
+			}
+			m_participants[p.username].votekick_peers.insert(username);
+		}
 	}
 	
 	for (const ChannelStatusMessage::UnauthorizedParticipant& p : channel_status.unauthorized_participants) {
@@ -210,6 +226,22 @@ Channel::Channel(Room* room, const ChannelAnnouncementMessage& channel_status, c
 void Channel::send_chat(const std::string& message)
 {
 	m_encrypted_chat.send_message(message);
+}
+
+void Channel::votekick(const std::string& username, bool kick)
+{
+	if (!m_participants.count(username)) {
+		return;
+	}
+	
+	Participant& participant = m_participants[username];
+	if (participant.votekick_in_flight != kick) {
+		VotekickMessage message;
+		message.victim = username;
+		message.kick = kick;
+		send_message(message.encode());
+		participant.votekick_in_flight = kick;
+	}
 }
 
 void Channel::announce()
@@ -607,6 +639,35 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		if (first_event->consistency_check.remaining_users.empty()) {
 			m_events.erase(first_event);
 		}
+	} else if (np1sec_message.type == Message::Type::Timeout) {
+	
+	} else if (np1sec_message.type == Message::Type::Votekick) {
+		if (!m_participants.count(sender)) {
+			return;
+		}
+		
+		VotekickMessage message;
+		try {
+			message = VotekickMessage::decode(np1sec_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
+		if (!m_participants.count(message.victim)) {
+			return;
+		}
+		
+		if (sender == message.victim) {
+			return;
+		}
+		
+		if (message.kick) {
+			if (m_participants[sender].votekick_peers.insert(message.victim).second) {
+				try_channel_split(true);
+			}
+		} else {
+			m_participants[sender].votekick_peers.erase(message.victim);
+		}
 	} else if (np1sec_message.type == Message::Type::KeyExchangePublicKey) {
 		if (!m_participants.count(sender)) {
 			return;
@@ -914,6 +975,8 @@ void Channel::do_remove_user(const std::string& username)
 			p.second.authorized_by.erase(username);
 			p.second.authorized_peers.erase(username);
 		}
+		p.second.timeout_peers.erase(username);
+		p.second.votekick_peers.erase(username);
 	}
 	
 	for (std::vector<Event>::iterator i = m_events.begin(); i != m_events.end(); ) {
@@ -954,6 +1017,89 @@ void Channel::do_remove_user(const std::string& username)
 	}
 }
 
+void Channel::try_channel_split(bool because_votekick)
+{
+	std::map<std::string, const std::set<std::string>* > graph;
+	for (const auto& i : m_participants) {
+		if (i.second.authorized) {
+			const std::set<std::string>* victims;
+			if (because_votekick) {
+				victims = &i.second.votekick_peers;
+			} else {
+				victims = &i.second.timeout_peers;
+			}
+			
+			graph[i.second.username] = victims;
+		}
+	}
+	
+	std::vector<std::set<std::string>> partition = compute_channel_partition(graph);
+	
+	if (partition.size() == 1) {
+		return;
+	}
+	
+	/*
+	 * A split has occurred. Find out which side we're in.
+	 */
+	
+	std::set<std::string> our_part;
+	if (m_authorized) {
+		/*
+		 * If we are an authorized member, we are in the side containing ourselves.
+		 */
+		
+		for (const std::set<std::string>& part : partition) {
+			if (part.count(m_room->username())) {
+				our_part = part;
+				break;
+			}
+		}
+		assert(our_part.count(m_room->username()));
+	} else {
+		/*
+		 * If we are not an authorized member, we choose to join the largest
+		 * side. If this is a votekick split, we choose the largest remaining
+		 * side period; if this is a timeout split, we choose the side containing
+		 * the largest amount of members that are not timeouted according to
+		 * our own bookkeeping.
+		 */
+		
+		size_t largest_index = -1;
+		int largest_count = -1;
+		for (size_t i = 0; i < partition.size(); i++) {
+			const std::set<std::string>& part = partition[i];
+			int count;
+			
+			if (because_votekick) {
+				count = part.size();
+			} else {
+				count = 0;
+				for (const std::string& username : part) {
+					if (!m_participants[username].timeout_in_flight) {
+						count++;
+					}
+				}
+			}
+			if (count > largest_count) {
+				largest_count = count;
+				largest_index = i;
+			}
+		}
+		
+		our_part = partition[largest_index];
+		assert(our_part.size() > 0);
+	}
+	
+	std::set<std::string> victims;
+	for (const auto& i : m_participants) {
+		if (i.second.authorized && our_part.count(i.second.username) == 0) {
+			victims.insert(i.second.username);
+		}
+	}
+	remove_users(victims);
+}
+
 
 
 void Channel::send_message(const Message& message)
@@ -970,11 +1116,13 @@ Message Channel::channel_status(const std::string& searcher_username, const Hash
 	
 	for (const auto& i : m_participants) {
 		if (i.second.authorized) {
-			ChannelStatusMessage::Participant participant;
+			ChannelStatusMessage::AuthorizedParticipant participant;
 			participant.username = i.second.username;
 			participant.long_term_public_key = i.second.long_term_public_key;
 			participant.ephemeral_public_key = i.second.ephemeral_public_key;
 			participant.authorization_nonce = i.second.authorization_nonce;
+			participant.timeout_peers = i.second.timeout_peers;
+			participant.votekick_peers = i.second.votekick_peers;
 			result.participants.push_back(participant);
 		} else {
 			ChannelStatusMessage::UnauthorizedParticipant participant;

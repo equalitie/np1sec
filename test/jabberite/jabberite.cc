@@ -389,6 +389,13 @@ void Jabberite::authorize(std::string username)
 	}
 }
 
+void Jabberite::votekick(std::string username, bool kick)
+{
+	if (room) {
+		room->votekick(username, kick);
+	}
+}
+
 void Jabberite::send_chat(std::string message)
 {
 	if (room) {

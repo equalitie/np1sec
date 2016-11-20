@@ -102,6 +102,8 @@ struct Message
 		Authorization = 0x21,
 		ConsistencyStatus = 0x22,
 		ConsistencyCheck = 0x23,
+		Timeout = 0x24,
+		Votekick = 0x25,
 		
 		KeyExchangePublicKey = 0x31,
 		KeyExchangeSecretShare = 0x32,
@@ -234,6 +236,12 @@ struct ChannelStatusMessage
 		Hash authorization_nonce;
 	};
 	
+	struct AuthorizedParticipant : public Participant
+	{
+		std::set<std::string> timeout_peers;
+		std::set<std::string> votekick_peers;
+	};
+	
 	struct UnauthorizedParticipant : public Participant
 	{
 		std::set<std::string> authorized_by;
@@ -243,7 +251,7 @@ struct ChannelStatusMessage
 	std::string searcher_username;
 	Hash searcher_nonce;
 	
-	std::vector<Participant> participants;
+	std::vector<AuthorizedParticipant> participants;
 	std::vector<UnauthorizedParticipant> unauthorized_participants;
 	
 	Hash channel_status_hash;
@@ -338,6 +346,24 @@ struct UnsignedConsistencyCheckMessage
 	static const Message::Type type = Message::Type::ConsistencyCheck;
 };
 typedef SignedMessage<UnsignedConsistencyCheckMessage> ConsistencyCheckMessage;
+
+struct TimeoutMessage
+{
+	std::string victim;
+	bool timeout;
+	
+	Message encode() const;
+	static TimeoutMessage decode(const Message& encoded);
+};
+
+struct VotekickMessage
+{
+	std::string victim;
+	bool kick;
+	
+	Message encode() const;
+	static VotekickMessage decode(const Message& encoded);
+};
 
 
 

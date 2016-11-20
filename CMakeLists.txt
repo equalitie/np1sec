@@ -29,6 +29,7 @@ add_library(np1sec
 	src/encryptedchat.cc
 	src/keyexchange.cc
 	src/message.cc
+	src/partition.cc
 	src/room.cc
 	src/session.cc
 )

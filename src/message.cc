@@ -346,7 +346,7 @@ Message ChannelStatusMessage::encode() const
 	buffer.add_hash(searcher_nonce);
 	
 	MessageBuffer participants_buffer;
-	for (const Participant& participant : participants) {
+	for (const AuthorizedParticipant& participant : participants) {
 		MessageBuffer participant_buffer;
 		participant_buffer.add_opaque(participant.username);
 		participant_buffer.add_public_key(participant.long_term_public_key);
@@ -368,6 +368,15 @@ Message ChannelStatusMessage::encode() const
 		unauthorized_participants_buffer.add_opaque(participant_buffer);
 	}
 	buffer.add_opaque(unauthorized_participants_buffer);
+	
+	MessageBuffer timeout_buffer;
+	MessageBuffer votekick_buffer;
+	for (const AuthorizedParticipant& participant : participants) {
+		timeout_buffer.add_opaque(encode_user_set(*this, true, false, participant.timeout_peers));
+		votekick_buffer.add_opaque(encode_user_set(*this, true, false, participant.votekick_peers));
+	}
+	buffer.add_opaque(timeout_buffer);
+	buffer.add_opaque(votekick_buffer);
 	
 	buffer.add_hash(channel_status_hash);
 	
@@ -400,7 +409,7 @@ ChannelStatusMessage ChannelStatusMessage::decode(const Message& encoded)
 	MessageBuffer participants_buffer = buffer.remove_opaque();
 	while (!participants_buffer.empty()) {
 		MessageBuffer participant_buffer = participants_buffer.remove_opaque();
-		Participant participant;
+		AuthorizedParticipant participant;
 		participant.username = participant_buffer.remove_opaque();
 		participant.long_term_public_key = participant_buffer.remove_public_key();
 		participant.ephemeral_public_key = participant_buffer.remove_public_key();
@@ -419,6 +428,13 @@ ChannelStatusMessage ChannelStatusMessage::decode(const Message& encoded)
 		participant.authorized_by = decode_user_set(result, true, false, participant_buffer.remove_opaque());
 		participant.authorized_peers = decode_user_set(result, true, false, participant_buffer.remove_opaque());
 		result.unauthorized_participants.push_back(std::move(participant));
+	}
+	
+	MessageBuffer timeout_buffer = buffer.remove_opaque();
+	MessageBuffer votekick_buffer = buffer.remove_opaque();
+	for (AuthorizedParticipant& participant : result.participants) {
+		participant.timeout_peers = decode_user_set(result, true, false, timeout_buffer.remove_opaque());
+		participant.votekick_peers = decode_user_set(result, true, false, votekick_buffer.remove_opaque());
 	}
 	
 	result.channel_status_hash = buffer.remove_hash();
@@ -583,6 +599,44 @@ UnsignedConsistencyCheckMessage UnsignedConsistencyCheckMessage::decode(const st
 	MessageBuffer buffer(encoded);
 	UnsignedConsistencyCheckMessage result;
 	result.channel_status_hash = buffer.remove_hash();
+	return result;
+}
+
+Message TimeoutMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_opaque(victim);
+	buffer.add_8(timeout ? 1 : 0);
+	
+	return Message(Message::Type::Timeout, buffer);
+}
+
+TimeoutMessage TimeoutMessage::decode(const Message& encoded)
+{
+	MessageBuffer buffer(get_message_payload(encoded, Message::Type::Timeout));
+	
+	TimeoutMessage result;
+	result.victim = buffer.remove_opaque();
+	result.timeout = buffer.remove_8() != 0;
+	return result;
+}
+
+Message VotekickMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_opaque(victim);
+	buffer.add_8(kick ? 1 : 0);
+	
+	return Message(Message::Type::Votekick, buffer);
+}
+
+VotekickMessage VotekickMessage::decode(const Message& encoded)
+{
+	MessageBuffer buffer(get_message_payload(encoded, Message::Type::Votekick));
+	
+	VotekickMessage result;
+	result.victim = buffer.remove_opaque();
+	result.kick = buffer.remove_8() != 0;
 	return result;
 }
 

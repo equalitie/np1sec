@@ -181,6 +181,7 @@ class Channel
 	
 	// HACK HACK HACK temporary function
 	void send_chat(const std::string& message);
+	void votekick(const std::string& username, bool kick);
 	
 	void announce();
 	void confirm_participant(const std::string& username);
@@ -215,11 +216,19 @@ class Channel
 		std::set<std::string> authorized_by;
 		std::set<std::string> authorized_peers;
 		
+		// used only for authorized participants
+		std::set<std::string> timeout_peers;
+		std::set<std::string> votekick_peers;
+		
 		/*
 		 * Local state
 		 */
 		// Did we authenticate this user?
 		AuthenticationStatus authentication_status;
+		
+		// used only for authorized participants
+		bool timeout_in_flight;
+		bool votekick_in_flight;
 	};
 	
 	struct Event
@@ -240,6 +249,7 @@ class Channel
 	void self_authorized();
 	bool try_promote_unauthorized_participant(Participant* participant);
 	void do_remove_user(const std::string& username);
+	void try_channel_split(bool because_votekick);
 	
 	
 	void send_message(const Message& message);

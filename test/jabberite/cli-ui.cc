@@ -245,6 +245,10 @@ void CliJabberite::parse_command(const std::string& line)
 		join_channel(id);
 	} else if (line.substr(0, 7) == "/accept") {
 		authorize(line.substr(8));
+	} else if (line.substr(0, 5) == "/kick") {
+		votekick(line.substr(6), true);
+	} else if (line.substr(0, 7) == "/unkick") {
+		votekick(line.substr(8), false);
 	} else if (line.substr(0, 1) == "/") {
 		// do nothing
 	} else {

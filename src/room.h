@@ -47,6 +47,13 @@ class Room
 	void join_channel(Channel* channel);
 	void authorize(const std::string& username);
 	
+	void votekick(const std::string& username, bool kick)
+	{
+		if (m_channel) {
+			m_channel->votekick(username, kick);
+		}
+	}
+	
 	void send_chat(const std::string& message)
 	{
 		if (m_channel && m_channel->in_chat()) {
