@@ -249,6 +249,10 @@ void CliJabberite::parse_command(const std::string& line)
 		votekick(line.substr(6), true);
 	} else if (line.substr(0, 7) == "/unkick") {
 		votekick(line.substr(8), false);
+	} else if (line == "/freeze") {
+		frozen = true;
+	} else if (line == "/unfreeze") {
+		frozen = false;
 	} else if (line.substr(0, 1) == "/") {
 		// do nothing
 	} else {

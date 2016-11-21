@@ -82,7 +82,8 @@ class Timer
 		}
 	}
 	
-	Timer(Timer&& other)
+	Timer(Timer&& other):
+		m_body(nullptr)
 	{
 		(*this) = std::move(other);
 	}

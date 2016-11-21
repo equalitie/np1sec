@@ -298,7 +298,9 @@ class JabberiteRoomInterface : public np1sec::RoomInterface
 
 void JabberiteRoomInterface::send_message(const std::string& message)
 {
-	purple_conv_chat_send(PURPLE_CONV_CHAT(m_jabberite->conversation), message.c_str());
+	if (!m_jabberite->frozen) {
+		purple_conv_chat_send(PURPLE_CONV_CHAT(m_jabberite->conversation), message.c_str());
+	}
 }
 
 struct JabberiteTimer final : public np1sec::TimerToken
@@ -361,6 +363,7 @@ Jabberite::Jabberite():
 	account(nullptr),
 	connection(nullptr),
 	conversation(nullptr),
+	frozen(false),
 	room(nullptr)
 {
 }

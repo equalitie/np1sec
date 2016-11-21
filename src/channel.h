@@ -217,7 +217,8 @@ class Channel
 		// used for key exchanges and key activations
 		KeyActivationEventPayload key_event;
 		
-		//Timer timeout_timer;
+		Timer timeout_timer;
+		bool timeout;
 	};
 	
 	struct Participant
@@ -251,6 +252,8 @@ class Channel
 		
 		// list of events this user is involved in
 		std::deque<std::list<Event>::iterator> events;
+		
+		Timer channel_status_timer;
 	};
 	
 	void self_joined();
@@ -258,9 +261,10 @@ class Channel
 	bool try_promote_unauthorized_participant(Participant* participant);
 	void do_remove_user(const std::string& username);
 	void try_channel_split(bool because_votekick);
+	void check_timeout(const std::string& username);
 	
 	
-	void declare_event(const Event& event, bool set_timeout = true);
+	void declare_event(Event&& event);
 	void send_message(const Message& message);
 	Message channel_status(const std::string& searcher_username, const Hash& searcher_nonce) const;
 	void hash_message(const std::string& sender, const Message& message);
@@ -269,6 +273,8 @@ class Channel
 	Hash authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, const Hash& nonce, bool for_peer);
 	void send_consistency_check();
 	std::list<Event>::iterator first_user_event(const std::string& username);
+	
+	void set_user_channel_status_timer(const std::string& username);
 	void set_channel_status_timer();
 	
 	

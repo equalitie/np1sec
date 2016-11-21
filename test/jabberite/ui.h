@@ -105,6 +105,8 @@ class Jabberite
 	PurpleConnection* connection;
 	PurpleConversation* conversation;
 	
+	bool frozen;
+	
 	np1sec::Room* room;
 	// interface
 	std::vector<JabberiteChannelInterface*> channels;

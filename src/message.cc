@@ -372,8 +372,8 @@ Message ChannelStatusMessage::encode() const
 	MessageBuffer timeout_buffer;
 	MessageBuffer votekick_buffer;
 	for (const AuthorizedParticipant& participant : participants) {
-		timeout_buffer.add_opaque(encode_user_set(*this, true, false, participant.timeout_peers));
-		votekick_buffer.add_opaque(encode_user_set(*this, true, false, participant.votekick_peers));
+		timeout_buffer.add_opaque(encode_user_set(*this, true, true, participant.timeout_peers));
+		votekick_buffer.add_opaque(encode_user_set(*this, true, true, participant.votekick_peers));
 	}
 	buffer.add_opaque(timeout_buffer);
 	buffer.add_opaque(votekick_buffer);
@@ -433,8 +433,8 @@ ChannelStatusMessage ChannelStatusMessage::decode(const Message& encoded)
 	MessageBuffer timeout_buffer = buffer.remove_opaque();
 	MessageBuffer votekick_buffer = buffer.remove_opaque();
 	for (AuthorizedParticipant& participant : result.participants) {
-		participant.timeout_peers = decode_user_set(result, true, false, timeout_buffer.remove_opaque());
-		participant.votekick_peers = decode_user_set(result, true, false, votekick_buffer.remove_opaque());
+		participant.timeout_peers = decode_user_set(result, true, true, timeout_buffer.remove_opaque());
+		participant.votekick_peers = decode_user_set(result, true, true, votekick_buffer.remove_opaque());
 	}
 	
 	result.channel_status_hash = buffer.remove_hash();
