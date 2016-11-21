@@ -70,6 +70,7 @@ class KeyExchange
 	
 	bool contains(const std::string& username) const;
 	bool waiting_for(const std::string& username) const;
+	std::set<std::string> remaining_users() const;
 	
 	
 	

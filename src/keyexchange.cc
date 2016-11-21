@@ -284,6 +284,17 @@ bool KeyExchange::waiting_for(const std::string& username) const
 	}
 }
 
+std::set<std::string> KeyExchange::remaining_users() const
+{
+	std::set<std::string> output;
+	for (const auto& i : m_participants) {
+		if (waiting_for(i.first)) {
+			output.insert(i.first);
+		}
+	}
+	return output;
+}
+
 
 
 void KeyExchange::set_public_key(const std::string& username, const PublicKey& public_key)

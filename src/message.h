@@ -467,40 +467,40 @@ struct ChatMessagePayload : public SignedMessageBody
 
 
 
-struct ChannelStatusEvent
-{
+struct ChannelStatusEventPayload {
 	std::string searcher_username;
 	Hash searcher_nonce;
 	Hash status_message_hash;
+}; struct ChannelStatusEvent : public ChannelStatusEventPayload {
 	std::set<std::string> remaining_users;
 	
 	ChannelEvent encode(const ChannelStatusMessage& status) const;
 	static ChannelStatusEvent decode(const ChannelEvent& encoded, const ChannelStatusMessage& status);
 };
 
-struct ConsistencyCheckEvent
-{
+struct ConsistencyCheckEventPayload {
 	Hash channel_status_hash;
+}; struct ConsistencyCheckEvent : public ConsistencyCheckEventPayload {
 	std::set<std::string> remaining_users;
 	
 	ChannelEvent encode(const ChannelStatusMessage& status) const;
 	static ConsistencyCheckEvent decode(const ChannelEvent& encoded, const ChannelStatusMessage& status);
 };
 
-struct KeyExchangeEvent
-{
+struct KeyExchangeEventPayload {
 	Message::Type type;
 	Hash key_id;
 	bool cancelled;
+}; struct KeyExchangeEvent : public KeyExchangeEventPayload {
 	std::set<std::string> remaining_users;
 	
 	ChannelEvent encode(const ChannelStatusMessage& status) const;
 	static KeyExchangeEvent decode(const ChannelEvent& encooded, const ChannelStatusMessage& status);
 };
 
-struct KeyActivationEvent
-{
+struct KeyActivationEventPayload {
 	Hash key_id;
+}; struct KeyActivationEvent : public KeyActivationEventPayload {
 	std::set<std::string> remaining_users;
 	
 	ChannelEvent encode(const ChannelStatusMessage& status) const;

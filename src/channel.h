@@ -25,6 +25,8 @@
 #include "message.h"
 #include "timer.h"
 
+#include <deque>
+#include <list>
 #include <map>
 #include <memory>
 #include <string>
@@ -195,12 +197,29 @@ class Channel
 	
 	
 	void add_key_exchange_event(Message::Type type, const Hash& key_id, const std::set<std::string>& usernames);
-	void add_key_activation_event(const Hash& key_id, const std::set<std::string>& usernames);
 	void remove_user(const std::string& username);
 	void remove_users(const std::set<std::string>& usernames);
 	
 	
 	protected:
+	struct Event
+	{
+		/*
+		 * This struct is really a union, but I am too lazy to implement a C++11 union.
+		 */
+		
+		Message::Type type;
+		std::set<std::string> remaining_users;
+		
+		
+		ChannelStatusEventPayload channel_status;
+		ConsistencyCheckEventPayload consistency_check;
+		// used for key exchanges and key activations
+		KeyActivationEventPayload key_event;
+		
+		//Timer timeout_timer;
+	};
+	
 	struct Participant
 	{
 		/*
@@ -229,20 +248,9 @@ class Channel
 		// used only for authorized participants
 		bool timeout_in_flight;
 		bool votekick_in_flight;
-	};
-	
-	struct Event
-	{
-		/*
-		 * This struct is really a union, but I am too lazy to implement a C++11 union.
-		 */
 		
-		Message::Type type;
-		
-		ChannelStatusEvent channel_status;
-		ConsistencyCheckEvent consistency_check;
-		// used for key exchanges and key activations
-		KeyActivationEvent key_event;
+		// list of events this user is involved in
+		std::deque<std::list<Event>::iterator> events;
 	};
 	
 	void self_joined();
@@ -252,6 +260,7 @@ class Channel
 	void try_channel_split(bool because_votekick);
 	
 	
+	void declare_event(const Event& event, bool set_timeout = true);
 	void send_message(const Message& message);
 	Message channel_status(const std::string& searcher_username, const Hash& searcher_nonce) const;
 	void hash_message(const std::string& sender, const Message& message);
@@ -259,7 +268,7 @@ class Channel
 	void authenticate_to(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, const Hash& nonce);
 	Hash authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, const Hash& nonce, bool for_peer);
 	void send_consistency_check();
-	std::vector<Event>::iterator first_user_event(const std::string& username);
+	std::list<Event>::iterator first_user_event(const std::string& username);
 	void set_channel_status_timer();
 	
 	
@@ -275,7 +284,7 @@ class Channel
 	std::map<std::string, Participant> m_participants;
 	Hash m_channel_status_hash;
 	
-	std::vector<Event> m_events;
+	std::list<Event> m_events;
 	
 	EncryptedChat m_encrypted_chat;
 	

@@ -43,11 +43,17 @@ class EncryptedChat
 	{
 		return m_key_exchanges.count(key_id) > 0;
 	}
+	std::set<std::string> remaining_users(Hash key_id) const
+	{
+		assert(m_key_exchanges.count(key_id));
+		return m_key_exchanges.at(key_id).key_exchange->remaining_users();
+	}
 	bool have_session(const Hash& key_id) const
 	{
 		return m_sessions.count(key_id) > 0;
 	}
 	std::vector<KeyExchangeState> encode_key_exchanges() const;
+	
 	
 	bool in_chat() const;
 	bool user_in_chat(const std::string& username) const;
@@ -70,6 +76,9 @@ class EncryptedChat
 	void decrypt_message(const std::string& sender, const ChatMessage& encrypted_message);
 	
 	protected:
+	void insert_key_exchange(std::unique_ptr<KeyExchange>&& key_exchange);
+	void erase_key_exchange(Hash key_id);
+	
 	void create_key_exchange();
 	void create_session(const Hash& key_id);
 	void progress_sessions();
@@ -93,11 +102,22 @@ class EncryptedChat
 		bool have_active_session;
 		Hash active_session;
 		std::deque<Hash> session_list;
+		std::set<Hash> key_exchanges;
 	};
 	
 	struct FormerParticipant : public Identity
 	{
 		std::deque<Hash> session_list;
+	};
+	
+	struct KeyExchangeData
+	{
+		std::unique_ptr<KeyExchange> key_exchange;
+		// key exchanges are ordered as a linked list, the old-fashioned way.
+		bool has_next;
+		bool has_previous;
+		Hash next;
+		Hash previous;
 	};
 	
 	struct SessionData
@@ -114,8 +134,10 @@ class EncryptedChat
 	std::map<std::string, Participant> m_participants;
 	std::map<Identity, FormerParticipant> m_former_participants;
 	
-	std::map<Hash, std::unique_ptr<KeyExchange>> m_key_exchanges;
-	std::vector<Hash> m_key_exchange_queue;
+	std::map<Hash, KeyExchangeData> m_key_exchanges;
+	// first and last are undefined if m_key_exchanges is empty.
+	Hash m_key_exchange_first;
+	Hash m_key_exchange_last;
 	
 	std::map<Hash, SessionData> m_sessions;
 	std::deque<Hash> m_session_queue;

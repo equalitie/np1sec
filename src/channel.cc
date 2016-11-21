@@ -23,6 +23,10 @@
 namespace np1sec
 {
 
+// TODO
+// timeout, in milliseconds, for responding to an event
+const uint32_t c_event_timeout = 60000;
+
 Channel::Channel(Room* room):
 	m_room(room),
 	m_ephemeral_private_key(PrivateKey::generate()),
@@ -80,7 +84,7 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 		
 		m_participants[participant.username] = std::move(participant);
 		
-		channel_status_event.channel_status.remaining_users.insert(p.username);
+		channel_status_event.remaining_users.insert(p.username);
 		
 		m_encrypted_chat.do_add_user(p.username, p.long_term_public_key);
 	}
@@ -126,7 +130,7 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 		
 		m_participants[participant.username] = std::move(participant);
 		
-		channel_status_event.channel_status.remaining_users.insert(p.username);
+		channel_status_event.remaining_users.insert(p.username);
 	}
 	
 	m_channel_status_hash = channel_status.channel_status_hash;
@@ -149,9 +153,13 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 		Event event;
 		event.type = channel_event.type;
 		if (channel_event.type == Message::Type::ChannelStatus) {
-			event.channel_status = ChannelStatusEvent::decode(channel_event, channel_status);
+			ChannelStatusEvent e = ChannelStatusEvent::decode(channel_event, channel_status);
+			event.channel_status = e;
+			event.remaining_users = e.remaining_users;
 		} else if (channel_event.type == Message::Type::ConsistencyCheck) {
-			event.consistency_check = ConsistencyCheckEvent::decode(channel_event, channel_status);
+			ConsistencyCheckEvent e = ConsistencyCheckEvent::decode(channel_event, channel_status);
+			event.consistency_check = e;
+			event.remaining_users = e.remaining_users;
 		} else if (
 			   channel_event.type == Message::Type::KeyExchangePublicKey
 			|| channel_event.type == Message::Type::KeyExchangeSecretShare
@@ -164,7 +172,7 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 				if (key_exchange_ids.count(event.key_event.key_id)) {
 					throw MessageFormatException();
 				}
-				event.key_event.remaining_users = e.remaining_users;
+				event.remaining_users = e.remaining_users;
 			} else {
 				if (!key_exchange_ids.count(event.key_event.key_id)) {
 					throw MessageFormatException();
@@ -173,9 +181,12 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 					throw MessageFormatException();
 				}
 				key_exchange_event_ids.insert(event.key_event.key_id);
+				event.remaining_users = m_encrypted_chat.remaining_users(e.key_id);
 			}
 		} else if (channel_event.type == Message::Type::KeyActivation) {
-			event.key_event = KeyActivationEvent::decode(channel_event, channel_status);
+			KeyActivationEvent e = KeyActivationEvent::decode(channel_event, channel_status);
+			event.key_event = e;
+			event.remaining_users = e.remaining_users;
 			if (key_exchange_ids.count(event.key_event.key_id)) {
 				throw MessageFormatException();
 			}
@@ -186,7 +197,7 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 		} else {
 			throw MessageFormatException();
 		}
-		m_events.push_back(std::move(event));
+		declare_event(event, false);
 	}
 	
 	/*
@@ -196,7 +207,7 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 		throw MessageFormatException();
 	}
 	
-	m_events.push_back(std::move(channel_status_event));
+	declare_event(channel_status_event);
 }
 
 Channel::Channel(Room* room, const ChannelAnnouncementMessage& channel_status, const std::string& sender):
@@ -349,9 +360,9 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		consistency_check_event.type = Message::Type::ConsistencyCheck;
 		consistency_check_event.consistency_check.channel_status_hash = m_channel_status_hash;
 		for (const auto& i : m_participants) {
-			consistency_check_event.consistency_check.remaining_users.insert(i.second.username);
+			consistency_check_event.remaining_users.insert(i.second.username);
 		}
-		m_events.push_back(std::move(consistency_check_event));
+		declare_event(consistency_check_event, false);
 		
 		if (m_active) {
 			UnsignedConsistencyCheckMessage consistency_check_message;
@@ -367,9 +378,9 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		reply_event.channel_status.searcher_nonce = message.nonce;
 		reply_event.channel_status.status_message_hash = crypto::hash(reply.payload);
 		for (const auto& i : m_participants) {
-			reply_event.channel_status.remaining_users.insert(i.second.username);
+			reply_event.remaining_users.insert(i.second.username);
 		}
-		m_events.push_back(std::move(reply_event));
+		declare_event(reply_event);
 		
 		if (m_active) {
 			send_message(reply);
@@ -394,8 +405,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			return;
 		}
 		
-		first_event->channel_status.remaining_users.erase(sender);
-		if (first_event->channel_status.remaining_users.empty()) {
+		if (first_event->remaining_users.empty()) {
 			m_events.erase(first_event);
 		}
 	} else if (np1sec_message.type == Message::Type::ChannelAnnouncement) {
@@ -606,8 +616,8 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		Event event;
 		event.type = Message::Type::ConsistencyCheck;
 		event.consistency_check.channel_status_hash = m_channel_status_hash;
-		event.consistency_check.remaining_users.insert(sender);
-		m_events.push_back(std::move(event));
+		event.remaining_users.insert(sender);
+		declare_event(event);
 	} else if (np1sec_message.type == Message::Type::ConsistencyCheck) {
 		if (!m_participants.count(sender)) {
 			return;
@@ -635,8 +645,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			return;
 		}
 		
-		first_event->consistency_check.remaining_users.erase(sender);
-		if (first_event->consistency_check.remaining_users.empty()) {
+		if (first_event->remaining_users.empty()) {
 			m_events.erase(first_event);
 		}
 	} else if (np1sec_message.type == Message::Type::Timeout) {
@@ -695,8 +704,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			return;
 		}
 		
-		first_event->key_event.remaining_users.erase(sender);
-		if (first_event->key_event.remaining_users.empty()) {
+		if (first_event->remaining_users.empty()) {
 			m_events.erase(first_event);
 		}
 		
@@ -728,8 +736,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			return;
 		}
 		
-		first_event->key_event.remaining_users.erase(sender);
-		if (first_event->key_event.remaining_users.empty()) {
+		if (first_event->remaining_users.empty()) {
 			m_events.erase(first_event);
 		}
 		
@@ -765,8 +772,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			return;
 		}
 		
-		first_event->key_event.remaining_users.erase(sender);
-		if (first_event->key_event.remaining_users.empty()) {
+		if (first_event->remaining_users.empty()) {
 			m_events.erase(first_event);
 		}
 		
@@ -802,8 +808,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			return;
 		}
 		
-		first_event->key_event.remaining_users.erase(sender);
-		if (first_event->key_event.remaining_users.empty()) {
+		if (first_event->remaining_users.empty()) {
 			m_events.erase(first_event);
 		}
 		
@@ -839,8 +844,7 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			return;
 		}
 		
-		first_event->key_event.remaining_users.erase(sender);
-		if (first_event->key_event.remaining_users.empty()) {
+		if (first_event->remaining_users.empty()) {
 			m_events.erase(first_event);
 		}
 		
@@ -870,18 +874,9 @@ void Channel::add_key_exchange_event(Message::Type type, const Hash& key_id, con
 {
 	Event event;
 	event.type = type;
-	event.key_event.remaining_users = usernames;
+	event.remaining_users = usernames;
 	event.key_event.key_id = key_id;
-	m_events.push_back(event);
-}
-
-void Channel::add_key_activation_event(const Hash& key_id, const std::set<std::string>& usernames)
-{
-	Event event;
-	event.type = Message::Type::KeyActivation;
-	event.key_event.key_id = key_id;
-	event.key_event.remaining_users = usernames;
-	m_events.push_back(event);
+	declare_event(event);
 }
 
 
@@ -969,6 +964,17 @@ void Channel::do_remove_user(const std::string& username)
 {
 	assert(m_participants.count(username));
 	
+	while (!m_participants[username].events.empty()) {
+		auto it = m_participants[username].events.front();
+		m_participants[username].events.pop_front();
+		
+		assert(it->remaining_users.count(username));
+		it->remaining_users.erase(username);
+		if (it->remaining_users.empty()) {
+			m_events.erase(it);
+		}
+	}
+	
 	m_participants.erase(username);
 	for (auto& p : m_participants) {
 		if (!p.second.authorized) {
@@ -977,39 +983,6 @@ void Channel::do_remove_user(const std::string& username)
 		}
 		p.second.timeout_peers.erase(username);
 		p.second.votekick_peers.erase(username);
-	}
-	
-	for (std::vector<Event>::iterator i = m_events.begin(); i != m_events.end(); ) {
-		if (i->type == Message::Type::ChannelStatus) {
-			i->channel_status.remaining_users.erase(username);
-			if (i->channel_status.remaining_users.empty()) {
-				i = m_events.erase(i);
-			} else {
-				++i;
-			}
-		} else if (i->type == Message::Type::ConsistencyCheck) {
-			i->channel_status.remaining_users.erase(username);
-			if (i->channel_status.remaining_users.empty()) {
-				i = m_events.erase(i);
-			} else {
-				++i;
-			}
-		} else if (
-			   i->type == Message::Type::KeyExchangePublicKey
-			|| i->type == Message::Type::KeyExchangeSecretShare
-			|| i->type == Message::Type::KeyExchangeAcceptance
-			|| i->type == Message::Type::KeyExchangeReveal
-			|| i->type == Message::Type::KeyActivation
-		) {
-			i->key_event.remaining_users.erase(username);
-			if (i->key_event.remaining_users.empty()) {
-				i = m_events.erase(i);
-			} else {
-				++i;
-			}
-		} else {
-			++i;
-		}
 	}
 	
 	if (m_interface) {
@@ -1102,6 +1075,23 @@ void Channel::try_channel_split(bool because_votekick)
 
 
 
+void Channel::declare_event(const Event& event, bool set_timeout)
+{
+	std::list<Event>::iterator it = m_events.insert(m_events.end(), event);
+	for (const std::string& username : event.remaining_users) {
+		assert(m_participants.count(username));
+		m_participants[username].events.push_back(it);
+	}
+	
+	/*
+	if (set_timeout) {
+		it->timeout_timer = Timer(m_room->interface(), c_event_timeout, [it] {
+			
+		});
+	}
+	*/
+}
+
 void Channel::send_message(const Message& message)
 {
 	m_room->send_message(message);
@@ -1140,9 +1130,17 @@ Message Channel::channel_status(const std::string& searcher_username, const Hash
 	
 	for (const Event& event : m_events) {
 		if (event.type == Message::Type::ChannelStatus) {
-			result.events.push_back(event.channel_status.encode(result));
+			ChannelStatusEvent channel_status_event;
+			channel_status_event.searcher_username = event.channel_status.searcher_username;
+			channel_status_event.searcher_nonce = event.channel_status.searcher_nonce;
+			channel_status_event.status_message_hash = event.channel_status.status_message_hash;
+			channel_status_event.remaining_users = event.remaining_users;
+			result.events.push_back(channel_status_event.encode(result));
 		} else if (event.type == Message::Type::ConsistencyCheck) {
-			result.events.push_back(event.consistency_check.encode(result));
+			ConsistencyCheckEvent consistency_check_event;
+			consistency_check_event.channel_status_hash = event.consistency_check.channel_status_hash;
+			consistency_check_event.remaining_users = event.remaining_users;
+			result.events.push_back(consistency_check_event.encode(result));
 		} else if (
 			   event.type == Message::Type::KeyExchangePublicKey
 			|| event.type == Message::Type::KeyExchangeSecretShare
@@ -1152,17 +1150,13 @@ Message Channel::channel_status(const std::string& searcher_username, const Hash
 			KeyExchangeEvent key_exchange_event;
 			key_exchange_event.type = event.type;
 			key_exchange_event.key_id = event.key_event.key_id;
-			if (m_encrypted_chat.have_key_exchange(event.key_event.key_id)) {
-				key_exchange_event.cancelled = false;
-			} else {
-				key_exchange_event.cancelled = true;
-				key_exchange_event.remaining_users = event.key_event.remaining_users;
-			}
+			key_exchange_event.cancelled = !m_encrypted_chat.have_key_exchange(event.key_event.key_id);
+			key_exchange_event.remaining_users = event.remaining_users;
 			result.events.push_back(key_exchange_event.encode(result));
 		} else if (event.type == Message::Type::KeyActivation) {
 			KeyActivationEvent key_activation_event;
 			key_activation_event.key_id = event.key_event.key_id;
-			key_activation_event.remaining_users = event.key_event.remaining_users;
+			key_activation_event.remaining_users = event.remaining_users;
 			result.events.push_back(key_activation_event.encode(result));
 		} else {
 			assert(false);
@@ -1222,33 +1216,21 @@ Hash Channel::authentication_token(const std::string& username, const PublicKey&
 	return crypto::hash(buffer);
 }
 
-std::vector<Channel::Event>::iterator Channel::first_user_event(const std::string& username)
+std::list<Channel::Event>::iterator Channel::first_user_event(const std::string& username)
 {
-	for (std::vector<Event>::iterator i = m_events.begin(); i != m_events.end(); ++i) {
-		if (i->type == Message::Type::ChannelStatus) {
-			if (i->channel_status.remaining_users.count(username)) {
-				return i;
-			}
-		} else if (i->type == Message::Type::ConsistencyCheck) {
-			if (i->consistency_check.remaining_users.count(username)) {
-				return i;
-			}
-		} else if (
-			   i->type == Message::Type::KeyExchangePublicKey
-			|| i->type == Message::Type::KeyExchangeSecretShare
-			|| i->type == Message::Type::KeyExchangeAcceptance
-			|| i->type == Message::Type::KeyExchangeReveal
-			|| i->type == Message::Type::KeyActivation
-		) {
-			if (i->key_event.remaining_users.count(username)) {
-				return i;
-			}
-		} else {
-			assert(false);
-		}
+	if (!m_participants.count(username)) {
+		return m_events.end();
 	}
+	Participant& participant = m_participants[username];
+	if (participant.events.empty()) {
+		return m_events.end();
+	}
+	auto it = participant.events.front();
+	participant.events.pop_front();
 	
-	return m_events.end();
+	assert(it->remaining_users.count(username));
+	it->remaining_users.erase(username);
+	return it;
 }
 
 /*
