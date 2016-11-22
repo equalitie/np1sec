@@ -10,55 +10,29 @@ Multiparty communication security implementation of the protocol described by th
 
 ## Library dependencies
 
-The np1sec library requires the following libraries:
+The np1sec library requires the following dependencies:
 
+* cmake >= 2.8
 * libgcrypt >= 1.6.0
 
-The np1sec testsuite, which for the moment is built as a mandatory component of an installation, further requires the following libraries:
+The np1sec test client, which is built by default but can be disabled, further requires the following libraries:
 
 * libglib2
-* libevent
 * libpurple
-* libjsoncpp
-
-The np1sec library is built as a GNU autotools project. To install it from source, you will need pkg-config >= 0.29. To install it from git, you will furthermore need GNU autoconf >= 2.69 and GNU automake >= 1.15.
-
+* libreadline
 
 ## Installing from source
 
-To install np1sec from a source tarball <sup>1</sup>, run the following in the source directory:
+The np1sec library is built using cmake. To install np1sec from source, run the following in the source directory:
 
 ```
-$ ./configure
+$ cmake .
 $ make
 # make install
 ```
 
-<sup>[1]</sup> No np1sec source tarballs have been released as of yet.
-
-
-## Installing from git
-
-To install np1sec from a git checkout, it is necessary to first build the autotools scripts by running the following in the source directory:
-
-```
-./autogen.sh
-```
-
-Afterwards, proceed to "Installing from source".
-
 
 # Testing np1sec
-
-## haveged
-
-The np1sec testsuite uses a lot of system entropy. To ensure a sufficient supply of entropy, it is recommended to have the _haveged_ entropy daemon running during the np1sec tests, to keep the tests from taking a long time.
-
-
-## Running the testsuite
-
-After building the np1sec library (see "Installing from source"), the np1sec testsuite can be run to verify that the library code works as expected. Running the tests should not produce any errors. The testsuite can be invoked by running ```make check```. Alternatively, it can be run in a verbose mode by invoking ```./libnp1sec_test``` instead.
-
 
 ## Running the jabberite test client
 
