@@ -906,7 +906,9 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			return;
 		}
 		
-		m_encrypted_chat.replace_session(message.key_id);
+		if (m_participants.count(sender) && m_participants.at(sender).authorized) {
+			m_encrypted_chat.replace_session(message.key_id);
+		}
 	}
 }
 
