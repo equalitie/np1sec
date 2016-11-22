@@ -379,6 +379,7 @@ Message ChannelStatusMessage::encode() const
 	buffer.add_opaque(votekick_buffer);
 	
 	buffer.add_hash(channel_status_hash);
+	buffer.add_hash(latest_session_id);
 	
 	MessageBuffer key_exchange_buffer;
 	for (const KeyExchangeState& exchange : key_exchanges) {
@@ -438,6 +439,7 @@ ChannelStatusMessage ChannelStatusMessage::decode(const Message& encoded)
 	}
 	
 	result.channel_status_hash = buffer.remove_hash();
+	result.latest_session_id = buffer.remove_hash();
 	
 	MessageBuffer key_exchange_buffer = buffer.remove_opaque();
 	while (!key_exchange_buffer.empty()) {
@@ -771,6 +773,23 @@ UnsignedChatMessagePayload UnsignedChatMessagePayload::decode(const std::string&
 	UnsignedChatMessagePayload result;
 	result.message = buffer.remove_opaque();
 	result.message_id = buffer.remove_64();
+	return result;
+}
+
+Message KeyRatchetMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_hash(key_id);
+	
+	return Message(Message::Type::KeyRatchet, buffer);
+}
+
+KeyRatchetMessage KeyRatchetMessage::decode(const Message& encoded)
+{
+	MessageBuffer buffer(get_message_payload(encoded, Message::Type::KeyRatchet));
+	
+	KeyRatchetMessage result;
+	result.key_id = buffer.remove_hash();
 	return result;
 }
 

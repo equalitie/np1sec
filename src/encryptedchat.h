@@ -21,6 +21,7 @@
 
 #include "keyexchange.h"
 #include "session.h"
+#include "timer.h"
 
 #include <deque>
 #include <map>
@@ -53,12 +54,19 @@ class EncryptedChat
 		return m_sessions.count(key_id) > 0;
 	}
 	std::vector<KeyExchangeState> encode_key_exchanges() const;
+	bool replacing_session(const Hash& key_id) const;
+	const Hash& latest_session_id() const
+	{
+		return m_latest_session_id;
+	}
+	
 	
 	
 	bool in_chat() const;
 	bool user_in_chat(const std::string& username) const;
 	
-	void create_solo_session();
+	void initialize_latest_session(const Hash& session_id);
+	void create_solo_session(const Hash& session_id);
 	void add_user(const std::string& username, const PublicKey& long_term_public_key);
 	void do_add_user(const std::string& username, const PublicKey& long_term_public_key);
 	void remove_users(const std::set<std::string>& usernames);
@@ -69,6 +77,8 @@ class EncryptedChat
 	void user_private_key(const std::string& username, const Hash& key_id, const SerializedPrivateKey& private_key);
 	
 	void user_activation(const std::string& username, const Hash& key_id);
+	
+	void replace_session(const Hash& key_id);
 	
 	
 	
@@ -81,6 +91,7 @@ class EncryptedChat
 	
 	void create_key_exchange();
 	void create_session(const Hash& key_id);
+	void prepare_session_replacement(Hash key_id);
 	void progress_sessions();
 	
 	
@@ -142,6 +153,8 @@ class EncryptedChat
 	std::map<Hash, SessionData> m_sessions;
 	std::deque<Hash> m_session_queue;
 	
+	Hash m_latest_session_id;
+	Timer m_session_ratchet_timer;
 };
 
 } // namespace np1sec

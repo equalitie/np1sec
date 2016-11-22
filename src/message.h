@@ -112,6 +112,7 @@ struct Message
 		
 		KeyActivation = 0x41,
 		Chat = 0x42,
+		KeyRatchet = 0x43,
 	};
 	
 	Message() {}
@@ -255,6 +256,7 @@ struct ChannelStatusMessage
 	std::vector<UnauthorizedParticipant> unauthorized_participants;
 	
 	Hash channel_status_hash;
+	Hash latest_session_id;
 	std::vector<KeyExchangeState> key_exchanges;
 	std::vector<ChannelEvent> events;
 	
@@ -458,11 +460,19 @@ struct ChatMessagePayload : public SignedMessageBody
 	{
 		return SignedMessageBody::verify(signed_message, Message::Type::Chat, key);
 	}
-
+	
 	UnsignedChatMessagePayload decode() const
 	{
 		return UnsignedChatMessagePayload::decode(payload);
 	}
+};
+
+struct KeyRatchetMessage
+{
+	Hash key_id;
+	
+	Message encode() const;
+	static KeyRatchetMessage decode(const Message& encoded);
 };
 
 

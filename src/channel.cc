@@ -49,7 +49,7 @@ Channel::Channel(Room* room):
 	m_participants[self.username] = std::move(self);
 	set_user_channel_status_timer(m_room->username());
 	
-	m_encrypted_chat.create_solo_session();
+	m_encrypted_chat.create_solo_session(m_channel_status_hash);
 }
 
 Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const Message& encoded_message):
@@ -139,6 +139,7 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 	}
 	
 	m_channel_status_hash = channel_status.channel_status_hash;
+	m_encrypted_chat.initialize_latest_session(channel_status.latest_session_id);
 	
 	std::set<Hash> key_exchange_ids;
 	std::set<Hash> key_exchange_event_ids;
@@ -237,6 +238,7 @@ Channel::Channel(Room* room, const ChannelAnnouncementMessage& channel_status, c
 	m_participants[participant.username] = std::move(participant);
 	set_user_channel_status_timer(sender);
 	
+	m_encrypted_chat.initialize_latest_session(m_channel_status_hash);
 	m_encrypted_chat.do_add_user(sender, channel_status.long_term_public_key);
 }
 
@@ -686,7 +688,6 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		} else {
 			m_participants[sender].timeout_peers.erase(message.victim);
 		}
-	
 	} else if (np1sec_message.type == Message::Type::Votekick) {
 		if (!m_participants.count(sender)) {
 			return;
@@ -897,6 +898,15 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 		}
 		
 		m_encrypted_chat.decrypt_message(sender, message);
+	} else if (np1sec_message.type == Message::Type::KeyRatchet) {
+		KeyRatchetMessage message;
+		try {
+			message = KeyRatchetMessage::decode(np1sec_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
+		m_encrypted_chat.replace_session(message.key_id);
 	}
 }
 
@@ -1195,6 +1205,7 @@ Message Channel::channel_status(const std::string& searcher_username, const Hash
 	result.searcher_username = searcher_username;
 	result.searcher_nonce = searcher_nonce;
 	result.channel_status_hash = m_channel_status_hash;
+	result.latest_session_id = m_encrypted_chat.latest_session_id();
 	
 	for (const auto& i : m_participants) {
 		if (i.second.authorized) {

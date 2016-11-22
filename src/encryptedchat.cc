@@ -25,6 +25,9 @@
 namespace np1sec
 {
 
+// timeout, in milliseconds, after which a session gets replaced
+const uint32_t c_session_ratchet_timeout = 120000;
+
 EncryptedChat::EncryptedChat(Channel* channel):
 	m_channel(channel)
 {}
@@ -57,6 +60,11 @@ std::vector<KeyExchangeState> EncryptedChat::encode_key_exchanges() const
 	return output;
 }
 
+bool EncryptedChat::replacing_session(const Hash& key_id) const
+{
+	return !m_key_exchanges.empty() || m_latest_session_id != key_id;
+}
+
 bool EncryptedChat::in_chat() const
 {
 	return user_in_chat(m_channel->room()->username());
@@ -67,9 +75,14 @@ bool EncryptedChat::user_in_chat(const std::string& username) const
 	return m_participants.count(username) && m_participants.at(username).active;
 }
 
-void EncryptedChat::create_solo_session()
+void EncryptedChat::initialize_latest_session(const Hash& session_id)
 {
-	Hash session_id = crypto::nonce_hash();
+	m_latest_session_id = session_id;
+}
+
+void EncryptedChat::create_solo_session(const Hash& session_id)
+{
+	m_latest_session_id = session_id;
 	
 	Participant self;
 	self.username = m_channel->room()->username();
@@ -98,6 +111,8 @@ void EncryptedChat::create_solo_session()
 	session.participants.insert(self);
 	session.session = std::unique_ptr<Session>(new Session(m_channel, session_id, accepted_users, session_symmetric_key, session_private_key));
 	m_sessions[session_id] = std::move(session);
+	
+	prepare_session_replacement(session_id);
 }
 
 void EncryptedChat::add_user(const std::string& username, const PublicKey& long_term_public_key)
@@ -211,6 +226,7 @@ void EncryptedChat::user_key_hash(const std::string& username, const Hash& key_i
 	m_key_exchanges[key_id].key_exchange->set_key_hash(username, key_hash);
 	if (m_key_exchanges.at(key_id).key_exchange->state() == KeyExchange::State::KeyAccepted) {
 		m_channel->add_key_exchange_event(Message::Type::KeyActivation, key_id, m_key_exchanges.at(key_id).key_exchange->users());
+		m_latest_session_id = key_id;
 		
 		if (m_key_exchanges[key_id].key_exchange->contains(m_channel->room()->username())) {
 			create_session(key_id);
@@ -254,6 +270,13 @@ void EncryptedChat::user_activation(const std::string& username, const Hash& key
 	m_participants[username].have_active_session = true;
 	m_participants[username].active_session = key_id;
 	progress_sessions();
+}
+
+void EncryptedChat::replace_session(const Hash& key_id)
+{
+	if (m_key_exchanges.empty() && m_latest_session_id == key_id) {
+		create_key_exchange();
+	}
 }
 
 void EncryptedChat::send_message(const std::string& message)
@@ -391,6 +414,19 @@ void EncryptedChat::create_session(const Hash& key_id)
 	UnsignedKeyActivationMessage message;
 	message.key_id = key_id;
 	m_channel->room()->send_message(KeyActivationMessage::sign(message, m_channel->ephemeral_private_key()));
+	
+	prepare_session_replacement(key_id);
+}
+
+void EncryptedChat::prepare_session_replacement(Hash key_id)
+{
+	m_session_ratchet_timer = Timer(m_channel->room()->interface(), c_session_ratchet_timeout, [key_id, this] {
+		if (m_key_exchanges.empty() && m_latest_session_id == key_id) {
+			KeyRatchetMessage message;
+			message.key_id = key_id;
+			m_channel->room()->send_message(message.encode());
+		}
+	});
 }
 
 void EncryptedChat::progress_sessions()
