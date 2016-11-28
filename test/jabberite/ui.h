@@ -29,7 +29,7 @@ extern "C" {
 #include <string>
 #include <vector>
 
-#include "src/channel.h"
+#include "src/room.h"
 
 
 
@@ -47,8 +47,9 @@ class Jabberite
 	virtual std::string explain_option(char option) = 0;
 	virtual std::string explain_parameter(char option) = 0;
 	
-	
-	
+	void connect();
+	void disconnect();
+/*	
 	void create_channel();
 	void join_channel(int id);
 	void authorize(std::string username);
@@ -56,13 +57,17 @@ class Jabberite
 	void send_chat(std::string message);
 	
 	np1sec::Channel* channel(int id);
-	
+*/	
 	
 	
 	virtual void connected() = 0;
 	virtual void connection_error() = 0;
 	virtual void disconnected() = 0;
 	
+	virtual void user_joined(std::string username, np1sec::PublicKey public_key) = 0;
+	virtual void user_left(std::string username, np1sec::PublicKey public_key) = 0;
+	
+/*	
 	virtual void new_channel(int id, np1sec::Channel* channel) = 0;
 	virtual void channel_removed(int id) = 0;
 	virtual void joined_channel(int id) = 0;
@@ -85,7 +90,7 @@ class Jabberite
 	int channel_id(np1sec::Channel* channel);
 	int add_channel(JabberiteChannelInterface* interface);
 	int remove_channel(np1sec::Channel* channel);
-	
+*/	
 	
 	
 	protected:
@@ -109,7 +114,7 @@ class Jabberite
 	
 	np1sec::Room* room;
 	// interface
-	std::vector<JabberiteChannelInterface*> channels;
+//	std::vector<JabberiteChannelInterface*> channels;
 };
 
 

@@ -92,12 +92,17 @@ class MessageBuffer : public std::string
 struct Message
 {
 	enum class Type {
+		Quit = 0x01,
+		Hello = 0x02,
+		RoomAuthenticationRequest = 0x03,
+		RoomAuthentication = 0x04,
+		
 		ChannelSearch = 0x11,
 		ChannelStatus = 0x12,
 		ChannelAnnouncement = 0x13,
 		JoinRequest = 0x14,
-		AuthenticationRequest = 0x15,
-		Authentication = 0x16,
+//		AuthenticationRequest = 0x15,
+//		Authentication = 0x16,
 		
 		Authorization = 0x21,
 		ConsistencyStatus = 0x22,
@@ -219,6 +224,47 @@ struct ParticipantKeyExchangeState
 
 
 
+struct QuitMessage
+{
+	Hash nonce;
+	
+	Message encode() const;
+	static QuitMessage decode(const Message& encoded);
+};
+
+struct HelloMessage
+{
+	PublicKey long_term_public_key;
+	PublicKey ephemeral_public_key;
+	bool reply;
+	std::string reply_to_username;
+	
+	Message encode() const;
+	static HelloMessage decode(const Message& encoded);
+};
+
+struct RoomAuthenticationRequestMessage
+{
+	std::string username;
+	Hash nonce;
+	
+	Message encode() const;
+	static RoomAuthenticationRequestMessage decode(const Message& encoded);
+};
+
+struct RoomAuthenticationMessage
+{
+	std::string username;
+	Hash authentication_confirmation;
+	
+	Message encode() const;
+	static RoomAuthenticationMessage decode(const Message& encoded);
+};
+
+
+
+
+
 struct ChannelSearchMessage
 {
 	Hash nonce;
@@ -285,6 +331,7 @@ struct JoinRequestMessage
 	static JoinRequestMessage decode(const Message& encoded);
 };
 
+/*
 struct AuthenticationRequestMessage
 {
 	PublicKey sender_long_term_public_key;
@@ -315,6 +362,7 @@ struct AuthenticationMessage
 	Message encode() const;
 	static AuthenticationMessage decode(const Message& encoded);
 };
+*/
 
 
 

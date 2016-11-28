@@ -117,10 +117,12 @@ class RoomInterface
 	/*
 	 * Callbacks
 	 */
-	virtual ChannelInterface* new_channel(Channel* channel) = 0;
-	virtual void channel_removed(Channel* channel) = 0;
-	virtual void joined_channel(Channel* channel) = 0;
+	virtual void connected() = 0;
 	virtual void disconnected() = 0;
+	virtual void user_joined(const std::string& username, const PublicKey& public_key) = 0;
+	virtual void user_left(const std::string& username, const PublicKey& public_key) = 0;
+	// virtual ConversationInterface* created_conversation(Conversation* conversation) = 0;
+	// virtual ConversationInterface* invited_to_conversation(Conversation* conversation) = 0;
 };
 
 } // namespace np1sec

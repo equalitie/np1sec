@@ -70,28 +70,6 @@ PrivateKey::PrivateKey():
 	m_private_key(nullptr)
 {}
 
-/*
-	gcry_ctx_t public_key_parameters;
-	if (gcry_mpi_ec_new(&public_key_parameters, public_key, NULL)) {
-		return nullptr;
-	}
-	
-	gcry_mpi_t scalar = gcry_mpi_ec_get_mpi("q", public_key_parameters, 0);
-	gcry_ctx_release(public_key_parameters);
-	if (!scalar) {
-		return nullptr;
-	}
-	
-	gcry_sexp_t key_sexp;
-	gcry_error_t err = gcry_sexp_build(&key_sexp, NULL, "(public-key (ecc (curve Ed25519) (flags eddsa) (q %m)))", scalar);
-	gcry_mpi_release(scalar);
-	if (err) {
-		return nullptr;
-	}
-	
-	return key_sexp;
-*/
-
 PrivateKey::PrivateKey(gcry_sexp_t sexp)
 {
 	gcry_ctx_t public_key_parameters;

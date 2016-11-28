@@ -320,7 +320,91 @@ static std::set<std::string> decode_user_set(const ChannelStatusMessage& status,
 
 
 
+Message QuitMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_hash(nonce);
+	
+	return Message(Message::Type::Quit, buffer);
+}
 
+QuitMessage QuitMessage::decode(const Message& encoded)
+{
+	MessageBuffer buffer(get_message_payload(encoded, Message::Type::Quit));
+	
+	QuitMessage result;
+	result.nonce = buffer.remove_hash();
+	return result;
+}
+
+Message HelloMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_public_key(long_term_public_key);
+	buffer.add_public_key(ephemeral_public_key);
+	if (reply) {
+		buffer.add_8(1);
+		buffer.add_opaque(reply_to_username);
+	} else {
+		buffer.add_8(0);
+	}
+	
+	return Message(Message::Type::Hello, buffer);
+}
+
+HelloMessage HelloMessage::decode(const Message& encoded)
+{
+	MessageBuffer buffer(get_message_payload(encoded, Message::Type::Hello));
+	
+	HelloMessage result;
+	result.long_term_public_key = buffer.remove_public_key();
+	result.ephemeral_public_key = buffer.remove_public_key();
+	if (buffer.remove_8() != 0) {
+		result.reply = true;
+		result.reply_to_username = buffer.remove_opaque();
+	} else {
+		result.reply = false;
+	}
+	return result;
+}
+
+Message RoomAuthenticationRequestMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_opaque(username);
+	buffer.add_hash(nonce);
+	
+	return Message(Message::Type::RoomAuthenticationRequest, buffer);
+}
+
+RoomAuthenticationRequestMessage RoomAuthenticationRequestMessage::decode(const Message& encoded)
+{
+	MessageBuffer buffer(get_message_payload(encoded, Message::Type::RoomAuthenticationRequest));
+	
+	RoomAuthenticationRequestMessage result;
+	result.username = buffer.remove_opaque();
+	result.nonce = buffer.remove_hash();
+	return result;
+}
+
+Message RoomAuthenticationMessage::encode() const
+{
+	MessageBuffer buffer;
+	buffer.add_opaque(username);
+	buffer.add_hash(authentication_confirmation);
+	
+	return Message(Message::Type::RoomAuthentication, buffer);
+}
+
+RoomAuthenticationMessage RoomAuthenticationMessage::decode(const Message& encoded)
+{
+	MessageBuffer buffer(get_message_payload(encoded, Message::Type::RoomAuthentication));
+	
+	RoomAuthenticationMessage result;
+	result.username = buffer.remove_opaque();
+	result.authentication_confirmation = buffer.remove_hash();
+	return result;
+}
 
 Message ChannelSearchMessage::encode() const
 {
@@ -512,6 +596,7 @@ JoinRequestMessage JoinRequestMessage::decode(const Message& encoded)
 	return result;
 }
 
+/*
 Message AuthenticationRequestMessage::encode() const
 {
 	MessageBuffer buffer;
@@ -567,6 +652,7 @@ AuthenticationMessage AuthenticationMessage::decode(const Message& encoded)
 	result.authentication_confirmation = buffer.remove_hash();
 	return result;
 }
+*/
 
 std::string UnsignedAuthorizationMessage::encode() const
 {

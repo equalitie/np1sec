@@ -22,16 +22,16 @@ include_directories(${GCRYPT_INCLUDE_DIR})
 
 add_library(np1sec
 	src/base64.cc
-	src/channel.cc
-	src/channelcreation.cc
-	src/channelsearch.cc
+#	src/channel.cc
+#	src/channelcreation.cc
+#	src/channelsearch.cc
 	src/crypto.cc
-	src/encryptedchat.cc
-	src/keyexchange.cc
+#	src/encryptedchat.cc
+#	src/keyexchange.cc
 	src/message.cc
-	src/partition.cc
+#	src/partition.cc
 	src/room.cc
-	src/session.cc
+#	src/session.cc
 )
 target_link_libraries(np1sec
 	${GCRYPT_LIBRARY}

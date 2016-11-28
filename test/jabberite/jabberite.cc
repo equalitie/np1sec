@@ -155,8 +155,7 @@ static void process_chat_joined(PurpleConversation* conversation, void* m)
 	Jabberite* jabberite = reinterpret_cast<Jabberite*>(m);
 	jabberite->conversation = conversation;
 	
-	jabberite->room->search_channels();
-	jabberite->connected();
+	jabberite->room->connect();
 }
 
 static void process_chat_join_failed(PurpleConnection*, GHashTable*, void* m)
@@ -196,7 +195,7 @@ static void setup_purple_callbacks(Jabberite* jabberite)
 }
 
 
-
+/*
 class JabberiteChannelInterface final : public np1sec::ChannelInterface
 {
 	public:
@@ -277,7 +276,7 @@ void JabberiteChannelInterface::message_received(const std::string& username, co
 {
 	jabberite->message_received(id(), username, message);
 }
-
+*/
 
 
 class JabberiteRoomInterface : public np1sec::RoomInterface
@@ -287,11 +286,16 @@ class JabberiteRoomInterface : public np1sec::RoomInterface
 	void send_message(const std::string& message);
 	np1sec::TimerToken* set_timer(uint32_t interval, np1sec::TimerCallback* callback);
 	
+	void connected();
+	void disconnected();
+	void user_joined(const std::string& username, const np1sec::PublicKey& public_key);
+	void user_left(const std::string& username, const np1sec::PublicKey& public_key);
+/*	
 	np1sec::ChannelInterface* new_channel(np1sec::Channel* channel);
 	void channel_removed(np1sec::Channel* channel);
 	void joined_channel(np1sec::Channel* channel);
 	void disconnected();
-	
+*/	
 	protected:
 	Jabberite* m_jabberite;
 };
@@ -332,6 +336,31 @@ np1sec::TimerToken* JabberiteRoomInterface::set_timer(uint32_t interval, np1sec:
 	return timer;
 }
 
+
+void JabberiteRoomInterface::connected()
+{
+	m_jabberite->connected();
+}
+
+void JabberiteRoomInterface::disconnected()
+{
+	m_jabberite->disconnected();
+}
+
+void JabberiteRoomInterface::user_joined(const std::string& username, const np1sec::PublicKey& public_key)
+{
+	m_jabberite->user_joined(username, public_key);
+}
+
+void JabberiteRoomInterface::user_left(const std::string& username, const np1sec::PublicKey& public_key)
+{
+	m_jabberite->user_left(username, public_key);
+}
+
+
+
+
+/*
 np1sec::ChannelInterface* JabberiteRoomInterface::new_channel(np1sec::Channel* channel)
 {
 	JabberiteChannelInterface* interface = new JabberiteChannelInterface(m_jabberite, channel);
@@ -351,11 +380,8 @@ void JabberiteRoomInterface::joined_channel(np1sec::Channel* channel)
 	int id = m_jabberite->channel_id(channel);
 	m_jabberite->joined_channel(id);
 }
+*/
 
-void JabberiteRoomInterface::disconnected()
-{
-	m_jabberite->disconnected();
-}
 
 
 
@@ -368,6 +394,21 @@ Jabberite::Jabberite():
 {
 }
 
+void Jabberite::connect()
+{
+	if (room) {
+		room->connect();
+	}
+}
+
+void Jabberite::disconnect()
+{
+	if (room) {
+		room->disconnect();
+	}
+}
+
+/*
 void Jabberite::create_channel()
 {
 	if (room) {
@@ -445,7 +486,7 @@ int Jabberite::remove_channel(np1sec::Channel* channel)
 	}
 	return id;
 }
-
+*/
 
 
 

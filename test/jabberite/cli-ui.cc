@@ -37,6 +37,9 @@ class CliJabberite final : public Jabberite
 	void connection_error();
 	void disconnected();
 	
+	void user_joined(std::string username, np1sec::PublicKey public_key);
+	void user_left(std::string username, np1sec::PublicKey public_key);
+/*	
 	void new_channel(int id, np1sec::Channel* channel);
 	void channel_removed(int id);
 	void joined_channel(int id);
@@ -56,7 +59,7 @@ class CliJabberite final : public Jabberite
 	void message_received(int channel_id, std::string username, std::string message);
 	
 	void dump(int channel_id);
-	void print(const std::string& message);
+*/	void print(const std::string& message);
 	
 	void parse_command(const std::string& line);
 	
@@ -113,6 +116,17 @@ void CliJabberite::disconnected()
 	print("** Disconnected\n");
 }
 
+void CliJabberite::user_joined(std::string username, np1sec::PublicKey public_key)
+{
+	print("** User joined: " + username + "    " + public_key.dump_hex() + "\n");
+}
+
+void CliJabberite::user_left(std::string username, np1sec::PublicKey public_key)
+{
+	print("** User left: " + username + "    " + public_key.dump_hex() + "\n");
+}
+
+/*
 void CliJabberite::new_channel(int id, np1sec::Channel*)
 {
 	print("** Found channel " + std::to_string(id) + ":\n");
@@ -190,7 +204,7 @@ void CliJabberite::user_joined_chat(int channel_id, std::string username)
 	dump(channel_id);
 }
 
-void CliJabberite::message_received(int /*channel_id*/, std::string username, std::string message)
+void CliJabberite::message_received(int channel_id, std::string username, std::string message)
 {
 	print("<" + username + "> " + message + "\n");
 }
@@ -228,6 +242,7 @@ void CliJabberite::dump(int channel_id)
 		}
 	}
 }
+*/
 
 void readline_print(std::string message);
 
@@ -238,6 +253,12 @@ void CliJabberite::print(const std::string& message)
 
 void CliJabberite::parse_command(const std::string& line)
 {
+	if (line == "/connect") {
+		connect();
+	} else if (line == "/disconnect") {
+		disconnect();
+	}
+/*
 	if (line == "/create") {
 		create_channel();
 	} else if (line.substr(0, 5) == "/join") {
@@ -258,6 +279,7 @@ void CliJabberite::parse_command(const std::string& line)
 	} else {
 		send_chat(line);
 	}
+*/
 }
 
 

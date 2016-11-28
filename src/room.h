@@ -19,9 +19,6 @@
 #ifndef SRC_ROOM_H_
 #define SRC_ROOM_H_
 
-#include "channel.h"
-#include "channelcreation.h"
-#include "channelsearch.h"
 #include "interface.h"
 #include "message.h"
 #include "timer.h"
@@ -39,45 +36,49 @@ class Room
 	Room(RoomInterface* interface, const std::string& username, const PrivateKey& private_key);
 	
 	/*
-	 * Provisional public API. This will be redesigned later.
+	 * Accessors
 	 */
-	void join_room();
-	void search_channels();
-	void create_channel();
-	void join_channel(Channel* channel);
-	void authorize(const std::string& username);
-	
-	void votekick(const std::string& username, bool kick)
+	bool connected() const
 	{
-		if (m_channel) {
-			m_channel->votekick(username, kick);
-		}
+		return !m_users.empty();
 	}
 	
-	void send_chat(const std::string& message)
-	{
-		if (m_channel && m_channel->in_chat()) {
-			m_channel->send_chat(message);
-		}
-	}
-	
+	// user list
 	
 	
 	
 	/*
-	 * Accessors
+	 * Operations
+	 */
+	void connect();
+	void disconnect();
+	// void create_conversation();
+	
+	
+	
+	/*
+	 * Callbacks
+	 */
+	void message_received(const std::string& sender, const std::string& text_message);
+	void user_left(const std::string& username);
+	void left_room();
+	
+	
+	
+	/*
+	 * Internal accessors
 	 */
 	const std::string& username() const
 	{
 		return m_username;
 	}
 	
-	const PublicKey& long_term_public_key() const
+	const PublicKey& public_key() const
 	{
 		return m_long_term_private_key.public_key();
 	}
 	
-	const PrivateKey& long_term_private_key() const
+	const PrivateKey& private_key() const
 	{
 		return m_long_term_private_key;
 	}
@@ -88,32 +89,41 @@ class Room
 	}
 	
 	
-	/*
-	 * Callbacks
-	 */
-	void message_received(const std::string& sender, const std::string& text_message);
-	void user_left(const std::string& username);
-	//void left_room();
 	
 	/*
-	 * Internal
+	 * Internal operations
 	 */
-	void disconnect();
-	void joined_channel(std::unique_ptr<Channel> channel);
 	void send_message(const Message& message);
 	void send_message(const std::string& message);
+	
+	
+	
+	protected:
+	void user_removed(const std::string& username);
+	void user_disconnected(const std::string& username);
+	
+	Hash authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, const Hash& nonce);
 	
 	protected:
 	RoomInterface* m_interface;
 	
 	std::string m_username;
 	PrivateKey m_long_term_private_key;
-	
-	std::unique_ptr<Channel> m_channel;
-	std::unique_ptr<ChannelCreation> m_channel_creation;
-	std::unique_ptr<ChannelSearch> m_channel_search;
+	PrivateKey m_ephemeral_private_key;
 	
 	std::deque<std::string> m_message_queue;
+	bool m_disconnecting;
+	Hash m_disconnect_nonce;
+	
+	struct User
+	{
+		std::string username;
+		PublicKey long_term_public_key;
+		PublicKey ephemeral_public_key;
+		bool authenticated;
+		Hash authentication_nonce;
+	};
+	std::map<std::string, User> m_users;
 };
 
 } // namespace np1sec
