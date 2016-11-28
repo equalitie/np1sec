@@ -121,6 +121,15 @@ namespace np1sec
 			const PublicKey& long_term_public_key_2,
 			const PrivateKey& ephemeral_private_key_2
 		);
+		
+		Hash authentication_token(
+			const PrivateKey& my_long_term_key,
+			const PrivateKey& my_ephemeral_key,
+			const PublicKey& peer_long_term_key,
+			const PublicKey& peer_ephemeral_key,
+			const Hash& nonce,
+			const std::string& username
+		);
 	}
 }
 

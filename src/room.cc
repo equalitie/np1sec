@@ -27,7 +27,8 @@ Room::Room(RoomInterface* interface, const std::string& username, const PrivateK
 	m_interface(interface),
 	m_username(username),
 	m_long_term_private_key(private_key),
-	m_disconnecting(false)
+	m_disconnecting(false),
+	m_conversations(this)
 {
 	assert(m_interface);
 }
@@ -58,11 +59,16 @@ void Room::disconnect()
 	
 	m_message_queue.clear();
 	
-	// TODO: disconnect() conversations
+	interface()->disconnected();
 	
 	m_users.clear();
 	
-	interface()->disconnected();
+	m_conversations.disconnect();
+}
+
+void Room::create_conversation()
+{
+	m_conversations.create_conversation();
 }
 
 void Room::message_received(const std::string& sender, const std::string& text_message)
@@ -174,11 +180,13 @@ void Room::message_received(const std::string& sender, const std::string& text_m
 		
 		RoomAuthenticationMessage reply;
 		reply.username = sender;
-		reply.authentication_confirmation = authentication_token(
-			username(),
+		reply.authentication_confirmation = crypto::authentication_token(
+			m_long_term_private_key,
+			m_ephemeral_private_key,
 			user.long_term_public_key,
 			user.ephemeral_public_key,
-			message.nonce
+			message.nonce,
+			username()
 		);
 		send_message(reply.encode());
 	} else if (np1sec_message.type == Message::Type::RoomAuthentication) {
@@ -201,15 +209,32 @@ void Room::message_received(const std::string& sender, const std::string& text_m
 		if (user.authenticated) {
 			return;
 		}
-		if (message.authentication_confirmation == authentication_token(
-			sender,
+		if (message.authentication_confirmation == crypto::authentication_token(
+			m_long_term_private_key,
+			m_ephemeral_private_key,
 			user.long_term_public_key,
 			user.ephemeral_public_key,
-			user.authentication_nonce
+			user.authentication_nonce,
+			sender
 		)) {
 			user.authenticated = true;
 			interface()->user_joined(user.username, user.long_term_public_key);
 		}
+	}
+	
+	if (Message::is_conversation_message(np1sec_message.type)) {
+		ConversationMessage message;
+		try {
+			message = ConversationMessage::decode(np1sec_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
+		if (!message.verify()) {
+			return;
+		}
+		
+		m_conversations.message_received(sender, message);
 	}
 }
 
@@ -251,25 +276,9 @@ void Room::user_removed(const std::string& username)
 
 void Room::user_disconnected(const std::string& username)
 {
-	// TODO: remove user from all conversations
+	m_conversations.user_left(username);
 	
 	user_removed(username);
 }
-
-Hash Room::authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, const Hash& nonce)
-{
-	Hash token = crypto::triple_diffie_hellman(
-		m_long_term_private_key,
-		m_ephemeral_private_key,
-		long_term_public_key,
-		ephemeral_public_key
-	);
-	std::string buffer = token.as_string();
-	buffer += nonce.as_string();
-	buffer += username;
-	return crypto::hash(buffer);
-}
-
-
 
 } // namespace np1sec

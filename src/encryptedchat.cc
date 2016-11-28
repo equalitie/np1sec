@@ -16,7 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "channel.h"
+#include "conversation.h"
 #include "encryptedchat.h"
 #include "room.h"
 
@@ -28,8 +28,8 @@ namespace np1sec
 // timeout, in milliseconds, after which a session gets replaced
 const uint32_t c_session_ratchet_timeout = 120000;
 
-EncryptedChat::EncryptedChat(Channel* channel):
-	m_channel(channel)
+EncryptedChat::EncryptedChat(Conversation* conversation):
+	m_conversation(conversation)
 {}
 
 void EncryptedChat::unserialize_key_exchange(const KeyExchangeState& exchange)
@@ -67,7 +67,7 @@ bool EncryptedChat::replacing_session(const Hash& key_id) const
 
 bool EncryptedChat::in_chat() const
 {
-	return user_in_chat(m_channel->room()->username());
+	return user_in_chat(m_conversation->room()->username());
 }
 
 bool EncryptedChat::user_in_chat(const std::string& username) const
@@ -85,8 +85,8 @@ void EncryptedChat::create_solo_session(const Hash& session_id)
 	m_latest_session_id = session_id;
 	
 	Participant self;
-	self.username = m_channel->room()->username();
-	self.long_term_public_key = m_channel->room()->long_term_public_key();
+	self.username = m_conversation->room()->username();
+	self.long_term_public_key = m_conversation->room()->public_key();
 	self.active = true;
 	self.have_active_session = true;
 	self.active_session = session_id;
@@ -97,8 +97,8 @@ void EncryptedChat::create_solo_session(const Hash& session_id)
 	
 	PrivateKey session_private_key = PrivateKey::generate();
 	KeyExchange::AcceptedUser self_user;
-	self_user.username = m_channel->room()->username();
-	self_user.long_term_public_key = m_channel->room()->long_term_public_key();
+	self_user.username = m_conversation->room()->username();
+	self_user.long_term_public_key = m_conversation->room()->public_key();
 	self_user.ephemeral_public_key = session_private_key.public_key();
 	std::vector<KeyExchange::AcceptedUser> accepted_users;
 	accepted_users.push_back(std::move(self_user));
@@ -109,7 +109,7 @@ void EncryptedChat::create_solo_session(const Hash& session_id)
 	SessionData session;
 	session.active = true;
 	session.participants.insert(self);
-	session.session = std::unique_ptr<Session>(new Session(m_channel, session_id, accepted_users, session_symmetric_key, session_private_key));
+	session.session = std::unique_ptr<Session>(new Session(m_conversation, session_id, accepted_users, session_symmetric_key, session_private_key));
 	m_sessions[session_id] = std::move(session);
 	
 	prepare_session_replacement(session_id);
@@ -184,14 +184,14 @@ void EncryptedChat::user_public_key(const std::string& username, const Hash& key
 	assert(m_key_exchanges.at(key_id).key_exchange->state() == KeyExchange::State::PublicKey);
 	m_key_exchanges[key_id].key_exchange->set_public_key(username, public_key);
 	if (m_key_exchanges.at(key_id).key_exchange->state() == KeyExchange::State::SecretShare) {
-		m_channel->add_key_exchange_event(Message::Type::KeyExchangeSecretShare, key_id, m_key_exchanges.at(key_id).key_exchange->users());
+		m_conversation->add_key_exchange_event(Message::Type::KeyExchangeSecretShare, key_id, m_key_exchanges.at(key_id).key_exchange->users());
 		
-		if (m_key_exchanges[key_id].key_exchange->contains(m_channel->room()->username())) {
-			UnsignedKeyExchangeSecretShareMessage message;
+		if (m_key_exchanges[key_id].key_exchange->contains(m_conversation->room()->username())) {
+			KeyExchangeSecretShareMessage message;
 			message.key_id = key_id;
 			message.group_hash = m_key_exchanges[key_id].key_exchange->group_hash();
 			message.secret_share = m_key_exchanges[key_id].key_exchange->secret_share();
-			m_channel->room()->send_message(KeyExchangeSecretShareMessage::sign(message, m_channel->ephemeral_private_key()));
+			m_conversation->send_message(message.encode());
 		}
 	}
 }
@@ -202,18 +202,18 @@ void EncryptedChat::user_secret_share(const std::string& username, const Hash& k
 	assert(m_key_exchanges.count(key_id));
 	assert(m_key_exchanges.at(key_id).key_exchange->state() == KeyExchange::State::SecretShare);
 	if (m_key_exchanges.at(key_id).key_exchange->group_hash() != group_hash) {
-		m_channel->remove_user(username);
+		m_conversation->remove_user(username);
 		return;
 	}
 	m_key_exchanges[key_id].key_exchange->set_secret_share(username, secret_share);
 	if (m_key_exchanges.at(key_id).key_exchange->state() == KeyExchange::State::Acceptance) {
-		m_channel->add_key_exchange_event(Message::Type::KeyExchangeAcceptance, key_id, m_key_exchanges.at(key_id).key_exchange->users());
+		m_conversation->add_key_exchange_event(Message::Type::KeyExchangeAcceptance, key_id, m_key_exchanges.at(key_id).key_exchange->users());
 		
-		if (m_key_exchanges[key_id].key_exchange->contains(m_channel->room()->username())) {
-			UnsignedKeyExchangeAcceptanceMessage message;
+		if (m_key_exchanges[key_id].key_exchange->contains(m_conversation->room()->username())) {
+			KeyExchangeAcceptanceMessage message;
 			message.key_id = key_id;
 			message.key_hash = m_key_exchanges[key_id].key_exchange->key_hash();
-			m_channel->room()->send_message(KeyExchangeAcceptanceMessage::sign(message, m_channel->ephemeral_private_key()));
+			m_conversation->send_message(message.encode());
 		}
 	}
 }
@@ -225,10 +225,10 @@ void EncryptedChat::user_key_hash(const std::string& username, const Hash& key_i
 	assert(m_key_exchanges.at(key_id).key_exchange->state() == KeyExchange::State::Acceptance);
 	m_key_exchanges[key_id].key_exchange->set_key_hash(username, key_hash);
 	if (m_key_exchanges.at(key_id).key_exchange->state() == KeyExchange::State::KeyAccepted) {
-		m_channel->add_key_exchange_event(Message::Type::KeyActivation, key_id, m_key_exchanges.at(key_id).key_exchange->users());
+		m_conversation->add_key_exchange_event(Message::Type::KeyActivation, key_id, m_key_exchanges.at(key_id).key_exchange->users());
 		m_latest_session_id = key_id;
 		
-		if (m_key_exchanges[key_id].key_exchange->contains(m_channel->room()->username())) {
+		if (m_key_exchanges[key_id].key_exchange->contains(m_conversation->room()->username())) {
 			create_session(key_id);
 		}
 		
@@ -237,13 +237,13 @@ void EncryptedChat::user_key_hash(const std::string& username, const Hash& key_i
 		}
 		erase_key_exchange(key_id);
 	} else if (m_key_exchanges.at(key_id).key_exchange->state() == KeyExchange::State::Reveal) {
-		m_channel->add_key_exchange_event(Message::Type::KeyExchangeReveal, key_id, m_key_exchanges.at(key_id).key_exchange->users());
+		m_conversation->add_key_exchange_event(Message::Type::KeyExchangeReveal, key_id, m_key_exchanges.at(key_id).key_exchange->users());
 		
-		if (m_key_exchanges[key_id].key_exchange->contains(m_channel->room()->username())) {
-			UnsignedKeyExchangeRevealMessage message;
+		if (m_key_exchanges[key_id].key_exchange->contains(m_conversation->room()->username())) {
+			KeyExchangeRevealMessage message;
 			message.key_id = key_id;
 			message.private_key = m_key_exchanges[key_id].key_exchange->serialized_private_key();
-			m_channel->room()->send_message(KeyExchangeRevealMessage::sign(message, m_channel->ephemeral_private_key()));
+			m_conversation->send_message(message.encode());
 		}
 	}
 }
@@ -259,7 +259,7 @@ void EncryptedChat::user_private_key(const std::string& username, const Hash& ke
 		
 		erase_key_exchange(key_id);
 		
-		m_channel->remove_users(malicious_users);
+		m_conversation->remove_users(malicious_users);
 	}
 }
 
@@ -281,8 +281,8 @@ void EncryptedChat::replace_session(const Hash& key_id)
 
 void EncryptedChat::send_message(const std::string& message)
 {
-	assert(m_participants.count(m_channel->room()->username()));
-	assert(m_participants.at(m_channel->room()->username()).active);
+	assert(m_participants.count(m_conversation->room()->username()));
+	assert(m_participants.at(m_conversation->room()->username()).active);
 	
 	const Hash& key_id = m_session_queue.back();
 	m_sessions[key_id].session->send_message(message);
@@ -367,23 +367,23 @@ void EncryptedChat::erase_key_exchange(Hash key_id)
 
 void EncryptedChat::create_key_exchange()
 {
-	Hash key_id = m_channel->channel_status_hash();
+	Hash key_id = m_conversation->conversation_status_hash();
 	
 	assert(!m_key_exchanges.count(key_id));
 	std::map<std::string, PublicKey> users;
 	for (const auto& i : m_participants) {
 		users[i.second.username] = i.second.long_term_public_key;
 	}
-	std::unique_ptr<KeyExchange> exchange(new KeyExchange(key_id, users, m_channel->room()));
+	std::unique_ptr<KeyExchange> exchange(new KeyExchange(key_id, users, m_conversation->room()));
 	insert_key_exchange(std::move(exchange));
 	
-	m_channel->add_key_exchange_event(Message::Type::KeyExchangePublicKey, key_id, m_key_exchanges.at(key_id).key_exchange->users());
+	m_conversation->add_key_exchange_event(Message::Type::KeyExchangePublicKey, key_id, m_key_exchanges.at(key_id).key_exchange->users());
 	
-	if (m_key_exchanges[key_id].key_exchange->contains(m_channel->room()->username())) {
-		UnsignedKeyExchangePublicKeyMessage message;
+	if (m_key_exchanges[key_id].key_exchange->contains(m_conversation->room()->username())) {
+		KeyExchangePublicKeyMessage message;
 		message.key_id = key_id;
 		message.public_key = m_key_exchanges[key_id].key_exchange->public_key();
-		m_channel->room()->send_message(KeyExchangePublicKeyMessage::sign(message, m_channel->ephemeral_private_key()));
+		m_conversation->send_message(message.encode());
 	}
 }
 
@@ -391,11 +391,11 @@ void EncryptedChat::create_session(const Hash& key_id)
 {
 	assert(m_key_exchanges.count(key_id));
 	assert(m_key_exchanges.at(key_id).key_exchange->state() == KeyExchange::State::KeyAccepted);
-	assert(m_key_exchanges.at(key_id).key_exchange->contains(m_channel->room()->username()));
+	assert(m_key_exchanges.at(key_id).key_exchange->contains(m_conversation->room()->username()));
 	assert(!m_sessions.count(key_id));
 	
 	std::vector<KeyExchange::AcceptedUser> users = m_key_exchanges.at(key_id).key_exchange->accepted_users();
-	std::unique_ptr<Session> session(new Session(m_channel, key_id, users, m_key_exchanges.at(key_id).key_exchange->symmetric_key(), m_key_exchanges.at(key_id).key_exchange->private_key()));
+	std::unique_ptr<Session> session(new Session(m_conversation, key_id, users, m_key_exchanges.at(key_id).key_exchange->symmetric_key(), m_key_exchanges.at(key_id).key_exchange->private_key()));
 	
 	for (const auto& user : users) {
 		m_participants[user.username].session_list.push_back(key_id);
@@ -411,20 +411,20 @@ void EncryptedChat::create_session(const Hash& key_id)
 		m_sessions[key_id].participants.insert(identity);
 	}
 	
-	UnsignedKeyActivationMessage message;
+	KeyActivationMessage message;
 	message.key_id = key_id;
-	m_channel->room()->send_message(KeyActivationMessage::sign(message, m_channel->ephemeral_private_key()));
+	m_conversation->send_message(message.encode());
 	
 	prepare_session_replacement(key_id);
 }
 
 void EncryptedChat::prepare_session_replacement(Hash key_id)
 {
-	m_session_ratchet_timer = Timer(m_channel->room()->interface(), c_session_ratchet_timeout, [key_id, this] {
+	m_session_ratchet_timer = Timer(m_conversation->room()->interface(), c_session_ratchet_timeout, [key_id, this] {
 		if (m_key_exchanges.empty() && m_latest_session_id == key_id) {
 			KeyRatchetMessage message;
 			message.key_id = key_id;
-			m_channel->room()->send_message(message.encode());
+			m_conversation->send_message(message.encode());
 		}
 	});
 }
@@ -454,14 +454,14 @@ void EncryptedChat::progress_sessions()
 					if (!m_participants[identity.username].active) {
 						m_participants[identity.username].active = true;
 						if (self_active) {
-							m_channel->interface()->user_joined_chat(identity.username);
+							if (m_conversation->interface()) m_conversation->interface()->user_joined_chat(identity.username);
 						}
 					}
 				}
 				m_sessions[key_id].active = true;
 				
 				if (!self_active) {
-					m_channel->interface()->joined_chat();
+					if (m_conversation->interface()) m_conversation->interface()->joined_chat();
 				}
 			}
 		}

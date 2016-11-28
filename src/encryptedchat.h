@@ -32,12 +32,12 @@
 namespace np1sec
 {
 
-class Channel;
+class Conversation;
 
 class EncryptedChat
 {
 	public:
-	EncryptedChat(Channel* channel);
+	EncryptedChat(Conversation* conversation);
 	void unserialize_key_exchange(const KeyExchangeState& exchange);
 	
 	bool have_key_exchange(const Hash& key_id) const
@@ -79,8 +79,6 @@ class EncryptedChat
 	void user_activation(const std::string& username, const Hash& key_id);
 	
 	void replace_session(const Hash& key_id);
-	
-	
 	
 	void send_message(const std::string& message);
 	void decrypt_message(const std::string& sender, const ChatMessage& encrypted_message);
@@ -140,7 +138,7 @@ class EncryptedChat
 	};
 	
 	
-	Channel* m_channel;
+	Conversation* m_conversation;
 	
 	std::map<std::string, Participant> m_participants;
 	std::map<Identity, FormerParticipant> m_former_participants;

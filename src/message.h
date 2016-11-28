@@ -97,14 +97,16 @@ struct Message
 		RoomAuthenticationRequest = 0x03,
 		RoomAuthentication = 0x04,
 		
-		ChannelSearch = 0x11,
-		ChannelStatus = 0x12,
-		ChannelAnnouncement = 0x13,
-		JoinRequest = 0x14,
-//		AuthenticationRequest = 0x15,
-//		Authentication = 0x16,
+		Invite = 0x11,
+		ConversationStatus = 0x12,
+		ConversationConfirmation = 0x13,
+		InviteAcceptance = 0x14,
+		AuthenticationRequest = 0x15,
+		Authentication = 0x16,
+		AuthenticateInvite = 0x17,
+		CancelInvite = 0x18,
+		Join = 0x19,
 		
-		Authorization = 0x21,
 		ConsistencyStatus = 0x22,
 		ConsistencyCheck = 0x23,
 		Timeout = 0x24,
@@ -116,8 +118,8 @@ struct Message
 		KeyExchangeReveal = 0x34,
 		
 		KeyActivation = 0x41,
-		Chat = 0x42,
-		KeyRatchet = 0x43,
+		KeyRatchet = 0x42,
+		Chat = 0x43,
 	};
 	
 	Message() {}
@@ -128,46 +130,33 @@ struct Message
 	
 	std::string encode() const;
 	static Message decode(const std::string& encoded);
+	
+	static bool is_conversation_message(Type type);
 };
 
-struct SignedMessageBody
+struct UnsignedConversationMessage
 {
-	bool valid;
+	UnsignedConversationMessage() {}
+	UnsignedConversationMessage(Message::Type type_, const std::string& payload_): type(type_), payload(payload_) {}
+	
+	Message::Type type;
 	std::string payload;
-	
-	static std::string sign(const std::string& payload, Message::Type type, const PrivateKey& key);
-	static SignedMessageBody verify(const std::string& encoded, Message::Type type, const PublicKey& key);
 };
 
-template<class MessageBody>
-struct SignedMessage : public SignedMessageBody
+struct ConversationMessage : public UnsignedConversationMessage
 {
-	SignedMessage() {}
-	SignedMessage(SignedMessageBody b): SignedMessageBody(b) {}
+	PublicKey conversation_public_key;
+	Signature signature;
 	
-	static Message sign(const MessageBody& message, const PrivateKey& key)
-	{
-		return Message(MessageBody::type, SignedMessageBody::sign(message.encode(), MessageBody::type, key));
-	}
-	
-	static SignedMessage verify(const Message& encoded, const PublicKey& key)
-	{
-		if (encoded.type != MessageBody::type) {
-			throw MessageFormatException();
-		}
-		return SignedMessageBody::verify(encoded.payload, encoded.type, key);
-	}
-	
-	MessageBody decode() const
-	{
-		return MessageBody::decode(payload);
-	}
+	static Message sign(const UnsignedConversationMessage& message, const PrivateKey& key);
+	static ConversationMessage decode(const Message& encoded);
+	bool verify() const;
 };
 
-struct ChannelEvent
+struct ConversationEvent
 {
-	ChannelEvent() {}
-	ChannelEvent(Message::Type type_, const std::string& payload_): type(type_), payload(payload_) {}
+	ConversationEvent() {}
+	ConversationEvent(Message::Type type_, const std::string& payload_): type(type_), payload(payload_) {}
 	
 	Message::Type type;
 	std::string payload;
@@ -263,147 +252,146 @@ struct RoomAuthenticationMessage
 
 
 
-
-
-struct ChannelSearchMessage
+struct InviteMessage
 {
-	Hash nonce;
+	std::string username;
+	PublicKey long_term_public_key;
 	
-	Message encode() const;
-	static ChannelSearchMessage decode(const Message& encoded);
+	UnsignedConversationMessage encode() const;
+	static InviteMessage decode(const UnsignedConversationMessage& encoded);
 };
 
-struct ChannelStatusMessage
+struct ConversationStatusMessage
 {
 	struct Participant
 	{
 		std::string username;
 		PublicKey long_term_public_key;
-		PublicKey ephemeral_public_key;
-		Hash authorization_nonce;
-	};
-	
-	struct AuthorizedParticipant : public Participant
-	{
+		PublicKey conversation_public_key;
+		
 		std::set<std::string> timeout_peers;
 		std::set<std::string> votekick_peers;
 	};
 	
-	struct UnauthorizedParticipant : public Participant
+	struct ConfirmedInvite
 	{
-		std::set<std::string> authorized_by;
-		std::set<std::string> authorized_peers;
+		std::string inviter;
+		std::string username;
+		PublicKey long_term_public_key;
+		PublicKey conversation_public_key;
+		bool authenticated;
 	};
 	
-	std::string searcher_username;
-	Hash searcher_nonce;
+	struct UnconfirmedInvite
+	{
+		std::string inviter;
+		std::string username;
+		PublicKey long_term_public_key;
+	};
 	
-	std::vector<AuthorizedParticipant> participants;
-	std::vector<UnauthorizedParticipant> unauthorized_participants;
+	std::string invitee_username;
+	PublicKey invitee_long_term_public_key;
 	
-	Hash channel_status_hash;
+	std::vector<Participant> participants;
+	std::vector<ConfirmedInvite> confirmed_invites;
+	std::vector<UnconfirmedInvite> unconfirmed_invites;
+	
+	Hash conversation_status_hash;
 	Hash latest_session_id;
 	std::vector<KeyExchangeState> key_exchanges;
-	std::vector<ChannelEvent> events;
+	std::vector<ConversationEvent> events;
 	
-	Message encode() const;
-	static ChannelStatusMessage decode(const Message& encoded);
+	UnsignedConversationMessage encode() const;
+	static ConversationStatusMessage decode(const UnsignedConversationMessage& encoded);
 };
 
-struct ChannelAnnouncementMessage
+struct ConversationConfirmationMessage
 {
-	PublicKey long_term_public_key;
-	PublicKey ephemeral_public_key;
-	Hash channel_status_hash;
+	std::string invitee_username;
+	PublicKey invitee_long_term_public_key;
+	Hash status_message_hash;
 	
-	Message encode() const;
-	static ChannelAnnouncementMessage decode(const Message& encoded);
+	UnsignedConversationMessage encode() const;
+	static ConversationConfirmationMessage decode(const UnsignedConversationMessage& encoded);
 };
 
-struct JoinRequestMessage
+struct InviteAcceptanceMessage
 {
-	PublicKey long_term_public_key;
-	PublicKey ephemeral_public_key;
+	PublicKey my_long_term_public_key;
+	std::string inviter_username;
+	PublicKey inviter_long_term_public_key;
+	PublicKey inviter_conversation_public_key;
 	
-	std::vector<std::string> peer_usernames;
-	
-	Message encode() const;
-	static JoinRequestMessage decode(const Message& encoded);
+	UnsignedConversationMessage encode() const;
+	static InviteAcceptanceMessage decode(const UnsignedConversationMessage& encoded);
 };
 
-/*
 struct AuthenticationRequestMessage
 {
-	PublicKey sender_long_term_public_key;
-	PublicKey sender_ephemeral_public_key;
+	std::string username;
+	Hash authentication_nonce;
 	
-	std::string peer_username;
-	PublicKey peer_long_term_public_key;
-	PublicKey peer_ephemeral_public_key;
-	
-	Hash nonce;
-	
-	Message encode() const;
-	static AuthenticationRequestMessage decode(const Message& encoded);
+	UnsignedConversationMessage encode() const;
+	static AuthenticationRequestMessage decode(const UnsignedConversationMessage& encoded);
 };
 
 struct AuthenticationMessage
 {
-	PublicKey sender_long_term_public_key;
-	PublicKey sender_ephemeral_public_key;
-	
-	std::string peer_username;
-	PublicKey peer_long_term_public_key;
-	PublicKey peer_ephemeral_public_key;
-	
-	Hash nonce;
+	std::string username;
 	Hash authentication_confirmation;
 	
-	Message encode() const;
-	static AuthenticationMessage decode(const Message& encoded);
+	UnsignedConversationMessage encode() const;
+	static AuthenticationMessage decode(const UnsignedConversationMessage& encoded);
 };
-*/
 
-
-
-struct UnsignedAuthorizationMessage
+struct AuthenticateInviteMessage
 {
 	std::string username;
 	PublicKey long_term_public_key;
-	PublicKey ephemeral_public_key;
-	Hash authorization_nonce;
+	PublicKey conversation_public_key;
 	
-	std::string encode() const;
-	static UnsignedAuthorizationMessage decode(const std::string& encoded);
-	static const Message::Type type = Message::Type::Authorization;
+	UnsignedConversationMessage encode() const;
+	static AuthenticateInviteMessage decode(const UnsignedConversationMessage& encoded);
 };
-typedef struct SignedMessage<UnsignedAuthorizationMessage> AuthorizationMessage;
+
+struct CancelInviteMessage
+{
+	std::string username;
+	PublicKey long_term_public_key;
+	
+	UnsignedConversationMessage encode() const;
+	static CancelInviteMessage decode(const UnsignedConversationMessage& encoded);
+};
+
+struct JoinMessage
+{
+	UnsignedConversationMessage encode() const;
+	static JoinMessage decode(const UnsignedConversationMessage& encoded);
+};
+
+
 
 struct ConsistencyStatusMessage
 {
-	static Message encode()
-	{
-		return Message(Message::Type::ConsistencyStatus, std::string());
-	}
+	UnsignedConversationMessage encode() const;
+	static ConsistencyStatusMessage decode(const UnsignedConversationMessage& encoded);
 };
 
-struct UnsignedConsistencyCheckMessage
+struct ConsistencyCheckMessage
 {
-	Hash channel_status_hash;
+	Hash conversation_status_hash;
 	
-	std::string encode() const;
-	static UnsignedConsistencyCheckMessage decode(const std::string& encoded);
-	static const Message::Type type = Message::Type::ConsistencyCheck;
+	UnsignedConversationMessage encode() const;
+	static ConsistencyCheckMessage decode(const UnsignedConversationMessage& encoded);
 };
-typedef SignedMessage<UnsignedConsistencyCheckMessage> ConsistencyCheckMessage;
 
 struct TimeoutMessage
 {
 	std::string victim;
 	bool timeout;
 	
-	Message encode() const;
-	static TimeoutMessage decode(const Message& encoded);
+	UnsignedConversationMessage encode() const;
+	static TimeoutMessage decode(const UnsignedConversationMessage& encoded);
 };
 
 struct VotekickMessage
@@ -411,138 +399,121 @@ struct VotekickMessage
 	std::string victim;
 	bool kick;
 	
-	Message encode() const;
-	static VotekickMessage decode(const Message& encoded);
+	UnsignedConversationMessage encode() const;
+	static VotekickMessage decode(const UnsignedConversationMessage& encoded);
 };
 
 
 
-struct UnsignedKeyExchangePublicKeyMessage
+struct KeyExchangePublicKeyMessage
 {
 	Hash key_id;
 	PublicKey public_key;
 	
-	std::string encode() const;
-	static UnsignedKeyExchangePublicKeyMessage decode(const std::string& encoded);
-	static const Message::Type type = Message::Type::KeyExchangePublicKey;
+	UnsignedConversationMessage encode() const;
+	static KeyExchangePublicKeyMessage decode(const UnsignedConversationMessage& encoded);
 };
-typedef SignedMessage<UnsignedKeyExchangePublicKeyMessage> KeyExchangePublicKeyMessage;
 
-struct UnsignedKeyExchangeSecretShareMessage
+struct KeyExchangeSecretShareMessage
 {
 	Hash key_id;
 	Hash group_hash;
 	Hash secret_share;
 	
-	std::string encode() const;
-	static UnsignedKeyExchangeSecretShareMessage decode(const std::string& encoded);
-	static const Message::Type type = Message::Type::KeyExchangeSecretShare;
+	UnsignedConversationMessage encode() const;
+	static KeyExchangeSecretShareMessage decode(const UnsignedConversationMessage& encoded);
 };
-typedef SignedMessage<UnsignedKeyExchangeSecretShareMessage> KeyExchangeSecretShareMessage;
 
-struct UnsignedKeyExchangeAcceptanceMessage
+struct KeyExchangeAcceptanceMessage
 {
 	Hash key_id;
 	Hash key_hash;
 	
-	std::string encode() const;
-	static UnsignedKeyExchangeAcceptanceMessage decode(const std::string& encoded);
-	static const Message::Type type = Message::Type::KeyExchangeAcceptance;
+	UnsignedConversationMessage encode() const;
+	static KeyExchangeAcceptanceMessage decode(const UnsignedConversationMessage& encoded);
 };
-typedef SignedMessage<UnsignedKeyExchangeAcceptanceMessage> KeyExchangeAcceptanceMessage;
 
-struct UnsignedKeyExchangeRevealMessage
+struct KeyExchangeRevealMessage
 {
 	Hash key_id;
 	SerializedPrivateKey private_key;
 	
-	std::string encode() const;
-	static UnsignedKeyExchangeRevealMessage decode(const std::string& encoded);
-	static const Message::Type type = Message::Type::KeyExchangeReveal;
+	UnsignedConversationMessage encode() const;
+	static KeyExchangeRevealMessage decode(const UnsignedConversationMessage& encoded);
 };
-typedef SignedMessage<UnsignedKeyExchangeRevealMessage> KeyExchangeRevealMessage;
 
 
 
-struct UnsignedKeyActivationMessage
+struct KeyActivationMessage
 {
 	Hash key_id;
 	
-	std::string encode() const;
-	static UnsignedKeyActivationMessage decode(const std::string& encoded);
-	static const Message::Type type = Message::Type::KeyActivation;
-};
-typedef SignedMessage<UnsignedKeyActivationMessage> KeyActivationMessage;
-
-struct ChatMessage
-{
-	Hash key_id;
-	std::string encrypted_payload;
-	
-	Message encode() const;
-	static ChatMessage decode(const Message& encoded);
-	
-	std::string decrypt(const SymmetricKey& symmetric_key) const;
-	static ChatMessage encrypt(std::string plaintext, const Hash& key_id, const SymmetricKey& symmetric_key);
-};
-struct UnsignedChatMessagePayload
-{
-	std::string message;
-	uint64_t message_id;
-	
-	std::string encode() const;
-	static UnsignedChatMessagePayload decode(const std::string& encoded);
-	static const Message::Type type = Message::Type::Chat;
-};
-struct ChatMessagePayload : public SignedMessageBody
-{
-	ChatMessagePayload() {}
-	ChatMessagePayload(SignedMessageBody b): SignedMessageBody(b) {}
-	
-	static std::string sign(const UnsignedChatMessagePayload payload, const PrivateKey& key)
-	{
-		return SignedMessageBody::sign(payload.encode(), Message::Type::Chat, key);
-	}
-	
-	static ChatMessagePayload verify(std::string signed_message, const PublicKey& key)
-	{
-		return SignedMessageBody::verify(signed_message, Message::Type::Chat, key);
-	}
-	
-	UnsignedChatMessagePayload decode() const
-	{
-		return UnsignedChatMessagePayload::decode(payload);
-	}
+	UnsignedConversationMessage encode() const;
+	static KeyActivationMessage decode(const UnsignedConversationMessage& encoded);
 };
 
 struct KeyRatchetMessage
 {
 	Hash key_id;
 	
-	Message encode() const;
-	static KeyRatchetMessage decode(const Message& encoded);
+	UnsignedConversationMessage encode() const;
+	static KeyRatchetMessage decode(const UnsignedConversationMessage& encoded);
 };
 
 
 
-struct ChannelStatusEventPayload {
-	std::string searcher_username;
-	Hash searcher_nonce;
+struct ChatMessage
+{
+	Hash key_id;
+	std::string encrypted_payload;
+	
+	UnsignedConversationMessage encode() const;
+	static ChatMessage decode(const UnsignedConversationMessage& encoded);
+	
+	std::string decrypt(const SymmetricKey& symmetric_key) const;
+	static ChatMessage encrypt(std::string plaintext, const Hash& key_id, const SymmetricKey& symmetric_key);
+};
+struct UnsignedChatMessage
+{
+	uint64_t message_id;
+	std::string message;
+	
+	std::string signed_body() const;
+};
+struct PlaintextChatMessage : public UnsignedChatMessage
+{
+	Signature signature;
+	
+	static std::string sign(const UnsignedChatMessage& message, const PrivateKey& key);
+	static PlaintextChatMessage decode(const std::string& encoded);
+	bool verify(const PublicKey& key) const;
+};
+
+
+
+struct ConversationStatusEventPayload {
+	std::string invitee_username;
+	PublicKey invitee_long_term_public_key;
 	Hash status_message_hash;
-}; struct ChannelStatusEvent : public ChannelStatusEventPayload {
+}; struct ConversationStatusEvent : public ConversationStatusEventPayload {
 	std::set<std::string> remaining_users;
 	
-	ChannelEvent encode(const ChannelStatusMessage& status) const;
-	static ChannelStatusEvent decode(const ChannelEvent& encoded, const ChannelStatusMessage& status);
+	ConversationEvent encode(const ConversationStatusMessage& status) const;
+	static ConversationStatusEvent decode(const ConversationEvent& encoded, const ConversationStatusMessage& status);
+}; struct ConversationConfirmationEvent : public ConversationStatusEventPayload {
+	std::set<std::string> remaining_users;
+	
+	ConversationEvent encode(const ConversationStatusMessage& status) const;
+	static ConversationConfirmationEvent decode(const ConversationEvent& encoded, const ConversationStatusMessage& status);
 };
 
 struct ConsistencyCheckEventPayload {
-	Hash channel_status_hash;
+	Hash conversation_status_hash;
 }; struct ConsistencyCheckEvent : public ConsistencyCheckEventPayload {
 	std::set<std::string> remaining_users;
 	
-	ChannelEvent encode(const ChannelStatusMessage& status) const;
-	static ConsistencyCheckEvent decode(const ChannelEvent& encoded, const ChannelStatusMessage& status);
+	ConversationEvent encode(const ConversationStatusMessage& status) const;
+	static ConsistencyCheckEvent decode(const ConversationEvent& encoded, const ConversationStatusMessage& status);
 };
 
 struct KeyExchangeEventPayload {
@@ -552,8 +523,8 @@ struct KeyExchangeEventPayload {
 }; struct KeyExchangeEvent : public KeyExchangeEventPayload {
 	std::set<std::string> remaining_users;
 	
-	ChannelEvent encode(const ChannelStatusMessage& status) const;
-	static KeyExchangeEvent decode(const ChannelEvent& encooded, const ChannelStatusMessage& status);
+	ConversationEvent encode(const ConversationStatusMessage& status) const;
+	static KeyExchangeEvent decode(const ConversationEvent& encooded, const ConversationStatusMessage& status);
 };
 
 struct KeyActivationEventPayload {
@@ -561,8 +532,8 @@ struct KeyActivationEventPayload {
 }; struct KeyActivationEvent : public KeyActivationEventPayload {
 	std::set<std::string> remaining_users;
 	
-	ChannelEvent encode(const ChannelStatusMessage& status) const;
-	static KeyActivationEvent decode(const ChannelEvent& encoded, const ChannelStatusMessage& status);
+	ConversationEvent encode(const ConversationStatusMessage& status) const;
+	static KeyActivationEvent decode(const ConversationEvent& encoded, const ConversationStatusMessage& status);
 };
 
 

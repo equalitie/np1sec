@@ -35,7 +35,7 @@ namespace np1sec
  * This is an implementation of Tarjan's strongly connected component
  * algorithm. Ideally, it would be linear in the number of edges of the
  * does-not-want-to-kick graph; but because the input is a wants-to-kick graph,
- * the algorithm ends up being O(n^2). More involved bookkeeping in Channel
+ * the algorithm ends up being O(n^2). More involved bookkeeping in conversation
  * could fix this.
  */
 
@@ -105,7 +105,7 @@ void SccAlgorithm::visit(size_t node_id)
 	}
 }
 
-std::vector<std::set<std::string>> compute_channel_partition(const std::map<std::string, const std::set<std::string>*>& kick_graph)
+std::vector<std::set<std::string>> compute_conversation_partition(const std::map<std::string, const std::set<std::string>*>& kick_graph)
 {
 	SccAlgorithm algorithm(kick_graph);
 	for (const auto& i : kick_graph) {

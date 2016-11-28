@@ -27,12 +27,12 @@
 namespace np1sec
 {
 
-class Channel;
+class Conversation;
 
 class Session
 {
 	public:
-	Session(Channel* channel, const Hash& key_id, const std::vector<KeyExchange::AcceptedUser>& users, const SymmetricKey& symmetric_key, const PrivateKey& private_key);
+	Session(Conversation* conversation, const Hash& key_id, const std::vector<KeyExchange::AcceptedUser>& users, const SymmetricKey& symmetric_key, const PrivateKey& private_key);
 	
 	void send_message(const std::string& message);
 	void decrypt_message(const std::string& sender, const ChatMessage& encrypted_message);
@@ -46,7 +46,7 @@ class Session
 		uint64_t signature_id;
 	};
 	
-	Channel* m_channel;
+	Conversation* m_conversation;
 	Hash m_key_id;
 	std::map<std::string, Participant> m_participants;
 	SymmetricKey m_symmetric_key;

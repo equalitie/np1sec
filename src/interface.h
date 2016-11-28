@@ -36,71 +36,32 @@ class TimerToken
 	virtual void unset() = 0;
 };
 
-class Channel;
+class Conversation;
 
-class ChannelInterface
+
+
+class ConversationInterface
 {
 	public:
-	/*
-	 * A user joined this channel. No cryptographic identity is known yet.
-	 */
-	virtual void user_joined(const std::string& username) = 0;
-	
-	/*
-	 * A user left the channel.
-	 */
-	virtual void user_left(const std::string& username) = 0;
-	
-	/*
-	 * The cryptographic identity of a user was confirmed.
-	 */
+	virtual void user_invited(const std::string& inviter, const std::string& invitee) = 0;
+	// TODO: reason
+	virtual void invitation_cancelled(const std::string& inviter, const std::string& invitee) = 0;
 	virtual void user_authenticated(const std::string& username, const PublicKey& public_key) = 0;
-	
-	/*
-	 * A user failed to authenticate. This indicates an attack!
-	 */
 	virtual void user_authentication_failed(const std::string& username) = 0;
+	virtual void user_joined(const std::string& username) = 0;
+	// TODO: reason
+	virtual void user_left(const std::string& username) = 0;
+	virtual void votekick_registered(const std::string& kicker, const std::string& victim, bool kicked) = 0;
 	
-	/*
-	 * A user <authenticatee> was accepted into the channel by a user <authenticator>.
-	 */
-	virtual void user_authorized_by(const std::string& user, const std::string& target) = 0;
-	
-	/*
-	 * A user got authorized by all participants and is now a full participant.
-	 */
-	virtual void user_promoted(const std::string& username) = 0;
-	
-	
-	/*
-	 * You joined this channel.
-	 */
-	virtual void joined() = 0;
-	
-	/*
-	 * You got authorized by all participants and are now a full participant.
-	 */
-	virtual void authorized() = 0;
-	
-	
-	
-	/*
-	 * The following is a quick sketch and will be redesigned soon.
-	 */
-	/*
-	 * You are now part of the chat, and can send and receive messages.
-	 */
-	virtual void joined_chat() = 0;
-	
-	/*
-	 * A user joined the chat, and can send and receive messages.
-	 */
 	virtual void user_joined_chat(const std::string& username) = 0;
+	virtual void message_received(const std::string& sender, const std::string& message) = 0;
 	
-	/*
-	 * Not implemented yet.
-	 */
-	virtual void message_received(const std::string& username, const std::string& message) = 0;
+	virtual void joined() = 0;
+	virtual void joined_chat() = 0;
+	virtual void left() = 0;
+	
+	// TODO: zombie users?
+	// TODO: transcript consistency?
 };
 
 
@@ -121,8 +82,8 @@ class RoomInterface
 	virtual void disconnected() = 0;
 	virtual void user_joined(const std::string& username, const PublicKey& public_key) = 0;
 	virtual void user_left(const std::string& username, const PublicKey& public_key) = 0;
-	// virtual ConversationInterface* created_conversation(Conversation* conversation) = 0;
-	// virtual ConversationInterface* invited_to_conversation(Conversation* conversation) = 0;
+	virtual ConversationInterface* created_conversation(Conversation* conversation) = 0;
+	virtual ConversationInterface* invited_to_conversation(Conversation* conversation, const std::string& username) = 0;
 };
 
 } // namespace np1sec

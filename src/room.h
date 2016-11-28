@@ -19,13 +19,13 @@
 #ifndef SRC_ROOM_H_
 #define SRC_ROOM_H_
 
+#include "conversationlist.h"
 #include "interface.h"
 #include "message.h"
 #include "timer.h"
 
 #include <deque>
 #include <map>
-#include <memory>
 
 namespace np1sec
 {
@@ -43,7 +43,16 @@ class Room
 		return !m_users.empty();
 	}
 	
-	// user list
+	std::map<std::string, PublicKey> users() const
+	{
+		std::map<std::string, PublicKey> users;
+		for (const auto& i : m_users) {
+			if (i.second.authenticated) {
+				users[i.second.username] = i.second.long_term_public_key;
+			}
+		}
+		return users;
+	}
 	
 	
 	
@@ -52,7 +61,7 @@ class Room
 	 */
 	void connect();
 	void disconnect();
-	// void create_conversation();
+	void create_conversation();
 	
 	
 	
@@ -96,13 +105,21 @@ class Room
 	void send_message(const Message& message);
 	void send_message(const std::string& message);
 	
+	void conversation_add_user(Conversation* conversation, const std::string& username, const PublicKey& conversation_public_key)
+	{
+		m_conversations.conversation_add_user(conversation, username, conversation_public_key);
+	}
+	
+	void conversation_remove_user(Conversation* conversation, const std::string& username, const PublicKey& conversation_public_key)
+	{
+		m_conversations.conversation_remove_user(conversation, username, conversation_public_key);
+	}
+	
 	
 	
 	protected:
 	void user_removed(const std::string& username);
 	void user_disconnected(const std::string& username);
-	
-	Hash authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, const Hash& nonce);
 	
 	protected:
 	RoomInterface* m_interface;
@@ -124,6 +141,8 @@ class Room
 		Hash authentication_nonce;
 	};
 	std::map<std::string, User> m_users;
+	
+	ConversationList m_conversations;
 };
 
 } // namespace np1sec

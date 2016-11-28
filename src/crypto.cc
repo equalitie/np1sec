@@ -589,5 +589,26 @@ Hash reconstruct_triple_diffie_hellman(
 	return triple_diffie_hellman_token(part_1, part_2, part_3);
 }
 
+Hash authentication_token(
+	const PrivateKey& my_long_term_key,
+	const PrivateKey& my_ephemeral_key,
+	const PublicKey& peer_long_term_key,
+	const PublicKey& peer_ephemeral_key,
+	const Hash& nonce,
+	const std::string& username
+)
+{
+	Hash token = triple_diffie_hellman(
+		my_long_term_key,
+		my_ephemeral_key,
+		peer_long_term_key,
+		peer_ephemeral_key
+	);
+	std::string buffer = token.as_string();
+	buffer += nonce.as_string();
+	buffer += username;
+	return hash(buffer);
+}
+
 } // namespace crypto
 } // namespace np1sec

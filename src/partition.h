@@ -33,7 +33,7 @@ namespace np1sec
  * wants to kick everyone in P\Q.
  */
 
-std::vector<std::set<std::string>> compute_channel_partition(const std::map<std::string, const std::set<std::string>*>& kick_graph);
+std::vector<std::set<std::string>> compute_conversation_partition(const std::map<std::string, const std::set<std::string>*>& kick_graph);
 
 } // namespace np1sec
 

@@ -33,7 +33,7 @@ extern "C" {
 
 
 
-class JabberiteChannelInterface;
+class JabberiteConversationInterface;
 
 class Jabberite
 {
@@ -49,15 +49,16 @@ class Jabberite
 	
 	void connect();
 	void disconnect();
-/*	
-	void create_channel();
-	void join_channel(int id);
-	void authorize(std::string username);
-	void votekick(std::string username, bool kick);
-	void send_chat(std::string message);
+	void create_conversation();
 	
-	np1sec::Channel* channel(int id);
-*/	
+	
+	void invite(int conversation_id, std::string username);
+	void join(int conversation_id);
+	void votekick(int conversation_id, std::string username, bool kick);
+	void send_chat(int conversation_id, std::string message);
+	
+	np1sec::Conversation* conversation(int id);
+	
 	
 	
 	virtual void connected() = 0;
@@ -67,30 +68,28 @@ class Jabberite
 	virtual void user_joined(std::string username, np1sec::PublicKey public_key) = 0;
 	virtual void user_left(std::string username, np1sec::PublicKey public_key) = 0;
 	
-/*	
-	virtual void new_channel(int id, np1sec::Channel* channel) = 0;
-	virtual void channel_removed(int id) = 0;
-	virtual void joined_channel(int id) = 0;
+	virtual void created_conversation(int id, np1sec::Conversation* conversation) = 0;
+	virtual void invited_to_conversation(int id, np1sec::Conversation* conversation, std::string username) = 0;
 	
-	virtual void user_joined(int channel_id, std::string username) = 0;
-	virtual void user_left(int channel_id, std::string username) = 0;
-	virtual void user_authenticated(int channel_id, std::string username, np1sec::PublicKey public_key) = 0;
-	virtual void user_authentication_failed(int channel_id, std::string username) = 0;
-	virtual void user_authorized_by(int channel_id, std::string user, std::string target) = 0;
-	virtual void user_promoted(int channel_id, std::string username) = 0;
+	virtual void user_invited(int conversation_id, std::string inviter, std::string invitee) = 0;
+	virtual void invitation_cancelled(int conversation_id, std::string inviter, std::string invitee) = 0;
+	virtual void user_authenticated(int conversation_id, std::string username, np1sec::PublicKey public_key) = 0;
+	virtual void user_authentication_failed(int conversation_id, std::string username) = 0;
+	virtual void user_joined(int conversation_id, std::string username) = 0;
+	virtual void user_left(int conversation_id, std::string username) = 0;
+	virtual void votekick_registered(int conversation_id, std::string kicker, std::string victim, bool kicked) = 0;
 	
-	virtual void joined(int channel_id) = 0;
-	virtual void authorized(int channel_id) = 0;
+	virtual void user_joined_chat(int conversation_id, std::string username) = 0;
+	virtual void message_received(int conversation_id, std::string sender, std::string message) = 0;
 	
-	virtual void joined_chat(int channel_id) = 0;
-	virtual void user_joined_chat(int channel_id, std::string username) = 0;
-	virtual void message_received(int channel_id, std::string username, std::string message) = 0;
+	virtual void joined(int conversation_id) = 0;
+	virtual void joined_chat(int conversation_id) = 0;
+	virtual void left(int conversation_id) = 0;
 	
+	int conversation_id(np1sec::Conversation* conversation);
+	int add_conversation(JabberiteConversationInterface* interface);
+	int remove_conversation(np1sec::Conversation* conversation);
 	
-	int channel_id(np1sec::Channel* channel);
-	int add_channel(JabberiteChannelInterface* interface);
-	int remove_channel(np1sec::Channel* channel);
-*/	
 	
 	
 	protected:
@@ -108,13 +107,13 @@ class Jabberite
 	
 	PurpleAccount* account;
 	PurpleConnection* connection;
-	PurpleConversation* conversation;
+	PurpleConversation* conv;
 	
 	bool frozen;
 	
 	np1sec::Room* room;
 	// interface
-//	std::vector<JabberiteChannelInterface*> channels;
+	std::vector<JabberiteConversationInterface*> conversations;
 };
 
 

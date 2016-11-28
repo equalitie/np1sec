@@ -20,110 +20,109 @@
 #include "partition.h"
 #include "room.h"
 
+#include <iostream>
+
 namespace np1sec
 {
 
 // TODO
 // timeout, in milliseconds, for responding to an event
 const uint32_t c_event_timeout = 60000;
-// time, in milliseconds, after which a channel status event needs to be announced if one hasn't already
-const uint32_t c_channel_status_frequency = 30000;
+// time, in milliseconds, after which a conversation status event needs to be announced if one hasn't already
+const uint32_t c_conversation_status_frequency = 30000;
 
-Channel::Channel(Room* room):
+Conversation::Conversation(Room* room):
 	m_room(room),
-	m_ephemeral_private_key(PrivateKey::generate()),
+	m_conversation_private_key(PrivateKey::generate()),
 	m_interface(nullptr),
-	m_joined(true),
-	m_active(false),
-	m_authorized(true),
-	m_channel_status_hash(crypto::nonce_hash()),
+	m_conversation_status_hash(crypto::nonce_hash()),
 	m_encrypted_chat(this)
 {
 	Participant self;
+	self.is_participant = true;
 	self.username = m_room->username();
-	self.long_term_public_key = m_room->long_term_public_key();
-	self.ephemeral_public_key = ephemeral_public_key();
-	self.authorization_nonce = m_channel_status_hash;
-	self.authorized = true;
+	self.long_term_public_key = m_room->public_key();
+	self.conversation_public_key = m_conversation_private_key.public_key();
 	self.authentication_status = AuthenticationStatus::Authenticated;
+	self.timeout_in_flight = false;
+	self.votekick_in_flight = false;
 	m_participants[self.username] = std::move(self);
-	set_user_channel_status_timer(m_room->username());
+	set_conversation_status_timer();
+	set_user_conversation_status_timer(m_room->username());
 	
-	m_encrypted_chat.create_solo_session(m_channel_status_hash);
+	m_encrypted_chat.create_solo_session(m_conversation_status_hash);
 }
 
-Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const Message& encoded_message):
+Conversation::Conversation(Room* room, const ConversationStatusMessage& conversation_status, const std::string& sender, const ConversationMessage& encoded_message):
 	m_room(room),
-	m_ephemeral_private_key(PrivateKey::generate()),
+	m_conversation_private_key(PrivateKey::generate()),
 	m_interface(nullptr),
-	m_joined(false),
-	m_active(false),
-	m_authorized(false),
-	m_encrypted_chat(this),
-	m_authentication_nonce(crypto::nonce_hash())
+	m_encrypted_chat(this)
 {
-	/*
-	 * The event queue in the channel_status message does not contain the
-	 * event describing this status message, so we need to construct it.
-	 */
-	Event channel_status_event;
-	channel_status_event.type = Message::Type::ChannelStatus;
-	channel_status_event.channel_status.searcher_username = channel_status.searcher_username;
-	channel_status_event.channel_status.searcher_nonce = channel_status.searcher_nonce;
-	channel_status_event.channel_status.status_message_hash = crypto::hash(encoded_message.payload);
-	
-	for (const ChannelStatusMessage::AuthorizedParticipant& p : channel_status.participants) {
+	for (const ConversationStatusMessage::Participant& p : conversation_status.participants) {
 		Participant participant;
+		participant.is_participant = true;
 		participant.username = p.username;
 		participant.long_term_public_key = p.long_term_public_key;
-		participant.ephemeral_public_key = p.ephemeral_public_key;
-		participant.authorization_nonce = p.authorization_nonce;
-		participant.authorized = true;
+		participant.conversation_public_key = p.conversation_public_key;
 		participant.authentication_status = AuthenticationStatus::Unauthenticated;
+		participant.timeout_in_flight = false;
+		participant.votekick_in_flight = false;
 		
 		if (m_participants.count(participant.username)) {
 			throw MessageFormatException();
 		}
 		
-		m_participants[participant.username] = std::move(participant);
-		set_user_channel_status_timer(p.username);
-		
-		channel_status_event.remaining_users.insert(p.username);
-		
+		m_participants[p.username] = std::move(participant);
+		set_user_conversation_status_timer(p.username);
 		m_encrypted_chat.do_add_user(p.username, p.long_term_public_key);
 	}
 	
-	for (const ChannelStatusMessage::UnauthorizedParticipant& p : channel_status.unauthorized_participants) {
+	for (const ConversationStatusMessage::ConfirmedInvite& i : conversation_status.confirmed_invites) {
 		Participant participant;
-		participant.username = p.username;
-		participant.long_term_public_key = p.long_term_public_key;
-		participant.ephemeral_public_key = p.ephemeral_public_key;
-		participant.authorization_nonce = p.authorization_nonce;
-		participant.authorized = false;
+		participant.is_participant = false;
+		participant.username = i.username;
+		participant.long_term_public_key = i.long_term_public_key;
+		participant.conversation_public_key = i.conversation_public_key;
+		participant.inviter = i.inviter;
+		participant.authenticated = i.authenticated;
 		participant.authentication_status = AuthenticationStatus::Unauthenticated;
-		
-		for (const std::string& peer : p.authorized_by) {
-			if (m_participants.count(peer)) {
-				participant.authorized_by.insert(peer);
-			}
-		}
-		for (const std::string& peer : p.authorized_peers) {
-			if (m_participants.count(peer)) {
-				participant.authorized_peers.insert(peer);
-			}
-		}
+		participant.timeout_in_flight = false;
+		participant.votekick_in_flight = false;
 		
 		if (m_participants.count(participant.username)) {
 			throw MessageFormatException();
 		}
+		if (!m_participants.count(participant.inviter)) {
+			throw MessageFormatException();
+		}
 		
-		m_participants[participant.username] = std::move(participant);
-		set_user_channel_status_timer(p.username);
-		
-		channel_status_event.remaining_users.insert(p.username);
+		m_participants[i.username] = std::move(participant);
+		set_user_conversation_status_timer(i.username);
 	}
 	
-	for (const ChannelStatusMessage::AuthorizedParticipant& p : channel_status.participants) {
+	if (m_participants.count(m_room->username())) {
+		throw MessageFormatException();
+	}
+	
+	for (const ConversationStatusMessage::UnconfirmedInvite& i : conversation_status.unconfirmed_invites) {
+		UnconfirmedInvite invite;
+		invite.inviter = i.inviter;
+		invite.username = i.username;
+		invite.long_term_public_key = i.long_term_public_key;
+		
+		if (m_participants.count(invite.username)) {
+			throw MessageFormatException();
+		}
+		if (!m_participants.count(invite.inviter)) {
+			throw MessageFormatException();
+		}
+		
+		m_unconfirmed_invites[i.username][i.long_term_public_key] = std::move(invite);
+		m_participants[i.inviter].invitees[i.username] = i.long_term_public_key;
+	}
+	
+	for (const ConversationStatusMessage::Participant& p : conversation_status.participants) {
 		for (const std::string& username : p.timeout_peers) {
 			if (!m_participants.count(username)) {
 				throw MessageFormatException();
@@ -138,14 +137,14 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 		}
 	}
 	
-	m_channel_status_hash = channel_status.channel_status_hash;
-	m_encrypted_chat.initialize_latest_session(channel_status.latest_session_id);
+	m_conversation_status_hash = conversation_status.conversation_status_hash;
+	m_encrypted_chat.initialize_latest_session(conversation_status.latest_session_id);
 	
 	std::set<Hash> key_exchange_ids;
 	std::set<Hash> key_exchange_event_ids;
 	std::set<Hash> key_activation_event_ids;
 	std::set<Hash> key_ids_seen;
-	for (const KeyExchangeState& exchange : channel_status.key_exchanges) {
+	for (const KeyExchangeState& exchange : conversation_status.key_exchanges) {
 		if (key_exchange_ids.count(exchange.key_id)) {
 			throw MessageFormatException();
 		}
@@ -155,24 +154,28 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 		key_exchange_ids.insert(exchange.key_id);
 	}
 	
-	for (const ChannelEvent& channel_event : channel_status.events) {
+	for (const ConversationEvent& conversation_event : conversation_status.events) {
 		Event event;
-		event.type = channel_event.type;
-		if (channel_event.type == Message::Type::ChannelStatus) {
-			ChannelStatusEvent e = ChannelStatusEvent::decode(channel_event, channel_status);
-			event.channel_status = e;
+		event.type = conversation_event.type;
+		if (conversation_event.type == Message::Type::ConversationStatus) {
+			ConversationStatusEvent e = ConversationStatusEvent::decode(conversation_event, conversation_status);
+			event.conversation_status = e;
 			event.remaining_users = e.remaining_users;
-		} else if (channel_event.type == Message::Type::ConsistencyCheck) {
-			ConsistencyCheckEvent e = ConsistencyCheckEvent::decode(channel_event, channel_status);
+		} else if (conversation_event.type == Message::Type::ConversationConfirmation) {
+			ConversationConfirmationEvent e = ConversationConfirmationEvent::decode(conversation_event, conversation_status);
+			event.conversation_status = e;
+			event.remaining_users = e.remaining_users;
+		} else if (conversation_event.type == Message::Type::ConsistencyCheck) {
+			ConsistencyCheckEvent e = ConsistencyCheckEvent::decode(conversation_event, conversation_status);
 			event.consistency_check = e;
 			event.remaining_users = e.remaining_users;
 		} else if (
-			   channel_event.type == Message::Type::KeyExchangePublicKey
-			|| channel_event.type == Message::Type::KeyExchangeSecretShare
-			|| channel_event.type == Message::Type::KeyExchangeAcceptance
-			|| channel_event.type == Message::Type::KeyExchangeReveal
+			   conversation_event.type == Message::Type::KeyExchangePublicKey
+			|| conversation_event.type == Message::Type::KeyExchangeSecretShare
+			|| conversation_event.type == Message::Type::KeyExchangeAcceptance
+			|| conversation_event.type == Message::Type::KeyExchangeReveal
 		) {
-			KeyExchangeEvent e = KeyExchangeEvent::decode(channel_event, channel_status);
+			KeyExchangeEvent e = KeyExchangeEvent::decode(conversation_event, conversation_status);
 			event.key_event.key_id = e.key_id;
 			if (e.cancelled) {
 				if (key_exchange_ids.count(event.key_event.key_id)) {
@@ -189,8 +192,8 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 				key_exchange_event_ids.insert(event.key_event.key_id);
 				event.remaining_users = m_encrypted_chat.remaining_users(e.key_id);
 			}
-		} else if (channel_event.type == Message::Type::KeyActivation) {
-			KeyActivationEvent e = KeyActivationEvent::decode(channel_event, channel_status);
+		} else if (conversation_event.type == Message::Type::KeyActivation) {
+			KeyActivationEvent e = KeyActivationEvent::decode(conversation_event, conversation_status);
 			event.key_event = e;
 			event.remaining_users = e.remaining_users;
 			if (key_exchange_ids.count(event.key_event.key_id)) {
@@ -213,42 +216,159 @@ Channel::Channel(Room* room, const ChannelStatusMessage& channel_status, const M
 		throw MessageFormatException();
 	}
 	
-	declare_event(std::move(channel_status_event));
-}
-
-Channel::Channel(Room* room, const ChannelAnnouncementMessage& channel_status, const std::string& sender):
-	m_room(room),
-	m_ephemeral_private_key(PrivateKey::generate()),
-	m_interface(nullptr),
-	m_joined(false),
-	m_active(false),
-	m_authorized(false),
-	m_encrypted_chat(this),
-	m_authentication_nonce(crypto::nonce_hash())
-{
-	m_channel_status_hash = channel_status.channel_status_hash;
+	m_status_message_hash = crypto::hash(encoded_message.payload);
+	for (const auto& i : m_participants) {
+		m_unconfirmed_users.insert(i.second.username);
+	}
 	
-	Participant participant;
-	participant.username = sender;
-	participant.long_term_public_key = channel_status.long_term_public_key;
-	participant.ephemeral_public_key = channel_status.ephemeral_public_key;
-	participant.authorization_nonce = channel_status.channel_status_hash;
-	participant.authorized = true;
-	participant.authentication_status = AuthenticationStatus::Unauthenticated;
-	m_participants[participant.username] = std::move(participant);
-	set_user_channel_status_timer(sender);
+	/*
+	 * The event queue in the conversation_status message does not contain the
+	 * event describing this status message, so we need to construct it.
+	 */
+	Event conversation_status_event;
+	conversation_status_event.type = Message::Type::ConversationStatus;
+	conversation_status_event.conversation_status.invitee_username = m_room->username();
+	conversation_status_event.conversation_status.invitee_long_term_public_key = m_room->public_key();
+	conversation_status_event.conversation_status.status_message_hash = m_status_message_hash;
+	conversation_status_event.remaining_users.insert(sender);
+	declare_event(std::move(conversation_status_event));
+}
+
+
+
+std::set<std::string> Conversation::participants() const
+{
+	std::set<std::string> participants;
+	for (const auto& i : m_participants) {
+		if (i.second.is_participant) {
+			participants.insert(i.second.username);
+		}
+	}
+	return participants;
+}
+
+std::set<std::string> Conversation::invitees() const
+{
+	std::set<std::string> invitees;
+	for (const auto& i : m_participants) {
+		if (!i.second.is_participant && i.second.authenticated) {
+			invitees.insert(i.second.username);
+		}
+	}
+	return invitees;
+}
+
+bool Conversation::user_is_authenticated(const std::string& username) const
+{
+	if (!m_participants.count(username)) {
+		throw InvalidUserException();
+	}
+	if (!m_participants.at(username).is_participant && !m_participants.at(username).authenticated) {
+		throw InvalidUserException();
+	}
+	return m_participants.at(username).authentication_status == AuthenticationStatus::Authenticated;
+}
+
+bool Conversation::user_failed_authentication(const std::string& username) const
+{
+	if (!m_participants.count(username)) {
+		throw InvalidUserException();
+	}
+	if (!m_participants.at(username).is_participant && !m_participants.at(username).authenticated) {
+		throw InvalidUserException();
+	}
+	return m_participants.at(username).authentication_status == AuthenticationStatus::AuthenticationFailed;
+}
+
+PublicKey Conversation::user_public_key(const std::string& username) const
+{
+	if (!m_participants.count(username)) {
+		throw InvalidUserException();
+	}
+	if (!m_participants.at(username).is_participant && !m_participants.at(username).authenticated) {
+		throw InvalidUserException();
+	}
+	if (m_participants.at(username).authentication_status != AuthenticationStatus::Authenticated) {
+		throw InvalidUserException();
+	}
+	return m_participants.at(username).long_term_public_key;
+}
+
+bool Conversation::participant_in_chat(const std::string& username) const
+{
+	if (!m_participants.count(username)) {
+		throw InvalidUserException();
+	}
+	if (!m_participants.at(username).is_participant) {
+		throw InvalidUserException();
+	}
+	return m_encrypted_chat.user_in_chat(username);
+}
+
+std::string Conversation::invitee_inviter(const std::string& username) const
+{
+	if (!m_participants.count(username)) {
+		throw InvalidUserException();
+	}
+	if (m_participants.at(username).is_participant || !m_participants.at(username).authenticated) {
+		throw InvalidUserException();
+	}
+	return m_participants.at(username).inviter;
+}
+
+bool Conversation::in_chat() const
+{
+	return m_encrypted_chat.user_in_chat(m_room->username());
+}
+
+bool Conversation::is_invite() const
+{
+	assert(m_participants.count(m_room->username()));
+	assert(m_participants.at(m_room->username()).is_participant || m_participants.at(m_room->username()).authenticated);
+	return !m_participants.at(m_room->username()).is_participant;
+}
+
+
+
+void Conversation::invite(const std::string& username, const PublicKey& long_term_public_key)
+{
+	if (!m_participants.count(m_room->username())) {
+		return;
+	}
+	if (!m_participants.at(m_room->username()).is_participant) {
+		return;
+	}
+	if (m_participants.count(username)) {
+		return;
+	}
 	
-	m_encrypted_chat.initialize_latest_session(m_channel_status_hash);
-	m_encrypted_chat.do_add_user(sender, channel_status.long_term_public_key);
+	InviteMessage message;
+	message.username = username;
+	message.long_term_public_key = long_term_public_key;
+	send_message(message.encode());
 }
 
-void Channel::send_chat(const std::string& message)
+void Conversation::join()
 {
-	m_encrypted_chat.send_message(message);
+	if (!m_participants.count(m_room->username())) {
+		return;
+	}
+	if (m_participants.at(m_room->username()).is_participant) {
+		return;
+	}
+	if (!m_participants.at(m_room->username()).authenticated) {
+		return;
+	}
+	
+	JoinMessage message;
+	send_message(message.encode());
 }
 
-void Channel::votekick(const std::string& username, bool kick)
+void Conversation::votekick(const std::string& username, bool kick)
 {
+	if (!m_participants.count(m_room->username())) {
+		return;
+	}
 	if (!m_participants.count(username)) {
 		return;
 	}
@@ -256,7 +376,7 @@ void Channel::votekick(const std::string& username, bool kick)
 	Participant& participant = m_participants[username];
 	if (participant.votekick_in_flight != kick) {
 		participant.votekick_in_flight = kick;
-		if (m_authorized) {
+		if (m_participants.at(m_room->username()).is_participant) {
 			VotekickMessage message;
 			message.victim = username;
 			message.kick = kick;
@@ -265,476 +385,528 @@ void Channel::votekick(const std::string& username, bool kick)
 	}
 }
 
-void Channel::announce()
+void Conversation::send_chat(const std::string& message)
 {
-	ChannelAnnouncementMessage message;
-	message.long_term_public_key = m_room->long_term_public_key();
-	message.ephemeral_public_key = ephemeral_public_key();
-	message.channel_status_hash = m_channel_status_hash;
-	send_message(message.encode());
+	m_encrypted_chat.send_message(message);
 }
 
-void Channel::confirm_participant(const std::string& username)
-{
-	if (!m_participants.count(username)) {
-		return;
-	}
-	
-	Participant& participant = m_participants[username];
-	if (participant.authentication_status == AuthenticationStatus::Unauthenticated) {
-		participant.authentication_status = AuthenticationStatus::AuthenticatingWithNonce;
-		
-		AuthenticationRequestMessage request;
-		request.sender_long_term_public_key = m_room->long_term_public_key();
-		request.sender_ephemeral_public_key = ephemeral_public_key();
-		request.peer_username = participant.username;
-		request.peer_long_term_public_key = participant.long_term_public_key;
-		request.peer_ephemeral_public_key = participant.ephemeral_public_key;
-		request.nonce = m_authentication_nonce;
-		send_message(request.encode());
-	}
-}
 
-void Channel::join()
-{
-	JoinRequestMessage message;
-	message.long_term_public_key = m_room->long_term_public_key();
-	message.ephemeral_public_key = ephemeral_public_key();
-	
-	for (const auto& i : m_participants) {
-		message.peer_usernames.push_back(i.first);
-	}
-	
-	send_message(message.encode());
-}
 
-void Channel::activate()
+void Conversation::message_received(const std::string& sender, const ConversationMessage& conversation_message)
 {
-	m_active = true;
-	
-	set_channel_status_timer();
-}
-
-void Channel::authorize(const std::string& username)
-{
-	if (!m_participants.count(username)) {
-		return;
-	}
-	
-	if (username == m_room->username()) {
-		return;
-	}
-	
-	Participant& participant = m_participants[username];
-	Participant& self = m_participants[m_room->username()];
-	
-	if (self.authorized) {
-		if (participant.authorized) {
-			return;
-		}
-		
-		if (participant.authorized_by.count(m_room->username())) {
-			return;
-		}
+#ifndef NDEBUG
+	assert(conversation_message.verify());
+	if (m_participants.count(sender)) {
+		assert(conversation_message.conversation_public_key == m_participants.at(sender).conversation_public_key);
 	} else {
-		if (!participant.authorized) {
-			return;
-		}
-		
-		if (self.authorized_peers.count(username)) {
-			return;
-		}
-	}
-	
-	UnsignedAuthorizationMessage message;
-	message.username = participant.username;
-	message.long_term_public_key = participant.long_term_public_key;
-	message.ephemeral_public_key = participant.ephemeral_public_key;
-	message.authorization_nonce = participant.authorization_nonce;
-	send_message(AuthorizationMessage::sign(message, m_ephemeral_private_key));
-}
-
-void Channel::message_received(const std::string& sender, const Message& np1sec_message)
-{
-	hash_message(sender, np1sec_message);
-	
-	if (np1sec_message.type == Message::Type::ChannelSearch) {
-		ChannelSearchMessage message;
+		assert(conversation_message.type == Message::Type::InviteAcceptance);
+		InviteAcceptanceMessage invite_acceptance_message;
 		try {
-			message = ChannelSearchMessage::decode(np1sec_message);
+			invite_acceptance_message = InviteAcceptanceMessage::decode(conversation_message);
+		} catch(MessageFormatException) {
+			assert(false);
+		}
+		assert(m_participants.count(invite_acceptance_message.inviter_username));
+		assert(invite_acceptance_message.inviter_conversation_public_key == m_participants.at(invite_acceptance_message.inviter_username).conversation_public_key);
+	}
+#endif
+	
+	hash_message(sender, conversation_message);
+	
+	if (conversation_message.type == Message::Type::Invite) {
+		InviteMessage message;
+		try {
+			message = InviteMessage::decode(conversation_message);
 		} catch(MessageFormatException) {
 			return;
 		}
 		
+		if (!m_participants.count(sender)) {
+			return;
+		}
+		
+		if (m_participants.count(message.username)) {
+			return;
+		}
+		
+		if (
+			   m_unconfirmed_invites.count(message.username)
+			&& m_unconfirmed_invites.at(message.username).count(message.long_term_public_key)
+		) {
+			return;
+		}
+		
+		if (m_participants.at(sender).invitees.count(message.username)) {
+			PublicKey old_public_key = m_participants.at(sender).invitees.at(message.username);
+			assert(m_unconfirmed_invites.count(message.username));
+			assert(m_unconfirmed_invites.at(message.username).count(old_public_key));
+			assert(m_unconfirmed_invites.at(message.username).at(old_public_key).inviter == sender);
+			m_unconfirmed_invites[message.username].erase(old_public_key);
+		}
+		
+		UnconfirmedInvite invite;
+		invite.inviter = sender;
+		invite.username = message.username;
+		invite.long_term_public_key = message.long_term_public_key;
+		
+		m_unconfirmed_invites[message.username][message.long_term_public_key] = std::move(invite);
+		
+		m_participants[sender].invitees[message.username] = message.long_term_public_key;
+		
 		Event consistency_check_event;
 		consistency_check_event.type = Message::Type::ConsistencyCheck;
-		consistency_check_event.consistency_check.channel_status_hash = m_channel_status_hash;
+		consistency_check_event.consistency_check.conversation_status_hash = m_conversation_status_hash;
 		for (const auto& i : m_participants) {
 			consistency_check_event.remaining_users.insert(i.second.username);
-			set_user_channel_status_timer(i.second.username);
+			set_user_conversation_status_timer(i.second.username);
 		}
 		declare_event(std::move(consistency_check_event));
 		
-		if (m_active) {
-			UnsignedConsistencyCheckMessage consistency_check_message;
-			consistency_check_message.channel_status_hash = m_channel_status_hash;
-			send_message(ConsistencyCheckMessage::sign(consistency_check_message, m_ephemeral_private_key));
+		if (m_participants.count(m_room->username())) {
+			ConsistencyCheckMessage consistency_check_message;
+			consistency_check_message.conversation_status_hash = m_conversation_status_hash;
+			send_message(consistency_check_message.encode());
+			set_conversation_status_timer();
 		}
 		
-		Message reply = channel_status(sender, message.nonce);
+		UnsignedConversationMessage reply = conversation_status(message.username, message.long_term_public_key);
 		
 		Event reply_event;
-		reply_event.type = Message::Type::ChannelStatus;
-		reply_event.channel_status.searcher_username = sender;
-		reply_event.channel_status.searcher_nonce = message.nonce;
-		reply_event.channel_status.status_message_hash = crypto::hash(reply.payload);
-		for (const auto& i : m_participants) {
-			reply_event.remaining_users.insert(i.second.username);
-		}
+		reply_event.type = Message::Type::ConversationStatus;
+		reply_event.conversation_status.invitee_username = message.username;
+		reply_event.conversation_status.invitee_long_term_public_key = message.long_term_public_key;
+		reply_event.conversation_status.status_message_hash = crypto::hash(reply.payload);
+		reply_event.remaining_users.insert(sender);
 		declare_event(std::move(reply_event));
 		
-		if (m_active) {
+		if (sender == m_room->username()) {
 			send_message(reply);
 		}
-	} else if (np1sec_message.type == Message::Type::ChannelStatus) {
-		ChannelStatusMessage message;
+	} else if (conversation_message.type == Message::Type::ConversationStatus) {
+		ConversationStatusMessage message;
 		try {
-			message = ChannelStatusMessage::decode(np1sec_message);
+			message = ConversationStatusMessage::decode(conversation_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
+		Hash status_message_hash = crypto::hash(conversation_message.payload);
+		
+		auto first_event = first_user_event(sender);
+		if (!(
+			   first_event
+			&& first_event->type == Message::Type::ConversationStatus
+			&& first_event->conversation_status.invitee_username == message.invitee_username
+			&& first_event->conversation_status.invitee_long_term_public_key == message.invitee_long_term_public_key
+			&& first_event->conversation_status.status_message_hash == status_message_hash
+		)) {
+			remove_user(sender);
+			return;
+		}
+		
+		Event event;
+		event.type = Message::Type::ConversationConfirmation;
+		event.conversation_status.invitee_username = message.invitee_username;
+		event.conversation_status.invitee_long_term_public_key = message.invitee_long_term_public_key;
+		event.conversation_status.status_message_hash = status_message_hash;
+		for (const auto& i : m_participants) {
+			event.remaining_users.insert(i.second.username);
+		}
+		declare_event(std::move(event));
+		
+		if (am_confirmed()) {
+			ConversationConfirmationMessage reply;
+			reply.invitee_username = message.invitee_username;
+			reply.invitee_long_term_public_key = message.invitee_long_term_public_key;
+			reply.status_message_hash = status_message_hash;
+			send_message(reply.encode());
+		}
+	} else if (conversation_message.type == Message::Type::ConversationConfirmation) {
+		ConversationConfirmationMessage message;
+		try {
+			message = ConversationConfirmationMessage::decode(conversation_message);
 		} catch(MessageFormatException) {
 			return;
 		}
 		
 		auto first_event = first_user_event(sender);
 		if (!(
-			   first_event != m_events.end()
-			&& first_event->type == Message::Type::ChannelStatus
-			&& first_event->channel_status.searcher_username == message.searcher_username
-			&& first_event->channel_status.searcher_nonce == message.searcher_nonce
-			&& first_event->channel_status.status_message_hash == crypto::hash(np1sec_message.payload)
+			   first_event
+			&& first_event->type == Message::Type::ConversationConfirmation
+			&& first_event->conversation_status.invitee_username == message.invitee_username
+			&& first_event->conversation_status.invitee_long_term_public_key == message.invitee_long_term_public_key
+			&& first_event->conversation_status.status_message_hash == message.status_message_hash
 		)) {
 			remove_user(sender);
 			return;
 		}
 		
-		if (first_event->remaining_users.empty()) {
-			m_events.erase(first_event);
+		if (m_unconfirmed_users.count(sender)) {
+			assert(m_unconfirmed_invites.count(m_room->username()));
+			assert(m_unconfirmed_invites.at(m_room->username()).count(m_room->public_key()));
+			std::string inviter = m_unconfirmed_invites.at(m_room->username()).at(m_room->public_key()).inviter;
+			assert(m_participants.count(inviter));
+			
+			if (
+				   message.invitee_username == m_room->username()
+				&& message.invitee_long_term_public_key == m_room->public_key()
+				&& message.status_message_hash == m_status_message_hash
+			) {
+				m_unconfirmed_users.erase(sender);
+				if (m_unconfirmed_users.empty()) {
+					InviteAcceptanceMessage accept_message;
+					accept_message.my_long_term_public_key = m_room->public_key();
+					accept_message.inviter_username = inviter;
+					accept_message.inviter_long_term_public_key = m_participants.at(inviter).long_term_public_key;
+					accept_message.inviter_conversation_public_key = m_participants.at(inviter).conversation_public_key;
+					send_message(accept_message.encode());
+				}
+			}
 		}
-	} else if (np1sec_message.type == Message::Type::ChannelAnnouncement) {
-		ChannelAnnouncementMessage message;
+	} else if (conversation_message.type == Message::Type::InviteAcceptance) {
+		InviteAcceptanceMessage message;
 		try {
-			message = ChannelAnnouncementMessage::decode(np1sec_message);
+			message = InviteAcceptanceMessage::decode(conversation_message);
 		} catch(MessageFormatException) {
 			return;
 		}
 		
 		if (m_participants.count(sender)) {
 			remove_user(sender);
-		}
-	} else if (np1sec_message.type == Message::Type::JoinRequest) {
-		JoinRequestMessage message;
-		try {
-			message = JoinRequestMessage::decode(np1sec_message);
-		} catch(MessageFormatException) {
 			return;
 		}
 		
-		remove_user(sender);
-		
-		bool ours = false;
-		for (const std::string& username : message.peer_usernames) {
-			if (m_participants.count(username)) {
-				ours = true;
-				break;
-			}
-		}
-		if (!ours) {
+		if (!(
+			   m_participants.count(message.inviter_username)
+			&& m_participants.at(message.inviter_username).is_participant
+			&& m_participants.at(message.inviter_username).long_term_public_key == message.inviter_long_term_public_key
+			&& m_participants.at(message.inviter_username).conversation_public_key == message.inviter_conversation_public_key
+			&& m_participants.at(message.inviter_username).invitees.count(sender)
+			&& m_participants.at(message.inviter_username).invitees.at(sender) == message.my_long_term_public_key
+		)) {
 			return;
 		}
+		
+		m_unconfirmed_invites.erase(sender);
 		
 		Participant participant;
+		participant.is_participant = false;
 		participant.username = sender;
-		participant.long_term_public_key = message.long_term_public_key;
-		participant.ephemeral_public_key = message.ephemeral_public_key;
-		participant.authorization_nonce = m_channel_status_hash;
-		participant.authorized = false;
+		participant.long_term_public_key = message.my_long_term_public_key;
+		participant.conversation_public_key = conversation_message.conversation_public_key;
+		participant.inviter = message.inviter_username;
+		participant.authenticated = false;
+		participant.timeout_in_flight = false;
+		participant.votekick_in_flight = false;
 		m_participants[sender] = std::move(participant);
-		set_user_channel_status_timer(sender);
-		
 		if (sender == m_room->username()) {
-			m_participants[sender].authentication_status = AuthenticationStatus::Authenticated;
-		} else if (!m_active) {
-			m_participants[sender].authentication_status = AuthenticationStatus::AuthenticatingWithNonce;
-			
-			AuthenticationRequestMessage request;
-			request.sender_long_term_public_key = m_room->long_term_public_key();
-			request.sender_ephemeral_public_key = ephemeral_public_key();
-			request.peer_username = sender;
-			request.peer_long_term_public_key = message.long_term_public_key;
-			request.peer_ephemeral_public_key = message.ephemeral_public_key;
-			request.nonce = m_authentication_nonce;
-			send_message(request.encode());
-		} else {
-			m_participants[sender].authentication_status = AuthenticationStatus::Authenticating;
+			set_conversation_status_timer();
 		}
+		set_user_conversation_status_timer(sender);
 		
-		if (m_interface) {
-			m_interface->user_joined(sender);
-		}
+		m_room->conversation_add_user(this, sender, conversation_message.conversation_public_key);
 		
-		if (sender == m_room->username()) {
-			self_joined();
+		if (am_confirmed()) {
+			if (sender == m_room->username()) {
+				m_participants[sender].authentication_status = AuthenticationStatus::Authenticated;
+			} else {
+				m_participants[sender].authentication_status = AuthenticationStatus::Authenticating;
+				m_participants[sender].authentication_nonce = crypto::nonce_hash();
+				
+				AuthenticationRequestMessage authentication_request;
+				authentication_request.username = sender;
+				authentication_request.authentication_nonce = m_participants[sender].authentication_nonce;
+				send_message(authentication_request.encode());
+				
+				AuthenticationMessage authentication;
+				authentication.username = sender;
+				authentication.authentication_confirmation = crypto::authentication_token(
+					m_room->private_key(),
+					m_conversation_private_key,
+					m_participants.at(sender).long_term_public_key,
+					m_participants.at(sender).conversation_public_key,
+					m_participants.at(sender).authentication_nonce,
+					m_room->username()
+				);
+				send_message(authentication.encode());
+			}
 		}
-	} else if (np1sec_message.type == Message::Type::AuthenticationRequest) {
+	} else if (conversation_message.type == Message::Type::AuthenticationRequest) {
 		AuthenticationRequestMessage message;
 		try {
-			message = AuthenticationRequestMessage::decode(np1sec_message);
+			message = AuthenticationRequestMessage::decode(conversation_message);
 		} catch(MessageFormatException) {
 			return;
 		}
 		
-		if (!m_active) {
+		if (!m_participants.count(sender)) {
 			return;
 		}
 		
-		if (
-			   message.peer_username == m_room->username()
-			&& message.peer_long_term_public_key == m_room->long_term_public_key()
-			&& message.peer_ephemeral_public_key == ephemeral_public_key()
-		) {
-			authenticate_to(sender, message.sender_long_term_public_key, message.sender_ephemeral_public_key, message.nonce);
+		if (message.username == m_room->username()) {
+			if (m_participants.at(sender).authentication_status == AuthenticationStatus::Unauthenticated) {
+				m_participants[sender].authentication_status = AuthenticationStatus::Authenticating;
+				m_participants[sender].authentication_nonce = message.authentication_nonce;
+				
+				AuthenticationMessage authentication;
+				authentication.username = sender;
+				authentication.authentication_confirmation = crypto::authentication_token(
+					m_room->private_key(),
+					m_conversation_private_key,
+					m_participants.at(sender).long_term_public_key,
+					m_participants.at(sender).conversation_public_key,
+					m_participants.at(sender).authentication_nonce,
+					m_room->username()
+				);
+				send_message(authentication.encode());
+			}
 		}
-	} else if (np1sec_message.type == Message::Type::Authentication) {
+	} else if (conversation_message.type == Message::Type::Authentication) {
 		AuthenticationMessage message;
 		try {
-			message = AuthenticationMessage::decode(np1sec_message);
+			message = AuthenticationMessage::decode(conversation_message);
 		} catch(MessageFormatException) {
 			return;
 		}
 		
-		if (!(
-			   message.peer_username == m_room->username()
-			&& message.peer_long_term_public_key == m_room->long_term_public_key()
-			&& message.peer_ephemeral_public_key == ephemeral_public_key()
-		)) {
-			return;
-		}
-		
 		if (!m_participants.count(sender)) {
 			return;
 		}
 		
-		Participant& participant = m_participants[sender];
-		if (!(
-			   message.sender_long_term_public_key == participant.long_term_public_key
-			&& message.sender_ephemeral_public_key == participant.ephemeral_public_key
-		)) {
-			return;
-		}
-		
-		if (participant.authentication_status == AuthenticationStatus::Authenticating) {
-			if (message.nonce != participant.authorization_nonce) {
-				return;
+		if (message.username == m_room->username()) {
+			if (m_participants.at(sender).authentication_status == AuthenticationStatus::Authenticating) {
+				if (message.authentication_confirmation == crypto::authentication_token(
+					m_room->private_key(),
+					m_conversation_private_key,
+					m_participants.at(sender).long_term_public_key,
+					m_participants.at(sender).conversation_public_key,
+					m_participants.at(sender).authentication_nonce,
+					sender
+				)) {
+					m_participants[sender].authentication_status = AuthenticationStatus::Authenticated;
+					
+					if (
+						   !m_participants.at(sender).is_participant
+						&& !m_participants.at(sender).authenticated
+						&& m_participants.at(sender).inviter == m_room->username()
+					) {
+						AuthenticateInviteMessage reply;
+						reply.username = m_participants.at(sender).username;
+						reply.long_term_public_key = m_participants.at(sender).long_term_public_key;
+						reply.conversation_public_key = m_participants.at(sender).conversation_public_key;
+						send_message(reply.encode());
+					}
+					
+					if (m_participants[sender].authenticated) {
+						if (interface()) interface()->user_authenticated(sender, m_participants.at(sender).long_term_public_key);
+					}
+				} else {
+					m_participants[sender].authentication_status = AuthenticationStatus::AuthenticationFailed;
+					
+					if (m_participants[sender].authenticated) {
+						if (interface()) interface()->user_authentication_failed(sender);
+					}
+				}
 			}
-		} else if (participant.authentication_status == AuthenticationStatus::AuthenticatingWithNonce) {
-			if (message.nonce != participant.authorization_nonce && message.nonce != m_authentication_nonce) {
-				return;
-			}
-		} else {
-			return;
 		}
-		
-		Hash correct_token = authentication_token(sender, participant.long_term_public_key, participant.ephemeral_public_key, message.nonce, true);
-		if (message.authentication_confirmation == correct_token) {
-			participant.authentication_status = AuthenticationStatus::Authenticated;
-			
-			if (m_interface) {
-				m_interface->user_authenticated(sender, participant.long_term_public_key);
-			}
-		} else {
-			participant.authentication_status = AuthenticationStatus::AuthenticationFailed;
-			
-			if (m_interface) {
-				m_interface->user_authentication_failed(sender);
-			}
-		}
-	} else if (np1sec_message.type == Message::Type::Authorization) {
-		if (!m_participants.count(sender)) {
-			return;
-		}
-		
-		AuthorizationMessage signed_message;
+	} else if (conversation_message.type == Message::Type::AuthenticateInvite) {
+		AuthenticateInviteMessage message;
 		try {
-			signed_message = AuthorizationMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key);
+			message = AuthenticateInviteMessage::decode(conversation_message);
 		} catch(MessageFormatException) {
 			return;
 		}
-		if (!signed_message.valid) {
-			remove_user(sender);
-			return;
-		}
-		auto message = signed_message.decode();
 		
-		if (!(
-			   m_participants.count(message.username)
-			&& m_participants.at(message.username).long_term_public_key == message.long_term_public_key
-			&& m_participants.at(message.username).ephemeral_public_key == message.ephemeral_public_key
-			&& m_participants.at(message.username).authorization_nonce == message.authorization_nonce
-		)) {
-			return;
-		}
-		
-		Participant* authorized;
-		Participant* unauthorized;
-		if (m_participants[sender].authorized) {
-			if (m_participants[message.username].authorized) {
-				return;
-			}
-			authorized = &m_participants[sender];
-			unauthorized = &m_participants[message.username];
-		} else {
-			if (!m_participants[message.username].authorized) {
-				return;
-			}
-			authorized = &m_participants[message.username];
-			unauthorized = &m_participants[sender];
-		}
-		assert(authorized->authorized);
-		assert(!unauthorized->authorized);
-		
-		if (authorized->username == sender) {
-			unauthorized->authorized_by.insert(authorized->username);
-		} else {
-			unauthorized->authorized_peers.insert(authorized->username);
-		}
-		
-		if (m_interface) {
-			m_interface->user_authorized_by(sender, message.username);
-		}
-		
-		if (try_promote_unauthorized_participant(unauthorized)) {
-			m_encrypted_chat.add_user(unauthorized->username, unauthorized->long_term_public_key);
-		}
-	} else if (np1sec_message.type == Message::Type::ConsistencyStatus) {
 		if (!m_participants.count(sender)) {
 			return;
 		}
 		
-		if (m_active && sender == m_room->username()) {
-			UnsignedConsistencyCheckMessage message;
-			message.channel_status_hash = m_channel_status_hash;
-			send_message(ConsistencyCheckMessage::sign(message, m_ephemeral_private_key));
+		if (!m_participants.count(message.username)) {
+			return;
+		}
+		
+		if (!(
+			   m_participants.at(sender).is_participant
+			&& !m_participants.at(message.username).is_participant
+			&& !m_participants.at(message.username).authenticated
+			&& m_participants.at(message.username).inviter == sender
+			&& m_participants.at(message.username).long_term_public_key == message.long_term_public_key
+			&& m_participants.at(message.username).conversation_public_key == message.conversation_public_key
+		)) {
+			return;
+		}
+		
+		m_participants[message.username].authenticated = true;
+		
+		if (interface()) interface()->user_invited(sender, message.username);
+		
+		if (message.username == m_room->username()) {
+			ConversationInterface* interface = m_room->interface()->invited_to_conversation(this, sender);
+			set_interface(interface);
+		}
+	} else if (conversation_message.type == Message::Type::CancelInvite) {
+		CancelInviteMessage message;
+		try {
+			message = CancelInviteMessage::decode(conversation_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
+		if (!(
+			   m_participants.count(sender)
+			&& m_participants.at(sender).invitees.count(message.username)
+			&& m_participants.at(sender).invitees.at(message.username) == message.long_term_public_key
+		)) {
+			return;
+		}
+		
+		remove_invite(sender, message.username);
+	} else if (conversation_message.type == Message::Type::Join) {
+		JoinMessage message;
+		try {
+			message = JoinMessage::decode(conversation_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
+		if (!m_participants.count(sender)) {
+			return;
+		}
+		if (m_participants.at(sender).is_participant) {
+			return;
+		}
+		if (!m_participants.at(sender).authenticated) {
+			return;
+		}
+		
+		assert(m_participants.count(m_participants.at(sender).inviter));
+		assert(m_participants.at(m_participants.at(sender).inviter).invitees.count(sender));
+		m_participants[m_participants.at(sender).inviter].invitees.erase(sender);
+		
+		m_participants[sender].is_participant = true;
+		m_participants[sender].inviter.clear();
+		
+		m_encrypted_chat.add_user(sender, m_participants.at(sender).long_term_public_key);
+		
+		bool self_joined = (sender == m_room->username());
+		
+		if (interface()) interface()->user_joined(sender);
+		
+		if (self_joined) {
+			if (interface()) interface()->joined();
+		}
+	} else if (conversation_message.type == Message::Type::ConsistencyStatus) {
+		ConsistencyStatusMessage message;
+		try {
+			message = ConsistencyStatusMessage::decode(conversation_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
+		if (!m_participants.count(sender)) {
+			return;
 		}
 		
 		Event event;
 		event.type = Message::Type::ConsistencyCheck;
-		event.consistency_check.channel_status_hash = m_channel_status_hash;
+		event.consistency_check.conversation_status_hash = m_conversation_status_hash;
 		event.remaining_users.insert(sender);
 		declare_event(std::move(event));
-		set_user_channel_status_timer(sender);
-	} else if (np1sec_message.type == Message::Type::ConsistencyCheck) {
+		set_user_conversation_status_timer(sender);
+		
+		if (sender == m_room->username()) {
+			ConsistencyCheckMessage message;
+			message.conversation_status_hash = m_conversation_status_hash;
+			send_message(message.encode());
+		}
+	} else if (conversation_message.type == Message::Type::ConsistencyCheck) {
+		ConsistencyCheckMessage message;
+		try {
+			message = ConsistencyCheckMessage::decode(conversation_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
 		if (!m_participants.count(sender)) {
 			return;
 		}
 		
-		ConsistencyCheckMessage signed_message;
-		try {
-			signed_message = ConsistencyCheckMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key);
-		} catch(MessageFormatException) {
-			return;
-		}
-		if (!signed_message.valid) {
-			remove_user(sender);
-			return;
-		}
-		auto message = signed_message.decode();
-		
 		auto first_event = first_user_event(sender);
 		if (!(
-			   first_event != m_events.end()
+			   first_event
 			&& first_event->type == Message::Type::ConsistencyCheck
-			&& first_event->consistency_check.channel_status_hash == message.channel_status_hash
+			&& first_event->consistency_check.conversation_status_hash == message.conversation_status_hash
 		)) {
 			remove_user(sender);
 			return;
 		}
-		
-		if (first_event->remaining_users.empty()) {
-			m_events.erase(first_event);
-		}
-	} else if (np1sec_message.type == Message::Type::Timeout) {
-		if (!m_participants.count(sender)) {
-			return;
-		}
-		
+	} else if (conversation_message.type == Message::Type::Timeout) {
 		TimeoutMessage message;
 		try {
-			message = TimeoutMessage::decode(np1sec_message);
+			message = TimeoutMessage::decode(conversation_message);
 		} catch(MessageFormatException) {
 			return;
 		}
 		
-		if (!m_participants.count(message.victim)) {
-			return;
-		}
-		
-		if (sender == message.victim) {
+		if (!(
+			   m_participants.count(sender)
+			&& m_participants.at(sender).is_participant
+			&& m_participants.count(message.victim)
+			&& sender != message.victim
+		)) {
 			return;
 		}
 		
 		if (message.timeout) {
 			if (m_participants[sender].timeout_peers.insert(message.victim).second) {
-				try_channel_split(false);
+				try_split(false);
 			}
 		} else {
 			m_participants[sender].timeout_peers.erase(message.victim);
 		}
-	} else if (np1sec_message.type == Message::Type::Votekick) {
-		if (!m_participants.count(sender)) {
-			return;
-		}
-		
+	} else if (conversation_message.type == Message::Type::Votekick) {
 		VotekickMessage message;
 		try {
-			message = VotekickMessage::decode(np1sec_message);
+			message = VotekickMessage::decode(conversation_message);
 		} catch(MessageFormatException) {
 			return;
 		}
 		
-		if (!m_participants.count(message.victim)) {
-			return;
-		}
-		
-		if (sender == message.victim) {
+		if (!(
+			   m_participants.count(sender)
+			&& m_participants.at(sender).is_participant
+			&& m_participants.count(message.victim)
+			&& sender != message.victim
+		)) {
 			return;
 		}
 		
 		if (message.kick) {
 			if (m_participants[sender].votekick_peers.insert(message.victim).second) {
-				try_channel_split(true);
+				if (interface()) interface()->votekick_registered(sender, message.victim, message.kick);
+				
+				try_split(true);
 			}
 		} else {
-			m_participants[sender].votekick_peers.erase(message.victim);
+			if (m_participants[sender].votekick_peers.erase(message.victim) > 0) {
+				if (interface()) interface()->votekick_registered(sender, message.victim, message.kick);
+			}
 		}
-	} else if (np1sec_message.type == Message::Type::KeyExchangePublicKey) {
+	} else if (conversation_message.type == Message::Type::KeyExchangePublicKey) {
+		KeyExchangePublicKeyMessage message;
+		try {
+			message = KeyExchangePublicKeyMessage::decode(conversation_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
 		if (!m_participants.count(sender)) {
 			return;
 		}
 		
-		KeyExchangePublicKeyMessage signed_message;
-		try {
-			signed_message = KeyExchangePublicKeyMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key);
-		} catch(MessageFormatException) {
-			return;
-		}
-		if (!signed_message.valid) {
-			remove_user(sender);
-			return;
-		}
-		auto message = signed_message.decode();
-		
 		auto first_event = first_user_event(sender);
 		if (!(
-			   first_event != m_events.end()
+			   first_event
 			&& first_event->type == Message::Type::KeyExchangePublicKey
 			&& first_event->key_event.key_id == message.key_id
 		)) {
@@ -742,31 +914,22 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			return;
 		}
 		
-		if (first_event->remaining_users.empty()) {
-			m_events.erase(first_event);
+		m_encrypted_chat.user_public_key(sender, message.key_id, message.public_key);
+	} else if (conversation_message.type == Message::Type::KeyExchangeSecretShare) {
+		KeyExchangeSecretShareMessage message;
+		try {
+			message = KeyExchangeSecretShareMessage::decode(conversation_message);
+		} catch(MessageFormatException) {
+			return;
 		}
 		
-		m_encrypted_chat.user_public_key(sender, message.key_id, message.public_key);
-	} else if (np1sec_message.type == Message::Type::KeyExchangeSecretShare) {
 		if (!m_participants.count(sender)) {
 			return;
 		}
 		
-		KeyExchangeSecretShareMessage signed_message;
-		try {
-			signed_message = KeyExchangeSecretShareMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key);
-		} catch(MessageFormatException) {
-			return;
-		}
-		if (!signed_message.valid) {
-			remove_user(sender);
-			return;
-		}
-		auto message = signed_message.decode();
-		
 		auto first_event = first_user_event(sender);
 		if (!(
-			   first_event != m_events.end()
+			   first_event
 			&& first_event->type == Message::Type::KeyExchangeSecretShare
 			&& first_event->key_event.key_id == message.key_id
 		)) {
@@ -774,35 +937,26 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			return;
 		}
 		
-		if (first_event->remaining_users.empty()) {
-			m_events.erase(first_event);
-		}
-		
 		if (!m_encrypted_chat.have_key_exchange(message.key_id)) {
 			return;
 		}
 		
 		m_encrypted_chat.user_secret_share(sender, message.key_id, message.group_hash, message.secret_share);
-	} else if (np1sec_message.type == Message::Type::KeyExchangeAcceptance) {
+	} else if (conversation_message.type == Message::Type::KeyExchangeAcceptance) {
+		KeyExchangeAcceptanceMessage message;
+		try {
+			message = KeyExchangeAcceptanceMessage::decode(conversation_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
 		if (!m_participants.count(sender)) {
 			return;
 		}
 		
-		KeyExchangeAcceptanceMessage signed_message;
-		try {
-			signed_message = KeyExchangeAcceptanceMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key);
-		} catch(MessageFormatException) {
-			return;
-		}
-		if (!signed_message.valid) {
-			remove_user(sender);
-			return;
-		}
-		auto message = signed_message.decode();
-		
 		auto first_event = first_user_event(sender);
 		if (!(
-			   first_event != m_events.end()
+			   first_event
 			&& first_event->type == Message::Type::KeyExchangeAcceptance
 			&& first_event->key_event.key_id == message.key_id
 		)) {
@@ -810,35 +964,26 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			return;
 		}
 		
-		if (first_event->remaining_users.empty()) {
-			m_events.erase(first_event);
-		}
-		
 		if (!m_encrypted_chat.have_key_exchange(message.key_id)) {
 			return;
 		}
 		
 		m_encrypted_chat.user_key_hash(sender, message.key_id, message.key_hash);
-	} else if (np1sec_message.type == Message::Type::KeyExchangeReveal) {
+	} else if (conversation_message.type == Message::Type::KeyExchangeReveal) {
+		KeyExchangeRevealMessage message;
+		try {
+			message = KeyExchangeRevealMessage::decode(conversation_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
 		if (!m_participants.count(sender)) {
 			return;
 		}
 		
-		KeyExchangeRevealMessage signed_message;
-		try {
-			signed_message = KeyExchangeRevealMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key);
-		} catch(MessageFormatException) {
-			return;
-		}
-		if (!signed_message.valid) {
-			remove_user(sender);
-			return;
-		}
-		auto message = signed_message.decode();
-		
 		auto first_event = first_user_event(sender);
 		if (!(
-			   first_event != m_events.end()
+			   first_event
 			&& first_event->type == Message::Type::KeyExchangeReveal
 			&& first_event->key_event.key_id == message.key_id
 		)) {
@@ -846,35 +991,26 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			return;
 		}
 		
-		if (first_event->remaining_users.empty()) {
-			m_events.erase(first_event);
-		}
-		
 		if (!m_encrypted_chat.have_key_exchange(message.key_id)) {
 			return;
 		}
 		
 		m_encrypted_chat.user_private_key(sender, message.key_id, message.private_key);
-	} else if (np1sec_message.type == Message::Type::KeyActivation) {
+	} else if (conversation_message.type == Message::Type::KeyActivation) {
+		KeyActivationMessage message;
+		try {
+			message = KeyActivationMessage::decode(conversation_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
 		if (!m_participants.count(sender)) {
 			return;
 		}
 		
-		KeyActivationMessage signed_message;
-		try {
-			signed_message = KeyActivationMessage::verify(np1sec_message, m_participants[sender].ephemeral_public_key);
-		} catch(MessageFormatException) {
-			return;
-		}
-		if (!signed_message.valid) {
-			remove_user(sender);
-			return;
-		}
-		auto message = signed_message.decode();
-		
 		auto first_event = first_user_event(sender);
 		if (!(
-			   first_event != m_events.end()
+			   first_event
 			&& first_event->type == Message::Type::KeyActivation
 			&& first_event->key_event.key_id == message.key_id
 		)) {
@@ -882,44 +1018,104 @@ void Channel::message_received(const std::string& sender, const Message& np1sec_
 			return;
 		}
 		
-		if (first_event->remaining_users.empty()) {
-			m_events.erase(first_event);
-		}
-		
 		if (m_encrypted_chat.have_session(message.key_id)) {
 			m_encrypted_chat.user_activation(sender, message.key_id);
 		}
-	} else if (np1sec_message.type == Message::Type::Chat) {
+	} else if (conversation_message.type == Message::Type::KeyRatchet) {
+		KeyRatchetMessage message;
+		try {
+			message = KeyRatchetMessage::decode(conversation_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
+		if (m_participants.count(sender) && m_participants.at(sender).is_participant) {
+			m_encrypted_chat.replace_session(message.key_id);
+		}
+	} else if (conversation_message.type == Message::Type::Chat) {
 		ChatMessage message;
 		try {
-			message = ChatMessage::decode(np1sec_message);
+			message = ChatMessage::decode(conversation_message);
 		} catch(MessageFormatException) {
 			return;
 		}
 		
 		m_encrypted_chat.decrypt_message(sender, message);
-	} else if (np1sec_message.type == Message::Type::KeyRatchet) {
-		KeyRatchetMessage message;
-		try {
-			message = KeyRatchetMessage::decode(np1sec_message);
-		} catch(MessageFormatException) {
-			return;
-		}
-		
-		if (m_participants.count(sender) && m_participants.at(sender).authorized) {
-			m_encrypted_chat.replace_session(message.key_id);
-		}
 	}
 }
 
-void Channel::user_left(const std::string& username)
+void Conversation::user_left(const std::string& username)
 {
+	if (!m_participants.count(username) && !m_unconfirmed_invites.count(username)) {
+		return;
+	}
+	
 	hash_payload(username, 0, "left");
 	
-	remove_user(username);
+	if (m_participants.count(username)) {
+		assert(!m_unconfirmed_invites.count(username));
+		remove_user(username);
+	} else {
+		assert(m_unconfirmed_invites.count(username));
+		
+		while (!m_unconfirmed_invites.at(username).empty()) {
+			auto i = m_unconfirmed_invites.at(username).begin();
+			remove_invite(i->second.inviter, i->second.username);
+		}
+		m_unconfirmed_invites.erase(username);
+	}
 }
 
-void Channel::add_key_exchange_event(Message::Type type, const Hash& key_id, const std::set<std::string>& usernames)
+
+
+std::map<std::string, PublicKey> Conversation::conversation_users() const
+{
+	std::map<std::string, PublicKey> result;
+	for (const auto& i : m_participants) {
+		result[i.second.username] = i.second.conversation_public_key;
+	}
+	return result;
+}
+
+bool Conversation::am_involved() const
+{
+	return m_participants.count(m_room->username()) || m_unconfirmed_invites.count(m_room->username());
+}
+
+bool Conversation::am_confirmed() const
+{
+	return m_participants.count(m_room->username());
+}
+
+bool Conversation::am_authenticated() const
+{
+	return m_participants.count(m_room->username()) && 
+		(m_participants.at(m_room->username()).is_participant || m_participants.at(m_room->username()).authenticated);
+}
+
+bool Conversation::am_participant() const
+{
+	return m_participants.count(m_room->username()) && m_participants.at(m_room->username()).is_participant;
+}
+
+bool Conversation::am_chatting() const
+{
+	return m_encrypted_chat.in_chat();
+}
+
+
+
+void Conversation::send_message(const Message& message)
+{
+	m_room->send_message(message);
+}
+
+void Conversation::send_message(const UnsignedConversationMessage& conversation_message)
+{
+	send_message(ConversationMessage::sign(conversation_message, m_conversation_private_key));
+}
+
+void Conversation::add_key_exchange_event(Message::Type type, const Hash& key_id, const std::set<std::string>& usernames)
 {
 	Event event;
 	event.type = type;
@@ -928,90 +1124,110 @@ void Channel::add_key_exchange_event(Message::Type type, const Hash& key_id, con
 	declare_event(std::move(event));
 }
 
-
-
-void Channel::self_joined()
-{
-	m_joined = true;
-	
-	for (const auto& i : m_participants) {
-		if (i.second.username == m_room->username()) {
-			continue;
-		}
-		
-		authenticate_to(i.second.username, i.second.long_term_public_key, i.second.ephemeral_public_key, m_channel_status_hash);
-	}
-	
-	if (m_interface) {
-		m_interface->joined();
-	}
-}
-
-bool Channel::try_promote_unauthorized_participant(Participant* participant)
-{
-	assert(!participant->authorized);
-	
-	for (const auto& i : m_participants) {
-		if (i.second.authorized) {
-			if (!participant->authorized_by.count(i.second.username)) {
-				return false;
-			}
-			if (!participant->authorized_peers.count(i.second.username)) {
-				return false;
-			}
-		}
-	}
-	participant->authorized = true;
-	participant->authorized_by.clear();
-	participant->authorized_peers.clear();
-	
-	if (participant->username == m_room->username()) {
-		m_authorized = true;
-	}
-	
-	if (m_interface) {
-		m_interface->user_promoted(participant->username);
-	}
-	
-	if (m_interface && participant->username == m_room->username()) {
-		m_interface->authorized();
-	}
-	
-	return true;
-}
-
-void Channel::remove_user(const std::string& username)
+void Conversation::remove_user(const std::string& username)
 {
 	std::set<std::string> usernames;
 	usernames.insert(username);
 	remove_users(usernames);
 }
 
-void Channel::remove_users(const std::set<std::string>& usernames)
+void Conversation::remove_users(const std::set<std::string>& usernames)
 {
 	for (const std::string& username : usernames) {
 		if (!m_participants.count(username)) {
 			continue;
 		}
 		
-		do_remove_user(username);
-	}
-	
-	for (auto& p : m_participants) {
-		if (!p.second.authorized) {
-			if (try_promote_unauthorized_participant(&p.second)) {
-				m_encrypted_chat.do_add_user(p.second.username, p.second.long_term_public_key);
-				break;
+		if (m_participants.at(username).is_participant) {
+			while (!m_participants.at(username).invitees.empty()) {
+				auto i = m_participants.at(username).invitees.begin();
+				remove_invite(username, i->first);
 			}
+			
+			do_remove_user(username);
+		} else {
+			remove_invite(m_participants.at(username).inviter, username);
 		}
 	}
 	
 	m_encrypted_chat.remove_users(usernames);
 }
 
-void Channel::do_remove_user(const std::string& username)
+
+
+void Conversation::hash_message(const std::string& sender, const UnsignedConversationMessage& message)
+{
+	hash_payload(sender, uint8_t(message.type), message.payload);
+}
+
+void Conversation::hash_payload(const std::string& sender, uint8_t type, const std::string& message)
+{
+	PublicKey zero;
+	memset(zero.buffer, 0, sizeof(zero.buffer));
+	
+	std::string buffer = conversation_status(std::string(), zero).payload;
+	buffer += sender;
+	buffer += type;
+	buffer += message;
+	m_conversation_status_hash = crypto::hash(buffer);
+}
+
+void Conversation::declare_event(Event&& event)
+{
+	std::list<Event>::iterator it = m_events.insert(m_events.end(), std::move(event));
+	for (const std::string& username : it->remaining_users) {
+		assert(m_participants.count(username));
+		m_participants[username].events.push_back(it);
+	}
+	it->timeout = false;
+	
+	it->timeout_timer = Timer(m_room->interface(), c_event_timeout, [this, it] {
+		it->timeout = true;
+		for (const std::string& username : it->remaining_users) {
+			check_timeout(username);
+		}
+	});
+}
+
+void Conversation::remove_invite(std::string inviter, std::string username)
+{
+	assert(m_participants.count(inviter));
+	assert(m_participants.at(inviter).is_participant);
+	assert(m_participants.at(inviter).invitees.count(username));
+	
+	PublicKey long_term_public_key = m_participants.at(inviter).invitees.at(username);
+	
+	if (m_participants.count(username)) {
+		bool authenticated = m_participants.at(username).authenticated;
+		
+		do_remove_user(username);
+		
+		if (authenticated) {
+			if (interface()) interface()->invitation_cancelled(inviter, username);
+		}
+	} else {
+		m_participants[inviter].invitees.erase(username);
+		
+		assert(m_unconfirmed_invites.count(username));
+		assert(m_unconfirmed_invites.at(username).count(long_term_public_key));
+		m_unconfirmed_invites[username].erase(long_term_public_key);
+		if (m_unconfirmed_invites.at(username).empty()) {
+			m_unconfirmed_invites.erase(username);
+		}
+	}
+}
+
+void Conversation::do_remove_user(const std::string& username)
 {
 	assert(m_participants.count(username));
+	assert(m_participants.at(username).invitees.empty());
+	
+	if (username == m_room->username()) {
+		if (m_participants.at(username).is_participant || m_participants.at(username).authenticated) {
+			if (interface()) interface()->left();
+		}
+		m_interface = nullptr;
+	}
 	
 	while (!m_participants[username].events.empty()) {
 		auto it = m_participants[username].events.front();
@@ -1024,33 +1240,79 @@ void Channel::do_remove_user(const std::string& username)
 		}
 	}
 	
-	m_participants.erase(username);
+	if (!m_participants.at(username).is_participant) {
+		assert(m_participants.count(m_participants.at(username).inviter));
+		assert(m_participants.at(m_participants.at(username).inviter).invitees.count(username));
+		m_participants[m_participants.at(username).inviter].invitees.erase(username);
+	}
+	
 	for (auto& p : m_participants) {
-		if (!p.second.authorized) {
-			p.second.authorized_by.erase(username);
-			p.second.authorized_peers.erase(username);
-		}
 		p.second.timeout_peers.erase(username);
 		p.second.votekick_peers.erase(username);
 	}
 	
-	if (m_interface) {
-		m_interface->user_left(username);
+	PublicKey conversation_public_key = m_participants.at(username).conversation_public_key;
+	bool participant = m_participants.at(username).is_participant;
+	
+	m_participants.erase(username);
+	
+	m_room->conversation_remove_user(this, username, conversation_public_key);
+	
+	if (participant) {
+		if (interface()) interface()->user_left(username);
 	}
 }
 
-void Channel::try_channel_split(bool because_votekick)
+void Conversation::check_timeout(const std::string& username)
+{
+	assert(m_participants.count(username));
+	
+	Participant& participant = m_participants[username];
+	
+	bool event_timeout = (!participant.events.empty() && participant.events.front()->timeout);
+	bool conversation_status_timeout = !participant.conversation_status_timer.active();
+	
+	bool want_timeout = event_timeout || conversation_status_timeout;
+	if (participant.timeout_in_flight != want_timeout) {
+		participant.timeout_in_flight = want_timeout;
+		if (am_participant()) {
+			TimeoutMessage message;
+			message.victim = username;
+			message.timeout = want_timeout;
+			send_message(message.encode());
+		}
+	}
+}
+
+void Conversation::set_conversation_status_timer()
+{
+	m_conversation_status_timer = Timer(m_room->interface(), c_conversation_status_frequency, [this] {
+		ConsistencyStatusMessage message;
+		send_message(message.encode());
+		set_conversation_status_timer();
+	});
+}
+
+void Conversation::set_user_conversation_status_timer(const std::string& username)
+{
+	assert(m_participants.count(username));
+	m_participants[username].conversation_status_timer = Timer(m_room->interface(), c_conversation_status_frequency + c_event_timeout, [username, this] {
+		check_timeout(username);
+	});
+	check_timeout(username);
+}
+
+void Conversation::try_split(bool because_votekick)
 {
 	/*
 	 * A split check has two parts.
-	 * First, the authorized members perform a symmetric split operation among themselves.
-	 * Second, any unauthorized members who are kicked by all authorized members are kicked
-	 * asymmetrically.
+	 * First, the participants perform a symmetric split operation among themselves.
+	 * Second, any confirmed invites who are kicked by all participants are kicked asymmetrically.
 	 */
 	
 	std::map<std::string, const std::set<std::string>* > graph;
 	for (const auto& i : m_participants) {
-		if (i.second.authorized) {
+		if (i.second.is_participant) {
 			const std::set<std::string>* victims;
 			if (because_votekick) {
 				victims = &i.second.votekick_peers;
@@ -1062,63 +1324,37 @@ void Channel::try_channel_split(bool because_votekick)
 		}
 	}
 	
-	std::vector<std::set<std::string>> partition = compute_channel_partition(graph);
+	std::vector<std::set<std::string>> partition = compute_conversation_partition(graph);
 	if (partition.size() > 1) {
 		/*
-		* A split has occurred. Find out which side we're in.
-		*/
+		 * A split has occurred. Find out which side we're in.
+		 *
+		 * If we are a participant, we follow the part containing ourselves.
+		 * If we are an invitee, we follow the part containing our inviter.
+		 */
+		std::string anchor_username;
+		if (m_participants.count(m_room->username()) && m_participants.at(m_room->username()).is_participant) {
+			anchor_username = m_room->username();
+		} else if (m_participants.count(m_room->username())) {
+			anchor_username = m_participants.at(m_room->username()).inviter;
+		} else {
+			assert(m_unconfirmed_invites.count(m_room->username()));
+			assert(m_unconfirmed_invites.at(m_room->username()).count(m_room->public_key()));
+			anchor_username = m_unconfirmed_invites.at(m_room->username()).at(m_room->public_key()).inviter;
+		}
 		
 		std::set<std::string> our_part;
-		if (m_authorized) {
-			/*
-			* If we are an authorized member, we are in the side containing ourselves.
-			*/
-			
-			for (const std::set<std::string>& part : partition) {
-				if (part.count(m_room->username())) {
-					our_part = part;
-					break;
-				}
+		for (const std::set<std::string>& part : partition) {
+			if (part.count(anchor_username)) {
+				our_part = part;
+				break;
 			}
-			assert(our_part.count(m_room->username()));
-		} else {
-			/*
-			* If we are not an authorized member, we choose to join the largest
-			* side. If this is a votekick split, we choose the largest remaining
-			* side period; if this is a timeout split, we choose the side containing
-			* the largest amount of members that are not timeouted according to
-			* our own bookkeeping.
-			*/
-			
-			size_t largest_index = -1;
-			int largest_count = -1;
-			for (size_t i = 0; i < partition.size(); i++) {
-				const std::set<std::string>& part = partition[i];
-				int count;
-				
-				if (because_votekick) {
-					count = part.size();
-				} else {
-					count = 0;
-					for (const std::string& username : part) {
-						if (!m_participants[username].timeout_in_flight) {
-							count++;
-						}
-					}
-				}
-				if (count > largest_count) {
-					largest_count = count;
-					largest_index = i;
-				}
-			}
-			
-			our_part = partition[largest_index];
-			assert(our_part.size() > 0);
 		}
+		assert(our_part.count(anchor_username));
 		
 		std::set<std::string> victims;
 		for (const auto& i : m_participants) {
-			if (i.second.authorized && our_part.count(i.second.username) == 0) {
+			if (i.second.is_participant && our_part.count(i.second.username) == 0) {
 				victims.insert(i.second.username);
 			}
 		}
@@ -1127,13 +1363,13 @@ void Channel::try_channel_split(bool because_votekick)
 	
 	std::set<std::string> victims;
 	for (const auto& i : m_participants) {
-		if (i.second.authorized) {
+		if (i.second.is_participant) {
 			continue;
 		}
 		
 		bool do_kick = true;
 		for (const auto& j : m_participants) {
-			if (!j.second.authorized) {
+			if (!j.second.is_participant) {
 				continue;
 			}
 			
@@ -1156,94 +1392,68 @@ void Channel::try_channel_split(bool because_votekick)
 	remove_users(victims);
 }
 
-void Channel::check_timeout(const std::string& username)
+
+
+
+UnsignedConversationMessage Conversation::conversation_status(const std::string& invitee_username, const PublicKey& invitee_long_term_public_key) const
 {
-	assert(m_participants.count(username));
+	ConversationStatusMessage result;
+	result.invitee_username = invitee_username;
+	result.invitee_long_term_public_key = invitee_long_term_public_key;
 	
-	Participant& participant = m_participants[username];
-	
-	bool event_timeout = (!participant.events.empty() && participant.events.front()->timeout);
-	bool channel_status_timeout = !participant.channel_status_timer.active();
-	
-	bool want_timeout = event_timeout || channel_status_timeout;
-	if (participant.timeout_in_flight != want_timeout) {
-		participant.timeout_in_flight = want_timeout;
-		if (m_authorized) {
-			TimeoutMessage message;
-			message.victim = username;
-			message.timeout = want_timeout;
-			send_message(message.encode());
-		}
-	}
-}
-
-
-
-void Channel::declare_event(Event&& event)
-{
-	std::list<Event>::iterator it = m_events.insert(m_events.end(), std::move(event));
-	for (const std::string& username : it->remaining_users) {
-		assert(m_participants.count(username));
-		m_participants[username].events.push_back(it);
-	}
-	it->timeout = false;
-	
-	it->timeout_timer = Timer(m_room->interface(), c_event_timeout, [this, it] {
-		it->timeout = true;
-		for (const std::string& username : it->remaining_users) {
-			check_timeout(username);
-		}
-	});
-}
-
-void Channel::send_message(const Message& message)
-{
-	m_room->send_message(message);
-}
-
-Message Channel::channel_status(const std::string& searcher_username, const Hash& searcher_nonce) const
-{
-	ChannelStatusMessage result;
-	result.searcher_username = searcher_username;
-	result.searcher_nonce = searcher_nonce;
-	result.channel_status_hash = m_channel_status_hash;
+	result.conversation_status_hash = m_conversation_status_hash;
 	result.latest_session_id = m_encrypted_chat.latest_session_id();
 	
 	for (const auto& i : m_participants) {
-		if (i.second.authorized) {
-			ChannelStatusMessage::AuthorizedParticipant participant;
+		if (i.second.is_participant) {
+			ConversationStatusMessage::Participant participant;
 			participant.username = i.second.username;
 			participant.long_term_public_key = i.second.long_term_public_key;
-			participant.ephemeral_public_key = i.second.ephemeral_public_key;
-			participant.authorization_nonce = i.second.authorization_nonce;
+			participant.conversation_public_key = i.second.conversation_public_key;
 			participant.timeout_peers = i.second.timeout_peers;
 			participant.votekick_peers = i.second.votekick_peers;
 			result.participants.push_back(participant);
 		} else {
-			ChannelStatusMessage::UnauthorizedParticipant participant;
-			participant.username = i.second.username;
-			participant.long_term_public_key = i.second.long_term_public_key;
-			participant.ephemeral_public_key = i.second.ephemeral_public_key;
-			participant.authorization_nonce = i.second.authorization_nonce;
-			participant.authorized_by = i.second.authorized_by;
-			participant.authorized_peers = i.second.authorized_peers;
-			result.unauthorized_participants.push_back(participant);
+			ConversationStatusMessage::ConfirmedInvite invite;
+			invite.inviter = i.second.inviter;
+			invite.username = i.second.username;
+			invite.long_term_public_key = i.second.long_term_public_key;
+			invite.conversation_public_key = i.second.conversation_public_key;
+			invite.authenticated = i.second.authenticated;
+			result.confirmed_invites.push_back(invite);
+		}
+	}
+	
+	for (const auto& i : m_unconfirmed_invites) {
+		for (const auto& j : i.second) {
+			ConversationStatusMessage::UnconfirmedInvite invite;
+			invite.inviter = j.second.inviter;
+			invite.username = j.second.username;
+			invite.long_term_public_key = j.second.long_term_public_key;
+			result.unconfirmed_invites.push_back(invite);
 		}
 	}
 	
 	result.key_exchanges = m_encrypted_chat.encode_key_exchanges();
 	
 	for (const Event& event : m_events) {
-		if (event.type == Message::Type::ChannelStatus) {
-			ChannelStatusEvent channel_status_event;
-			channel_status_event.searcher_username = event.channel_status.searcher_username;
-			channel_status_event.searcher_nonce = event.channel_status.searcher_nonce;
-			channel_status_event.status_message_hash = event.channel_status.status_message_hash;
-			channel_status_event.remaining_users = event.remaining_users;
-			result.events.push_back(channel_status_event.encode(result));
+		if (event.type == Message::Type::ConversationStatus) {
+			ConversationStatusEvent conversation_status_event;
+			conversation_status_event.invitee_username = event.conversation_status.invitee_username;
+			conversation_status_event.invitee_long_term_public_key = event.conversation_status.invitee_long_term_public_key;
+			conversation_status_event.status_message_hash = event.conversation_status.status_message_hash;
+			conversation_status_event.remaining_users = event.remaining_users;
+			result.events.push_back(conversation_status_event.encode(result));
+		} else if (event.type == Message::Type::ConversationConfirmation) {
+			ConversationConfirmationEvent conversation_confirmation_event;
+			conversation_confirmation_event.invitee_username = event.conversation_status.invitee_username;
+			conversation_confirmation_event.invitee_long_term_public_key = event.conversation_status.invitee_long_term_public_key;
+			conversation_confirmation_event.status_message_hash = event.conversation_status.status_message_hash;
+			conversation_confirmation_event.remaining_users = event.remaining_users;
+			result.events.push_back(conversation_confirmation_event.encode(result));
 		} else if (event.type == Message::Type::ConsistencyCheck) {
 			ConsistencyCheckEvent consistency_check_event;
-			consistency_check_event.channel_status_hash = event.consistency_check.channel_status_hash;
+			consistency_check_event.conversation_status_hash = event.consistency_check.conversation_status_hash;
 			consistency_check_event.remaining_users = event.remaining_users;
 			result.events.push_back(consistency_check_event.encode(result));
 		} else if (
@@ -1271,64 +1481,14 @@ Message Channel::channel_status(const std::string& searcher_username, const Hash
 	return result.encode();
 }
 
-void Channel::hash_message(const std::string& sender, const Message& message)
-{
-	hash_payload(sender, uint8_t(message.type), message.payload);
-}
-
-void Channel::hash_payload(const std::string& sender, uint8_t type, const std::string& message)
-{
-	Hash zero;
-	memset(zero.buffer, 0, sizeof(zero.buffer));
-	
-	std::string buffer = channel_status(std::string(), zero).payload;
-	buffer += sender;
-	buffer += type;
-	buffer += message;
-	m_channel_status_hash = crypto::hash(buffer);
-}
-
-void Channel::authenticate_to(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, const Hash& nonce)
-{
-	AuthenticationMessage message;
-	message.sender_long_term_public_key = m_room->long_term_public_key();
-	message.sender_ephemeral_public_key = this->ephemeral_public_key();
-	message.peer_username = username;
-	message.peer_long_term_public_key = long_term_public_key;
-	message.peer_ephemeral_public_key = ephemeral_public_key;
-	message.nonce = nonce;
-	message.authentication_confirmation = authentication_token(username, long_term_public_key, ephemeral_public_key, nonce, false);
-	send_message(message.encode());
-}
-
-Hash Channel::authentication_token(const std::string& username, const PublicKey& long_term_public_key, const PublicKey& ephemeral_public_key, const Hash& nonce, bool for_peer)
-{
-	Hash token = crypto::triple_diffie_hellman(
-		m_room->long_term_private_key(),
-		m_ephemeral_private_key,
-		long_term_public_key,
-		ephemeral_public_key
-	);
-	std::string buffer = token.as_string();
-	buffer += nonce.as_string();
-	if (for_peer) {
-		buffer += long_term_public_key.as_string();
-		buffer += username;
-	} else {
-		buffer += m_room->long_term_public_key().as_string();
-		buffer += m_room->username();
-	}
-	return crypto::hash(buffer);
-}
-
-std::list<Channel::Event>::iterator Channel::first_user_event(const std::string& username)
+Conversation::EventReference Conversation::first_user_event(const std::string& username)
 {
 	if (!m_participants.count(username)) {
-		return m_events.end();
+		return EventReference();
 	}
 	Participant& participant = m_participants[username];
 	if (participant.events.empty()) {
-		return m_events.end();
+		return EventReference();
 	}
 	auto it = participant.events.front();
 	participant.events.pop_front();
@@ -1338,24 +1498,7 @@ std::list<Channel::Event>::iterator Channel::first_user_event(const std::string&
 	
 	check_timeout(username);
 	
-	return it;
-}
-
-void Channel::set_user_channel_status_timer(const std::string& username)
-{
-	assert(m_participants.count(username));
-	m_participants[username].channel_status_timer = Timer(m_room->interface(), c_channel_status_frequency + c_event_timeout, [username, this] {
-		check_timeout(username);
-	});
-	check_timeout(username);
-}
-
-void Channel::set_channel_status_timer()
-{
-	m_channel_status_timer = Timer(m_room->interface(), c_channel_status_frequency, [this] {
-		send_message(ConsistencyStatusMessage::encode());
-		set_channel_status_timer();
-	});
+	return EventReference(&m_events, it);
 }
 
 } // namespace np1sec

@@ -404,7 +404,7 @@ void KeyExchange::finish_public_key()
 		auto secret_share = [this] (const Participant* participant) {
 			assert(participant->has_ephemeral_public_key);
 			Hash token = crypto::triple_diffie_hellman(
-				m_room->long_term_private_key(),
+				m_room->private_key(),
 				m_ephemeral_private_key,
 				participant->long_term_public_key,
 				participant->ephemeral_public_key

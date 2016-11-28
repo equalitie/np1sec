@@ -16,15 +16,15 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "channel.h"
+#include "conversation.h"
 #include "room.h"
 #include "session.h"
 
 namespace np1sec
 {
 
-Session::Session(Channel* channel, const Hash& key_id, const std::vector<KeyExchange::AcceptedUser>& users, const SymmetricKey& symmetric_key, const PrivateKey& private_key):
-	m_channel(channel),
+Session::Session(Conversation* conversation, const Hash& key_id, const std::vector<KeyExchange::AcceptedUser>& users, const SymmetricKey& symmetric_key, const PrivateKey& private_key):
+	m_conversation(conversation),
 	m_key_id(key_id),
 	m_symmetric_key(symmetric_key),
 	m_private_key(private_key),
@@ -42,15 +42,15 @@ Session::Session(Channel* channel, const Hash& key_id, const std::vector<KeyExch
 
 void Session::send_message(const std::string& message)
 {
-	UnsignedChatMessagePayload payload;
-	payload.message = message;
+	UnsignedChatMessage payload;
 	payload.message_id = m_signature_id++;
+	payload.message = message;
 	
-	std::string signed_payload = ChatMessagePayload::sign(payload, m_private_key);
+	std::string signed_payload = PlaintextChatMessage::sign(payload, m_private_key);
 	
 	ChatMessage encrypted = ChatMessage::encrypt(signed_payload, m_key_id, m_symmetric_key);
 	
-	m_channel->room()->send_message(encrypted.encode());
+	m_conversation->send_message(encrypted.encode());
 }
 
 void Session::decrypt_message(const std::string& sender, const ChatMessage& encrypted_message)
@@ -60,19 +60,18 @@ void Session::decrypt_message(const std::string& sender, const ChatMessage& encr
 	try {
 		std::string decrypted_payload = encrypted_message.decrypt(m_symmetric_key);
 		
-		ChatMessagePayload signed_payload = ChatMessagePayload::verify(decrypted_payload, m_participants.at(sender).ephemeral_public_key);
+		PlaintextChatMessage payload = PlaintextChatMessage::decode(decrypted_payload);
 		
-		if (!signed_payload.valid) {
+		if (!payload.verify(m_participants.at(sender).ephemeral_public_key)) {
 			return;
 		}
 		
-		UnsignedChatMessagePayload payload = signed_payload.decode();
 		if (payload.message_id != m_participants.at(sender).signature_id) {
 			return;
 		}
 		m_participants[sender].signature_id++;
 		
-		m_channel->interface()->message_received(sender, payload.message);
+		if (m_conversation->interface()) m_conversation->interface()->message_received(sender, payload.message);
 	} catch(MessageFormatException) {}
 }
 

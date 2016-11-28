@@ -39,32 +39,33 @@ class CliJabberite final : public Jabberite
 	
 	void user_joined(std::string username, np1sec::PublicKey public_key);
 	void user_left(std::string username, np1sec::PublicKey public_key);
-/*	
-	void new_channel(int id, np1sec::Channel* channel);
-	void channel_removed(int id);
-	void joined_channel(int id);
+
+	void created_conversation(int id, np1sec::Conversation* conversation);
+	void invited_to_conversation(int id, np1sec::Conversation* conversation, std::string username);
 	
-	void user_joined(int channel_id, std::string username);
-	void user_left(int channel_id, std::string username);
-	void user_authenticated(int channel_id, std::string username, np1sec::PublicKey public_key);
-	void user_authentication_failed(int channel_id, std::string username);
-	void user_authorized_by(int channel_id, std::string user, std::string target);
-	void user_promoted(int channel_id, std::string username);
+	void user_invited(int conversation_id, std::string inviter, std::string invitee);
+	void invitation_cancelled(int conversation_id, std::string inviter, std::string invitee);
+	void user_authenticated(int conversation_id, std::string username, np1sec::PublicKey public_key);
+	void user_authentication_failed(int conversation_id, std::string username);
+	void user_joined(int conversation_id, std::string username);
+	void user_left(int conversation_id, std::string username);
+	void votekick_registered(int conversation_id, std::string kicker, std::string victim, bool kicked);
 	
-	void joined(int channel_id);
-	void authorized(int channel_id);
+	void user_joined_chat(int conversation_id, std::string username);
+	void message_received(int conversation_id, std::string sender, std::string message);
 	
-	void joined_chat(int channel_id);
-	void user_joined_chat(int channel_id, std::string username);
-	void message_received(int channel_id, std::string username, std::string message);
+	void joined(int conversation_id);
+	void joined_chat(int conversation_id);
+	void left(int conversation_id);
 	
-	void dump(int channel_id);
-*/	void print(const std::string& message);
+	void dump(int conversation_id);
+	void print(const std::string& message);
 	
 	void parse_command(const std::string& line);
 	
 	protected:
 	bool m_verbose;
+	int m_active_conversation = -1;
 };
 
 
@@ -90,7 +91,7 @@ bool CliJabberite::process_option(char option, char* /*argument */)
 std::string CliJabberite::explain_option(char option)
 {
 	if (option == 'v') {
-		return "Enable verbose channel status reporting";
+		return "Enable verbose conversation status reporting";
 	} else {
 		return "";
 	}
@@ -126,123 +127,120 @@ void CliJabberite::user_left(std::string username, np1sec::PublicKey public_key)
 	print("** User left: " + username + "    " + public_key.dump_hex() + "\n");
 }
 
-/*
-void CliJabberite::new_channel(int id, np1sec::Channel*)
+void CliJabberite::created_conversation(int id, np1sec::Conversation*)
 {
-	print("** Found channel " + std::to_string(id) + ":\n");
+	print("** Created conversation " + std::to_string(id) + ":\n");
 	dump(id);
 }
 
-void CliJabberite::channel_removed(int id)
+void CliJabberite::invited_to_conversation(int id, np1sec::Conversation*, std::string username)
 {
-	print("** Removed channel " + std::to_string(id) + "\n");
-}
-
-void CliJabberite::joined_channel(int id)
-{
-	print("** Joined channel " + std::to_string(id) + ":\n");
+	print("** Invited to conversation " + std::to_string(id) + " by " + username + ":\n");
 	dump(id);
 }
 
-void CliJabberite::user_joined(int channel_id, std::string username)
+void CliJabberite::user_invited(int conversation_id, std::string inviter, std::string invitee)
 {
-	print("** User " + username + " joined the channel\n");
-	dump(channel_id);
+	print("** <" + std::to_string(conversation_id) + "> " + inviter + " invited user " + invitee + "\n");
+	if (m_verbose) dump(conversation_id);
 }
 
-void CliJabberite::user_left(int channel_id, std::string username)
+void CliJabberite::invitation_cancelled(int conversation_id, std::string inviter, std::string invitee)
 {
-	print("** User " + username + " left the channel\n");
-	dump(channel_id);
+	print("** <" + std::to_string(conversation_id) + "> " + inviter + " cancelled the invite for user " + invitee + "\n");
+	if (m_verbose) dump(conversation_id);
 }
 
-void CliJabberite::user_authenticated(int channel_id, std::string username, np1sec::PublicKey public_key)
+void CliJabberite::user_authenticated(int conversation_id, std::string username, np1sec::PublicKey public_key)
 {
-	print("** User " + username + " authenticated as " + public_key.dump_hex() + "\n");
-	dump(channel_id);
+	print("** <" + std::to_string(conversation_id) + "> " + username + " authenticated as " + public_key.dump_hex() + "\n");
+	if (m_verbose) dump(conversation_id);
 }
 
-void CliJabberite::user_authentication_failed(int channel_id, std::string username)
+void CliJabberite::user_authentication_failed(int conversation_id, std::string username)
 {
-	print("** User " + username + " failed authentication\n");
-	dump(channel_id);
+	print("** <" + std::to_string(conversation_id) + "> " + username + " failed to authenticate\n");
+	if (m_verbose) dump(conversation_id);
 }
 
-void CliJabberite::user_authorized_by(int channel_id, std::string user, std::string target)
+void CliJabberite::user_joined(int conversation_id, std::string username)
 {
-	print("** User " + target + " was authorized by " + user + "\n");
-	dump(channel_id);
+	print("** <" + std::to_string(conversation_id) + "> " + username + " joined the conversation\n");
+	if (m_verbose) dump(conversation_id);
 }
 
-void CliJabberite::user_promoted(int channel_id, std::string username)
+void CliJabberite::user_left(int conversation_id, std::string username)
 {
-	print("** User " + username + " was promoted\n");
-	dump(channel_id);
+	print("** <" + std::to_string(conversation_id) + "> " + username + " left the conversation\n");
+	if (m_verbose) dump(conversation_id);
 }
 
-void CliJabberite::joined(int channel_id)
+void CliJabberite::votekick_registered(int conversation_id, std::string kicker, std::string victim, bool kicked)
 {
-	print("** You joined the channel\n");
-	dump(channel_id);
+	print("** <" + std::to_string(conversation_id) + "> " + kicker + (kicked ? " kicked " : " unkicked ") + victim + "\n");
+	if (m_verbose) dump(conversation_id);
 }
 
-void CliJabberite::authorized(int channel_id)
+void CliJabberite::user_joined_chat(int conversation_id, std::string username)
 {
-	print("** You were promoted\n");
-	dump(channel_id);
+	print("** <" + std::to_string(conversation_id) + "> " + username + " joined the chat session\n");
+	if (m_verbose) dump(conversation_id);
 }
 
-void CliJabberite::joined_chat(int channel_id)
+void CliJabberite::message_received(int conversation_id, std::string sender, std::string message)
 {
-	print("** You joined the chat\n");
-	dump(channel_id);
+	print("** <" + std::to_string(conversation_id) + "> <" + sender + "> " + message + "\n");
 }
 
-void CliJabberite::user_joined_chat(int channel_id, std::string username)
+void CliJabberite::joined(int conversation_id)
 {
-	print("** " + username + " joined the chat\n");
-	dump(channel_id);
+	print("** <" + std::to_string(conversation_id) + "> you joined the conversation\n");
+	if (m_verbose) dump(conversation_id);
 }
 
-void CliJabberite::message_received(int channel_id, std::string username, std::string message)
+void CliJabberite::joined_chat(int conversation_id)
 {
-	print("<" + username + "> " + message + "\n");
+	print("** <" + std::to_string(conversation_id) + "> you joined the chat session\n");
+	if (m_verbose) dump(conversation_id);
 }
 
-
-void CliJabberite::dump(int channel_id)
+void CliJabberite::left(int conversation_id)
 {
-	if (!m_verbose) {
-		return;
-	}
+	print("** <" + std::to_string(conversation_id) + "> you left the conversation\n");
+	if (m_verbose) dump(conversation_id);
+}
+
+void CliJabberite::dump(int conversation_id)
+{
+	np1sec::Conversation* conversation = this->conversation(conversation_id);
 	
-	np1sec::Channel* channel = this->channel(channel_id);
-	print(std::string("Channel status:\n"));
-	print(std::string("  Member: ") + (channel->am_member() ? "yes" : "no") + "\n");
-	print(std::string("  Authorized: ") + (channel->am_authorized() ? "yes" : "no") + "\n");
+	print(std::string("Conversation status <") + std::to_string(conversation_id) + ">:\n");
+	print(std::string("  Status: ") + (conversation->is_invite() ? "invited" : conversation->in_chat() ? "chatting" : "participant") + "\n");
 	print(std::string("Participants:\n"));
-	for (const std::string& username : channel->users()) {
+	for (const std::string& username : conversation->participants()) {
 		print(std::string("  ") + username + "\n");
-		if (channel->user_authentication(username) == np1sec::Channel::AuthenticationStatus::Authenticated) {
-			print(std::string("    Identity: ") + channel->user_key(username).dump_hex() + "\n");
-		} else if (channel->user_authentication(username) == np1sec::Channel::AuthenticationStatus::AuthenticationFailed) {
+		if (conversation->user_is_authenticated(username)) {
+			print(std::string("    Identity: ") + conversation->user_public_key(username).dump_hex() + "\n");
+		} else if (conversation->user_failed_authentication(username)) {
 			print(std::string("    Identity: FAILED\n"));
 		} else {
 			print(std::string("    Identity: Unauthenticated\n"));
 		}
-		print(std::string("    Authorized: ") + (channel->user_is_authorized(username) ? "yes" : "no") + "\n");
-		if (!channel->user_is_authorized(username)) {
-			for (const std::string& peer : channel->users()) {
-				if (channel->user_is_authorized(peer)) {
-					print(std::string("      ") + peer + ":\n");
-					print(std::string("        ") + username + " authorized by " + peer + ": " + (channel->user_has_authorized(peer, username) ? "yes" : "no") + "\n");
-					print(std::string("        ") + peer + " authorized by " + username + ": " + (channel->user_has_authorized(username, peer) ? "yes" : "no") + "\n");
-				}
-			}
+		print(std::string("    In chat: ") + (conversation->participant_in_chat(username) ? "yes" : "no") + "\n");
+	}
+	print(std::string("Invitees:\n"));
+	for (const std::string& username : conversation->invitees()) {
+		print(std::string("  ") + username + "\n");
+		if (conversation->user_is_authenticated(username)) {
+			print(std::string("    Identity: ") + conversation->user_public_key(username).dump_hex() + "\n");
+		} else if (conversation->user_failed_authentication(username)) {
+			print(std::string("    Identity: FAILED\n"));
+		} else {
+			print(std::string("    Identity: Unauthenticated\n"));
 		}
+		print(std::string("    Invited by: ") + conversation->invitee_inviter(username) + "\n");
 	}
 }
-*/
 
 void readline_print(std::string message);
 
@@ -257,19 +255,22 @@ void CliJabberite::parse_command(const std::string& line)
 		connect();
 	} else if (line == "/disconnect") {
 		disconnect();
-	}
-/*
-	if (line == "/create") {
-		create_channel();
-	} else if (line.substr(0, 5) == "/join") {
-		size_t id = std::stoi(line.substr(6));
-		join_channel(id);
-	} else if (line.substr(0, 7) == "/accept") {
-		authorize(line.substr(8));
+	} else if (line == "/create") {
+		create_conversation();
+	} else if (line.substr(0, 7) == "/select") {
+		int id = std::stoi(line.substr(8));
+		if (conversation(id)) {
+			print("** Selecting conversation " + std::to_string(id) + "\n");
+			m_active_conversation = id;
+		}
+	} else if (line.substr(0, 7) == "/invite") {
+		invite(m_active_conversation, line.substr(8));
+	} else if (line == "/join") {
+		join(m_active_conversation);
 	} else if (line.substr(0, 5) == "/kick") {
-		votekick(line.substr(6), true);
+		votekick(m_active_conversation, line.substr(6), true);
 	} else if (line.substr(0, 7) == "/unkick") {
-		votekick(line.substr(8), false);
+		votekick(m_active_conversation, line.substr(8), false);
 	} else if (line == "/freeze") {
 		frozen = true;
 	} else if (line == "/unfreeze") {
@@ -277,9 +278,9 @@ void CliJabberite::parse_command(const std::string& line)
 	} else if (line.substr(0, 1) == "/") {
 		// do nothing
 	} else {
-		send_chat(line);
+		send_chat(m_active_conversation, line);
 	}
-*/
+
 }
 
 

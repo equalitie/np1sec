@@ -153,7 +153,7 @@ static void process_signed_on(PurpleConnection* connection, void *m)
 static void process_chat_joined(PurpleConversation* conversation, void* m)
 {
 	Jabberite* jabberite = reinterpret_cast<Jabberite*>(m);
-	jabberite->conversation = conversation;
+	jabberite->conv = conversation;
 	
 	jabberite->room->connect();
 }
@@ -195,88 +195,96 @@ static void setup_purple_callbacks(Jabberite* jabberite)
 }
 
 
-/*
-class JabberiteChannelInterface final : public np1sec::ChannelInterface
+
+
+class JabberiteConversationInterface final : public np1sec::ConversationInterface
 {
 	public:
-	JabberiteChannelInterface(Jabberite* jabberite_, np1sec::Channel* channel_): jabberite(jabberite_), channel(channel_) {}
-	void user_joined(const std::string& username);
-	void user_left(const std::string& username);
+	JabberiteConversationInterface(Jabberite* jabberite_, np1sec::Conversation* conversation_): jabberite(jabberite_), conversation(conversation_) {}
+	void user_invited(const std::string& inviter, const std::string& invitee);
+	void invitation_cancelled(const std::string& inviter, const std::string& invitee);
 	void user_authenticated(const std::string& username, const np1sec::PublicKey& public_key);
 	void user_authentication_failed(const std::string& username);
-	void user_authorized_by(const std::string& user, const std::string& target);
-	void user_promoted(const std::string& username);
+	void user_joined(const std::string& username);
+	void user_left(const std::string& username);
+	void votekick_registered(const std::string& kicker, const std::string& victim, bool kicked);
+	
+	void user_joined_chat(const std::string& username);
+	void message_received(const std::string& sender, const std::string& message);
 	
 	void joined();
-	void authorized();
-	
 	void joined_chat();
-	void user_joined_chat(const std::string& username);
-	void message_received(const std::string& username, const std::string& message);
+	void left();
 	
 	protected:
-	int id() { return jabberite->channel_id(channel); }
+	int id() { return jabberite->conversation_id(conversation); }
 	
 	public:
 	Jabberite* jabberite;
-	np1sec::Channel* channel;
+	np1sec::Conversation* conversation;
 };
 
-void JabberiteChannelInterface::user_joined(const std::string& username)
+void JabberiteConversationInterface::user_invited(const std::string& inviter, const std::string& invitee)
 {
-	jabberite->user_joined(id(), username);
+	jabberite->user_invited(id(), inviter, invitee);
 }
 
-void JabberiteChannelInterface::user_left(const std::string& username)
+void JabberiteConversationInterface::invitation_cancelled(const std::string& inviter, const std::string& invitee)
 {
-	jabberite->user_left(id(), username);
+	jabberite->invitation_cancelled(id(), inviter, invitee);
 }
 
-void JabberiteChannelInterface::user_authenticated(const std::string& username, const np1sec::PublicKey& public_key)
+void JabberiteConversationInterface::user_authenticated(const std::string& username, const np1sec::PublicKey& public_key)
 {
 	jabberite->user_authenticated(id(), username, public_key);
 }
 
-void JabberiteChannelInterface::user_authentication_failed(const std::string& username)
+void JabberiteConversationInterface::user_authentication_failed(const std::string& username)
 {
 	jabberite->user_authentication_failed(id(), username);
 }
 
-void JabberiteChannelInterface::user_authorized_by(const std::string& user, const std::string& target)
+void JabberiteConversationInterface::user_joined(const std::string& username)
 {
-	jabberite->user_authorized_by(id(), user, target);
+	jabberite->user_joined(id(), username);
 }
 
-void JabberiteChannelInterface::user_promoted(const std::string& username)
+void JabberiteConversationInterface::user_left(const std::string& username)
 {
-	jabberite->user_promoted(id(), username);
+	jabberite->user_left(id(), username);
 }
 
-void JabberiteChannelInterface::joined()
+void JabberiteConversationInterface::votekick_registered(const std::string& kicker, const std::string& victim, bool kicked)
 {
-	jabberite->joined(id());
+	jabberite->votekick_registered(id(), kicker, victim, kicked);
 }
 
-void JabberiteChannelInterface::authorized()
-{
-	jabberite->authorized(id());
-}
-
-void JabberiteChannelInterface::joined_chat()
-{
-	jabberite->joined_chat(id());
-}
-
-void JabberiteChannelInterface::user_joined_chat(const std::string& username)
+void JabberiteConversationInterface::user_joined_chat(const std::string& username)
 {
 	jabberite->user_joined_chat(id(), username);
 }
 
-void JabberiteChannelInterface::message_received(const std::string& username, const std::string& message)
+void JabberiteConversationInterface::message_received(const std::string& sender, const std::string& message)
 {
-	jabberite->message_received(id(), username, message);
+	jabberite->message_received(id(), sender, message);
 }
-*/
+
+void JabberiteConversationInterface::joined()
+{
+	jabberite->joined(id());
+}
+
+void JabberiteConversationInterface::joined_chat()
+{
+	jabberite->joined_chat(id());
+}
+
+void JabberiteConversationInterface::left()
+{
+	jabberite->left(id());
+	jabberite->remove_conversation(conversation);
+}
+
 
 
 class JabberiteRoomInterface : public np1sec::RoomInterface
@@ -290,12 +298,9 @@ class JabberiteRoomInterface : public np1sec::RoomInterface
 	void disconnected();
 	void user_joined(const std::string& username, const np1sec::PublicKey& public_key);
 	void user_left(const std::string& username, const np1sec::PublicKey& public_key);
-/*	
-	np1sec::ChannelInterface* new_channel(np1sec::Channel* channel);
-	void channel_removed(np1sec::Channel* channel);
-	void joined_channel(np1sec::Channel* channel);
-	void disconnected();
-*/	
+	np1sec::ConversationInterface* created_conversation(np1sec::Conversation* conversation);
+	np1sec::ConversationInterface* invited_to_conversation(np1sec::Conversation* conversation, const std::string& username);
+	
 	protected:
 	Jabberite* m_jabberite;
 };
@@ -303,7 +308,7 @@ class JabberiteRoomInterface : public np1sec::RoomInterface
 void JabberiteRoomInterface::send_message(const std::string& message)
 {
 	if (!m_jabberite->frozen) {
-		purple_conv_chat_send(PURPLE_CONV_CHAT(m_jabberite->conversation), message.c_str());
+		purple_conv_chat_send(PURPLE_CONV_CHAT(m_jabberite->conv), message.c_str());
 	}
 }
 
@@ -357,38 +362,28 @@ void JabberiteRoomInterface::user_left(const std::string& username, const np1sec
 	m_jabberite->user_left(username, public_key);
 }
 
-
-
-
-/*
-np1sec::ChannelInterface* JabberiteRoomInterface::new_channel(np1sec::Channel* channel)
+np1sec::ConversationInterface* JabberiteRoomInterface::created_conversation(np1sec::Conversation* conversation)
 {
-	JabberiteChannelInterface* interface = new JabberiteChannelInterface(m_jabberite, channel);
-	int id = m_jabberite->add_channel(interface);
-	m_jabberite->new_channel(id, channel);
+	JabberiteConversationInterface* interface = new JabberiteConversationInterface(m_jabberite, conversation);
+	int id = m_jabberite->add_conversation(interface);
+	m_jabberite->created_conversation(id, conversation);
 	return interface;
 }
 
-void JabberiteRoomInterface::channel_removed(np1sec::Channel* channel)
+np1sec::ConversationInterface* JabberiteRoomInterface::invited_to_conversation(np1sec::Conversation* conversation, const std::string& username)
 {
-	int id = m_jabberite->remove_channel(channel);
-	m_jabberite->channel_removed(id);
+	JabberiteConversationInterface* interface = new JabberiteConversationInterface(m_jabberite, conversation);
+	int id = m_jabberite->add_conversation(interface);
+	m_jabberite->invited_to_conversation(id, conversation, username);
+	return interface;
 }
-
-void JabberiteRoomInterface::joined_channel(np1sec::Channel* channel)
-{
-	int id = m_jabberite->channel_id(channel);
-	m_jabberite->joined_channel(id);
-}
-*/
-
 
 
 
 Jabberite::Jabberite():
 	account(nullptr),
 	connection(nullptr),
-	conversation(nullptr),
+	conv(nullptr),
 	frozen(false),
 	room(nullptr)
 {
@@ -408,85 +403,101 @@ void Jabberite::disconnect()
 	}
 }
 
-/*
-void Jabberite::create_channel()
+void Jabberite::create_conversation()
 {
 	if (room) {
-		room->create_channel();
+		room->create_conversation();
 	}
 }
 
-void Jabberite::join_channel(int id)
+void Jabberite::invite(int conversation_id, std::string username)
 {
 	if (room) {
-		np1sec::Channel* channel = this->channel(id);
-		if (channel) {
-			room->join_channel(channel);
+		std::map<std::string, np1sec::PublicKey> users = room->users();
+		if (!users.count(username)) {
+			return;
 		}
+		np1sec::Conversation* c = conversation(conversation_id);
+		if (!c) {
+			return;
+		}
+		c->invite(username, users[username]);
 	}
 }
 
-void Jabberite::authorize(std::string username)
+void Jabberite::join(int conversation_id)
 {
 	if (room) {
-		room->authorize(username);
+		np1sec::Conversation* c = conversation(conversation_id);
+		if (!c) {
+			return;
+		}
+		c->join();
 	}
 }
 
-void Jabberite::votekick(std::string username, bool kick)
+void Jabberite::votekick(int conversation_id, std::string username, bool kick)
 {
 	if (room) {
-		room->votekick(username, kick);
+		np1sec::Conversation* c = conversation(conversation_id);
+		if (!c) {
+			return;
+		}
+		c->votekick(username, kick);
 	}
 }
 
-void Jabberite::send_chat(std::string message)
+void Jabberite::send_chat(int conversation_id, std::string message)
 {
 	if (room) {
-		room->send_chat(message);
+		np1sec::Conversation* c = conversation(conversation_id);
+		if (!c) {
+			return;
+		}
+		c->send_chat(message);
 	}
 }
 
-np1sec::Channel* Jabberite::channel(int id)
+np1sec::Conversation* Jabberite::conversation(int id)
 {
-	if (id < 0 || (size_t) id >= channels.size()) {
+	if (id < 0 || (size_t) id >= conversations.size()) {
 		return nullptr;
 	}
-	if (!channels[id]) {
+	if (!conversations[id]) {
 		return nullptr;
 	}
-	return channels[id]->channel;
+	return conversations[id]->conversation;
 }
 
-int Jabberite::channel_id(np1sec::Channel* channel)
+int Jabberite::conversation_id(np1sec::Conversation* conversation)
 {
-	for (int i = 0; (size_t)i < channels.size(); i++) {
-		if (channels[i] && channels[i]->channel == channel) {
+	for (int i = 0; (size_t)i < conversations.size(); i++) {
+		if (conversations[i] && conversations[i]->conversation == conversation) {
 			return i;
 		}
 	}
 	return -1;
 }
 
-int Jabberite::add_channel(JabberiteChannelInterface* interface)
+int Jabberite::add_conversation(JabberiteConversationInterface* interface)
 {
-	int id = channels.size();
-	channels.push_back(interface);
+	int id = conversations.size();
+	conversations.push_back(interface);
 	return id;
 }
 
-int Jabberite::remove_channel(np1sec::Channel* channel)
+int Jabberite::remove_conversation(np1sec::Conversation* conversation)
 {
-	int id = channel_id(channel);
+	int id = conversation_id(conversation);
 	if (id != -1) {
-		if (channels[id]) {
-			delete channels[id];
-			channels[id] = nullptr;
+		if (conversations[id]) {
+			delete conversations[id];
+			conversations[id] = nullptr;
 		}
 	}
 	return id;
 }
-*/
+
 
 
 
