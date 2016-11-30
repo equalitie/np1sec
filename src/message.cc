@@ -35,14 +35,14 @@ void encode_integer(MessageBuffer* buffer, T value)
 	int bits_remaining = (sizeof(T) * CHAR_BIT);
 	do {
 		if (bits_remaining == 8) {
-			buffer->add_8((uint8_t)value);
+			buffer->add_byte((uint8_t)value);
 			return;
 		}
 		
 		uint8_t byte = (uint8_t)(value & 0x7f);
 		value = value >> 7;
 		bits_remaining -= 7;
-		buffer->add_8(value ? (byte | 0x80) : byte);
+		buffer->add_byte(value ? (byte | 0x80) : byte);
 	} while(value);
 }
 
@@ -52,7 +52,7 @@ T decode_integer(MessageBuffer* buffer)
 	int shift = 0;
 	T result = 0;
 	while (true) {
-		uint8_t byte = buffer->remove_8();
+		uint8_t byte = buffer->remove_byte();
 		int bits_remaining = (sizeof(T) * CHAR_BIT) - shift;
 		if (bits_remaining == 8) {
 			result |= ((T)byte << shift);
@@ -73,22 +73,18 @@ T decode_integer(MessageBuffer* buffer)
 	}
 }
 
-void MessageBuffer::add_8(uint8_t byte)
+
+void MessageBuffer::add_bit(bool bit)
+{
+	add_byte(bit ? 1 : 0);
+}
+
+void MessageBuffer::add_byte(uint8_t byte)
 {
 	push_back(byte);
 }
 
-void MessageBuffer::add_16(uint16_t number)
-{
-	encode_integer<uint16_t>(this, number);
-}
-
-void MessageBuffer::add_32(uint32_t number)
-{
-	encode_integer<uint32_t>(this, number);
-}
-
-void MessageBuffer::add_64(uint64_t number)
+void MessageBuffer::add_integer(uint64_t number)
 {
 	encode_integer<uint64_t>(this, number);
 }
@@ -100,7 +96,7 @@ void MessageBuffer::add_bytes(const std::string& buffer)
 
 void MessageBuffer::add_opaque(const std::string& buffer)
 {
-	add_32(buffer.size());
+	add_integer(buffer.size());
 	append(buffer);
 }
 
@@ -111,7 +107,12 @@ void MessageBuffer::check_empty()
 	}
 }
 
-uint8_t MessageBuffer::remove_8()
+bool MessageBuffer::remove_bit()
+{
+	return remove_byte() != 0;
+}
+
+uint8_t MessageBuffer::remove_byte()
 {
 	if (size() < 1) {
 		throw MessageFormatException();
@@ -124,17 +125,7 @@ uint8_t MessageBuffer::remove_8()
 	return result;
 }
 
-uint16_t MessageBuffer::remove_16()
-{
-	return decode_integer<uint16_t>(this);
-}
-
-uint32_t MessageBuffer::remove_32()
-{
-	return decode_integer<uint32_t>(this);
-}
-
-uint64_t MessageBuffer::remove_64()
+uint64_t MessageBuffer::remove_integer()
 {
 	return decode_integer<uint64_t>(this);
 }
@@ -154,7 +145,7 @@ std::string MessageBuffer::remove_bytes(size_t size)
 
 std::string MessageBuffer::remove_opaque()
 {
-	return remove_bytes(remove_32());
+	return remove_bytes(remove_integer());
 }
 
 
@@ -162,7 +153,7 @@ std::string MessageBuffer::remove_opaque()
 std::string Message::encode() const
 {
 	MessageBuffer buffer;
-	buffer.add_8(uint8_t(type));
+	buffer.add_byte(uint8_t(type));
 	buffer.add_bytes(payload);
 	
 	char* base64_buffer = new char[((buffer.size() + 3 - 1) / 3) * 4];
@@ -189,7 +180,7 @@ Message Message::decode(const std::string& encoded)
 	
 	MessageBuffer buffer(base64_decoded);
 	Message message;
-	message.type = Message::Type(buffer.remove_8());
+	message.type = Message::Type(buffer.remove_byte());
 	message.payload = buffer;
 	
 	return message;
@@ -281,7 +272,7 @@ static MessageBuffer encode_user_set(const ConversationStatusMessage& status, bo
 			byte |= (1 << bits);
 		}
 		if (bits == 0) {
-			buffer.add_8(byte);
+			buffer.add_byte(byte);
 			byte = 0;
 			bits = 8;
 		}
@@ -294,7 +285,7 @@ static MessageBuffer encode_user_set(const ConversationStatusMessage& status, bo
 				byte |= (1 << bits);
 			}
 			if (bits == 0) {
-				buffer.add_8(byte);
+				buffer.add_byte(byte);
 				byte = 0;
 				bits = 8;
 			}
@@ -302,7 +293,7 @@ static MessageBuffer encode_user_set(const ConversationStatusMessage& status, bo
 	}
 	
 	if (bits < 8) {
-		buffer.add_8(byte);
+		buffer.add_byte(byte);
 	}
 	
 	return buffer;
@@ -317,7 +308,7 @@ static std::set<std::string> decode_user_set(const ConversationStatusMessage& st
 	
 	for (const ConversationStatusMessage::Participant& participant : status.participants) {
 		if (!bits) {
-			byte = buffer.remove_8();
+			byte = buffer.remove_byte();
 			bits = 8;
 		}
 		bits--;
@@ -329,7 +320,7 @@ static std::set<std::string> decode_user_set(const ConversationStatusMessage& st
 	if (include_invites) {
 		for (const ConversationStatusMessage::ConfirmedInvite& invite : status.confirmed_invites) {
 			if (!bits) {
-				byte = buffer.remove_8();
+				byte = buffer.remove_byte();
 				bits = 8;
 			}
 			bits--;
@@ -358,6 +349,7 @@ QuitMessage QuitMessage::decode(const Message& encoded)
 	
 	QuitMessage result;
 	result.nonce = buffer.remove_hash();
+	buffer.check_empty();
 	return result;
 }
 
@@ -366,11 +358,9 @@ Message HelloMessage::encode() const
 	MessageBuffer buffer;
 	buffer.add_public_key(long_term_public_key);
 	buffer.add_public_key(ephemeral_public_key);
+	buffer.add_bit(reply);
 	if (reply) {
-		buffer.add_8(1);
 		buffer.add_opaque(reply_to_username);
-	} else {
-		buffer.add_8(0);
 	}
 	
 	return Message(Message::Type::Hello, buffer);
@@ -383,12 +373,11 @@ HelloMessage HelloMessage::decode(const Message& encoded)
 	HelloMessage result;
 	result.long_term_public_key = buffer.remove_public_key();
 	result.ephemeral_public_key = buffer.remove_public_key();
-	if (buffer.remove_8() != 0) {
-		result.reply = true;
+	result.reply = buffer.remove_bit();
+	if (result.reply) {
 		result.reply_to_username = buffer.remove_opaque();
-	} else {
-		result.reply = false;
 	}
+	buffer.check_empty();
 	return result;
 }
 
@@ -408,6 +397,7 @@ RoomAuthenticationRequestMessage RoomAuthenticationRequestMessage::decode(const 
 	RoomAuthenticationRequestMessage result;
 	result.username = buffer.remove_opaque();
 	result.nonce = buffer.remove_hash();
+	buffer.check_empty();
 	return result;
 }
 
@@ -427,6 +417,7 @@ RoomAuthenticationMessage RoomAuthenticationMessage::decode(const Message& encod
 	RoomAuthenticationMessage result;
 	result.username = buffer.remove_opaque();
 	result.authentication_confirmation = buffer.remove_hash();
+	buffer.check_empty();
 	return result;
 }
 
@@ -446,6 +437,7 @@ InviteMessage InviteMessage::decode(const UnsignedConversationMessage& encoded)
 	InviteMessage result;
 	result.username = buffer.remove_opaque();
 	result.long_term_public_key = buffer.remove_public_key();
+	buffer.check_empty();
 	return result;
 }
 
@@ -472,7 +464,7 @@ UnsignedConversationMessage ConversationStatusMessage::encode() const
 		invite_buffer.add_opaque(invite.username);
 		invite_buffer.add_public_key(invite.long_term_public_key);
 		invite_buffer.add_public_key(invite.conversation_public_key);
-		invite_buffer.add_8(invite.authenticated ? 1 : 0);
+		invite_buffer.add_bit(invite.authenticated);
 		confirmed_invites_buffer.add_opaque(invite_buffer);
 	}
 	buffer.add_opaque(confirmed_invites_buffer);
@@ -502,14 +494,14 @@ UnsignedConversationMessage ConversationStatusMessage::encode() const
 	MessageBuffer key_exchange_buffer;
 	for (const KeyExchangeState& exchange : key_exchanges) {
 		key_exchange_buffer.add_hash(exchange.key_id);
-		key_exchange_buffer.add_8(uint8_t(exchange.state));
+		key_exchange_buffer.add_byte(uint8_t(exchange.state));
 		key_exchange_buffer.add_opaque(exchange.payload);
 	}
 	buffer.add_opaque(key_exchange_buffer);
 	
 	MessageBuffer event_buffer;
 	for (const ConversationEvent& event : events) {
-		event_buffer.add_8(uint8_t(event.type));
+		event_buffer.add_byte(uint8_t(event.type));
 		event_buffer.add_opaque(event.payload);
 	}
 	buffer.add_opaque(event_buffer);
@@ -532,6 +524,7 @@ ConversationStatusMessage ConversationStatusMessage::decode(const UnsignedConver
 		participant.username = participant_buffer.remove_opaque();
 		participant.long_term_public_key = participant_buffer.remove_public_key();
 		participant.conversation_public_key = participant_buffer.remove_public_key();
+		participant_buffer.check_empty();
 		result.participants.push_back(participant);
 	}
 	
@@ -543,7 +536,8 @@ ConversationStatusMessage ConversationStatusMessage::decode(const UnsignedConver
 		invite.username = invite_buffer.remove_opaque();
 		invite.long_term_public_key = invite_buffer.remove_public_key();
 		invite.conversation_public_key = invite_buffer.remove_public_key();
-		invite.authenticated = (invite_buffer.remove_8() != 0);
+		invite.authenticated = invite_buffer.remove_bit();
+		invite_buffer.check_empty();
 		result.confirmed_invites.push_back(invite);
 	}
 	
@@ -554,6 +548,7 @@ ConversationStatusMessage ConversationStatusMessage::decode(const UnsignedConver
 		invite.inviter = invite_buffer.remove_opaque();
 		invite.username = invite_buffer.remove_opaque();
 		invite.long_term_public_key = invite_buffer.remove_public_key();
+		invite_buffer.check_empty();
 		result.unconfirmed_invites.push_back(invite);
 	}
 	
@@ -571,7 +566,7 @@ ConversationStatusMessage ConversationStatusMessage::decode(const UnsignedConver
 	while (!key_exchange_buffer.empty()) {
 		KeyExchangeState exchange;
 		exchange.key_id = key_exchange_buffer.remove_hash();
-		exchange.state = KeyExchangeState::State(key_exchange_buffer.remove_8());
+		exchange.state = KeyExchangeState::State(key_exchange_buffer.remove_byte());
 		exchange.payload = key_exchange_buffer.remove_opaque();
 		result.key_exchanges.push_back(std::move(exchange));
 	}
@@ -579,11 +574,12 @@ ConversationStatusMessage ConversationStatusMessage::decode(const UnsignedConver
 	MessageBuffer event_buffer = buffer.remove_opaque();
 	while (!event_buffer.empty()) {
 		ConversationEvent event;
-		event.type = Message::Type(event_buffer.remove_8());
+		event.type = Message::Type(event_buffer.remove_byte());
 		event.payload = event_buffer.remove_opaque();
 		result.events.push_back(std::move(event));
 	}
 	
+	buffer.check_empty();
 	return result;
 }
 
@@ -605,6 +601,7 @@ ConversationConfirmationMessage ConversationConfirmationMessage::decode(const Un
 	result.invitee_username = buffer.remove_opaque();
 	result.invitee_long_term_public_key = buffer.remove_public_key();
 	result.status_message_hash = buffer.remove_hash();
+	buffer.check_empty();
 	return result;
 }
 
@@ -628,6 +625,7 @@ InviteAcceptanceMessage InviteAcceptanceMessage::decode(const UnsignedConversati
 	result.inviter_username = buffer.remove_opaque();
 	result.inviter_long_term_public_key = buffer.remove_public_key();
 	result.inviter_conversation_public_key = buffer.remove_public_key();
+	buffer.check_empty();
 	return result;
 }
 
@@ -647,6 +645,7 @@ AuthenticationRequestMessage AuthenticationRequestMessage::decode(const Unsigned
 	AuthenticationRequestMessage result;
 	result.username = buffer.remove_opaque();
 	result.authentication_nonce = buffer.remove_hash();
+	buffer.check_empty();
 	return result;
 }
 
@@ -666,6 +665,7 @@ AuthenticationMessage AuthenticationMessage::decode(const UnsignedConversationMe
 	AuthenticationMessage result;
 	result.username = buffer.remove_opaque();
 	result.authentication_confirmation = buffer.remove_hash();
+	buffer.check_empty();
 	return result;
 }
 
@@ -687,6 +687,7 @@ AuthenticateInviteMessage AuthenticateInviteMessage::decode(const UnsignedConver
 	result.username = buffer.remove_opaque();
 	result.long_term_public_key = buffer.remove_public_key();
 	result.conversation_public_key = buffer.remove_public_key();
+	buffer.check_empty();
 	return result;
 }
 
@@ -706,6 +707,7 @@ CancelInviteMessage CancelInviteMessage::decode(const UnsignedConversationMessag
 	CancelInviteMessage result;
 	result.username = buffer.remove_opaque();
 	result.long_term_public_key = buffer.remove_public_key();
+	buffer.check_empty();
 	return result;
 }
 
@@ -721,6 +723,7 @@ JoinMessage JoinMessage::decode(const UnsignedConversationMessage& encoded)
 	MessageBuffer buffer(get_message_payload(encoded, Message::Type::Join));
 	
 	JoinMessage result;
+	buffer.check_empty();
 	return result;
 }
 
@@ -736,6 +739,7 @@ ConsistencyStatusMessage ConsistencyStatusMessage::decode(const UnsignedConversa
 	MessageBuffer buffer(get_message_payload(encoded, Message::Type::ConsistencyStatus));
 	
 	ConsistencyStatusMessage result;
+	buffer.check_empty();
 	return result;
 }
 
@@ -754,6 +758,7 @@ ConsistencyCheckMessage ConsistencyCheckMessage::decode(const UnsignedConversati
 	
 	ConsistencyCheckMessage result;
 	result.conversation_status_hash = buffer.remove_hash();
+	buffer.check_empty();
 	return result;
 }
 
@@ -761,7 +766,7 @@ UnsignedConversationMessage TimeoutMessage::encode() const
 {
 	MessageBuffer buffer;
 	buffer.add_opaque(victim);
-	buffer.add_8(timeout ? 1 : 0);
+	buffer.add_bit(timeout);
 	
 	return UnsignedConversationMessage(Message::Type::Timeout, buffer);
 }
@@ -772,7 +777,8 @@ TimeoutMessage TimeoutMessage::decode(const UnsignedConversationMessage& encoded
 	
 	TimeoutMessage result;
 	result.victim = buffer.remove_opaque();
-	result.timeout = buffer.remove_8() != 0;
+	result.timeout = buffer.remove_bit();
+	buffer.check_empty();
 	return result;
 }
 
@@ -780,7 +786,7 @@ UnsignedConversationMessage VotekickMessage::encode() const
 {
 	MessageBuffer buffer;
 	buffer.add_opaque(victim);
-	buffer.add_8(kick ? 1 : 0);
+	buffer.add_bit(kick);
 	
 	return UnsignedConversationMessage(Message::Type::Votekick, buffer);
 }
@@ -791,7 +797,8 @@ VotekickMessage VotekickMessage::decode(const UnsignedConversationMessage& encod
 	
 	VotekickMessage result;
 	result.victim = buffer.remove_opaque();
-	result.kick = buffer.remove_8() != 0;
+	result.kick = buffer.remove_bit();
+	buffer.check_empty();
 	return result;
 }
 
@@ -811,6 +818,7 @@ KeyExchangePublicKeyMessage KeyExchangePublicKeyMessage::decode(const UnsignedCo
 	KeyExchangePublicKeyMessage result;
 	result.key_id = buffer.remove_hash();
 	result.public_key = buffer.remove_public_key();
+	buffer.check_empty();
 	return result;
 }
 
@@ -832,6 +840,7 @@ KeyExchangeSecretShareMessage KeyExchangeSecretShareMessage::decode(const Unsign
 	result.key_id = buffer.remove_hash();
 	result.group_hash = buffer.remove_hash();
 	result.secret_share = buffer.remove_hash();
+	buffer.check_empty();
 	return result;
 }
 
@@ -851,6 +860,7 @@ KeyExchangeAcceptanceMessage KeyExchangeAcceptanceMessage::decode(const Unsigned
 	KeyExchangeAcceptanceMessage result;
 	result.key_id = buffer.remove_hash();
 	result.key_hash = buffer.remove_hash();
+	buffer.check_empty();
 	return result;
 }
 
@@ -870,6 +880,7 @@ KeyExchangeRevealMessage KeyExchangeRevealMessage::decode(const UnsignedConversa
 	KeyExchangeRevealMessage result;
 	result.key_id = buffer.remove_hash();
 	result.private_key = buffer.remove_private_key();
+	buffer.check_empty();
 	return result;
 }
 
@@ -887,6 +898,7 @@ KeyActivationMessage KeyActivationMessage::decode(const UnsignedConversationMess
 	
 	KeyActivationMessage result;
 	result.key_id = buffer.remove_hash();
+	buffer.check_empty();
 	return result;
 }
 
@@ -904,6 +916,7 @@ KeyRatchetMessage KeyRatchetMessage::decode(const UnsignedConversationMessage& e
 	
 	KeyRatchetMessage result;
 	result.key_id = buffer.remove_hash();
+	buffer.check_empty();
 	return result;
 }
 
@@ -944,7 +957,7 @@ ChatMessage ChatMessage::encrypt(std::string plaintext, const Hash& key_id, cons
 std::string UnsignedChatMessage::signed_body() const
 {
 	MessageBuffer buffer;
-	buffer.add_64(message_id);
+	buffer.add_integer(message_id);
 	buffer.add_bytes(message);
 	return buffer;
 }
@@ -955,7 +968,7 @@ std::string PlaintextChatMessage::sign(const UnsignedChatMessage& message, const
 	
 	MessageBuffer buffer;
 	buffer.add_signature(signature);
-	buffer.add_64(message.message_id);
+	buffer.add_integer(message.message_id);
 	buffer.add_bytes(message.message);
 	return buffer;
 }
@@ -966,7 +979,7 @@ PlaintextChatMessage PlaintextChatMessage::decode(const std::string& encoded)
 	
 	PlaintextChatMessage result;
 	result.signature = buffer.remove_signature();
-	result.message_id = buffer.remove_64();
+	result.message_id = buffer.remove_integer();
 	result.message = buffer;
 	return result;
 }
@@ -995,7 +1008,7 @@ ConversationEvent ConversationStatusEvent::encode(const ConversationStatusMessag
 	buffer.add_opaque(invitee_username);
 	buffer.add_public_key(invitee_long_term_public_key);
 	buffer.add_hash(status_message_hash);
-	buffer.add_64(index);
+	buffer.add_integer(index);
 	
 	return ConversationEvent(Message::Type::ConversationStatus, buffer);
 }
@@ -1008,11 +1021,12 @@ ConversationStatusEvent ConversationStatusEvent::decode(const ConversationEvent&
 	result.invitee_username = buffer.remove_opaque();
 	result.invitee_long_term_public_key = buffer.remove_public_key();
 	result.status_message_hash = buffer.remove_hash();
-	uint64_t index = buffer.remove_64();
+	uint64_t index = buffer.remove_integer();
 	if (index >= status.participants.size()) {
 		throw MessageFormatException();
 	}
 	result.remaining_users.insert(status.participants[index].username);
+	buffer.check_empty();
 	return result;
 }
 
@@ -1036,6 +1050,7 @@ ConversationConfirmationEvent ConversationConfirmationEvent::decode(const Conver
 	result.invitee_long_term_public_key = buffer.remove_public_key();
 	result.status_message_hash = buffer.remove_hash();
 	result.remaining_users = decode_user_set(status, true, buffer.remove_opaque());
+	buffer.check_empty();
 	return result;
 }
 
@@ -1055,6 +1070,7 @@ ConsistencyCheckEvent ConsistencyCheckEvent::decode(const ConversationEvent& enc
 	ConsistencyCheckEvent result;
 	result.conversation_status_hash = buffer.remove_hash();
 	result.remaining_users = decode_user_set(status, true, buffer.remove_opaque());
+	buffer.check_empty();
 	return result;
 }
 
@@ -1068,11 +1084,9 @@ ConversationEvent KeyExchangeEvent::encode(const ConversationStatusMessage& stat
 	);
 	MessageBuffer buffer;
 	buffer.add_hash(key_id);
+	buffer.add_bit(cancelled);
 	if (cancelled) {
-		buffer.add_8(1);
 		buffer.add_opaque(encode_user_set(status, false, remaining_users));
-	} else {
-		buffer.add_8(0);
 	}
 	
 	return ConversationEvent(type, buffer);
@@ -1093,12 +1107,11 @@ KeyExchangeEvent KeyExchangeEvent::decode(const ConversationEvent& encoded, cons
 	KeyExchangeEvent result;
 	result.type = encoded.type;
 	result.key_id = buffer.remove_hash();
-	if (buffer.remove_8()) {
-		result.cancelled = true;
+	result.cancelled = buffer.remove_bit();
+	if (result.cancelled) {
 		result.remaining_users = decode_user_set(status, false, buffer.remove_opaque());
-	} else {
-		result.cancelled = false;
 	}
+	buffer.check_empty();
 	return result;
 }
 
@@ -1118,6 +1131,7 @@ KeyActivationEvent KeyActivationEvent::decode(const ConversationEvent& encoded, 
 	KeyActivationEvent result;
 	result.key_id = buffer.remove_hash();
 	result.remaining_users = decode_user_set(status, false, buffer.remove_opaque());
+	buffer.check_empty();
 	return result;
 }
 
@@ -1127,11 +1141,9 @@ void PublicKeyParticipant::encode_to(MessageBuffer* buffer) const
 {
 	buffer->add_opaque(username);
 	buffer->add_public_key(long_term_public_key);
+	buffer->add_bit(has_ephemeral_public_key);
 	if (has_ephemeral_public_key) {
-		buffer->add_8(1);
 		buffer->add_public_key(ephemeral_public_key);
-	} else {
-		buffer->add_8(0);
 	}
 }
 
@@ -1140,11 +1152,9 @@ PublicKeyParticipant PublicKeyParticipant::decode_from(MessageBuffer* buffer)
 	PublicKeyParticipant result;
 	result.username = buffer->remove_opaque();
 	result.long_term_public_key = buffer->remove_public_key();
-	if (buffer->remove_8()) {
-		result.has_ephemeral_public_key = true;
+	result.has_ephemeral_public_key = buffer->remove_bit();
+	if (result.has_ephemeral_public_key) {
 		result.ephemeral_public_key = buffer->remove_public_key();
-	} else {
-		result.has_ephemeral_public_key = false;
 	}
 	return result;
 }
@@ -1154,11 +1164,9 @@ void SecretShareParticipant::encode_to(MessageBuffer* buffer) const
 	buffer->add_opaque(username);
 	buffer->add_public_key(long_term_public_key);
 	buffer->add_public_key(ephemeral_public_key);
+	buffer->add_bit(has_secret_share);
 	if (has_secret_share) {
-		buffer->add_8(1);
 		buffer->add_hash(secret_share);
-	} else {
-		buffer->add_8(0);
 	}
 }
 
@@ -1168,11 +1176,9 @@ SecretShareParticipant SecretShareParticipant::decode_from(MessageBuffer* buffer
 	result.username = buffer->remove_opaque();
 	result.long_term_public_key = buffer->remove_public_key();
 	result.ephemeral_public_key = buffer->remove_public_key();
-	if (buffer->remove_8()) {
-		result.has_secret_share = true;
+	result.has_secret_share = buffer->remove_bit();
+	if (result.has_secret_share) {
 		result.secret_share = buffer->remove_hash();
-	} else {
-		result.has_secret_share = false;
 	}
 	return result;
 }
@@ -1183,11 +1189,9 @@ void AcceptanceParticipant::encode_to(MessageBuffer* buffer) const
 	buffer->add_public_key(long_term_public_key);
 	buffer->add_public_key(ephemeral_public_key);
 	buffer->add_hash(secret_share);
+	buffer->add_bit(has_key_hash);
 	if (has_key_hash) {
-		buffer->add_8(1);
 		buffer->add_hash(key_hash);
-	} else {
-		buffer->add_8(0);
 	}
 }
 
@@ -1198,11 +1202,9 @@ AcceptanceParticipant AcceptanceParticipant::decode_from(MessageBuffer* buffer)
 	result.long_term_public_key = buffer->remove_public_key();
 	result.ephemeral_public_key = buffer->remove_public_key();
 	result.secret_share = buffer->remove_hash();
-	if (buffer->remove_8()) {
-		result.has_key_hash = true;
+	result.has_key_hash = buffer->remove_bit();
+	if (result.has_key_hash) {
 		result.key_hash = buffer->remove_hash();
-	} else {
-		result.has_key_hash = false;
 	}
 	return result;
 }
@@ -1214,11 +1216,9 @@ void RevealParticipant::encode_to(MessageBuffer* buffer) const
 	buffer->add_public_key(ephemeral_public_key);
 	buffer->add_hash(secret_share);
 	buffer->add_hash(key_hash);
+	buffer->add_bit(has_ephemeral_private_key);
 	if (has_ephemeral_private_key) {
-		buffer->add_8(1);
 		buffer->add_private_key(ephemeral_private_key);
-	} else {
-		buffer->add_8(0);
 	}
 }
 
@@ -1230,11 +1230,9 @@ RevealParticipant RevealParticipant::decode_from(MessageBuffer* buffer)
 	result.ephemeral_public_key = buffer->remove_public_key();
 	result.secret_share = buffer->remove_hash();
 	result.key_hash = buffer->remove_hash();
-	if (buffer->remove_8()) {
-		result.has_ephemeral_private_key = true;
+	result.has_ephemeral_private_key = buffer->remove_bit();
+	if (result.has_ephemeral_private_key) {
 		result.ephemeral_private_key = buffer->remove_private_key();
-	} else {
-		result.has_ephemeral_private_key = false;
 	}
 	return result;
 }

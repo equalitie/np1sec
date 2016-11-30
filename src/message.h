@@ -40,10 +40,9 @@ class MessageBuffer : public std::string
 	
 	unsigned char byte(size_t index) { return (unsigned char)(at(index)); }
 	
-	void add_8(uint8_t byte);
-	void add_16(uint16_t number);
-	void add_32(uint32_t number);
-	void add_64(uint64_t number);
+	void add_bit(bool bit);
+	void add_byte(uint8_t byte);
+	void add_integer(uint64_t number);
 	
 	template<int n> void add_byte_array(const ByteArray<n>& data)
 	{
@@ -58,10 +57,9 @@ class MessageBuffer : public std::string
 	void add_opaque(const std::string& buffer);
 	
 	void check_empty();
-	uint8_t remove_8();
-	uint16_t remove_16();
-	uint32_t remove_32();
-	uint64_t remove_64();
+	bool remove_bit();
+	uint8_t remove_byte();
+	uint64_t remove_integer();
 	
 	template<int n> ByteArray<n> remove_byte_array()
 	{
