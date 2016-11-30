@@ -772,6 +772,7 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 		if (interface()) interface()->user_invited(sender, message.username);
 		
 		if (message.username == m_room->username()) {
+			m_room->conversation_set_authenticated(this);
 			ConversationInterface* interface = m_room->interface()->invited_to_conversation(this, sender);
 			set_interface(interface);
 		}
@@ -824,6 +825,7 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 		if (interface()) interface()->user_joined(sender);
 		
 		if (self_joined) {
+			m_room->conversation_set_participant(this);
 			if (interface()) interface()->joined();
 		}
 	} else if (conversation_message.type == Message::Type::Leave) {

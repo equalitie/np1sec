@@ -26,6 +26,7 @@
 
 #include <deque>
 #include <map>
+#include <set>
 
 namespace np1sec
 {
@@ -36,38 +37,20 @@ class Room
 	Room(RoomInterface* interface, const std::string& username, const PrivateKey& private_key);
 	
 	/*
-	 * Accessors
+	 * Public API
 	 */
-	bool connected() const
-	{
-		return !m_users.empty();
-	}
+	/* Accessors */
+	bool connected() const;
+	std::map<std::string, PublicKey> users() const;
+	std::set<Conversation*> conversations() const;
+	std::set<Conversation*> invites() const;
 	
-	std::map<std::string, PublicKey> users() const
-	{
-		std::map<std::string, PublicKey> users;
-		for (const auto& i : m_users) {
-			if (i.second.authenticated) {
-				users[i.second.username] = i.second.long_term_public_key;
-			}
-		}
-		return users;
-	}
-	
-	
-	
-	/*
-	 * Operations
-	 */
+	/* Operations */
 	void connect();
 	void disconnect();
 	void create_conversation();
 	
-	
-	
-	/*
-	 * Callbacks
-	 */
+	/* Callbacks */
 	void message_received(const std::string& sender, const std::string& text_message);
 	void user_left(const std::string& username);
 	void left_room();
@@ -75,8 +58,9 @@ class Room
 	
 	
 	/*
-	 * Internal accessors
+	 * Internal API
 	 */
+	/* Accessors */
 	const std::string& username() const
 	{
 		return m_username;
@@ -97,11 +81,7 @@ class Room
 		return m_interface;
 	}
 	
-	
-	
-	/*
-	 * Internal operations
-	 */
+	/* Operations */
 	void send_message(const Message& message);
 	void send_message(const std::string& message);
 	
@@ -113,6 +93,16 @@ class Room
 	void conversation_remove_user(Conversation* conversation, const std::string& username, const PublicKey& conversation_public_key)
 	{
 		m_conversations.conversation_remove_user(conversation, username, conversation_public_key);
+	}
+	
+	void conversation_set_authenticated(Conversation* conversation)
+	{
+		m_conversations.conversation_set_authenticated(conversation);
+	}
+	
+	void conversation_set_participant(Conversation* conversation)
+	{
+		m_conversations.conversation_set_participant(conversation);
 	}
 	
 	

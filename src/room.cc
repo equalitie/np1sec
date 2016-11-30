@@ -33,6 +33,33 @@ Room::Room(RoomInterface* interface, const std::string& username, const PrivateK
 	assert(m_interface);
 }
 
+bool Room::connected() const
+{
+	return !m_users.empty();
+}
+
+std::map<std::string, PublicKey> Room::users() const
+{
+	std::map<std::string, PublicKey> users;
+	for (const auto& i : m_users) {
+		if (i.second.authenticated) {
+			users[i.second.username] = i.second.long_term_public_key;
+		}
+	}
+	return users;
+}
+
+
+std::set<Conversation*> Room::conversations() const
+{
+	return m_conversations.conversations();
+}
+
+std::set<Conversation*> Room::invites() const
+{
+	return m_conversations.invites();
+}
+
 void Room::connect()
 {
 	if (!m_users.empty() || !m_message_queue.empty()) {

@@ -30,6 +30,8 @@ ConversationList::ConversationList(Room* room):
 
 void ConversationList::disconnect()
 {
+	m_authenticated_invites.clear();
+	m_participant_conversations.clear();
 	m_user_conversations.clear();
 	m_conversations.clear();
 	m_invitation_start_points.clear();
@@ -46,6 +48,8 @@ void ConversationList::create_conversation()
 	auto i = users.begin();
 	m_user_conversations[i->first][i->second].insert(c);
 	m_conversations[c] = std::move(conversation);
+	
+	m_participant_conversations.insert(c);
 	
 	ConversationInterface* interface = m_room->interface()->created_conversation(c);
 	c->set_interface(interface);
@@ -187,6 +191,22 @@ void ConversationList::conversation_remove_user(Conversation* conversation, cons
 	}
 }
 
+void ConversationList::conversation_set_authenticated(Conversation* conversation)
+{
+	assert(m_conversations.count(conversation));
+	assert(!m_authenticated_invites.count(conversation));
+	assert(!m_participant_conversations.count(conversation));
+	m_authenticated_invites.insert(conversation);
+}
+
+void ConversationList::conversation_set_participant(Conversation* conversation)
+{
+	assert(m_conversations.count(conversation));
+	assert(!m_participant_conversations.count(conversation));
+	m_authenticated_invites.erase(conversation);
+	m_participant_conversations.insert(conversation);
+}
+
 void ConversationList::handle_event(Conversation* conversation, const RoomEvent& event)
 {
 	assert(conversation->am_involved());
@@ -213,6 +233,8 @@ void ConversationList::handle_event(Conversation* conversation, const RoomEvent&
 				m_user_conversations.erase(i.first);
 			}
 		}
+		m_authenticated_invites.erase(conversation);
+		m_participant_conversations.erase(conversation);
 		m_conversations.erase(conversation);
 	}
 }

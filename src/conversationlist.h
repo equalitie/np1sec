@@ -38,8 +38,17 @@ class ConversationList
 	public:
 	ConversationList(Room* room);
 	
-	void disconnect();
+	const std::set<Conversation*>& conversations() const
+	{
+		return m_participant_conversations;
+	}
 	
+	const std::set<Conversation*>& invites() const
+	{
+		return m_authenticated_invites;
+	}
+	
+	void disconnect();
 	void create_conversation();
 	
 	void message_received(const std::string& sender, const ConversationMessage& conversation_message);
@@ -47,6 +56,8 @@ class ConversationList
 	
 	void conversation_add_user(Conversation* conversation, const std::string& username, const PublicKey& conversation_public_key);
 	void conversation_remove_user(Conversation* conversation, const std::string& username, const PublicKey& conversation_public_key);
+	void conversation_set_authenticated(Conversation* conversation);
+	void conversation_set_participant(Conversation* conversation);
 	
 	protected:
 	struct RoomEvent
@@ -73,6 +84,9 @@ class ConversationList
 	
 	std::list<RoomEvent> m_event_queue;
 	std::map<std::string, std::map<PublicKey, std::list<RoomEvent>::iterator>> m_invitation_start_points;
+	
+	std::set<Conversation*> m_authenticated_invites;
+	std::set<Conversation*> m_participant_conversations;
 };
 
 } // namespace np1sec
