@@ -39,7 +39,7 @@ void Room::connect()
 		disconnect();
 	}
 	
-	m_ephemeral_private_key = PrivateKey::generate();
+	m_ephemeral_private_key = PrivateKey::generate(true);
 	
 	HelloMessage hello_message;
 	hello_message.long_term_public_key = m_long_term_private_key.public_key();

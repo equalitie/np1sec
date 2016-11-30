@@ -77,7 +77,7 @@ namespace np1sec
 			return m_public_key;
 		}
 		
-		static PrivateKey generate();
+		static PrivateKey generate(bool transient);
 		
 		SerializedPrivateKey serialize() const;
 		static PrivateKey unserialize(const SerializedPrivateKey& serialized_key);

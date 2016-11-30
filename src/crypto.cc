@@ -138,10 +138,17 @@ PrivateKey::~PrivateKey()
 	gcry_sexp_release(m_private_key);
 }
 
-PrivateKey PrivateKey::generate()
+PrivateKey PrivateKey::generate(bool transient)
 {
+	const char* parameter_string;
+	if (transient) {
+		parameter_string = "(genkey (ecc (curve Ed25519) (flags eddsa transient-key)))";
+	} else {
+		parameter_string = "(genkey (ecc (curve Ed25519) (flags eddsa)))";
+	}
+	
 	gcry_sexp_t generation_parameters;
-	if (gcry_sexp_build(&generation_parameters, NULL, "(genkey (ecc (curve Ed25519) (flags eddsa)))")) {
+	if (gcry_sexp_build(&generation_parameters, NULL, parameter_string)) {
 		throw CryptoException();
 	}
 	

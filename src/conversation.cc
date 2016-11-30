@@ -33,7 +33,7 @@ const uint32_t c_conversation_status_frequency = 30000;
 
 Conversation::Conversation(Room* room):
 	m_room(room),
-	m_conversation_private_key(PrivateKey::generate()),
+	m_conversation_private_key(PrivateKey::generate(true)),
 	m_interface(nullptr),
 	m_conversation_status_hash(crypto::nonce_hash()),
 	m_encrypted_chat(this)
@@ -55,7 +55,7 @@ Conversation::Conversation(Room* room):
 
 Conversation::Conversation(Room* room, const ConversationStatusMessage& conversation_status, const std::string& sender, const ConversationMessage& encoded_message):
 	m_room(room),
-	m_conversation_private_key(PrivateKey::generate()),
+	m_conversation_private_key(PrivateKey::generate(true)),
 	m_interface(nullptr),
 	m_encrypted_chat(this)
 {

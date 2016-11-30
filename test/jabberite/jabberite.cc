@@ -525,7 +525,7 @@ void Jabberite::run()
 	
 	
 	JabberiteRoomInterface* interface = new JabberiteRoomInterface(this);
-	room = new np1sec::Room(interface, nickname, np1sec::PrivateKey::generate());
+	room = new np1sec::Room(interface, nickname, np1sec::PrivateKey::generate(true));
 	
 	
 	

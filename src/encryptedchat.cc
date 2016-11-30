@@ -95,7 +95,7 @@ void EncryptedChat::create_solo_session(const Hash& session_id)
 	
 	m_session_queue.push_back(session_id);
 	
-	PrivateKey session_private_key = PrivateKey::generate();
+	PrivateKey session_private_key = PrivateKey::generate(true);
 	KeyExchange::AcceptedUser self_user;
 	self_user.username = m_conversation->room()->username();
 	self_user.long_term_public_key = m_conversation->room()->public_key();

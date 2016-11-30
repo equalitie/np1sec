@@ -26,7 +26,7 @@ KeyExchange::KeyExchange(const Hash& key_id, const std::map<std::string, PublicK
 	m_key_id(key_id),
 	m_room(room),
 	m_state(State::PublicKey),
-	m_ephemeral_private_key(PrivateKey::generate())
+	m_ephemeral_private_key(PrivateKey::generate(true))
 {
 	if (!m_room || !participants.count(m_room->username())) {
 		m_room = nullptr;
