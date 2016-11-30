@@ -51,7 +51,7 @@ class Jabberite
 	void disconnect();
 	void create_conversation();
 	
-	
+	void leave(int conversation_id);
 	void invite(int conversation_id, std::string username);
 	void join(int conversation_id);
 	void votekick(int conversation_id, std::string username, bool kick);

@@ -410,6 +410,17 @@ void Jabberite::create_conversation()
 	}
 }
 
+void Jabberite::leave(int conversation_id)
+{
+	if (room) {
+		np1sec::Conversation* c = conversation(conversation_id);
+		if (!c) {
+			return;
+		}
+		c->leave(false);
+	}
+}
+
 void Jabberite::invite(int conversation_id, std::string username)
 {
 	if (room) {

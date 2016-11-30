@@ -57,6 +57,7 @@ class Conversation
 	bool is_invite() const;
 	
 	/* Operations */
+	void leave(bool detach);
 	void invite(const std::string& username, const PublicKey& long_term_public_key);
 	void join();
 	void votekick(const std::string& username, bool kick);

@@ -275,6 +275,8 @@ void CliJabberite::parse_command(const std::string& line)
 		frozen = true;
 	} else if (line == "/unfreeze") {
 		frozen = false;
+	} else if (line == "/leave") {
+		leave(m_active_conversation);
 	} else if (line.substr(0, 1) == "/") {
 		// do nothing
 	} else {

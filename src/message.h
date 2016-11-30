@@ -105,6 +105,7 @@ struct Message
 		CancelInvite = 0x18,
 		Join = 0x19,
 		
+		Leave = 0x21,
 		ConsistencyStatus = 0x22,
 		ConsistencyCheck = 0x23,
 		Timeout = 0x24,
@@ -368,6 +369,12 @@ struct JoinMessage
 };
 
 
+
+struct LeaveMessage
+{
+	UnsignedConversationMessage encode() const;
+	static LeaveMessage decode(const UnsignedConversationMessage& encoded);
+};
 
 struct ConsistencyStatusMessage
 {

@@ -198,6 +198,7 @@ bool Message::is_conversation_message(Type type)
 		|| type == Type::AuthenticateInvite
 		|| type == Type::CancelInvite
 		|| type == Type::Join
+		|| type == Type::Leave
 		|| type == Type::ConsistencyStatus
 		|| type == Type::ConsistencyCheck
 		|| type == Type::Timeout
@@ -723,6 +724,22 @@ JoinMessage JoinMessage::decode(const UnsignedConversationMessage& encoded)
 	MessageBuffer buffer(get_message_payload(encoded, Message::Type::Join));
 	
 	JoinMessage result;
+	buffer.check_empty();
+	return result;
+}
+
+UnsignedConversationMessage LeaveMessage::encode() const
+{
+	MessageBuffer buffer;
+	
+	return UnsignedConversationMessage(Message::Type::Leave, buffer);
+}
+
+LeaveMessage LeaveMessage::decode(const UnsignedConversationMessage& encoded)
+{
+	MessageBuffer buffer(get_message_payload(encoded, Message::Type::Leave));
+	
+	LeaveMessage result;
 	buffer.check_empty();
 	return result;
 }

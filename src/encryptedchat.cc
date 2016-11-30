@@ -431,8 +431,7 @@ void EncryptedChat::prepare_session_replacement(Hash key_id)
 
 void EncryptedChat::progress_sessions()
 {
-	while (true) {
-		assert(!m_session_queue.empty());
+	while (!m_session_queue.empty()) {
 		const Hash& key_id = m_session_queue.front();
 		const SessionData& data = m_sessions.at(key_id);
 		

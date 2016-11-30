@@ -330,6 +330,20 @@ bool Conversation::is_invite() const
 
 
 
+void Conversation::leave(bool detach)
+{
+	if (!m_participants.count(m_room->username())) {
+		return;
+	}
+	
+	if (detach) {
+		m_interface = nullptr;
+	}
+	
+	LeaveMessage message;
+	send_message(message.encode());
+}
+
 void Conversation::invite(const std::string& username, const PublicKey& long_term_public_key)
 {
 	if (!m_participants.count(m_room->username())) {
@@ -795,6 +809,19 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 		if (self_joined) {
 			if (interface()) interface()->joined();
 		}
+	} else if (conversation_message.type == Message::Type::Leave) {
+		LeaveMessage message;
+		try {
+			message = LeaveMessage::decode(conversation_message);
+		} catch(MessageFormatException) {
+			return;
+		}
+		
+		if (!m_participants.count(sender)) {
+			return;
+		}
+		
+		remove_user(sender);
 	} else if (conversation_message.type == Message::Type::ConsistencyStatus) {
 		ConsistencyStatusMessage message;
 		try {
