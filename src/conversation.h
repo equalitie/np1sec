@@ -51,6 +51,7 @@ class Conversation
 	bool user_is_authenticated(const std::string& username) const;
 	bool user_failed_authentication(const std::string& username) const;
 	PublicKey user_public_key(const std::string& username) const;
+	bool user_is_votekicked(const std::string&victim, const std::string& participant) const;
 	bool participant_in_chat(const std::string& username) const;
 	std::string invitee_inviter(const std::string& username) const;
 	bool in_chat() const;

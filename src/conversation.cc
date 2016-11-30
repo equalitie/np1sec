@@ -294,6 +294,23 @@ PublicKey Conversation::user_public_key(const std::string& username) const
 	return m_participants.at(username).long_term_public_key;
 }
 
+bool Conversation::user_is_votekicked(const std::string&victim, const std::string& participant) const
+{
+	if (!m_participants.count(victim)) {
+		throw InvalidUserException();
+	}
+	if (!m_participants.at(victim).is_participant && !m_participants.at(victim).authenticated) {
+		throw InvalidUserException();
+	}
+	if (!m_participants.count(participant)) {
+		throw InvalidUserException();
+	}
+	if (!m_participants.at(participant).is_participant) {
+		throw InvalidUserException();
+	}
+	return m_participants.at(participant).votekick_peers.count(victim) > 0;
+}
+
 bool Conversation::participant_in_chat(const std::string& username) const
 {
 	if (!m_participants.count(username)) {
