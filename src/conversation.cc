@@ -98,6 +98,7 @@ Conversation::Conversation(Room* room, const ConversationStatusMessage& conversa
 		}
 		
 		m_participants[i.username] = std::move(participant);
+		m_participants[i.inviter].invitees[i.username] = i.long_term_public_key;
 		set_user_conversation_status_timer(i.username);
 	}
 	
