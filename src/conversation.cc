@@ -961,6 +961,10 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 			return;
 		}
 		
+		if (!m_encrypted_chat.have_key_exchange(message.key_id)) {
+			return;
+		}
+		
 		m_encrypted_chat.user_public_key(sender, message.key_id, message.public_key);
 	} else if (conversation_message.type == Message::Type::KeyExchangeSecretShare) {
 		KeyExchangeSecretShareMessage message;
