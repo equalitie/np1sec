@@ -19,8 +19,6 @@
 #include "conversationlist.h"
 #include "room.h"
 
-#include <iostream>
-
 namespace np1sec
 {
 
@@ -96,8 +94,6 @@ void ConversationList::message_received(const std::string& sender, const Convers
 				   message.username == m_room->username()
 				&& message.long_term_public_key == m_room->public_key()
 			) {
-				std::cerr << "** Received invite\n";
-				
 				clear_invite(sender, conversation_message.conversation_public_key);
 				
 				event.waiting = true;
@@ -124,8 +120,6 @@ void ConversationList::message_received(const std::string& sender, const Convers
 			   m_invitation_start_points.count(sender)
 			&& m_invitation_start_points.at(sender).count(conversation_message.conversation_public_key)
 		) {
-			std::cerr << "** reconstructing conversation\n";
-			
 			try {
 				ConversationStatusMessage message = ConversationStatusMessage::decode(conversation_message);
 				std::unique_ptr<Conversation> conversation(new Conversation(m_room, message, sender, conversation_message));
