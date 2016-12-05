@@ -426,22 +426,14 @@ void Conversation::send_chat(const std::string& message)
 
 void Conversation::message_received(const std::string& sender, const ConversationMessage& conversation_message)
 {
-#ifndef NDEBUG
 	assert(conversation_message.verify());
 	if (m_participants.count(sender)) {
-		assert(conversation_message.conversation_public_key == m_participants.at(sender).conversation_public_key);
-	} else {
-		assert(conversation_message.type == Message::Type::InviteAcceptance);
-		InviteAcceptanceMessage invite_acceptance_message;
-		try {
-			invite_acceptance_message = InviteAcceptanceMessage::decode(conversation_message);
-		} catch(MessageFormatException) {
-			assert(false);
+		if (conversation_message.conversation_public_key != m_participants.at(sender).conversation_public_key) {
+			return;
 		}
-		assert(m_participants.count(invite_acceptance_message.inviter_username));
-		assert(invite_acceptance_message.inviter_conversation_public_key == m_participants.at(invite_acceptance_message.inviter_username).conversation_public_key);
+	} else if (conversation_message.type != Message::Type::InviteAcceptance) {
+		return;
 	}
-#endif
 	
 	hash_message(sender, conversation_message);
 	
