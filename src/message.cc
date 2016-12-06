@@ -334,6 +334,26 @@ static std::set<std::string> decode_user_set(const ConversationStatusMessage& st
 	return output;
 }
 
+static uint64_t encode_user(const ConversationStatusMessage& status, const std::string& username)
+{
+	for (size_t i = 0; i < status.participants.size(); i++) {
+		if (status.participants[i].username == username) {
+			return i;
+		}
+	}
+	assert(false);
+}
+
+static std::string decode_user(const ConversationStatusMessage& status, uint64_t index)
+{
+	if (index >= status.participants.size()) {
+		throw MessageFormatException();
+	}
+	return status.participants[index].username;
+}
+
+
+
 
 
 Message QuitMessage::encode() const
@@ -1011,21 +1031,12 @@ bool PlaintextChatMessage::verify(const PublicKey& key) const
 ConversationEvent ConversationStatusEvent::encode(const ConversationStatusMessage& status) const
 {
 	assert(remaining_users.size() == 1);
-	const std::string& remaining_username = *remaining_users.begin();
-	uint64_t index = -1;
-	for (size_t i = 0; i < status.participants.size(); i++) {
-		if (status.participants[i].username == remaining_username) {
-			index = i;
-			break;
-		}
-	}
-	assert(index != (size_t)-1);
 	
 	MessageBuffer buffer;
 	buffer.add_opaque(invitee_username);
 	buffer.add_public_key(invitee_long_term_public_key);
 	buffer.add_hash(status_message_hash);
-	buffer.add_integer(index);
+	buffer.add_integer(encode_user(status, *remaining_users.begin()));
 	
 	return ConversationEvent(Message::Type::ConversationStatus, buffer);
 }
@@ -1038,11 +1049,7 @@ ConversationStatusEvent ConversationStatusEvent::decode(const ConversationEvent&
 	result.invitee_username = buffer.remove_opaque();
 	result.invitee_long_term_public_key = buffer.remove_public_key();
 	result.status_message_hash = buffer.remove_hash();
-	uint64_t index = buffer.remove_integer();
-	if (index >= status.participants.size()) {
-		throw MessageFormatException();
-	}
-	result.remaining_users.insert(status.participants[index].username);
+	result.remaining_users.insert(decode_user(status, buffer.remove_integer()));
 	buffer.check_empty();
 	return result;
 }

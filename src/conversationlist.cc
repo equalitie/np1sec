@@ -62,27 +62,7 @@ void ConversationList::message_received(const std::string& sender, const Convers
 	event.type = RoomEvent::Type::Message;
 	event.message = conversation_message;
 	
-	std::set<Conversation*> interested_conversations;
-	if (
-		   m_user_conversations.count(sender)
-		&& m_user_conversations.at(sender).count(conversation_message.conversation_public_key)
-	) {
-		interested_conversations = m_user_conversations.at(sender).at(conversation_message.conversation_public_key);
-	}
-	if (conversation_message.type == Message::Type::InviteAcceptance) {
-		try {
-			InviteAcceptanceMessage message = InviteAcceptanceMessage::decode(conversation_message);
-			if (
-				   m_user_conversations.count(message.inviter_username)
-				&& m_user_conversations.at(message.inviter_username).count(message.inviter_conversation_public_key)
-			) {
-				const std::set<Conversation*>& conversations = m_user_conversations.at(message.inviter_username).at(message.inviter_conversation_public_key);
-				
-				interested_conversations.insert(conversations.begin(), conversations.end());
-			}
-		} catch(MessageFormatException) {}
-	}
-	for (Conversation* conversation : interested_conversations) {
+	for (Conversation* conversation : interested_conversations(sender, conversation_message)) {
 		handle_event(conversation, event);
 	}
 	
@@ -135,6 +115,10 @@ void ConversationList::message_received(const std::string& sender, const Convers
 				it++;
 				
 				while (m_conversations.count(c) && it != m_event_queue.end()) {
+					if (it->type == RoomEvent::Type::Message && !interested_conversations(it->sender, it->message).count(c)) {
+						it++;
+						continue;
+					}
 					handle_event(c, *it);
 					it++;
 				}
@@ -256,6 +240,31 @@ void ConversationList::clear_invite(const std::string& username, const PublicKey
 	it->timeout.stop();
 	it->waiting = false;
 	clean_event_queue();
+}
+
+std::set<Conversation*> ConversationList::interested_conversations(const std::string& sender, const ConversationMessage& conversation_message)
+{
+	std::set<Conversation*> result;
+	if (
+		   m_user_conversations.count(sender)
+		&& m_user_conversations.at(sender).count(conversation_message.conversation_public_key)
+	) {
+		result = m_user_conversations.at(sender).at(conversation_message.conversation_public_key);
+	}
+	if (conversation_message.type == Message::Type::InviteAcceptance) {
+		try {
+			InviteAcceptanceMessage message = InviteAcceptanceMessage::decode(conversation_message);
+			if (
+				   m_user_conversations.count(message.inviter_username)
+				&& m_user_conversations.at(message.inviter_username).count(message.inviter_conversation_public_key)
+			) {
+				const std::set<Conversation*>& conversations = m_user_conversations.at(message.inviter_username).at(message.inviter_conversation_public_key);
+				
+				result.insert(conversations.begin(), conversations.end());
+			}
+		} catch(MessageFormatException) {}
+	}
+	return result;
 }
 
 } // namespace np1sec

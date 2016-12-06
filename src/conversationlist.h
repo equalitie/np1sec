@@ -74,6 +74,7 @@ class ConversationList
 	void handle_event(Conversation* conversation, const RoomEvent& event);
 	void clean_event_queue();
 	void clear_invite(const std::string& username, const PublicKey& conversation_public_key);
+	std::set<Conversation*> interested_conversations(const std::string& sender, const ConversationMessage& conversation_message);
 	
 	
 	protected:

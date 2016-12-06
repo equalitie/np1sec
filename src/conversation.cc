@@ -317,7 +317,7 @@ bool Conversation::participant_in_chat(const std::string& username) const
 	if (!m_participants.count(username)) {
 		throw InvalidUserException();
 	}
-	if (!m_participants.at(username).is_participant) {
+	if (!m_participants.at(username).is_participant && !m_participants.at(username).authenticated) {
 		throw InvalidUserException();
 	}
 	return m_encrypted_chat.user_in_chat(username);
@@ -350,12 +350,12 @@ bool Conversation::is_invite() const
 
 void Conversation::leave(bool detach)
 {
-	if (!m_participants.count(m_room->username())) {
-		return;
-	}
-	
 	if (detach) {
 		m_interface = nullptr;
+	}
+	
+	if (!am_confirmed()) {
+		return;
 	}
 	
 	LeaveMessage message;
@@ -364,13 +364,7 @@ void Conversation::leave(bool detach)
 
 void Conversation::invite(const std::string& username, const PublicKey& long_term_public_key)
 {
-	if (!m_participants.count(m_room->username())) {
-		return;
-	}
-	if (!m_participants.at(m_room->username()).is_participant) {
-		return;
-	}
-	if (m_participants.count(username)) {
+	if (!am_participant()) {
 		return;
 	}
 	
@@ -382,13 +376,7 @@ void Conversation::invite(const std::string& username, const PublicKey& long_ter
 
 void Conversation::join()
 {
-	if (!m_participants.count(m_room->username())) {
-		return;
-	}
-	if (m_participants.at(m_room->username()).is_participant) {
-		return;
-	}
-	if (!m_participants.at(m_room->username()).authenticated) {
+	if (!am_authenticated() || am_participant()) {
 		return;
 	}
 	
@@ -398,7 +386,7 @@ void Conversation::join()
 
 void Conversation::votekick(const std::string& username, bool kick)
 {
-	if (!m_participants.count(m_room->username())) {
+	if (!am_participant()) {
 		return;
 	}
 	if (!m_participants.count(username)) {
@@ -426,13 +414,22 @@ void Conversation::send_chat(const std::string& message)
 
 void Conversation::message_received(const std::string& sender, const ConversationMessage& conversation_message)
 {
+	/*
+	 * Messages that match this filter get hashed.
+	 */
 	assert(conversation_message.verify());
 	if (m_participants.count(sender)) {
-		if (conversation_message.conversation_public_key != m_participants.at(sender).conversation_public_key) {
-			return;
-		}
+		assert(conversation_message.conversation_public_key == m_participants.at(sender).conversation_public_key);
 	} else if (conversation_message.type != Message::Type::InviteAcceptance) {
-		return;
+		assert(false);
+	} else {
+		try {
+			InviteAcceptanceMessage message = InviteAcceptanceMessage::decode(conversation_message);
+			assert(m_participants.count(message.inviter_username));
+			assert(m_participants.at(message.inviter_username).conversation_public_key == message.inviter_conversation_public_key);
+		} catch(MessageFormatException) {
+			assert(false);
+		}
 	}
 	
 	hash_message(sender, conversation_message);
@@ -445,7 +442,7 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 			return;
 		}
 		
-		if (!m_participants.count(sender)) {
+		if (!m_participants.at(sender).is_participant) {
 			return;
 		}
 		
@@ -663,10 +660,6 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 			return;
 		}
 		
-		if (!m_participants.count(sender)) {
-			return;
-		}
-		
 		if (message.username == m_room->username()) {
 			if (m_participants.at(sender).authentication_status == AuthenticationStatus::Unauthenticated) {
 				m_participants[sender].authentication_status = AuthenticationStatus::Authenticating;
@@ -690,10 +683,6 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 		try {
 			message = AuthenticationMessage::decode(conversation_message);
 		} catch(MessageFormatException) {
-			return;
-		}
-		
-		if (!m_participants.count(sender)) {
 			return;
 		}
 		
@@ -738,10 +727,6 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 		try {
 			message = AuthenticateInviteMessage::decode(conversation_message);
 		} catch(MessageFormatException) {
-			return;
-		}
-		
-		if (!m_participants.count(sender)) {
 			return;
 		}
 		
@@ -794,9 +779,6 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 			return;
 		}
 		
-		if (!m_participants.count(sender)) {
-			return;
-		}
 		if (m_participants.at(sender).is_participant) {
 			return;
 		}
@@ -829,20 +811,12 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 			return;
 		}
 		
-		if (!m_participants.count(sender)) {
-			return;
-		}
-		
 		remove_user(sender);
 	} else if (conversation_message.type == Message::Type::ConsistencyStatus) {
 		ConsistencyStatusMessage message;
 		try {
 			message = ConsistencyStatusMessage::decode(conversation_message);
 		} catch(MessageFormatException) {
-			return;
-		}
-		
-		if (!m_participants.count(sender)) {
 			return;
 		}
 		
@@ -863,10 +837,6 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 		try {
 			message = ConsistencyCheckMessage::decode(conversation_message);
 		} catch(MessageFormatException) {
-			return;
-		}
-		
-		if (!m_participants.count(sender)) {
 			return;
 		}
 		
@@ -939,10 +909,6 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 			return;
 		}
 		
-		if (!m_participants.count(sender)) {
-			return;
-		}
-		
 		auto first_event = first_user_event(sender);
 		if (!(
 			   first_event
@@ -963,10 +929,6 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 		try {
 			message = KeyExchangeSecretShareMessage::decode(conversation_message);
 		} catch(MessageFormatException) {
-			return;
-		}
-		
-		if (!m_participants.count(sender)) {
 			return;
 		}
 		
@@ -993,10 +955,6 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 			return;
 		}
 		
-		if (!m_participants.count(sender)) {
-			return;
-		}
-		
 		auto first_event = first_user_event(sender);
 		if (!(
 			   first_event
@@ -1017,10 +975,6 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 		try {
 			message = KeyExchangeRevealMessage::decode(conversation_message);
 		} catch(MessageFormatException) {
-			return;
-		}
-		
-		if (!m_participants.count(sender)) {
 			return;
 		}
 		
@@ -1047,10 +1001,6 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 			return;
 		}
 		
-		if (!m_participants.count(sender)) {
-			return;
-		}
-		
 		auto first_event = first_user_event(sender);
 		if (!(
 			   first_event
@@ -1072,7 +1022,7 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 			return;
 		}
 		
-		if (m_participants.count(sender) && m_participants.at(sender).is_participant) {
+		if (m_participants.at(sender).is_participant) {
 			m_encrypted_chat.replace_session(message.key_id);
 		}
 	} else if (conversation_message.type == Message::Type::Chat) {
