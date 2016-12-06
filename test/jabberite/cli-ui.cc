@@ -309,6 +309,8 @@ void readline_print(std::string message)
 	if (readline_in_callback) {
 		printf("%s", message.c_str());
 	} else {
+		int point = rl_point;
+		int mark = rl_mark;
 		char* line = rl_copy_text(0, rl_end);
 		rl_save_prompt();
 		rl_replace_line("", 0);
@@ -318,6 +320,8 @@ void readline_print(std::string message)
 		
 		rl_replace_line(line, 0);
 		free(line);
+		rl_mark = mark;
+		rl_point = point;
 		rl_restore_prompt();
 		rl_redisplay();
 	}
