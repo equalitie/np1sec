@@ -62,7 +62,9 @@ class CliJabberite final : public Jabberite
 	void print(const std::string& message);
 	
 	void parse_command(const std::string& line);
-	
+
+	bool testinterface;
+
 	protected:
 	bool m_verbose;
 	int m_active_conversation = -1;
@@ -72,9 +74,11 @@ class CliJabberite final : public Jabberite
 std::vector<option> CliJabberite::extra_options()
 {
 	option verbose = { "verbose", 0, NULL, 'v' };
-	
+	option testinterface = { "testinterface", 0, NULL, 't' };
+
 	std::vector<option> options;
 	options.push_back(verbose);
+	options.push_back(testinterface);
 	return options;
 }
 
@@ -82,6 +86,9 @@ bool CliJabberite::process_option(char option, char* /*argument */)
 {
 	if (option == 'v') {
 		m_verbose = true;
+		return true;
+	} else if (option == 't') {
+		testinterface = true;
 		return true;
 	} else {
 		return false;
@@ -92,6 +99,8 @@ std::string CliJabberite::explain_option(char option)
 {
 	if (option == 'v') {
 		return "Enable verbose conversation status reporting";
+	} else if (option == 't') {
+		return "Disable prompt when interfacing with the test runner";
 	} else {
 		return "";
 	}
@@ -309,24 +318,30 @@ void readline_print(std::string message)
 	if (readline_in_callback) {
 		printf("%s", message.c_str());
 	} else {
-		char* line = rl_copy_text(0, rl_end);
-		rl_save_prompt();
-		rl_replace_line("", 0);
-		rl_redisplay();
-		
-		printf("%s", message.c_str());
-		
-		rl_replace_line(line, 0);
-		free(line);
-		rl_restore_prompt();
-		rl_redisplay();
+		if (readline_cli_jabberite->testinterface) {
+			// Print the output without recreating the readline prompt
+			printf("%s", message.c_str());
+			rl_redisplay();
+		} else {
+			char* line = rl_copy_text(0, rl_end);
+			rl_save_prompt();
+			rl_replace_line("", 0);
+			rl_redisplay();
+
+			printf("%s", message.c_str());
+
+			rl_replace_line(line, 0);
+			free(line);
+			rl_restore_prompt();
+			rl_redisplay();
+		}
 	}
 }
 
 static gboolean readline_stdin_callback(GIOChannel*, GIOCondition, gpointer)
 {
 	rl_callback_read_char();
-	
+
 	return readline_eof == 0;
 }
 
