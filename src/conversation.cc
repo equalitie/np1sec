@@ -368,10 +368,27 @@ void Conversation::invite(const std::string& username, const PublicKey& long_ter
 		return;
 	}
 	
-	InviteMessage message;
+	if (m_own_invites.count(username)) {
+		return;
+	}
+	
+	m_own_invites[username] = long_term_public_key;
+	
+	do_invite(username);
+}
+
+void Conversation::cancel_invite(const std::string& username)
+{
+	if (!m_own_invites.count(username)) {
+		return;
+	}
+	
+	CancelInviteMessage message;
 	message.username = username;
-	message.long_term_public_key = long_term_public_key;
+	message.long_term_public_key = m_own_invites.at(username);
 	send_message(message.encode());
+	
+	m_own_invites.erase(username);
 }
 
 void Conversation::join()
@@ -471,7 +488,6 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 		invite.long_term_public_key = message.long_term_public_key;
 		
 		m_unconfirmed_invites[message.username][message.long_term_public_key] = std::move(invite);
-		
 		m_participants[sender].invitees[message.username] = message.long_term_public_key;
 		
 		Event consistency_check_event;
@@ -701,7 +717,8 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 					if (
 						   !m_participants.at(sender).is_participant
 						&& !m_participants.at(sender).authenticated
-						&& m_participants.at(sender).inviter == m_room->username()
+						&& m_own_invites.count(sender)
+						&& m_own_invites.at(sender) == m_participants.at(sender).long_term_public_key
 					) {
 						AuthenticateInviteMessage reply;
 						reply.username = m_participants.at(sender).username;
@@ -738,7 +755,6 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 			   m_participants.at(sender).is_participant
 			&& !m_participants.at(message.username).is_participant
 			&& !m_participants.at(message.username).authenticated
-			&& m_participants.at(message.username).inviter == sender
 			&& m_participants.at(message.username).long_term_public_key == message.long_term_public_key
 			&& m_participants.at(message.username).conversation_public_key == message.conversation_public_key
 		)) {
@@ -746,6 +762,9 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 		}
 		
 		m_participants[message.username].authenticated = true;
+		m_participants[message.username].inviter = sender;
+		
+		m_own_invites.erase(message.username);
 		
 		if (interface()) interface()->user_invited(sender, message.username);
 		
@@ -771,6 +790,10 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 		}
 		
 		remove_invite(sender, message.username);
+		
+		if (sender != m_room->username() && m_own_invites.count(message.username)) {
+			do_invite(sender);
+		}
 	} else if (conversation_message.type == Message::Type::Join) {
 		JoinMessage message;
 		try {
@@ -1045,6 +1068,8 @@ void Conversation::user_left(const std::string& username)
 	
 	hash_payload(username, 0, "left");
 	
+	m_own_invites.erase(username);
+	
 	if (m_participants.count(username)) {
 		assert(!m_unconfirmed_invites.count(username));
 		remove_user(username);
@@ -1182,6 +1207,33 @@ void Conversation::declare_event(Event&& event)
 	});
 }
 
+void Conversation::do_invite(const std::string& username)
+{
+	assert(m_own_invites.count(username));
+	if (m_participants.count(username)) {
+		if (
+			   !m_participants.at(username).is_participant
+			&& !m_participants.at(username).authenticated
+			&& m_participants.at(username).long_term_public_key == m_own_invites.at(username)
+			&& m_participants.at(username).authentication_status == AuthenticationStatus::Authenticated
+		) {
+			AuthenticateInviteMessage reply;
+			reply.username = username;
+			reply.long_term_public_key = m_participants.at(username).long_term_public_key;
+			reply.conversation_public_key = m_participants.at(username).conversation_public_key;
+			send_message(reply.encode());
+		}
+	} else if (
+		   !m_unconfirmed_invites.count(username)
+		|| !m_unconfirmed_invites.at(username).count(m_own_invites.at(username))
+	) {
+		InviteMessage message;
+		message.username = username;
+		message.long_term_public_key = m_own_invites.at(username);
+		send_message(message.encode());
+	}
+}
+
 void Conversation::remove_invite(std::string inviter, std::string username)
 {
 	assert(m_participants.count(inviter));
@@ -1207,6 +1259,10 @@ void Conversation::remove_invite(std::string inviter, std::string username)
 		if (m_unconfirmed_invites.at(username).empty()) {
 			m_unconfirmed_invites.erase(username);
 		}
+	}
+	
+	if (inviter != m_room->username() && m_own_invites.count(username)) {
+		do_invite(username);
 	}
 }
 

@@ -60,6 +60,7 @@ class Conversation
 	/* Operations */
 	void leave(bool detach);
 	void invite(const std::string& username, const PublicKey& long_term_public_key);
+	void cancel_invite(const std::string& username);
 	void join();
 	void votekick(const std::string& username, bool kick);
 	void send_chat(const std::string& message);
@@ -221,6 +222,7 @@ class Conversation
 	void hash_message(const std::string& sender, const UnsignedConversationMessage& message);
 	void hash_payload(const std::string& sender, uint8_t type, const std::string& message);
 	void declare_event(Event&& event);
+	void do_invite(const std::string& username);
 	void remove_invite(std::string inviter, std::string username);
 	void do_remove_user(const std::string& username);
 	void check_timeout(const std::string& username);
@@ -248,6 +250,8 @@ class Conversation
 	EncryptedChat m_encrypted_chat;
 	
 	Timer m_conversation_status_timer;
+	
+	std::map<std::string, PublicKey> m_own_invites;
 	
 	// used only when we are unconfirmed
 	Hash m_status_message_hash;
