@@ -169,7 +169,7 @@ void EncryptedChat::remove_users(const std::set<std::string>& usernames)
 		
 		removed = true;
 	}
-	if (removed) {
+	if (removed && !m_participants.empty()) {
 		create_key_exchange();
 	}
 	if (active_session) {

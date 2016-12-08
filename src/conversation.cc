@@ -207,6 +207,9 @@ Conversation::Conversation(Room* room, const ConversationStatusMessage& conversa
 		} else {
 			throw MessageFormatException();
 		}
+		if (event.remaining_users.empty()) {
+			throw MessageFormatException();
+		}
 		declare_event(std::move(event));
 	}
 	
@@ -1573,6 +1576,10 @@ Conversation::EventReference Conversation::first_user_event(const std::string& u
 
 bool Conversation::fsck()
 {
+	if (!am_authenticated()) {
+		assert(!m_interface);
+	}
+	
 	assert(m_room);
 	assert(!m_conversation_private_key.is_null());
 	
@@ -1649,7 +1656,7 @@ bool Conversation::fsck()
 		assert(user_it == i.second.events.end());
 	}
 	for (const Event& event : m_events) {
-		assert(!event.remaining_users.empty());
+		assert(m_participants.empty() || !event.remaining_users.empty());
 	}
 	
 	for (const auto& i : m_own_invites) {
