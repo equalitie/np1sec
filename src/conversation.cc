@@ -762,7 +762,12 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 		}
 		
 		m_participants[message.username].authenticated = true;
+		assert(m_participants.count(m_participants[message.username].inviter));
+		assert(m_participants[m_participants[message.username].inviter].invitees.count(message.username));
+		assert(m_participants[m_participants[message.username].inviter].invitees[message.username] == message.long_term_public_key);
+		m_participants[m_participants[message.username].inviter].invitees.erase(message.username);
 		m_participants[message.username].inviter = sender;
+		m_participants[sender].invitees[message.username] = message.long_term_public_key;
 		
 		m_own_invites.erase(message.username);
 		
