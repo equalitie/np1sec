@@ -1,7 +1,7 @@
 np1sec
 ======
 
-Multiparty communication security implementation of the protocol described by this [paper](https://learn.equalit.ie/wiki/Np1sec)
+Multiparty communication security implementation of the protocol described by this [paper](https://learn.equalit.ie/wiki/Np1sec). Experimental client, in the form of a Pidgin plugin is [here](https://github.com/equalitie/np1sec-test-client). 
 
 ![(n+1)sec](https://learn.equalit.ie/mw/images/7/7f/Np1sec-web.jpg)
 
