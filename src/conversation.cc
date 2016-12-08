@@ -431,6 +431,8 @@ void Conversation::send_chat(const std::string& message)
 
 void Conversation::message_received(const std::string& sender, const ConversationMessage& conversation_message)
 {
+	assert(fsck());
+	
 	/*
 	 * Messages that match this filter get hashed.
 	 */
@@ -1063,10 +1065,14 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 		
 		m_encrypted_chat.decrypt_message(sender, message);
 	}
+	
+	assert(fsck());
 }
 
 void Conversation::user_left(const std::string& username)
 {
+	assert(fsck());
+	
 	if (!m_participants.count(username) && !m_unconfirmed_invites.count(username)) {
 		return;
 	}
@@ -1087,6 +1093,8 @@ void Conversation::user_left(const std::string& username)
 		}
 		m_unconfirmed_invites.erase(username);
 	}
+	
+	assert(fsck());
 }
 
 
@@ -1241,6 +1249,8 @@ void Conversation::do_invite(const std::string& username)
 
 void Conversation::remove_invite(std::string inviter, std::string username)
 {
+	assert(fsck());
+	
 	assert(m_participants.count(inviter));
 	assert(m_participants.at(inviter).is_participant);
 	assert(m_participants.at(inviter).invitees.count(username));
@@ -1269,10 +1279,14 @@ void Conversation::remove_invite(std::string inviter, std::string username)
 	if (inviter != m_room->username() && m_own_invites.count(username)) {
 		do_invite(username);
 	}
+	
+	assert(fsck());
 }
 
 void Conversation::do_remove_user(const std::string& username)
 {
+	assert(fsck());
+	
 	assert(m_participants.count(username));
 	assert(m_participants.at(username).invitees.empty());
 	
@@ -1315,6 +1329,8 @@ void Conversation::do_remove_user(const std::string& username)
 	if (participant) {
 		if (interface()) interface()->user_left(username);
 	}
+	
+	assert(fsck());
 }
 
 void Conversation::check_timeout(const std::string& username)
@@ -1553,6 +1569,101 @@ Conversation::EventReference Conversation::first_user_event(const std::string& u
 	check_timeout(username);
 	
 	return EventReference(&m_events, it);
+}
+
+bool Conversation::fsck()
+{
+	assert(m_room);
+	assert(!m_conversation_private_key.is_null());
+	
+	for (const auto& i : m_participants) {
+		assert(i.first == i.second.username);
+		assert(!m_unconfirmed_invites.count(i.first));
+		
+		if (i.second.is_participant) {
+			for (std::string username : i.second.timeout_peers) {
+				assert(m_participants.count(username) || m_unconfirmed_invites.count(username));
+			}
+			for (std::string username : i.second.votekick_peers) {
+				assert(m_participants.count(username) || m_unconfirmed_invites.count(username));
+			}
+			
+			for (const auto& j : i.second.invitees) {
+				if (m_participants.count(j.first)) {
+					assert(!m_participants[j.first].is_participant);
+					assert(m_participants[j.first].long_term_public_key == j.second);
+					assert(m_participants[j.first].inviter == i.first);
+				} else {
+					assert(m_unconfirmed_invites.count(j.first));
+					assert(m_unconfirmed_invites[j.first].count(j.second));
+					assert(m_unconfirmed_invites[j.first][j.second].username == j.first);
+					assert(m_unconfirmed_invites[j.first][j.second].long_term_public_key == j.second);
+					assert(m_unconfirmed_invites[j.first][j.second].inviter == i.first);
+				}
+			}
+		} else if (i.second.authenticated) {
+			assert(i.second.timeout_peers.empty());
+			assert(i.second.votekick_peers.empty());
+			assert(i.second.invitees.empty());
+			
+			assert(m_participants.count(i.second.inviter));
+			assert(m_participants.at(i.second.inviter).is_participant);
+			assert(m_participants.at(i.second.inviter).invitees.count(i.first));
+			assert(m_participants.at(i.second.inviter).invitees.at(i.first) == i.second.long_term_public_key);
+		} else {
+			assert(i.second.timeout_peers.empty());
+			assert(i.second.votekick_peers.empty());
+			assert(i.second.invitees.empty());
+			
+			assert(m_participants.count(i.second.inviter));
+			assert(m_participants.at(i.second.inviter).is_participant);
+			assert(m_participants.at(i.second.inviter).invitees.count(i.first));
+			assert(m_participants.at(i.second.inviter).invitees.at(i.first) == i.second.long_term_public_key);
+		}
+	}
+	
+	for (const auto& i : m_unconfirmed_invites) {
+		assert(!i.second.empty());
+		assert(!m_participants.count(i.first));
+		for (const auto& j : i.second) {
+			assert(j.second.username == i.first);
+			assert(j.second.long_term_public_key == j.first);
+			assert(m_participants.count(j.second.inviter));
+			assert(m_participants.at(j.second.inviter).is_participant);
+			assert(m_participants.at(j.second.inviter).invitees.count(i.first));
+			assert(m_participants.at(j.second.inviter).invitees.at(i.first) == j.first);
+		}
+	}
+	
+	for (auto& i : m_participants) {
+		std::deque<std::list<Event>::iterator>::iterator user_it = i.second.events.begin();
+		
+		for (std::list<Event>::iterator event_it = m_events.begin(); event_it != m_events.end(); event_it++) {
+			if (event_it->remaining_users.count(i.first)) {
+				assert(*user_it == event_it);
+				user_it++;
+			} else {
+				assert(*user_it != event_it);
+			}
+		}
+		assert(user_it == i.second.events.end());
+	}
+	for (const Event& event : m_events) {
+		assert(!event.remaining_users.empty());
+	}
+	
+	for (const auto& i : m_own_invites) {
+		if (m_participants.count(i.first)) {
+			assert(!m_participants.at(i.first).is_participant);
+			assert(!m_participants.at(i.first).authenticated);
+		}
+	}
+	
+	for (std::string username : m_unconfirmed_users) {
+		assert(m_participants.count(username));
+	}
+	
+	return true;
 }
 
 } // namespace np1sec

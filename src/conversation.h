@@ -234,6 +234,8 @@ class Conversation
 	UnsignedConversationMessage conversation_status(const std::string& invitee_username, const PublicKey& invitee_long_term_public_key) const;
 	EventReference first_user_event(const std::string& username);
 	
+	bool fsck();
+	
 	
 	
 	protected:
