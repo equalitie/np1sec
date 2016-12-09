@@ -341,6 +341,7 @@ void EncryptedChat::erase_key_exchange(Hash key_id)
 		}
 	} else {
 		if (exchange.has_next) {
+			m_key_exchanges[exchange.next].has_previous = false;
 			m_key_exchange_first = exchange.next;
 		}
 	}
@@ -355,6 +356,7 @@ void EncryptedChat::erase_key_exchange(Hash key_id)
 		}
 	} else {
 		if (exchange.has_previous) {
+			m_key_exchanges[exchange.previous].has_next = false;
 			m_key_exchange_last = exchange.previous;
 		}
 	}
