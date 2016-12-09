@@ -1088,9 +1088,7 @@ void Conversation::user_left(const std::string& username)
 		assert(!m_unconfirmed_invites.count(username));
 		remove_user(username);
 	} else {
-		assert(m_unconfirmed_invites.count(username));
-		
-		while (!m_unconfirmed_invites.at(username).empty()) {
+		while (m_unconfirmed_invites.count(username) && !m_unconfirmed_invites.at(username).empty()) {
 			auto i = m_unconfirmed_invites.at(username).begin();
 			remove_invite(i->second.inviter, i->second.username);
 		}
