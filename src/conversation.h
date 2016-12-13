@@ -36,9 +36,13 @@ class Room;
 
 class InvalidUserException {};
 
+//! Conversation
 class Conversation
 {
 	public:
+	/**
+	 * Constructor
+	 */
 	Conversation(Room* room);
 	Conversation(Room* room, const ConversationStatusMessage& conversation_status, const std::string& sender, const ConversationMessage& encoded_message);
 	
@@ -46,27 +50,136 @@ class Conversation
 	 * Public API
 	 */
 	/* Accessors */
+
+	/**
+	 * Return the participant names in this conversation
+	 *
+	 * A participant is any (n+1)sec user who has 'joined'
+	 * this conversation but has not left yet.
+	 *
+	 * If such user is us, then the 'joined' status
+	 * is indicated through the  ConversationInterface::joined callback
+	 * otherwise it is indicated through the ConversationInterface::user_joined
+	 * callback.
+	 *
+	 * Similarly, user leaving this conversation is indicated through
+	 * the ConversationInterface::left and ConversationInterface::user_left
+	 * callbacks.
+	 */
 	std::set<std::string> participants() const;
+
+	/**
+	 * Return a set of user names who have been invited by other
+	 * participants to join this conversation.
+	 */
 	std::set<std::string> invitees() const;
+
+	/**
+	 * \brief TODO
+	 */
 	bool user_is_authenticated(const std::string& username) const;
+
+	/**
+	 * \brief TODO
+	 */
 	bool user_failed_authentication(const std::string& username) const;
+
+	/**
+	 * Return a public key of the user with name \p username
+	 *
+	 * The InvalidUserException is thrown when no such user
+	 * is in this conversation (either as invitee or participant) or has not yet
+	 * been authenticated.
+	 */
 	PublicKey user_public_key(const std::string& username) const;
+
+	/**
+	 * \brief TODO
+	 */
 	bool user_is_votekicked(const std::string&victim, const std::string& participant) const;
+
+	/**
+	 * \brief TODO
+	 */
 	bool participant_in_chat(const std::string& username) const;
+
+	/**
+	 * \brief TODO
+	 */
 	std::string invitee_inviter(const std::string& username) const;
+
+	/**
+	 * True when we can decode messages sent by others in this conversation
+	 * and they can decode our messages.
+	 *
+	 * Equivalently, this value is true when we're between the calls
+	 * ConversationInterface::joined and ConversationInterface::left.
+	 */
 	bool in_chat() const;
+
+	/**
+	 * \brief TODO
+	 */
 	bool is_invite() const;
 	
 	/* Operations */
+
+	/**
+	 * Indicate to the library that we no longer want to be part of this
+	 * conversation.
+	 *
+	 * If the \p detach argument is false, this conversation shall
+	 * be destroyed inside this command and no further conversation callbacks
+	 * shall be executed.
+	 *
+	 * If the \p detach argument is true, this conversation shall
+	 * remain valid until the ConversationInterface::left callback
+	 * is executed.
+	 */
 	void leave(bool detach);
+
+	/**
+	 * Invite another user into this conversation.
+	 */
 	void invite(const std::string& username, const PublicKey& long_term_public_key);
+
+	/**
+	 * Cancel invitation to the user \p username whom we've previously
+	 * invited with the Conversation::invite command.
+	 */
 	void cancel_invite(const std::string& username);
+
+	/**
+	 * Join the conversation we've been invited to
+	 *
+	 * The invitation is indicated to us through the
+	 * RoomInterface::invited_to_conversation command.
+	 */
 	void join();
+
+	/**
+	 * \brief TODO
+	 */
 	void votekick(const std::string& username, bool kick);
+
+	/**
+	 * Send an encrypted message to this conversation.
+	 *
+	 * \param message is a clear text string that shall be encrypted
+	 *        before it is sent.
+	 */
 	void send_chat(const std::string& message);
 	
 	/* Callbacks */
+
+	/**
+	 * TODO: I think this one shouldn't be labeled as Public API
+	 */
 	void message_received(const std::string& sender, const ConversationMessage& conversation_message);
+
+	/**
+	 * TODO: I think this one shouldn't be labeled as Public API
+	 */
 	void user_left(const std::string& username);
 	
 	

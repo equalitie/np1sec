@@ -31,28 +31,87 @@
 namespace np1sec
 {
 
+//! Room class
 class Room
 {
 	public:
+	/**
+	 * Construct the room, no interface callbacks shall be called until
+	 * the Room::connect() function is called.
+	 */
 	Room(RoomInterface* interface, const std::string& username, const PrivateKey& private_key);
 	
 	/*
 	 * Public API
 	 */
-	/* Accessors */
+
+	/**
+	 * True after Room::connect() was called but before
+	 * RoomInterface::disconnected() called back.
+	 */
 	bool connected() const;
+
+	/**
+	 * TODO
+	 */
 	std::map<std::string, PublicKey> users() const;
+
+	/**
+	 * TODO
+	 */
 	std::set<Conversation*> conversations() const;
+
+	/**
+	 * TODO
+	 */
 	std::set<Conversation*> invites() const;
 	
 	/* Operations */
+
+	/**
+	 * Indicate to the library that the comunication link is ready to be used.
+	 */
 	void connect();
+
+	/**
+	 * Indicate to the library that the comunication link is no longer functional.
+	 */
 	void disconnect();
+
+	/**
+	 * Initiate the creation of a new secure conversation.
+	 *
+	 * Once the conversation is created, the
+	 * RoomInterface::created_conversation callback will be executed.
+	 */
 	void create_conversation();
 	
 	/* Callbacks */
+
+	/**
+	 * Tell the library that a new (n+1)sec message has arrived.
+	 *
+	 * The library doesn't own a communication channel and thus relies
+	 * on the user to transport the encrypted messages between other
+	 * users (e.g. using XMPP).
+	 *
+	 * This function is the *input* for the library. The *output*
+	 * must be implemented through the RoomInterface::send_message
+	 * function.
+	 *
+	 * \param sender Clear text user name of the sender
+	 * \param text_message Encrypted message.
+	 */
 	void message_received(const std::string& sender, const std::string& text_message);
+
+	/**
+	 * Indicate to the library a user has left.
+	 */
 	void user_left(const std::string& username);
+
+	/**
+	 * TODO
+	 */
 	void left_room();
 	
 	
