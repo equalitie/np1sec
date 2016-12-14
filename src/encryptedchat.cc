@@ -65,12 +65,12 @@ bool EncryptedChat::replacing_session(const Hash& key_id) const
 	return !m_key_exchanges.empty() || m_latest_session_id != key_id;
 }
 
-bool EncryptedChat::in_chat() const
+bool EncryptedChat::joined() const
 {
-	return user_in_chat(m_conversation->room()->username());
+	return user_joined(m_conversation->room()->username());
 }
 
-bool EncryptedChat::user_in_chat(const std::string& username) const
+bool EncryptedChat::user_joined(const std::string& username) const
 {
 	return m_participants.count(username) && m_participants.at(username).active;
 }
@@ -448,21 +448,21 @@ void EncryptedChat::progress_sessions()
 				}
 			}
 			if (activated) {
-				bool self_active = in_chat();
+				bool self_active = joined();
 				
 				for (const Identity& identity : data.participants) {
 					// user joined / self joined
 					if (!m_participants[identity.username].active) {
 						m_participants[identity.username].active = true;
 						if (self_active) {
-							if (m_conversation->interface()) m_conversation->interface()->user_joined_chat(identity.username);
+							if (m_conversation->interface()) m_conversation->interface()->user_joined(identity.username);
 						}
 					}
 				}
 				m_sessions[key_id].active = true;
 				
 				if (!self_active) {
-					if (m_conversation->interface()) m_conversation->interface()->joined_chat();
+					if (m_conversation->interface()) m_conversation->interface()->joined();
 				}
 			}
 		}

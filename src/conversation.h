@@ -54,12 +54,12 @@ class Conversation
 	/**
 	 * Return the participant names in this conversation
 	 *
-	 * A participant is any (n+1)sec user who has 'joined'
-	 * this conversation but has not left yet.
+	 * A participant is any (n+1)sec user who has bee in the state of
+	 * joining this conversation but has not left yet.
 	 *
-	 * If such user is us, then the 'joined' status
-	 * is indicated through the  ConversationInterface::joined callback
-	 * otherwise it is indicated through the ConversationInterface::user_joined
+	 * If such user is us, then the 'joining' status
+	 * is indicated through the  ConversationInterface::joining callback
+	 * otherwise it is indicated through the ConversationInterface::user_joining
 	 * callback.
 	 *
 	 * Similarly, user leaving this conversation is indicated through
@@ -101,7 +101,7 @@ class Conversation
 	/**
 	 * \brief TODO
 	 */
-	bool participant_in_chat(const std::string& username) const;
+	bool participant_joined(const std::string& username) const;
 
 	/**
 	 * \brief TODO
@@ -115,7 +115,7 @@ class Conversation
 	 * Equivalently, this value is true when we're between the calls
 	 * ConversationInterface::joined and ConversationInterface::left.
 	 */
-	bool in_chat() const;
+	bool joined() const;
 
 	/**
 	 * \brief TODO

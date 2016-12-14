@@ -61,19 +61,19 @@ in the conversation.
         |  |  +---------+           +----------|-------+     |
         |  |  |         |           |          |       |     |
         V  |  V         |           |          V       |     |
-      Not invited --> Invited --> Joined --> In chat --+---->+
-                   |           |          |              |
-                   |           |          |           C::leave
-                   |           |          |           C::vote_kick    
-                   |           |          |             CI::user_left
-                   |           |          |             CI::left     
-                   |           |          |
-                   |           |       CI::user_joined_chat
-                   |           |       CI::joined_chat
+      Not invited --> Invited --> Joining --> Joined --+---->+
+                   |           |           |              |
+                   |           |           |           C::leave
+                   |           |           |           C::vote_kick    
+                   |           |           |             CI::user_left
+                   |           |           |             CI::left     
+                   |           |           |
+                   |           |        CI::user_joined
+                   |           |        CI::joined
                    |           |
                    |        C::join
-                   |          CI::user_joined
-                   |          CI::joined
+                   |          CI::user_joining
+                   |          CI::joining
                    |                             
                 C::invite                         +-------------------------------------+
                   CI::user_invited                | Legend: C  := Conversation          |
@@ -83,18 +83,18 @@ in the conversation.
                                                   +-------------------------------------+
 
 ```
-We say that a user is a `Participant` if she is either in the `Joined` or `In chat` state.
-The `Joined` state is only temporary and indicates that _some_ of the messages sent may be
+We say that a user is a `Participant` if she is either in the `Joining` or `Joined` state.
+The `Joining` state is only temporary and indicates that _some_ of the messages sent may be
 decoded by _some_ of the participants and also that the user may be able to decode
 _some_ of the messages other participants sent. A user can not tell whether someone is in
-the state `In chat` until that user is part of the chat as well.
+the state `Joined` until that user has joined as well.
 
-Participants who are `In chat` may call `Conversation::send_chat()` and receive
+Participants who are in the `Joined` state may call `Conversation::send_chat()` and receive
 `ConversationInterface::message_received()` events to participate in the secure conversation.
 
 Each participant and each user may or may not be authenticated.
 
-Participants may invite other users into the chat, if they were previously in the
+Participants may invite other users into the conversation, if they were previously in the
 `Not invited` state, they'll switch into the `Invited` state from where they can "join" the
 conversation to become participants thereby. While in the `Invited` state, the inviters may cancel the invitation
 by using the `Conversation::cancel_invite` function, in which case the user becomes
