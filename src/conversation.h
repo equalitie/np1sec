@@ -170,23 +170,16 @@ class Conversation
 	 */
 	void send_chat(const std::string& message);
 	
-	/* Callbacks */
-
-	/**
-	 * TODO: I think this one shouldn't be labeled as Public API
-	 */
-	void message_received(const std::string& sender, const ConversationMessage& conversation_message);
-
-	/**
-	 * TODO: I think this one shouldn't be labeled as Public API
-	 */
-	void user_left(const std::string& username);
-	
 	
 	
 	/*
 	 * Internal API
 	 */
+	/* Callbacks */
+
+	void message_received(const std::string& sender, const ConversationMessage& conversation_message);
+	void user_left(const std::string& username);
+
 	/* Accessors */
 	Room* room() const { return m_room; }
 	ConversationInterface* interface() const { return m_interface; }
