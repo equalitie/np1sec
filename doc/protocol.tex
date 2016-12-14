@@ -1,0 +1,84 @@
+\documentclass{article}
+
+\usepackage{comment}
+
+\title{(n+1)sec protocol specification}
+\author{eQualit.ie}
+
+\setlength{\parskip}{1em}
+\setlength{\parindent}{0em}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+\label{sec:introduction}
+
+\begin{comment}
+== introduction ==
+
+
+
+== chat model ==
+what np1sec does
+how np1sec works from an API / UI point of view
+
+
+
+== protocol overview ==
+
+=== rooms and conversations ===
+messages addressed to conversations described here?
+
+=== cryptography ===
+// what is the right location for this subsection?
+
+=== conversation state machine ===
+
+=== joining a conversation ===
+
+=== events ===
+
+=== sessions and key exchanges ===
+
+
+
+== the conversation state machine ==
+
+=== introduction to the state machine model ===
+why do we use a state machine model?
+upsides and downsides
+
+=== participants ===
+
+=== state machine hash ===
+NOT: the details of how this hash is computed
+
+=== events ===
+
+=== key exchanges ===
+including: latest session id
+
+
+
+== messages ==
+the big list. describes, in a css-style declarative format, what effects each message is supposed to have on the conversation state machine.
+
+
+
+== events ==
+full list of events. Individual events are introduced in the messages section; this section has an overview, and details of what's in each event.
+
+
+
+== crypto details ==
+
+
+
+== packet format ==
+
+
+\end{comment}
+
+\end{document}
