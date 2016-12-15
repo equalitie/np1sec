@@ -40,9 +40,6 @@ class InvalidUserException {};
 class Conversation
 {
 	public:
-	/**
-	 * Constructor
-	 */
 	Conversation(Room* room);
 	Conversation(Room* room, const ConversationStatusMessage& conversation_status, const std::string& sender, const ConversationMessage& encoded_message);
 	
@@ -99,7 +96,12 @@ class Conversation
 	bool user_is_votekicked(const std::string&victim, const std::string& participant) const;
 
 	/**
-	 * \brief TODO
+	 * True when the participant can decode messages sent by others in this
+	 * conversation and they can decode her messages.
+	 *
+	 * Equivalently, this value is true between the calls
+	 * ConversationInterface::user_joined(username) and
+	 * ConversationInterface::user_left(username).
 	 */
 	bool participant_joined(const std::string& username) const;
 

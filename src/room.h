@@ -52,17 +52,25 @@ class Room
 	bool connected() const;
 
 	/**
-	 * TODO
+	 * Return the map of authenticated users and their corresponding public keys.
 	 */
 	std::map<std::string, PublicKey> users() const;
 
 	/**
-	 * TODO
+	 * Return the set of conversations we created
+	 *
+	 * TODO: Proofread
+	 * These are conversations we've created using the Room::create_conversation
+	 * function but before we left them (ConversationInterface::left).
 	 */
 	std::set<Conversation*> conversations() const;
 
 	/**
-	 * TODO
+	 * Return the set of conversations we were invited into
+	 *
+	 * TODO: Proofread
+	 * These are conversations created through the RoomInterface::invited_to_conversation
+	 * callback callback before we left them (ConversationInterface::left).
 	 */
 	std::set<Conversation*> invites() const;
 	
@@ -74,7 +82,10 @@ class Room
 	void connect();
 
 	/**
-	 * Indicate to the library that the comunication link is no longer functional.
+	 * Broadcast a Quit message and destroy all conversations
+	 *
+	 * Inside this function the RoomInterface::disconnected
+	 * callback is executed.
 	 */
 	void disconnect();
 
@@ -103,6 +114,7 @@ class Room
 	 * \param text_message Encrypted message.
 	 */
 	void message_received(const std::string& sender, const std::string& text_message);
+
 
 	/**
 	 * Indicate to the library a user has left.
