@@ -35,15 +35,15 @@ namespace np1sec
 class Room
 {
 	public:
+	/*
+	 * Public API
+	 */
+
 	/**
 	 * Construct the room, no interface callbacks shall be called until
 	 * the Room::connect() function is called.
 	 */
 	Room(RoomInterface* interface, const std::string& username, const PrivateKey& private_key);
-	
-	/*
-	 * Public API
-	 */
 
 	/**
 	 * True after Room::connect() was called but before
