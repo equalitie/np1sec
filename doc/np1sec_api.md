@@ -12,7 +12,7 @@ There are five different classes that a user of this library must utilize to pro
 
 The `Room` and `Conversation` classes are used to manipulate the library's internal state and their
 `Interface` counterparts are used by the library to provide the user with a feedback whenever 
-an important state change happens due to network or timing event happen.
+an important state change happens due to network or timing events.
 
 ## Room
 **Main class:** src/room.h<br/>
@@ -20,11 +20,11 @@ an important state change happens due to network or timing event happen.
 
 Room is a central concept in this library. It contains a collection of conversations, and provides one a communication link to all of them. It also contains a list of authenticated users that one can invite, updated via callbacks present in the `RoomInterface`. This list is not strongly related to the list of people in particular conversations -- a user can be in a conversation without being in the room list.
 
-A room can create a conversation by calling the asynchronous `Room::create_conversation()` function. Once the process of creating a conversation is finished, user is let known through the `RoomInterface::conversation_created` callback. A conversation created in this way has only the creator in it. Another way a conversation may be created is when some other (n+1)sec user invites us into her channel. In such case the `Room::invited_to_conversation` callback is invoked with users already present in the conversation any us.
+A room can create a conversation by calling the asynchronous `Room::create_conversation()` function. Once the process of creating a conversation is finished, user is let known through the `RoomInterface::conversation_created` callback. A conversation created in this way has only the creator in it. Another way a conversation may be created is when some other (n+1)sec user invites us into her channel. In such case the `Room::invited_to_conversation` callback is invoked with users already present in the conversation and us.
 
 Before the `Room` object can be used, one has to call `Room::connect()`, this tells the library that the communication link is ready to be used. On breakage, the library calls the `RoomInterface::disconnected()` function and destroys all existing conversations afterwards.
 
-**Caveat:** One can not call any `Room` functions, or timers callbacks, from `RoomInterface` callbacks. This avoids reentrancy. Conversation functions and Room accessors are OK to be used however.
+**Caveat:** One can not call any `Room` non const functions, from `RoomInterface` callbacks. This avoids reentrancy. Conversation functions and Room accessors are OK to be used however.
 
 ## Conversations and Users
 **Main class:** src/conversation.h<br/>
@@ -117,7 +117,7 @@ There are two cases when the `ConversationInterface::left` callback (or any othe
 **Interface:** src/interfaces.h/TimerToken
 
 The (n+1)sec library makes use of timers to (among others) detect disconnection. To
-stay independent from the event loop its used in as much as possible, users of the
+stay independent from the event loop it is used in as much as possible, users of the
 library are required to implement few timer related function.
 
 When the (n+1)sec library needs to start a timer, it calls the `RoomInterface::set_timer` function
@@ -130,11 +130,11 @@ Inside it, the user has to set up a timer of her choice which - once the timer f
 eventually executes the `TimerCallback::execute` method. The return value of the `set_timer`
 function needs to be an instance of an object that implements the `TimerToken` interface.
 
-The only purpose of `TimerToken` is to allow the library to cancel the timer at any timer by calling
+The purpose of the `TimerToken` object is to allow the library to cancel the timer at any timer by calling
 the `TimerToken::unset` method after which the `TimerToken::execute` method must not be called
 on that particular `callback` object.
 
-Note that given that the library doesn't make use of virtual destructors. This means that
+Note that the library doesn't make use of virtual destructors. This means that
 the responsibility to destruct an object lays in the library/executable that created it.
 That is, user of the library must not explicitly destroy the instance of the `TimerCallback` class,
 but must destruct the instance of `TimerToken` when one of these happen.
