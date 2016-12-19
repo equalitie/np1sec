@@ -71,12 +71,19 @@ class ConversationInterface
 	virtual void invitation_cancelled(const std::string& inviter, const std::string& invitee) = 0;
 
 	/**
-	 * \brief TODO
+	 * Indicate that the user's identity with this public key in this conversation has been confirmed.
+	 *
+	 * Only after this call (and before ConversationInterface::user_left(username))
+	 * is the result of Conversation::user_public_key(username) a valid public key.
 	 */
 	virtual void user_authenticated(const std::string& username, const PublicKey& public_key) = 0;
 
 	/**
-	 * \brief TODO
+	 * Indicate that the library could not verify user's public key in this conversation.
+	 *
+	 * In other words, the library was unable to confirm that the user
+	 * \p username possesses a private key to the public key she identified
+	 * herself with.
 	 */
 	virtual void user_authentication_failed(const std::string& username) = 0;
 

@@ -72,12 +72,16 @@ class Conversation
 	std::set<std::string> invitees() const;
 
 	/**
-	 * \brief TODO
+	 * True if the user's public key in this conversation has been confirmed.
+	 *
+	 * Equivalently, it is true between the calls
+	 * ConversationInterface::user_authenticated and
+	 * ConversationInterface::user_left.
 	 */
 	bool user_is_authenticated(const std::string& username) const;
 
 	/**
-	 * \brief TODO
+	 * True once the ConversationInterface::user_authentication_failed has been called.
 	 */
 	bool user_failed_authentication(const std::string& username) const;
 
@@ -85,8 +89,7 @@ class Conversation
 	 * Return a public key of the user with name \p username
 	 *
 	 * The InvalidUserException is thrown when no such user
-	 * is in this conversation (either as invitee or participant) or has not yet
-	 * been authenticated.
+	 * is in this conversation (either as invitee or participant).
 	 */
 	PublicKey user_public_key(const std::string& username) const;
 
