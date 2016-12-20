@@ -30,7 +30,7 @@ being in the room list.
 
 A room can create a conversation by calling the asynchronous
 `Room::create_conversation()` function. Once the process of creating a
-conversation is finished, the user is announced through the
+conversation is finished, the user is notified through the
 `RoomInterface::conversation_created` callback. A conversation created in this
 way has only the creator in it. Another way a conversation may be created is
 through invitation by some other (n+1)sec user into her channel. In such case,
@@ -146,8 +146,8 @@ other conversation callback) will not be executed:
 **Interface:** src/interfaces.h/TimerToken
 
 The (n+1)sec library makes use of timers to detect disconnection (among others).
-To stay independent from the event loop it is used in as much as possible, users
-of the library are required to implement few timer related function.
+To remain as independent as possible from the event loop the library is used in,
+users of the library are required to implement few timer related functions.
 
 When the (n+1)sec library needs to start a timer, it calls the
 `RoomInterface::set_timer` function
@@ -172,9 +172,9 @@ created it.  That is, users of the library must not explicitly destroy the
 instance of the `TimerCallback` class, but must destruct the instance of
 `TimerToken` when one of these happens:
 
-* Right after the `TimerCallback::execute` function is called
+* After the `TimerCallback::execute` function is called
 * Inside the `TimerToken::unset` function
-* Right after the `Room` that created this `TimerToken` is destroyed
+* After the `Room` that created this `TimerToken` is destroyed
 
 ## Example code
 
