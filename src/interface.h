@@ -220,7 +220,8 @@ class RoomInterface
 
 	/**
 	 * Indicate that a new user in this communication channel is known to be
-	 * using (n+1)sec.
+	 * using (n+1)sec and that she's been proven to possess a private key
+	 * corresponding to the \p public_key.
 	 */
 	virtual void user_joined(const std::string& username, const PublicKey& public_key) = 0;
 
