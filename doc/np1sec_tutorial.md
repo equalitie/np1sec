@@ -1,4 +1,4 @@
-# Writing a (n+1)sec client
+# Writing an (n+1)sec client
 
 The purpose of this document is to give a quick tutorial on how one can implement a secure E2E encrypted multi user chat using the (n+1)sec library. First, we'll describe a minimal abstract interface of an environment that the library will work in, following by the description on how the library interacts with such environment. For a dryer and denser explanation of the concepts explained here, please see the [(n+1)sec API documentation](np1sec_api.md).
 

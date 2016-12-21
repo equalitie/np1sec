@@ -1,4 +1,4 @@
-(n+1)sec API Documentation
+(n+1)sec API documentation
 =================
 This document describes only the public API, the definition of the protocol is
 elsewhere.
