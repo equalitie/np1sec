@@ -88,7 +88,7 @@ struct MyConversation : public ConversationInterface {
 ```
 
 # Bind network events
-Next we need to bind the networking interface defined in above with (n+1)sec. There are really only three network related events that the library needs to know: When the connection is established, when we receive a message and how to send a message.
+Next we need to bind the networking interface defined above with (n+1)sec. There are really only three network related events that the library needs to know about: When the connection is established, when we receive a message and how to send a message.
 
 ```c++
 std::unique_ptr<MyRoom> g_room;
@@ -96,7 +96,10 @@ std::unique_ptr<MyRoom> g_room;
 void server_on_connected()
 {
     g_room = new MyRoom(this, my_username, my_public_private_key_pair);
-    // This tells the library that we're connected and it can start sending messages to the server.
+    /* This function starts a handshake with other nodes connected to the server. It
+     * is asynchronous and thus we need to wait for the event RoomInterface::connected()
+     * before we can start altering the g_room's state (to create conversations,
+     * get invited,...). */
     g_room->connect();
 }
 
@@ -112,7 +115,7 @@ void server_on_message_received(const std::string& sender, const std::string& me
     g_room->np1sec_room.message_received(sender, message);
 }
 ```
-When the library wants to send a message it will invoke the virtual `RoomInterface::send_message` function, let's implement it
+Whenever the library needs to send a message it will invoke the virtual `RoomInterface::send_message` function, let's implement it
 ```c++
 struct MyRoom : public RoomInterface {
     ...
@@ -122,6 +125,9 @@ struct MyRoom : public RoomInterface {
     ...
 };
 ```
+When the function `Room::connect()` is invoked, it starts a handshake process with other users. Once this is done, the _connecting_ user shall receive the `RoomInterface::connected()` event after which she can start sending and receiving
+
+
 # Creating channels
 Now that we have timers and basic network IO in place, we can start manipulating the (n+1)sec's internal state. The first thing we'll want to do is to create a new Conversation by invoking the `Room::create_conversation()` function. Once the conversation has been created, the library will invoke `RoomInterface::created_conversation` which we need to implement
 
@@ -136,7 +142,7 @@ struct MyRoom : public RoomInterface {
 ```
 A conversation created this way initially contains only one user in it, the caller of the `Room::create_conversation()` function. We can start sending encrypted messages into this conversation by calling the `Conversation::send_chat(const std::string& message)` function, but since we're the only ones in there, no one else would be able to decrypt those messages. Thus we need to _invite_ other users into the conversation.
 
-# Inviting others into Conversation
+# Inviting others into a Conversation
 When a user invokes `Room::connect`, a handshake with the other nodes connected to the server starts. Among other things, this handshake verifies that the connecting user possess a valid private and public cryptographic key pair. Once this is done, the library notifies us through the `user_joined` callback.
 ```c++
 virtual void RoomInterface::user_joined(const std::string& username, const PublicKey& public_key) = 0;
@@ -153,16 +159,31 @@ From that point on, the user may decide to accept the invitation by invoking `Co
 
 While the user is in this state, it is possible that she may be able to decrypt _some_ of the messages circulating in that conversation and also that _some_ of the other already joined or joining users may decrypt her messages. To make sure _everyone_ who is in state _Joined_ in that conversation is able to read her messages, she needs to wait for the `ConversationInterface::joined()` callback (equivalently, others need to wait for the `ConversationInterface::user_joined(username)` callback).
 
+While the user is in the _Invited_ state, those who sent the invitation can cancel it by calling the `Conversation::cancel_invite(username)` function. In that case the invitee shall be notified through the `ConversationInterface::invitation_cancelled(inviter, invitee)`. If every inviter of an invitee does so, the invitee's conversation shall be destroyed and thus she'll no longer be able to join it.
+
 This is the crux of the invitation process. For more details about how to transition between the different states in the Conversation, please consult the [Conversation and Users section of the (n+1)sec API document](np1sec_api.md#conversations-and-users).
+
+# Leaving a conversation
+As sketched in the previous paragraph, once a conversation is created the user may be in one of three different states: _Invited_, _Joining_ and _Joined_. While in any of these states, the use may choose to leave voluntarily or be made left non voluntarily. In the former case, the user needs to invoke the function
+
+```c++
+    /* Set detach to true to receive the ConversationInterface::left() event */
+    void Conversation::leave(bool detach);
+```
+If the `detach` argument to this function is `true` the leaving process shall be asynchronous and the user shall receive `Conversation::left()` event. Otherwise, if it's `false`, _this_ conversation shall be destroyed inside the `Conversation::leave` function an no more events related to this conversation shall be received.
+
+The user may be forced to leave non voluntarily by others canceling her invitation (as discussed in the previous chapter) while in the _Invited_ state.
+
+Whether the user leaves non-voluntarily or executes _Conversation::leave(**true**)_, she shall receive the `Conversation::left` even after which the conversation gets destroyed implicitly.
 
 # Authentication
 To avoid the man in the middle attack, (n+1)sec exposes (through its API) each user's public key. It does so in two occasions. The first time is when a user joins the Room through the `RoomInterface::user_joined(username, public_key)` callback. This public key should be consulted and verified by the user of the client before that new user is to be invited into a conversation.
 
 Another occasion when the library notifies us with a _(username, public_key)_ pair is when a user with this _username_ joins a conversation through the `ConversationInterface::user_authenticated(username, public_key)` callback. This is because someone else may have carelessly invited this user without actually taking care with checking that the public key really belongs to this `username`. As such, it is up to us to verify that user's identity once he enters the conversation.
 
-It is expected that clients shall maintain a database of _(username, public_key)_ pairs to automatically verify that a particular user really is who he claims to be. Also, whenever a new user shows up in the room who is not yet in the database, the client should show a dialog asking to confirm that the _public_key_ belongs to that user. If the _username <-> public_key_ binding is confirmed, the client should add the new pair to the database and allow sending invitation to that user.
+It is expected that clients shall maintain a database of _(username, public_key)_ pairs to automatically verify that a particular user really is who she claims to be. Also, whenever a new user shows up in the room who is not yet in the database, the client should show a dialog asking to confirm that the _public_key_ belongs to that user. If the _username <-> public_key_ binding is confirmed, the client should add the new pair to the database and allow sending invitation to that user.
 
-Note that at the time of writing this document, neither [jabberite][jabberite] nor [np1sec-test-client][np1sec-test-client] clients ask the user for this confirmation. Which is one of the biggests reasons we're not recommending to rely on them being secure.
+Note that at the time of writing this document, neither [jabberite][jabberite] nor [np1sec-test-client][np1sec-test-client] clients ask the user for this confirmation. Which is one of the main reasons we're not recommending to rely on them being secure.
 
 [xmpp-muc]: http://xmpp.org/extensions/xep-0045.html
 [interface-h-file]: https://github.com/equalitie/np1sec/blob/master/src/interface.h
