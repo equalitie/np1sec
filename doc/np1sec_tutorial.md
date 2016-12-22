@@ -54,7 +54,7 @@ It is important to note that while the lifetime of the `callback` object is mana
 
 The `Room` and `Conversation` classes are the most important interfaces a programmer needs to know about. The `Room` maintains a set of users that are able to send and receive encrypted messages with the twist that not every user can decrypt messages from every other user. Instead, any subset of users in the room who are able to decrypt each other's messages is maintained by the `Conversation` class. The set of existing conversations is as well maintained by the `Room` object.
 
-There are two ways for an user to become part of a conversation, he or she can either create one, or accept an invitation from one or more users already in it. 
+There are two ways for a user to become part of a conversation, he or she can either create one, or accept an invitation from one or more users already in it. 
 
 In our two (n+1)sec client implementations where we make use of the XMPP protocol, the `Room` correspods one-to-one with an [XMPP Multi User Chat (MUC)][xmpp-muc]. As there can be multiple XMPP MUC instances going on on one XMPP server, the server can handle multiple (n+1)sec rooms. In this document however, we're going to simplify things by removing this one level of indirection and assume only one `Room` per server. Thus everyone who is connected to the server will automatically (after authorization, see bellow) become part of that one room.
 
@@ -158,7 +158,7 @@ This is the crux of the invitation process. For more details about how to transi
 # Authentication
 To avoid the man in the middle attack, (n+1)sec exposes (through its API) each user's public key. It does so in two occasions. The first time is when a user joins the Room through the `RoomInterface::user_joined(username, public_key)` callback. This public key should be consulted and verified by the user of the client before that new user is to be invited into a conversation.
 
-Another occasion when the library us with a _(username, public_key)_ pair is when a user with this _username_ joins a conversation through the `ConversationInterface::user_authenticated(username, public_key)` callback. This is because someone else may have carelessly invited this user without actually taking care with checking that the public key really belongs to this `username`. As such, it is up to us to verify that user's identity once he enters the conversation.
+Another occasion when the library notifies us with a _(username, public_key)_ pair is when a user with this _username_ joins a conversation through the `ConversationInterface::user_authenticated(username, public_key)` callback. This is because someone else may have carelessly invited this user without actually taking care with checking that the public key really belongs to this `username`. As such, it is up to us to verify that user's identity once he enters the conversation.
 
 It is expected that clients shall maintain a database of _(username, public_key)_ pairs to automatically verify that a particular user really is who he claims to be. Also, whenever a new user shows up in the room who is not yet in the database, the client should show a dialog asking to confirm that the _public_key_ belongs to that user. If the _username <-> public_key_ binding is confirmed, the client should add the new pair to the database and allow sending invitation to that user.
 
