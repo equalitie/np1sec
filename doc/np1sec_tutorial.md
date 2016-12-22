@@ -125,8 +125,6 @@ struct MyRoom : public RoomInterface {
     ...
 };
 ```
-When the function `Room::connect()` is invoked, it starts a handshake process with other users. Once this is done, the _connecting_ user shall receive the `RoomInterface::connected()` event after which she can start sending and receiving
-
 
 # Creating channels
 Now that we have timers and basic network IO in place, we can start manipulating the (n+1)sec's internal state. The first thing we'll want to do is to create a new Conversation by invoking the `Room::create_conversation()` function. Once the conversation has been created, the library will invoke `RoomInterface::created_conversation` which we need to implement
