@@ -322,6 +322,8 @@ void EncryptedChat::insert_key_exchange(std::unique_ptr<KeyExchange>&& key_excha
 	} else {
 		m_key_exchanges[key_id].has_previous = true;
 		m_key_exchanges[key_id].previous = m_key_exchange_last;
+		m_key_exchanges[m_key_exchange_last].has_next = true;
+		m_key_exchanges[m_key_exchange_last].next = key_id;
 	}
 	m_key_exchanges[key_id].has_next = false;
 	m_key_exchange_last = key_id;
