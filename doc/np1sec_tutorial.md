@@ -1,4 +1,4 @@
-# Writing an (n+1)sec client
+# Guidelines for writing an (n+1)sec client
 
 The purpose of this document is to give a quick tutorial on how one can implement a secure E2E encrypted multi user chat using the (n+1)sec library. First, we'll describe a minimal abstract interface of an environment that the library will work in, following by the description on how the library interacts with such environment. For a dryer and denser explanation of the concepts explained here, please see the [(n+1)sec API documentation](np1sec_api.md).
 
@@ -6,16 +6,19 @@ The purpose of this document is to give a quick tutorial on how one can implemen
 
 The library by itself is transport agnostic, that means that the responsibility of reliably transfering messages to other peers lays on the client implementor. For example, our example clients [jabberite] and [np1sec-test-client] both use libpurple/XMPP for this purpose, but it is important to note that there is nothing special about XMPP and that there is only a small set of properties that such transport must have to be able to work with (n+1)sec.
 
-In fact, in this document we assume a centralized solution where each client has a working connection (e.g. TCP) to a server which simply echoes back every message it receives to all clients that are connected to it. Such centralized solution is used only for simplicity, removing the server in favor of a decentralized solution is also possible but the protocol used must ensure that *every node sees the messages arriving in the same order*.
+In fact, in this document we assume a centralized solution where each client has a working connection (e.g. TCP) to a server which simply echoes back every message it receives together with the name of the sender to all clients that are connected to it. Such centralized solution is used only for simplicity, removing the server in favor of a decentralized solution is also possible but the protocol used must ensure that *every node sees the messages arriving in the same order*.
 
 With that said, we assume the following interface for the communication
 
 ```c++
     void server_on_connected();
     void server_on_disconnected();
+    // When server detects that the user's TCP connection was lost.
+    void server_on_user_disconnected(const std::string& user);
     void server_on_message_received(const std::string& sender, const std::string& message);
     void server_send_message(const std::string& message);
 ```
+
 
 # Interfaces
 
@@ -61,7 +64,7 @@ In our two (n+1)sec client implementations where we make use of the XMPP protoco
 To use the `Room` and `RoomInterface` classes, we'll create a new class named `MyRoom` which owns an instance of `Room` and implements the `RoomInterface` interface
 ```c++
 struct MyRoom : public RoomInterface {
-    /* Constructor, destructor, etc. */
+    /* Constructor, destructor, public methods, etc. */
     ...
     
     /* Overwritten RoomInterface functions */
@@ -74,7 +77,7 @@ struct MyRoom : public RoomInterface {
 Similarly, we'll create a new class `MyConversation`
 ```c++
 struct MyConversation : public ConversationInterface {
-    /* Constructor, destructor, etc. */
+    /* Constructor, destructor, public methods, etc. */
     ...
     
     /* Overwritten ConversationInterface functions */
@@ -88,18 +91,28 @@ struct MyConversation : public ConversationInterface {
 ```
 
 # Bind network events
-Next we need to bind the networking interface defined above with (n+1)sec. There are really only three network related events that the library needs to know about: When the connection is established, when we receive a message and how to send a message.
+Next we need to bind the networking interface defined above with (n+1)sec. There are few network related events and actions that the library needs to know about: 
 
+- When the connection to the server is established and destroyed.
+  - When we do so
+  - When other users do so
+- Message IO
+  - We need to pass every encrypted message from the server to (n+1)sec
+  - (n+1)sec needs to pass decrypted messages back to the client
+  - We need to tell (n+1)sec how to send raw data.
+  - And we need to pass our plain text messages to (n+1)sec to encrypt and send them
+
+We'll describe each of the bullets in the following two chapters.
+
+# Connect and disconnect
+In our implementation we'll have only one room per client. For simplicity's sake we shall represent such room as a global variable `g_room` which we'll instantiate once we have a connection to the server and destroy it when the connection is lost.
 ```c++
 std::unique_ptr<MyRoom> g_room;
 
 void server_on_connected()
 {
     g_room = new MyRoom(this, my_username, my_public_private_key_pair);
-    /* This function starts a handshake with other nodes connected to the server. It
-     * is asynchronous and thus we need to wait for the event RoomInterface::connected()
-     * before we can start altering the g_room's state (to create conversations,
-     * get invited,...). */
+    /* Start a handshake with other nodes connected to the server. */
     g_room->connect();
 }
 
@@ -107,7 +120,20 @@ void server_on_disconnected()
 {
     g_room.reset()
 }
+```
+Note that in `server_on_connected` we invoked `g_room->connect`. This call is asynchronous and thus we need to wait for the event `RoomInterface::connected()` before we can start altering the `g_room`'s state (e.g. create conversations) and receive other events.
 
+(n+1)sec internally uses Fin messages and timeouts to detect when other users disconnect. On such occasion the client shall receive the `RoomInterface::user_left(const std::string& username)` event. But Fin messages may be lost, and timeouts may take a long time to fire. Thus it is recommended that clients will also consult with the server when another user disconnect (if the server provides such information)
+```c++
+void server_on_user_disconnected(const std::string& user) {
+    if (!g_room) return;
+    g_room->user_left(user);
+}
+```
+# Message IO
+When we receive an encrypted message from the server such message may represent a lot of different things: handshake, request to create a conversation, an invitation,... and finally an encrypted text. We need to pass each such message to (n+1)sec to decide what to do with it
+
+```c++
 // We have received an encrypted message from the server, lets tell it to the library.
 void server_on_message_received(const std::string& sender, const std::string& message)
 {
@@ -115,7 +141,7 @@ void server_on_message_received(const std::string& sender, const std::string& me
     g_room->np1sec_room.message_received(sender, message);
 }
 ```
-Whenever the library needs to send a message it will invoke the virtual `RoomInterface::send_message` function, let's implement it
+Whenever the library needs to send a raw message it will invoke the virtual `RoomInterface::send_message` function, let's implement it
 ```c++
 struct MyRoom : public RoomInterface {
     ...
@@ -125,8 +151,34 @@ struct MyRoom : public RoomInterface {
     ...
 };
 ```
+What is left is to describe how the client can pass plain text message to the library for sending and also how the library can present us with the decrypted data. These two operations are done through a conversation
+```c++
+struct MyConversation : public ConversationInterface {
+    /* Constructor, destructor, public methods, etc. */
+    ...
+    void send_encrypted_message(const std::string& plain_text_message)
+    {
+        // This command shall encrypt the message and send it to the server for other
+        // users in this conversation to see.
+        np1sec_conversation->send_chat(plain_text_message);
+    }
+    ...
+    
+    /* Overwritten ConversationInterface functions */
+    ...
+    void message_received(const std::string& sender, const std::string& plain_text_message) override
+    {
+        // Display the plain_text_message to the client here.
+    }
+    ...
 
-# Creating channels
+    /* Members */
+    MyRoom* my_room;
+    // The lifetime of np1sec_conversation is managed by the (n+1)sec library.
+    Conversation* np1sec_conversation;
+};
+```
+# Creating conversations
 Now that we have timers and basic network IO in place, we can start manipulating the (n+1)sec's internal state. The first thing we'll want to do is to create a new Conversation by invoking the `Room::create_conversation()` function. Once the conversation has been created, the library will invoke `RoomInterface::created_conversation` which we need to implement
 
 ```c++
@@ -140,7 +192,7 @@ struct MyRoom : public RoomInterface {
 ```
 A conversation created this way initially contains only one user in it, the caller of the `Room::create_conversation()` function. We can start sending encrypted messages into this conversation by calling the `Conversation::send_chat(const std::string& message)` function, but since we're the only ones in there, no one else would be able to decrypt those messages. Thus we need to _invite_ other users into the conversation.
 
-# Inviting others into a Conversation
+# Inviting others into a conversation
 When a user invokes `Room::connect`, a handshake with the other nodes connected to the server starts. Among other things, this handshake verifies that the connecting user possess a valid private and public cryptographic key pair. Once this is done, the library notifies us through the `user_joined` callback.
 ```c++
 virtual void RoomInterface::user_joined(const std::string& username, const PublicKey& public_key) = 0;
