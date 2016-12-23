@@ -93,9 +93,7 @@ class Conversation
 	 */
 	PublicKey user_public_key(const std::string& username) const;
 
-	/**
-	 * \brief TODO
-	 */
+	// TODO: Shall be removed from public API
 	bool user_is_votekicked(const std::string&victim, const std::string& participant) const;
 
 	/**
@@ -109,7 +107,9 @@ class Conversation
 	bool participant_joined(const std::string& username) const;
 
 	/**
-	 * \brief TODO
+	 * Return the name of the user who invited user named \p username
+	 *
+	 * TODO: What if multiple users invited \p username?
 	 */
 	std::string invitee_inviter(const std::string& username) const;
 
@@ -162,9 +162,7 @@ class Conversation
 	 */
 	void join();
 
-	/**
-	 * \brief TODO
-	 */
+	// TODO: Shall be removed from public API
 	void votekick(const std::string& username, bool kick);
 
 	/**

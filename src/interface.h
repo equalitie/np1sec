@@ -110,9 +110,7 @@ class ConversationInterface
 	 */
 	virtual void user_left(const std::string& username) = 0;
 
-	/**
-	 * \brief TODO
-	 */
+	// TODO: Shall be removed
 	virtual void votekick_registered(const std::string& kicker, const std::string& victim, bool kicked) = 0;
 	
 
