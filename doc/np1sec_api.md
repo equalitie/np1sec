@@ -74,7 +74,6 @@ status and the ability to participate in the conversation.
         |  +-----------------------------------+             |
         |  |                                   |             |
         |  |   C::cancel_invite                |             |
-        |  |   C::vote_kick                    |             |
         |  |   C::leave                        |             |
         |  |     CI::invitation_canceled       |             |
         |  |     CI::left                      |             |
@@ -85,7 +84,6 @@ status and the ability to participate in the conversation.
       Not invited --> Invited --> Joining --> Joined --+---->+
                    |           |           |              |
                    |           |           |           C::leave
-                   |           |           |           C::vote_kick    
                    |           |           |             CI::user_left
                    |           |           |             CI::left     
                    |           |           |
@@ -123,12 +121,7 @@ state, from where they can "join" the conversation to become participants. While
 in the `Invited` state, the inviters may cancel the invitation by using the
 `Conversation::cancel_invite` function, in which case the user becomes `Not
 invited` again. The same implicitly happens if the inviters leave the
-conversation or other participants call `Conversation::vote_kick` against the
-invited users.
-
-Participants can vote to kick not only invitees but also other participants. In
-such case the conversation is split into two descendants when a consensus is
-reached.
+conversation.
 
 To leave a conversation voluntarily, user calls `Conversation::leave`. Whenever
 (with exceptions described below) the user transitions to the `Not invited`
