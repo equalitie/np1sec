@@ -1,12 +1,32 @@
 \documentclass{article}
 
-\usepackage{comment}
-
 \title{(n+1)sec protocol specification}
 \author{eQualit.ie}
 
 \setlength{\parskip}{1em}
 \setlength{\parindent}{0em}
+
+\def\message#1{\texttt{#1}}
+\def\field#1{\textit{#1}}
+
+
+\newenvironment{basicmessage}[2]{
+\newcommand{\messagefield}[2]{
+\field{##1} & \textsf{##2} \\
+\hline
+}
+\begin{tabular}{|l|l|}
+\hline
+\multicolumn{2}{|c|}{\message{#1} [#2]} \\
+\hline
+\hline
+}{
+\end{tabular}
+}
+
+
+
+
 
 \begin{document}
 
@@ -15,70 +35,325 @@
 \section{Introduction}
 \label{sec:introduction}
 
-\begin{comment}
-== introduction ==
+The (n+1)sec system is a protocol for end-to-end encrypted and authenticated textual group chat communications.
+It aims to provide a platform and paradigm for synchronous text chat similar to those used in commonly used chat systems such as IRC \cite{irc} and Jabber multi user conversations \cite{jabber}, augmented with the cryptographic tools to guarantee communication security without relying on any third parties for these security assurances.
+
+The (n+1)sec system, in conscious imitation of the celebrated off-the-record or \emph{OTR} chat cryptography framework \cite{otr}, 
+% layered on top of a chat network
+
+% this is a protocol spec
+
+% status: draft
+
+% reference implementation
+
+% sections: 2, 3, other
 
 
 
-== chat model ==
-what np1sec does
-how np1sec works from an API / UI point of view
+\section{Protocol Overview}
+\label{sec:protocol-overview}
+
+The (n+1)sec system is a protocol through which users of text chat systems, such as IRC \cite{irc} or Jabber multi-user-chat \cite{jabber}, can hold cryptographically secured multi-party text chat sessions.
+Using an approach similar to OTR \cite{otr}, (n+1)sec clients exchange encoded text messages via a general-purpose group chat room, such as an IRC channel or a Jabber multi-user chat room, and thereby construct end-to-end encrypted chat sessions that use the general-purpose chat room as a carrier.
+
+Chat sessions in (n+1)sec make use of end-to-end encryption to ensure the security of chat communications, even when the chat session is held in a public or otherwise presumed-insecure chat room.
+This cryptography is used to authenticate the identity of the members of the chat session, as well as to encrypt the chat communications in such a way that only the members of a chat session have access to the chat contents.
+
+Chat in (n+1)sec takes place in so-called \emph{conversations}.
+An (n+1)sec Conversation is a chat session, behaviorally similar to IRC channels and the like, that exists as a distributed agreement between a group of people in a carrier chat room to talk to each other, and whose communication takes place via (n+1)sec messages exchanged in a single carrier chat room.
+A Conversation at any point has a set of \emph{participants}, which is part of the state of a Conversation that all participants agree on at any point.
+The different Participants in a Conversation have all authenticated each other's identities, as identified by a public key, and ---some caveats notwithstanding--- chat messages in a Conversation are encrypted in such a way that only its constituent Participants can decrypt.
+
+All communications related to a Conversation are necessarily accompanied by a cryptographic signature based on the public key of the sender.
+Furthermore, all chat messages in a Conversation ---making up the payload of that Conversation--- are encrypted using a symmetric cryptographic key negotiated between, and known only by, the Conversation's Participants.
+This symmetric key is negotiated each time the list of Participants of a Conversation changes (that is, each time a Participant either joins or leaves the Conversation), as well as at regular intervals to reduce the risk of any particular key being compromised.
+
+\subsection{Rooms}
+The (n+1)sec protocol makes use of 
+
+Section~\ref{sec:carrier-chatrooms}
+
+% the np1sec protocol uses chatrooms as a transport infrastructure.
+% by exchanging np1sec messages in a given chatroom of some description, np1sec clients can engage in encrypted communications with other np1sec clients in that same room.
+% within certain limitations, np1sec can work on top of arbitrary text chat systems; the details are in Section~\ref{sec:carrier-chatrooms}.
+
+% when entering a room, an np1sec client sends a message announcing their presence as an np1sec-capabel client.
+% as part of this announcement, the client announces a public key, and requests other np1sec clients in the room to identify themselves.
+% when this happens, the new signup and the old client engage in a mutual authentication protocol, after which they are (hopefully) both assured of each other's identity.
 
 
 
-== protocol overview ==
-
-=== rooms and conversations ===
-messages addressed to conversations described here?
-
-=== cryptography ===
-// what is the right location for this subsection?
-
-=== conversation state machine ===
-
-=== joining a conversation ===
-
-=== events ===
-
-=== sessions and key exchanges ===
 
 
 
-== the conversation state machine ==
 
-=== introduction to the state machine model ===
-why do we use a state machine model?
-upsides and downsides
+% np1sec sends messages to rooms. some messages deal with the presence of a user in a room; others are directed at specific conversations and contain metadata about the conversations they apply to.
 
-=== participants ===
-
-=== state machine hash ===
-NOT: the details of how this hash is computed
-
-=== events ===
-
-=== key exchanges ===
-including: latest session id
+\subsection{Conversations}
+This includes the description of how ephemeral public keys are used to identify conversation participants.
 
 
-
-== messages ==
-the big list. describes, in a css-style declarative format, what effects each message is supposed to have on the conversation state machine.
-
+\subsection{Conversation state machine}
+on a protocol level, np1sec conversations are represented by state machines represented identically across all clients that take part in the conversation. The np1sec protocol specifies in detail how messages and chat events are to affect this idealized state machine, which implementations need to follow to the letter to stay compatible.
 
 
-== events ==
-full list of events. Individual events are introduced in the messages section; this section has an overview, and details of what's in each event.
+\subsection{Joining a conversation}
+
+
+\subsection{Events}
+Merge into state machine?
+
+
+\subsection{Key agreement}
+
+
+\subsection{Chat messages}
 
 
 
-== crypto details ==
 
 
 
-== packet format ==
 
 
-\end{comment}
+\section{Chat Model}
+\label{sec:chat-model}
+
+maybe we can skip this?
+
+
+
+%what np1sec does
+%how np1sec works from an API / UI point of view
+
+% conversation in een carrier room
+% participants, invitees, people who can be invited
+% authentication, public keys
+% messages, event ordering
+% votekicks, conversation title?
+% cryptographic assurances
+
+
+
+\section{Carrier Chatrooms}
+\label{sec:carrier-chatrooms}
+exact carrier chatroom model
+
+carrier limitations (based on high level API)
+
+invitable user list
+
+
+\section{Cryptography}
+\label{sec:cryptography}
+triple diffie hellman deniable authentication
+
+key exchange protocol
+
+signatures?
+
+choice of primitives -- elliptic curves, sha256, aes-gcm
+
+
+\section{The Conversation State Machine}
+
+%=== introduction to the state machine model ===
+%why do we use a state machine model?
+%upsides and downsides
+
+%=== participants ===
+
+%=== state machine hash ===
+%NOT: the details of how this hash is computed
+
+%=== events ===
+
+%=== key exchanges ===
+%including: latest session id
+
+
+\section{Messages}
+list of messages
+
+describes for each message the semantics of the message; the time it may/must be sent; and in a declarative css-style way, the effect of a conversation packet on the conversation state machine
+
+conversation hash computation
+
+rules on what packets apply to what conversations?
+
+\subsection{Message structure}
+
+opcode / sender / payload struct
+
+\subsection{Encoding}
+
+tons of icky details here
+
+\subsection{Room messages}
+
+Room messages are (n+1)sec messages that do not address any particular conversations.
+They are used to announce a client as being (n+1)sec capable; to announce a client's cryptographic identity in the form of a public key; and for different (n+1)sec clients in a room to confirm each other's identities.
+
+\subsubsection{QUIT}
+\label{sec:messages/quit}
+
+The \message{QUIT} (= 0x01) message causes the sender to effectively leave the room as far as the (n+1)sec protocol is concerned.
+A user that sent a \message{QUIT} message is considered in the same state as a user who has not announced (n+1)sec capability; the user has thus left the room from the point of view of the (n+1)sec abstraction, even if the user has not left the carrier chat room.
+
+\begin{basicmessage}{QUIT}{0x01}
+\messagefield{cookie}{nonce}
+\end{basicmessage}
+
+A \message{QUIT} message declares the \field{sender} to have effectively left the (n+1)sec room.
+An implementation should handle it in the same way as the user leaving the carrier chat room.
+
+When receiving a \message{QUIT} message, the client SHOULD retract all cryptographic identities of the \field{sender}, the same way it would do if the \field{sender} were to leave the carrier chat room instead.
+The client MUST remove the \field{sender} from all conversations of which they are a member, the same way as if the \field{sender} had left the carrier chat room instead, as described in Section~\ref{todo:conversation-state-machine/left-room}.
+
+The \field{cookie} field carries no significance for clients receiving a \message{QUIT} message and should be ignored.
+The field is included to allow an implementation to recognize when it receives its own \message{QUIT} message, and thus leave the (n+1)sec room in a predictable state when connecting to a carrier chat room in which they are already present.
+
+
+\subsubsection{HELLO}
+\label{sec:messages/hello}
+
+The \message{HELLO} (= 0x02) message announces the sender's (n+1)sec capability, as well as their cryptographic identity.
+It is sent either by a client when it enters a room to announce its presence to other (n+1)sec users in the room, or in reply to such a message by existing users in the room to announce their presence to the newcomer.
+
+\begin{basicmessage}{HELLO}{0x02}
+\messagefield{long-term-public-key}{publickey}
+\messagefield{room-public-key}{publickey}
+\messagefield{solicit-replies}{boolean}
+\end{basicmessage}
+
+A \message{HELLO} message sent to a room by a user \field{sender} indicates that \field{sender} is an (n+1)sec-capable chat client, claiming to possess the private key corresponding to \field{long-term-public-key}.
+Based on this declaration, the user receiving the \message{HELLO} message is able to invite the \field{sender} to any current and future conversations, using the announced \field{long-term-public-key}.
+
+A \message{HELLO} message sent by a particular user only indicates that this user \emph{claims} to possess the private key corresponding to the \field{long-term-public-key}.
+A client can confirm this cryptographic identity by performing an authentication process, as described in Section~\ref{todo:cryptography/authentication}, using the \field{room-public-key} as the \field{sender}'s ephemeral public key for authentication purposes.
+This authentication process is implemented using the \message{ROOM\_AUTHENTICATION\_REQUEST} and \message{ROOM\_AUTHENTICATION} messages.
+A client SHOULD not trust the authenticity of the \field{sender}'s identity without having successfully completed such an authentication process, and ---from a user interface perspective--- should probably avoid depicting the \field{sender} to hold \field{long-term-public-key} in any way until the authentication process is successfully completed.
+
+To avoid attacks in which a malicious user could waste unlimited resources by sending a large amount of \message{HELLO} messages claiming different identities, an implementation MAY limit the amount of active invitable identities for a particular \field{sender} to 1, or limit it based on some other characteristic.
+If so, a \message{HELLO} message claiming an identity the implementation does not currently consider active MAY be interpreted by the implementation as an implicit retraction of any earlier claimed identities by this \field{sender}.
+If an implementation does interpret a \message{HELLO} message as a retraction of earlier identities in this way, it may only retract these identities for the sake of representing the visible users in the room, as described in Section~\ref{sec:carrier-chatrooms}.
+In particular, the \message{HELLO} message MUST NOT have any effect on any conversations of which the \field{sender} is a member.
+
+The \field{solicit-replies} flag, if set, indicates that the sender requests all (n+1)sec-capable clients in the room to identify itself; this is generally the case after a user has just joined a room, and wants to be able to invite the people in it to conversations.
+If this flag is set, any clients that wish to identify themselves can reply with a \message{HELLO} message of their own, repeating their already-established identity to the new user.
+However, to avoid bandwidth amplification attacks, implementations SHOULD avoid replying to a message with \field{solicit-replies} set from a \field{sender} to which it has already identified itself.
+To avoid infinite sequences of \message{HELLO} replies, a reply message to a message with \field{solicit-replies} set MUST NOT itself have \field{solicit-replies} set.
+
+
+\subsubsection{ROOM\_AUTHENTICATION\_REQUEST}
+\label{sec:messages/room-authentication-request}
+
+The \message{ROOM\_AUTHENTICATION\_REQUEST} (= 0x03) message is used to request a client to authenticate itself based on the cryptographic identity announced in an earlier \message{HELLO} message.
+It provides all necessary information to make this authentication possible.
+
+\begin{basicmessage}{ROOM\_AUTHENTICATION\_REQUEST}{0x03}
+\messagefield{my-long-term-public-key}{publickey}
+\messagefield{my-room-public-key}{publickey}
+\messagefield{username}{string}
+\messagefield{long-term-public-key}{publickey}
+\messagefield{room-public-key}{publickey}
+\messagefield{authentication-nonce}{nonce}
+\end{basicmessage}
+
+A \message{ROOM\_AUTHENTICATION\_REQUEST} message is a request to the client that uses the identity consisting of the (\field{username}, \field{long-term-public-key}, \field{room-public-key}) triple to authenticate itself to the user using the (\field{sender}, \field{my-long-term-public-key}, \field{my-room-public-key}) identity.
+It declares that \field{sender} will consider \field{username} authenticated for this identity after receiving a valid authentication confirmation for this pair of identities, described in Section~\ref{todo:cryptography/authentication}, using \field{authentication-nonce} as the authentication nonce.
+
+A \message{ROOM\_AUTHENTICATION\_REQUEST} message is addressed to the user with username \field{username} and private keys matching the \field{long-term-public-key} and \field{room-public-key}.
+Any client that does not have this complete identity ---including clients that use this username but uses different keys--- SHOULD ignore the message.
+The client that does have this identity, if any, can authenticate itself to the \field{sender} by sending a \message{ROOM\_AUTHENTICATION} message containing the authentication confirmation described above.
+
+
+\subsubsection{ROOM\_AUTHENTICATION}
+\label{sec:messages/room-authentication}
+
+The \message{ROOM\_AUTHENTICATION} (= 0x04) message provides confirmation of a cryptographic identity to a single recipient.
+Assuming the authentication confirmation is valid, this allows the recipient to confirm that the sender holds the private keys they claimed to possess in a \message{HELLO} message.
+
+\begin{basicmessage}{ROOM\_AUTHENTICATION}{0x04}
+\messagefield{my-long-term-public-key}{publickey}
+\messagefield{my-room-public-key}{publickey}
+\messagefield{username}{string}
+\messagefield{long-term-public-key}{publickey}
+\messagefield{room-public-key}{publickey}
+\messagefield{authentication-confirmation}{authentication-token}
+\end{basicmessage}
+
+A \message{ROOM\_AUTHENTICATION} message is a confirmation to the client using the identity consisting of the (\field{username}, \field{long-term-public-key}, \field{room-public-key}) triple that the \field{sender} holds the private keys corresponding to \field{my-long-term-public-key} and \field{my-room-public-key}.a
+The \emph{authentication-confirmation} should contain the authentication token described in Section~\ref{todo:cryptography/authentication}; if it does, this proves that the sender does indeed hold these private keys.
+
+A \message{ROOM\_AUTHENTICATION\_REQUEST} message is addressed to the user with username \field{username} and private keys matching the \field{long-term-public-key} and \field{room-public-key}.
+Any client that does not have this complete identity ---including clients that use this username but uses different keys--- SHOULD ignore the message.
+The client that does have this identity, if any, should consider the authentication valid if and only if
+\begin{itemize}
+\item that client previously sent a \message{ROOM\_AUTHENTICATION\_REQUEST} to the user with identity (\field{username}, \field{long-term-public-key}, \field{room-public-key}), and
+\item the \field{authentication-confirmation} field equals the expected authentication token computed from the \field{authentication-nonce} sent in the accompanying \message{ROOM\_AUTHENTICATION\_REQUEST} message, as specified in Section~\ref{todo:cryptography/authentication}.
+\end{itemize}
+If both requirements hold, this proves that the \field{sender} holds the private key corresponding to \field{my-long-term-public-key}.
+
+
+\subsection{Conversation messages}
+\label{sec:messages/conversation-messages}
+
+general structure of conversation messages
+
+conversation-public-key, signature, payload
+
+verifying the signature; binary details
+
+matching messages to conversations
+
+conversation hash computation? This section should definitely describe WHEN to compute them. What about how?
+
+
+
+
+\subsubsection{AUTHENTICATE\_INVITE}
+
+The AUTHENTICATE\_INVITE (= 0x17) message is sent by a conversation participant to validate an invitation consisting of a particular (username, long term public key, conversation public key) triple.
+Afterwards, the member identified by this triple is able to join the conversation.
+
+\begin{tabular}{|l|l|l|}
+\hline
+\multicolumn{3}{|c|}{AUTHENTICATE\_INVITE [0x17]} \\
+\hline
+\hline
+\field{conversation-public-key} & \multicolumn{2}{l|}{\textsf{publickey}} \\
+\hline
+\field{conversation-signature} & \multicolumn{2}{l|}{\textsf{signature}} \\
+\hline
+\field{conversation-message-body} & \multicolumn{2}{l|}{} \\
+\hline
+& \field{invitation-username} & \textsf{string} \\
+\hline
+& \field{invitation-long-term-public-key} & \textsf{publickey} \\
+\hline
+& \field{invitation-long-term-public-key} & \textsf{publickey} \\
+\hline
+\end{tabular}
+
+The AUTHENTICATE\_INVITE message is a conversation message.
+Assuming the \field{conversation-signature} verifies as a signature of the \field{conversation-message-body} using the \field{conversation-public-key}, the message is interpreted by all conversations that contain a member with username \field{sender} and conversation public key \field{conversation-public-key}.
+
+If the sender of the AUTHENTICATE\_INVITE message is a Participant, and the 
+
+
+\subsubsection{CANCEL\_INVITE}
+
+
+\section{Events}
+maybe roll this section into the conversation state machine section?
+
+list of events here. Individual events are introduced in the messages section; this section has an overview, and details of what's in each event.
+
+
+\bibliographystyle{abbrv}
+\bibliography{bibliography}
+
 
 \end{document}
