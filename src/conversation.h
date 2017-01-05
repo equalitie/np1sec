@@ -239,6 +239,7 @@ class Conversation
 	
 	
 	protected:
+    public:
 	Room* m_room;
 	PrivateKey m_conversation_private_key;
 	ConversationInterface* m_interface;
