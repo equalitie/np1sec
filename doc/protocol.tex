@@ -9,6 +9,8 @@
 \def\message#1{\texttt{#1}}
 \def\field#1{\textit{#1}}
 
+\def\smfield#1{\textsf{#1}}
+
 
 \newenvironment{basicmessage}[2]{
 \newcommand{\messagefield}[2]{
@@ -23,6 +25,27 @@
 }{
 \end{tabular}
 }
+
+\newenvironment{conversationmessage}[2]{
+\newcommand{\messagefield}[2]{
+& \field{##1} & \textsf{##2} \\
+\hline
+}
+\begin{tabular}{|l|l|l|}
+\hline
+\multicolumn{3}{|c|}{\message{#1} [#2]} \\
+\hline
+\hline
+\field{conversation-public-key} & \multicolumn{2}{l|}{\textsf{publickey}} \\
+\hline
+\field{conversation-signature} & \multicolumn{2}{l|}{\textsf{signature}} \\
+\hline
+\field{conversation-message-body} & \multicolumn{2}{l|}{} \\
+\hline
+}{
+\end{tabular}
+}
+
 
 
 
@@ -172,6 +195,25 @@ choice of primitives -- elliptic curves, sha256, aes-gcm
 %=== key exchanges ===
 %including: latest session id
 
+%=== joining ===
+%importing a state machine
+
+
+Terminology:
+
+member: user whose nickname exists in a the state machine
+
+four stages of membership:
+
+unidentified invitee: member without conversation pubkey
+
+unauthenticated identified invitee: member with conversation pubkey but no authentication flag
+
+authenticated invitee: member with conversation pubkey that has been sponsored by a participant
+
+participant: member who has fully joined, can participate in key negotiations, can invite others
+
+
 
 \section{Messages}
 list of messages
@@ -233,7 +275,7 @@ Based on this declaration, the user receiving the \message{HELLO} message is abl
 A \message{HELLO} message sent by a particular user only indicates that this user \emph{claims} to possess the private key corresponding to the \field{long-term-public-key}.
 A client can confirm this cryptographic identity by performing an authentication process, as described in Section~\ref{todo:cryptography/authentication}, using the \field{room-public-key} as the \field{sender}'s ephemeral public key for authentication purposes.
 This authentication process is implemented using the \message{ROOM\_AUTHENTICATION\_REQUEST} and \message{ROOM\_AUTHENTICATION} messages.
-A client SHOULD not trust the authenticity of the \field{sender}'s identity without having successfully completed such an authentication process, and ---from a user interface perspective--- should probably avoid depicting the \field{sender} to hold \field{long-term-public-key} in any way until the authentication process is successfully completed.
+A client SHOULD NOT trust the authenticity of the \field{sender}'s identity without having successfully completed such an authentication process, and ---from a user interface perspective--- should probably avoid depicting the \field{sender} to hold \field{long-term-public-key} in any way until the authentication process is successfully completed.
 
 To avoid attacks in which a malicious user could waste unlimited resources by sending a large amount of \message{HELLO} messages claiming different identities, an implementation MAY limit the amount of active invitable identities for a particular \field{sender} to 1, or limit it based on some other characteristic.
 If so, a \message{HELLO} message claiming an identity the implementation does not currently consider active MAY be interpreted by the implementation as an implicit retraction of any earlier claimed identities by this \field{sender}.
@@ -250,7 +292,7 @@ To avoid infinite sequences of \message{HELLO} replies, a reply message to a mes
 \label{sec:messages/room-authentication-request}
 
 The \message{ROOM\_AUTHENTICATION\_REQUEST} (= 0x03) message is used to request a client to authenticate itself based on the cryptographic identity announced in an earlier \message{HELLO} message.
-It provides all necessary information to make this authentication possible.
+It contains the authentication challenge that forms the base of this authentication process.
 
 \begin{basicmessage}{ROOM\_AUTHENTICATION\_REQUEST}{0x03}
 \messagefield{my-long-term-public-key}{publickey}
@@ -265,7 +307,7 @@ A \message{ROOM\_AUTHENTICATION\_REQUEST} message is a request to the client tha
 It declares that \field{sender} will consider \field{username} authenticated for this identity after receiving a valid authentication confirmation for this pair of identities, described in Section~\ref{todo:cryptography/authentication}, using \field{authentication-nonce} as the authentication nonce.
 
 A \message{ROOM\_AUTHENTICATION\_REQUEST} message is addressed to the user with username \field{username} and private keys matching the \field{long-term-public-key} and \field{room-public-key}.
-Any client that does not have this complete identity ---including clients that use this username but uses different keys--- SHOULD ignore the message.
+Any client that does not have this complete identity ---including clients that use this username but use different keys--- SHOULD ignore the message.
 The client that does have this identity, if any, can authenticate itself to the \field{sender} by sending a \message{ROOM\_AUTHENTICATION} message containing the authentication confirmation described above.
 
 
@@ -284,11 +326,11 @@ Assuming the authentication confirmation is valid, this allows the recipient to 
 \messagefield{authentication-confirmation}{authentication-token}
 \end{basicmessage}
 
-A \message{ROOM\_AUTHENTICATION} message is a confirmation to the client using the identity consisting of the (\field{username}, \field{long-term-public-key}, \field{room-public-key}) triple that the \field{sender} holds the private keys corresponding to \field{my-long-term-public-key} and \field{my-room-public-key}.a
+A \message{ROOM\_AUTHENTICATION} message is a confirmation to the client using the identity consisting of the (\field{username}, \field{long-term-public-key}, \field{room-public-key}) triple that the \field{sender} holds the private keys corresponding to \field{my-long-term-public-key} and \field{my-room-public-key}.
 The \emph{authentication-confirmation} should contain the authentication token described in Section~\ref{todo:cryptography/authentication}; if it does, this proves that the sender does indeed hold these private keys.
 
-A \message{ROOM\_AUTHENTICATION\_REQUEST} message is addressed to the user with username \field{username} and private keys matching the \field{long-term-public-key} and \field{room-public-key}.
-Any client that does not have this complete identity ---including clients that use this username but uses different keys--- SHOULD ignore the message.
+A \message{ROOM\_AUTHENTICATION} message is addressed to the user with username \field{username} and private keys matching the \field{long-term-public-key} and \field{room-public-key}.
+Any client that does not have this complete identity ---including clients that use this username but use different keys--- SHOULD ignore the message.
 The client that does have this identity, if any, should consider the authentication valid if and only if
 \begin{itemize}
 \item that client previously sent a \message{ROOM\_AUTHENTICATION\_REQUEST} to the user with identity (\field{username}, \field{long-term-public-key}, \field{room-public-key}), and
@@ -300,50 +342,244 @@ If both requirements hold, this proves that the \field{sender} holds the private
 \subsection{Conversation messages}
 \label{sec:messages/conversation-messages}
 
-general structure of conversation messages
+The majority of messages in (n+1)sec are addressed to, and relevant for, a particular conversation.
+These \emph{conversation messages} contain information addressing the recipient conversation, and affect only the status of that specific conversation.
+Conversation messages have a shared structure expressing the relation between messages and conversations, and are handled in a similar way.
 
-conversation-public-key, signature, payload
+\begin{tabular}{|l|l|}
+\hline
+\multicolumn{2}{|c|}{Conversation message general structure} \\
+\hline
+\hline
+\field{conversation-public-key} & \textsf{publickey} \\
+\hline
+\field{message-signature} & \textsf{signature} \\
+\hline
+\field{message-body} & \textsf{octet-stream} \\
+\hline
+\end{tabular}
 
-verifying the signature; binary details
+Conversation messages are sent by the identified members of a particular conversation, and addressed to all members of that conversation.
+To denote the conversation to which a conversation message is addressed, conversation messages carry a \field{conversation-public-key} field, which contains the conversation public key of the identified conversation member that sent the message.
+The conversation addressed by a conversation message, then, is that conversation (if any) that contains an identified member with username \field{sender} and conversation public key \field{conversation-public-key}.
+Conversation messages also carry a \field{message-signature}, which is a signature of the message-specific body of the message signed using the private key corresponding to \field{conversation-public-key}.
 
-matching messages to conversations
+The members of a conversation, as described in Section~\ref{todo:conversation-state-machine}, share a representation of the abstract \emph{conversation state machine} that defines the state of the conversation.
+Coordination between members of a conversation relies on the different members maintaining consensus about the exact state of this state machine; if members of a conversation somehow come to disagree about the state of this state machine, the conversation can no longer be maintained, as described in Section~\ref{todo:conversation-state-machine/inconsistency}.
+It is therefore critical that different members of a conversation process conversation messages in such a way that the abstract conversation state machine is affected in precisely identical ways between their clients.
 
-conversation hash computation? This section should definitely describe WHEN to compute them. What about how?
+This section specifies for each conversation message what effect the message has on the abstract conversation state machine of each conversation to which it applies.
+In order to not break compatibility, implementation MUST implement these specifications to the letter.
+Some aspects of a client's state for a particular conversation, such as the determination of which other members are authenticated, are not contained in the conversation state machine; for those topics, the specification has a force limited to a behavior that the client SHOULD implement.
+
+Conversation messages contain a signature of the message body, which is used to verify authenticity of messages sent by conversation members.
+This signature is computed as a cryptographic signature of the message's \field{message-body} octet stream, as described in Section~\ref{todo:cryptography/signatures}, using the private key corresponding to the message's \field{conversation-public-key}.
+On receiving any converstaion message, clients should verify this signature, by confirming that the message's \field{message-signature} is a valid signature of the message's \field{message-body} for the \field{conversation-public-key}.
+If this signature is not valid, implementations MUST NOT modify the conversation state machine of any conversations.
+Implementations SHOULD ignore messages with invalid signatures entirely, though they MAY raise some form of impersonation warning instead.
+
+If a conversation message has a valid signature matching its \field{conversation-public-key}, the message is addressed to any conversations, existing in the carrier chat room in which the message was sent, that contain an identified member with username \field{sender} and conversation public key \field{conversation-public-key}.
+Conversations matching these conditions are said to be \emph{addressed by} the conversation message.
+On receiving a conversation message with a valid signature, implementations MUST NOT modify the conversation state machine of any conversations that are not addressed by the message.
+Implementations MUST modify the conversation state machine of any conversations addressed by the message for which the implementation is maintaining a representation, by implementing the rules specified below.
+
+There is one exception that applies to this specification of conversations addressed by conversation messages.
+The \message{INVITE\_ACCEPTANCE} message, described in Section~\ref{sec:messages/invite-acceptance}, is used by unidentified members of a conversation to upgrade their status to an identified member, and is addressed to and processed by certain conversations beyond those that include the \field{sender} as an identified member.
+These \message{INVITE\_ACCEPTANCE} messages carry a \field{message-signature} signed based on its \field{conversation-public-key} as normal, but are addressed to a larger collection of conversations.
+The details of this anomaly are specified in Section~\ref{sec:messages/invite-acceptance}.
+
+When an implementation receives a conversation message with a valid signature addressed to one or more conversations of which the implementation is maintaining a representation, the implementation must digest the message into those conversations' \smfield{status hash}, as described in Section~\ref{todo:conversation-state-machine/hash}.
+For each of those conversations to which the message is addressed, the implementation must then perform the message-specific processing specified in the remainder of this section.
+
+\subsubsection{Event messages}
+
+\subsubsection{INVITE}
+
+The \message{INVITE} (= 0x11) message is sent by a conversation participant to invite a new user to the conversation, identified by a (username, long term public key) pair.
+An \message{INVITE} message informs the invited user of the existence of the conversation, and allows the invited user to start tracking the status of the conversation.
+
+\begin{conversationmessage}{INVITE}{0x11}
+\messagefield{username}{string}
+\messagefield{long-term-public-key}{publickey}
+\end{conversationmessage}
+
+An \message{INVITE} message 
+
+
+\subsubsection{CONVERSATION\_STATUS}
+
+\begin{conversationmessage}{CONVERSATION\_STATUS}{0x12}
+\messagefield{username}{string}
+\messagefield{long-term-public-key}{publickey}
+\messagefield{conversation-state-machine}{state-machine}
+\end{conversationmessage}
+
+\subsubsection{CONVERSATION\_CONFIRMATION}
+
+\begin{conversationmessage}{CONVERSATION\_CONFIRMATION}{0x13}
+\messagefield{username}{string}
+\messagefield{long-term-public-key}{publickey}
+\messagefield{conversation-status-hash}{hash}
+\end{conversationmessage}
+
+\subsubsection{INVITE\_ACCEPTANCE}
+\label{sec:messages/invite-acceptance}
+
+\begin{conversationmessage}{INVITE\_ACCEPTANCE}{0x14}
+\messagefield{my-long-term-public-key}{publickey}
+\messagefield{inviter-username}{string}
+\messagefield{inviter-long-term-public-key}{publickey}
+\messagefield{inviter-conversation-public-key}{publickey}
+\end{conversationmessage}
+
+Addressed-conversation exception documentation here.
+
+\subsubsection{CONVERSATION\_AUTHENTICATION\_REQUEST}
+
+The \message{CONVERSATION\_AUTHENTICATION\_REQUEST} (= 0x15) message is used to request a conversation member to authenticate itself for the cryptographic identity consisting of its long term public key and conversation public key.
+It is the in-conversation analogue of the \message{ROOM\_AUTHENTICATION\_REQUEST} message.
+It contains the authentication challenge that forms the base of this authentication process.
+
+\begin{conversationmessage}{CONVERSATION\_AUTHENTICATION\_REQUEST}{0x15}
+\messagefield{username}{string}
+\messagefield{authentication-nonce}{nonce}
+\end{conversationmessage}
+
+A \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message is a request to the identified member \field{username} to authenticate itself to the \field{sender}, for \field{username}'s and \field{sender}'s long term public keys and conversation public keys described by the conversation state machine.
+It declares that \field{sender} will consider \field{username} authenticated for this identity after receiving a valid authentication confirmation for this pair of identities, described in Section~\ref{todo:cryptography/authentication}, using \field{authentication-nonce} as the authentication nonce.
+The \field{username} identified member, upon receiving a \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message, can authenticate itself to the \field{sender} by sending a \message{CONVERSATION\_AUTHENTICATION} message containing this authentication confirmation.
+
+The \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message has no effect on the conversation state machine besides the \smfield{status hash}.
+
+\subsubsection{CONVERSATION\_AUTHENTICATION}
+
+The \message{CONVERSATION\_AUTHENTICATION} (= 0x16) message provides confirmation of a cryptographic identity to a member of a conversation.
+It is the in-conversation analogue of the \message{ROOM\_AUTHENTICATION} message.
+Assuming the authentication confirmation is valid, this allows the recipient member to confirm that the sender holds the private keys corresponding to their public keys described by the conversation state machine.
+
+\begin{conversationmessage}{CONVERSATION\_AUTHENTICATION}{0x16}
+\messagefield{username}{string}
+\messagefield{authentication-confirmation}{authentication-token}
+\end{conversationmessage}
+
+TODO: This, and the above message, probably needs to be formalized.
+
+
 
 
 
 
 \subsubsection{AUTHENTICATE\_INVITE}
 
-The AUTHENTICATE\_INVITE (= 0x17) message is sent by a conversation participant to validate an invitation consisting of a particular (username, long term public key, conversation public key) triple.
-Afterwards, the member identified by this triple is able to join the conversation.
+The \message{AUTHENTICATE\_INVITE} (= 0x17) message is sent by a conversation participant to promote an identified, unauthenticated invitee to an authenticated invitee.
+Afterwards, the authenticated invitee is able to join the conversation as a participant.
 
-\begin{tabular}{|l|l|l|}
-\hline
-\multicolumn{3}{|c|}{AUTHENTICATE\_INVITE [0x17]} \\
-\hline
-\hline
-\field{conversation-public-key} & \multicolumn{2}{l|}{\textsf{publickey}} \\
-\hline
-\field{conversation-signature} & \multicolumn{2}{l|}{\textsf{signature}} \\
-\hline
-\field{conversation-message-body} & \multicolumn{2}{l|}{} \\
-\hline
-& \field{invitation-username} & \textsf{string} \\
-\hline
-& \field{invitation-long-term-public-key} & \textsf{publickey} \\
-\hline
-& \field{invitation-long-term-public-key} & \textsf{publickey} \\
-\hline
-\end{tabular}
+\begin{conversationmessage}{AUTHENTICATE\_INVITE}{0x17}
+\messagefield{username}{string}
+\messagefield{long-term-public-key}{publickey}
+\messagefield{conversation-public-key}{publickey}
+\end{conversationmessage}
 
-The AUTHENTICATE\_INVITE message is a conversation message.
-Assuming the \field{conversation-signature} verifies as a signature of the \field{conversation-message-body} using the \field{conversation-public-key}, the message is interpreted by all conversations that contain a member with username \field{sender} and conversation public key \field{conversation-public-key}.
+An \message{AUTHENTICATE\_INVITE} message indicates that the \field{sender} has confirmed that the member \field{username} holds the identity consisting of the (\field{username}, \field{long-term-public-key}, \field{conversation-public-key}) triple, and that \field{sender} is willing to allow this user entrance into the conversation.
+Once this allowance has been granted, the invited member is able to join the conversation with a \message{JOIN} message.
 
-If the sender of the AUTHENTICATE\_INVITE message is a Participant, and the 
+If a conversation contains an unauthenticated identified invitee invited by a certain participant, that participant SHOULD send an \message{AUTHENTICATE\_INVITE} message after receiving a \message{CONVERSATION\_AUTHENTICATION} message that successfully confirms the identity of the invitee.
+Any other participants may also send such an \message{AUTHENTICATE\_INVITE} message, and thereby become the inviter of the invited member.
 
+If the conversation state machine addressed by an \message{AUTHENTICATE\_INVITE} message contains an unauthenticated identified member with identity triple (\field{username}, \field{long-term-public-key}, \field{conversation-public-key}), and the \field{sender} is a participant of the conversation, then the unauthenticated member gets promoted to an authenticated member.
+The newly-authenticated member's inviter becomes the message's \field{sender}.
+If not, the \message{AUTHENTICATE\_INVITE} message has no effect on the conversation state machine besides the \smfield{status hash}.
 
 \subsubsection{CANCEL\_INVITE}
+
+The \message{CANCEL\_INVITE} (= 0x18) message is sent by a conversation participant to retract any invitations for a given (username, long term public key) pair.
+
+\begin{conversationmessage}{CANCEL\_INVITE}{0x18}
+\messagefield{username}{string}
+\messagefield{long-term-public-key}{publickey}
+\end{conversationmessage}
+
+A \message{CANCEL\_INVITE} message indicates that the \field{sender} wants to retract an active invitation for a given user.
+If no active invitations for the described member exist, or the member described by the \message{CANCEL\_INVITE} message has since become a participant of the conversation, the message has no effect.
+
+A \message{CANCEL\_INVITE} message removes from the conversation state machine any invited members ---be they unidentified invitees, unauthenticated identified invitees, or authenticated invitees--- with username \field{username}, long term public key \field{long-term-public-key}, and inviter \field{sender}.
+Participants of the conversation, and invitations by inviters other than \field{sender}, are not affected.
+
+\subsubsection{JOIN}
+
+The \message{JOIN} (= 0x19) message is sent by an authenticated invitee to upgrade their own status to a participant of the conversation.
+This triggers the creation of a new key exchange process.
+
+TODO how to render this?
+
+\begin{conversationmessage}{JOIN}{0x19}
+\end{conversationmessage}
+
+\subsubsection{LEAVE}
+
+TODO how to render this?
+
+\subsubsection{CONSISTENCY\_STATUS}
+
+TODO how to render this?
+
+\subsubsection{CONSISTENCY\_CHECK}
+
+\begin{conversationmessage}{CONSISTENCY\_CHECK}{0x23}
+\messagefield{conversation-status-hash}{hash}
+\end{conversationmessage}
+
+\subsubsection{TIMEOUT}
+
+\begin{conversationmessage}{TIMEOUT}{0x24}
+\messagefield{username}{string}
+\messagefield{set-timeout}{boolean}
+\end{conversationmessage}
+
+\subsubsection{KEY\_EXCHANGE\_PUBLIC\_KEY}
+
+\begin{conversationmessage}{KEY\_EXCHANGE\_PUBLIC\_KEY}{0x31}
+\messagefield{key-id}{hash}
+\messagefield{session-public-key}{publickey}
+\end{conversationmessage}
+
+\subsubsection{KEY\_EXCHANGE\_SECRET\_SHARE}
+
+\begin{conversationmessage}{KEY\_EXCHANGE\_SECRET\_SHARE}{0x32}
+\messagefield{key-id}{hash}
+\messagefield{group-hash}{hash}
+\messagefield{secret-share}{secretshare}
+\end{conversationmessage}
+
+\subsubsection{KEY\_EXCHANGE\_ACCEPTANCE}
+
+\begin{conversationmessage}{KEY\_EXCHANGE\_ACCEPTANCE}{0x33}
+\messagefield{key-id}{hash}
+\messagefield{key-hash}{hash}
+\end{conversationmessage}
+
+\subsubsection{KEY\_EXCHANGE\_REVEAL}
+
+\begin{conversationmessage}{KEY\_EXCHANGE\_REVEAL}{0x34}
+\messagefield{key-id}{hash}
+\messagefield{session-private-key}{privatekey}
+\end{conversationmessage}
+
+\subsubsection{KEY\_ACTIVATION}
+
+\begin{conversationmessage}{KEY\_ACTIVATION}{0x41}
+\messagefield{key-id}{hash}
+\end{conversationmessage}
+
+\subsubsection{KEY\_RATCHET}
+
+\begin{conversationmessage}{KEY\_RATCHET}{0x42}
+\messagefield{key-id}{hash}
+\end{conversationmessage}
+
+\subsubsection{CHAT}
+
+
 
 
 \section{Events}
