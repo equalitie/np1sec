@@ -38,6 +38,8 @@ void EncryptedChat::unserialize_key_exchange(const KeyExchangeState& exchange)
 	
 	std::unique_ptr<KeyExchange> key_exchange(new KeyExchange(exchange));
 	insert_key_exchange(std::move(key_exchange));
+	
+	fsck();
 }
 
 std::vector<KeyExchangeState> EncryptedChat::encode_key_exchanges() const
@@ -113,12 +115,16 @@ void EncryptedChat::create_solo_session(const Hash& session_id)
 	m_sessions[session_id] = std::move(session);
 	
 	prepare_session_replacement(session_id);
+	
+	fsck();
 }
 
 void EncryptedChat::add_user(const std::string& username, const PublicKey& long_term_public_key)
 {
+	fsck();
 	do_add_user(username, long_term_public_key);
 	create_key_exchange();
+	fsck();
 }
 
 void EncryptedChat::do_add_user(const std::string& username, const PublicKey& long_term_public_key)
@@ -135,6 +141,7 @@ void EncryptedChat::do_add_user(const std::string& username, const PublicKey& lo
 
 void EncryptedChat::remove_users(const std::set<std::string>& usernames)
 {
+	fsck();
 	bool removed = false;
 	bool active_session = false;
 	for (const std::string& username : usernames) {
@@ -175,6 +182,7 @@ void EncryptedChat::remove_users(const std::set<std::string>& usernames)
 	if (active_session) {
 		progress_sessions();
 	}
+	fsck();
 }
 
 void EncryptedChat::user_public_key(const std::string& username, const Hash& key_id, const PublicKey& public_key)
@@ -308,6 +316,7 @@ void EncryptedChat::decrypt_message(const std::string& sender, const ChatMessage
 
 void EncryptedChat::insert_key_exchange(std::unique_ptr<KeyExchange>&& key_exchange)
 {
+	fsck();
 	Hash key_id = key_exchange->key_id();
 	for (const std::string& username : key_exchange->users()) {
 		assert(m_participants.count(username));
@@ -327,10 +336,12 @@ void EncryptedChat::insert_key_exchange(std::unique_ptr<KeyExchange>&& key_excha
 	}
 	m_key_exchanges[key_id].has_next = false;
 	m_key_exchange_last = key_id;
+	fsck();
 }
 
 void EncryptedChat::erase_key_exchange(Hash key_id)
 {
+	fsck();
 	const KeyExchangeData& exchange = m_key_exchanges[key_id];
 	if (exchange.has_previous) {
 		assert(m_key_exchanges.count(exchange.previous));
@@ -367,10 +378,12 @@ void EncryptedChat::erase_key_exchange(Hash key_id)
 		m_participants[username].key_exchanges.erase(key_id);
 	}
 	m_key_exchanges.erase(key_id);
+	fsck();
 }
 
 void EncryptedChat::create_key_exchange()
 {
+	fsck();
 	Hash key_id = m_conversation->conversation_status_hash();
 	
 	assert(!m_key_exchanges.count(key_id));
@@ -389,10 +402,12 @@ void EncryptedChat::create_key_exchange()
 		message.public_key = m_key_exchanges[key_id].key_exchange->public_key();
 		m_conversation->send_message(message.encode());
 	}
+	fsck();
 }
 
 void EncryptedChat::create_session(const Hash& key_id)
 {
+	fsck();
 	assert(m_key_exchanges.count(key_id));
 	assert(m_key_exchanges.at(key_id).key_exchange->state() == KeyExchange::State::KeyAccepted);
 	assert(m_key_exchanges.at(key_id).key_exchange->contains(m_conversation->room()->username()));
@@ -420,6 +435,7 @@ void EncryptedChat::create_session(const Hash& key_id)
 	m_conversation->send_message(message.encode());
 	
 	prepare_session_replacement(key_id);
+	fsck();
 }
 
 void EncryptedChat::prepare_session_replacement(Hash key_id)
@@ -435,6 +451,7 @@ void EncryptedChat::prepare_session_replacement(Hash key_id)
 
 void EncryptedChat::progress_sessions()
 {
+	fsck();
 	while (!m_session_queue.empty()) {
 		const Hash& key_id = m_session_queue.front();
 		const SessionData& data = m_sessions.at(key_id);
@@ -493,6 +510,86 @@ void EncryptedChat::progress_sessions()
 		}
 		m_sessions.erase(key_id);
 		m_session_queue.pop_front();
+		fsck();
+	}
+}
+
+void EncryptedChat::fsck()
+{
+	if (!m_key_exchanges.empty()) {
+		Hash key_id = m_key_exchange_first;
+		unsigned int count = 0;
+		while (true) {
+			assert(m_key_exchanges.count(key_id));
+			if (key_id == m_key_exchange_first) {
+				assert(!m_key_exchanges.at(key_id).has_previous);
+			} else {
+				assert(m_key_exchanges.at(key_id).has_previous);
+				assert(m_key_exchanges.count(m_key_exchanges.at(key_id).previous));
+				assert(m_key_exchanges.at(m_key_exchanges.at(key_id).previous).has_next);
+				assert(m_key_exchanges.at(m_key_exchanges.at(key_id).previous).next == key_id);
+			}
+			if (key_id == m_key_exchange_last) {
+				assert(!m_key_exchanges.at(key_id).has_next);
+			} else {
+				assert(m_key_exchanges.at(key_id).has_next);
+				assert(m_key_exchanges.count(m_key_exchanges.at(key_id).next));
+				assert(m_key_exchanges.at(m_key_exchanges.at(key_id).next).has_previous);
+				assert(m_key_exchanges.at(m_key_exchanges.at(key_id).next).previous == key_id);
+			}
+			count++;
+			if (key_id == m_key_exchange_last) {
+				break;
+			} else {
+				key_id = m_key_exchanges.at(key_id).next;
+			}
+		}
+		assert(count == m_key_exchanges.size());
+	}
+	
+	assert(m_session_queue.size() == m_sessions.size());
+	for (Hash key_id : m_session_queue) {
+		assert(m_sessions.count(key_id));
+	}
+	
+	for (const auto& i : m_participants) {
+		for (Hash key_id : i.second.session_list) {
+			assert(m_sessions.count(key_id));
+			assert(m_sessions.at(key_id).participants.count(i.second));
+		}
+		unsigned int session_count = 0;
+		for (Hash key_id : m_session_queue) {
+			if (m_sessions.at(key_id).participants.count(i.second)) {
+				session_count++;
+			}
+		}
+		assert(session_count == i.second.session_list.size());
+		
+		for (Hash key_id : i.second.key_exchanges) {
+			assert(m_key_exchanges.count(key_id));
+			assert(m_key_exchanges.at(key_id).key_exchange->users().count(i.second.username));
+		}
+		unsigned int key_exchange_count = 0;
+		for (const auto& j : m_key_exchanges) {
+			if (j.second.key_exchange->users().count(i.second.username)) {
+				key_exchange_count++;
+			}
+		}
+		assert(key_exchange_count == i.second.key_exchanges.size());
+	}
+	
+	for (const auto& i : m_former_participants) {
+		for (Hash key_id : i.second.session_list) {
+			assert(m_sessions.count(key_id));
+			assert(m_sessions.at(key_id).former_participants.count(i.second));
+		}
+		unsigned int session_count = 0;
+		for (Hash key_id : m_session_queue) {
+			if (m_sessions.at(key_id).former_participants.count(i.second)) {
+				session_count++;
+			}
+		}
+		assert(session_count == i.second.session_list.size());
 	}
 }
 

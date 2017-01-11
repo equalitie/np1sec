@@ -1668,6 +1668,8 @@ bool Conversation::fsck()
 		assert(m_participants.count(username));
 	}
 	
+	m_encrypted_chat.fsck();
+	
 	return true;
 }
 

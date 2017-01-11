@@ -92,6 +92,8 @@ class EncryptedChat
 	void prepare_session_replacement(Hash key_id);
 	void progress_sessions();
 	
+	public:
+	void fsck();
 	
 	protected:
 	struct Identity
