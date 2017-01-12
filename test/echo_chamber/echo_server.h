@@ -25,6 +25,8 @@
 
 constexpr size_t MAX_MESSAGE_SIZE = 4096;
 
+#define ECHO_SERVER_PRINT_STATS false
+
 struct EchoServerImpl : public std::enable_shared_from_this<EchoServerImpl> {
     using tcp = boost::asio::ip::tcp;
 
@@ -57,6 +59,10 @@ struct EchoServerImpl : public std::enable_shared_from_this<EchoServerImpl> {
     void broadcast(std::vector<uint8_t>);
     void send_head(const std::shared_ptr<Connection>& c);
     void send(const std::shared_ptr<Connection>& c, const std::vector<uint8_t>& data);
+#if ECHO_SERVER_PRINT_STATS
+    size_t read_cnt = 0;
+    size_t write_cnt = 0;
+#endif // if ECHO_SERVER_PRINT_STATS
 };
 
 inline
@@ -116,6 +122,9 @@ void EchoServerImpl::start_reading(const std::shared_ptr<Connection>& c)
                                connections.erase(c);
                                return;
                            }
+#if ECHO_SERVER_PRINT_STATS
+                           ++read_cnt;
+#endif // if ECHO_SERVER_PRINT_STATS
                            broadcast(std::vector<uint8_t>( c->rx_buffer.begin()
                                                          , c->rx_buffer.begin() + size));
                            start_reading(c);
@@ -146,6 +155,9 @@ void EchoServerImpl::send_head(const std::shared_ptr<Connection>& c)
                     return;
                 }
 
+#if ECHO_SERVER_PRINT_STATS
+                ++write_cnt;
+#endif // if ECHO_SERVER_PRINT_STATS
                 if (!c->tx_buffers.empty()) send_head(c);
             });
 }
@@ -196,7 +208,14 @@ public:
 
     ~EchoServer()
     {
-        if (_impl) _impl->stop();
+        if (_impl) {
+            _impl->stop();
+#if ECHO_SERVER_PRINT_STATS
+            std::cout << "Server received " << _impl->read_cnt
+                << " and sent " << _impl->write_cnt << " messages."
+                << std::endl;
+#endif // if ECHO_SERVER_PRINT_STATS
+        }
     }
     
     void stop() {
