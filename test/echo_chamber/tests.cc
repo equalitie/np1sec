@@ -278,6 +278,16 @@ BOOST_AUTO_TEST_CASE(invite_concurrent_size_3_delay_100ms)
     test_create_session(3, ConcurrentInviteStrategy{100ms});
 }
 
+BOOST_AUTO_TEST_CASE(invite_concurrent_size_6_delay_3s)
+{
+    test_create_session(6, ConcurrentInviteStrategy{3s});
+}
+
+BOOST_AUTO_TEST_CASE(invite_concurrent_size_4_delay_100ms)
+{
+    test_create_session(4, ConcurrentInviteStrategy{100ms});
+}
+
 BOOST_AUTO_TEST_CASE(invite_concurrent_size_3_delay_0ms)
 {
     test_create_session(3, ConcurrentInviteStrategy{0ms});
