@@ -40,6 +40,8 @@ using namespace std::chrono_literals;
 using std::function;
 using Clock = std::chrono::steady_clock;
 
+template<class... T> static void ignore_unused(const T&...) {}
+
 template<class T>
 shared_ptr<T> move_to_shared(T& arg) {
     return std::make_shared<T>(std::move(arg));
@@ -53,13 +55,9 @@ struct User {
     User& operator=(User&&) = default;
     User(const User&) = delete;
     User& operator=(const User&) = delete;
-};
 
-static std::string user_name(size_t i) {
-    std::stringstream ss;
-    ss << "user" << i;
-    return ss.str();
-}
+    std::string name() const { return room.username(); }
+};
 
 void wait(typename Clock::duration duration, io_service& ios, function<void()> h) {
     if (duration.count() == 0) {
@@ -72,6 +70,22 @@ void wait(typename Clock::duration duration, io_service& ios, function<void()> h
     timer->async_wait([h, t = timer] (error_code) { h(); });
 }
 
+//------------------------------------------------------------------------------
+std::string str_impl(std::stringstream& ss) {
+    return ss.str();
+}
+
+template<class Arg, class... Args>
+std::string str_impl(std::stringstream& ss, Arg&& arg, Args&&... args) {
+    ss << arg;
+    return str_impl(ss, std::forward<Args>(args)...);
+}
+
+template<class... Args>
+std::string str(Args&&... args) {
+    std::stringstream ss;
+    return str_impl(ss, std::forward<Args>(args)...);
+}
 //------------------------------------------------------------------------------
 template<class Handler> void async_loop_(unsigned int i, Handler h) {
     h(i, [h, j = i + 1]() { async_loop_(j, std::move(h)); });
@@ -96,7 +110,8 @@ struct ConsecutiveInviteStrategy {
             room.wait_for_user_to_join([=, &room] (std::string username, const PublicKey& pubkey) {
                 wait(delay, room.get_io_service(), [=] {
                     conv->invite(username, pubkey);
-                    conv->wait_for_user_to_join_chat([=, c = conv](std::string) {
+                    conv->wait_for_user_to_join_chat([=, c = conv](std::string name) {
+                            ignore_unused(name);
                             cont();
                         });
                 });
@@ -117,10 +132,9 @@ struct ConcurrentInviteStrategy {
             room.wait_for_user_to_join([=, &room] (std::string username, const PublicKey& pubkey) {
                 wait(i * delay, room.get_io_service(), [=] {
                     conv->invite(username, pubkey);
-                    conv->wait_for_user_to_join_chat([=, c = conv](std::string) {
-                            if (--*in_chat_counter == 0) {
-                                h();
-                            }
+                    conv->wait_for_user_to_join_chat([=, c = conv](std::string name) {
+                            ignore_unused(name);
+                            if (--*in_chat_counter == 0) h();
                         });
                 });
             });
@@ -205,7 +219,7 @@ void create_session(io_service& ios,
     };
 
     for (size_t i = 0; i < client_count; ++i) {
-        auto r = make_shared<Room>(ios, user_name(i));
+        auto r = make_shared<Room>(ios, str("user", i));
 
         r->connect(server_ep, [=] (error_code ec) {
             BOOST_CHECK(!ec);
@@ -294,3 +308,153 @@ BOOST_AUTO_TEST_CASE(invite_concurrent_size_3_delay_0ms)
 }
 
 //------------------------------------------------------------------------------
+template<class H> void test_with_session(size_t user_count, H&& h) {
+    using Users = std::vector<User>;
+
+    io_service ios;
+
+    EchoServer server(ios);
+
+    bool callback_called = false;
+
+    ConsecutiveInviteStrategy invite_strategy{0s};
+
+    Users users;
+
+    auto finish = [&] (){
+        callback_called = true;
+        server.stop();
+
+        /*
+         * TODO: ATM Rooms can't be destroyed inside on receive handlers.
+         *       https://github.com/equalitie/np1sec/issues/44
+         */
+        ios.post([&] { users.clear(); });
+    };
+
+    create_session(ios, user_count, server.local_endpoint(), invite_strategy,
+            [&] (Users new_users) {
+                BOOST_CHECK_EQUAL(new_users.size(), user_count);
+                users = move(new_users);
+                h(users, finish);
+            });
+
+    ios.run();
+
+    BOOST_CHECK(callback_called);
+}
+
+template<class H> void test_with_session_each_user(size_t user_count, H&& h) {
+    using Users = std::vector<User>;
+
+    test_with_session(user_count, [=] (Users& users, auto finish) {
+        auto counter = make_shared<size_t>(users.size());
+
+        auto on_finish_one = [=] {
+            if (--*counter) return;
+            finish();
+        };
+
+        for (auto& user : users) {
+            h(user, on_finish_one);
+        }
+    });
+}
+
+BOOST_AUTO_TEST_CASE(test_consecutive_message_exchange)
+{
+    const size_t user_count = 10;
+    const size_t message_count = 30;
+
+    test_with_session_each_user(user_count, [=] (User& user, auto finish) {
+        struct State {
+            bool do_send = true;
+            size_t next_msg_id = 0;
+        };
+
+        auto state = make_shared<State>();
+
+        async_loop([=, &user] (unsigned int i, auto cont) {
+            const size_t total_to_receive = user_count * message_count;
+
+            if (i == total_to_receive) {
+                return finish();
+            }
+
+            if (state->do_send) {
+                user.conv.send_chat(str("Message #", state->next_msg_id++));
+            }
+
+            user.conv.receive_chat([=, &user] (const std::string& source, const std::string& msg) {
+                cout << i << "/" << total_to_receive
+                    << " User " << user.name()
+                    << " received \"" << msg
+                    << "\" from " << source << endl;
+
+                state->do_send = source == user.name();
+                return cont();
+            });
+        });
+    });
+}
+
+struct RandomDuration {
+    std::random_device rd;
+    std::mt19937 gen;
+    std::normal_distribution<> distribution;
+
+    RandomDuration(Clock::duration mean, Clock::duration variance)
+        : gen(rd()), distribution(mean.count(), variance.count()) {}
+
+    Clock::duration get() {
+        using namespace std;
+        return Clock::duration(max<int>(0, round(distribution(gen))));
+    }
+};
+
+BOOST_AUTO_TEST_CASE(test_randomized_message_exchange)
+{
+    const size_t user_count = 10;
+    const size_t message_count = 30;
+
+    auto random_duration = make_shared<RandomDuration>(20ms, 10ms);
+
+    test_with_session_each_user(user_count, [=] (User& user, auto finish) {
+        auto next_msg_id = make_shared<size_t>(0);
+
+        auto one_loop_finished = [finish, cnt = make_shared<size_t>(2)] {
+            if (--*cnt == 0) finish();
+        };
+
+        async_loop([=, &user] (unsigned int i, auto cont) {
+            if (i == message_count) {
+                return one_loop_finished();
+            }
+
+            user.conv.send_chat(str("Message #", (*next_msg_id)++));
+
+            wait(random_duration->get(), user.room.get_io_service(), [=] {
+                cont();
+            });
+        });
+
+        async_loop([=, &user] (unsigned int i, auto cont) {
+            const size_t total_to_receive = user_count * message_count;
+
+            if (i == total_to_receive) {
+                return one_loop_finished();
+            }
+
+            user.conv.receive_chat([=, &user] (const std::string& source, const std::string& msg) {
+                ignore_unused(source, msg);
+                //cout << i << "/" << total_to_receive
+                //    << " User " << user.name()
+                //    << " received \"" << msg
+                //    << "\" from " << source << endl;
+
+                return cont();
+            });
+        });
+    });
+}
+
