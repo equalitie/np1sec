@@ -27,31 +27,31 @@ struct ConvImpl : public std::enable_shared_from_this<ConvImpl>
         : np1sec_conv(np1sec_conv)
     {}
 
-	void user_invited(const std::string&, const std::string&) override {}
-	void invitation_cancelled(const std::string&, const std::string&) override {}
-	void user_authenticated(const std::string&, const np1sec::PublicKey&) override {}
-	void user_authentication_failed(const std::string&) override {}
-	void user_joined(const std::string&) override {}
-	void user_left(const std::string&) override {}
-	void votekick_registered(const std::string&, const std::string&, bool) override {}
-	
-	void user_joined_chat(const std::string& username) override {
+    void user_invited(const std::string&, const std::string&) override {}
+    void invitation_cancelled(const std::string&, const std::string&) override {}
+    void user_authenticated(const std::string&, const np1sec::PublicKey&) override {}
+    void user_authentication_failed(const std::string&) override {}
+    void user_joined(const std::string&) override {}
+    void user_left(const std::string&) override {}
+    void votekick_registered(const std::string&, const std::string&, bool) override {}
+
+    void user_joined_chat(const std::string& username) override {
         user_joined_chat_pipe.apply(username);
     }
 
-	void message_received(const std::string& sender, const std::string& message) override {
+    void message_received(const std::string& sender, const std::string& message) override {
         chat_pipe.apply(sender, message);
     }
-	
-	void joined() override {
+
+    void joined() override {
         join_pipe.apply();
     }
 
-	void joined_chat() override {
+    void joined_chat() override {
         joined_chat_pipe.apply();
     }
 
-	void left() override {}
+    void left() override {}
 
     ~ConvImpl() {
         np1sec_conv->leave(false);
