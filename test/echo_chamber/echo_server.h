@@ -22,10 +22,12 @@
 #include <set>
 #include <boost/asio.hpp>
 #include <boost/range/adaptor/map.hpp>
+#include <../src/debug.h>
 
 constexpr size_t MAX_MESSAGE_SIZE = 4096;
 
 #define ECHO_SERVER_PRINT_STATS false
+#define ECHO_SERVER_LOG_MESSAGES false
 
 struct EchoServerImpl : public std::enable_shared_from_this<EchoServerImpl> {
     using tcp = boost::asio::ip::tcp;
@@ -174,9 +176,27 @@ void EchoServerImpl::send(const std::shared_ptr<Connection>& c, const std::vecto
     send_head(c);
 }
 
+static inline std::string decode_message(std::string orign)
+{
+    auto name_end = orign.find(';');
+    assert(name_end != std::string::npos);
+    std::string name(orign.begin(), orign.begin() + name_end);
+    std::string encoded(orign.begin() + name_end + 1, orign.end());
+
+    auto message = np1sec::Message::decode(encoded);
+
+    std::stringstream ss;
+    ss << name << " " << message;
+    return ss.str();
+}
+
 inline
 void EchoServerImpl::broadcast(std::vector<uint8_t> data)
 {
+#if ECHO_SERVER_LOG_MESSAGES
+    std::cout << decode_message(std::string(data.begin(), data.end())) << std::endl;
+#endif
+
     for (auto& c : connections) {
         send(c, data);
     }
