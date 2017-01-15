@@ -22,6 +22,7 @@ include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${GCRYPT_INCLUDE_DIR})
 
 add_library(np1sec
+	src/debug.cc
 	src/base64.cc
 	src/conversation.cc
 	src/conversationlist.cc
