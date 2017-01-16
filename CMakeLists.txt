@@ -15,12 +15,14 @@ find_package_handle_standard_args(gcrypt DEFAULT_MSG GCRYPT_INCLUDE_DIR GCRYPT_L
 
 
 
-add_compile_options(-std=c++11 -Wall -Wextra)
+#add_compile_options(-std=c++11 -Wall -Wextra)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra")
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${GCRYPT_INCLUDE_DIR})
 
 add_library(np1sec
+	src/debug.cc
 	src/base64.cc
 	src/conversation.cc
 	src/conversationlist.cc
@@ -40,4 +42,5 @@ target_link_libraries(np1sec
 
 if(${BUILD_TESTS})
 	include(test/CMakeLists.txt)
+	include(test/echo_chamber/CMakeLists.txt)
 endif()

@@ -102,25 +102,30 @@ void ConversationList::message_received(const std::string& sender, const Convers
 		) {
 			try {
 				ConversationStatusMessage message = ConversationStatusMessage::decode(conversation_message);
-				std::unique_ptr<Conversation> conversation(new Conversation(m_room, message, sender, conversation_message));
-				Conversation* c = conversation.get();
-				
-				std::map<std::string, PublicKey> users = conversation->conversation_users();
-				for (const auto& i : users) {
-					m_user_conversations[i.first][i.second].insert(c);
-				}
-				m_conversations[c] = std::move(conversation);
-				
-				std::list<RoomEvent>::iterator it = m_invitation_start_points.at(sender).at(conversation_message.conversation_public_key);
-				it++;
-				
-				while (m_conversations.count(c) && it != m_event_queue.end()) {
-					if (it->type == RoomEvent::Type::Message && !interested_conversations(it->sender, it->message).count(c)) {
-						it++;
-						continue;
+				if (
+					   message.invitee_username == m_room->username()
+					&& message.invitee_long_term_public_key == m_room->public_key()
+				) {
+					std::unique_ptr<Conversation> conversation(new Conversation(m_room, message, sender, conversation_message));
+					Conversation* c = conversation.get();
+					
+					std::map<std::string, PublicKey> users = conversation->conversation_users();
+					for (const auto& i : users) {
+						m_user_conversations[i.first][i.second].insert(c);
 					}
-					handle_event(c, *it);
+					m_conversations[c] = std::move(conversation);
+					
+					std::list<RoomEvent>::iterator it = m_invitation_start_points.at(sender).at(conversation_message.conversation_public_key);
 					it++;
+					
+					while (m_conversations.count(c) && it != m_event_queue.end()) {
+						if (it->type == RoomEvent::Type::Message && !interested_conversations(it->sender, it->message).count(c)) {
+							it++;
+							continue;
+						}
+						handle_event(c, *it);
+						it++;
+					}
 				}
 			} catch(MessageFormatException) {}
 			
