@@ -96,6 +96,20 @@ template<class Handler> void async_loop(Handler h) {
 }
 
 //------------------------------------------------------------------------------
+template<class F> std::function<void()> on_nth_invocation(unsigned int n, F&& f) {
+    if (n == 0) {
+        f();
+        return [] {};
+    }
+
+    auto counter = move_to_shared(n);
+
+    return [=] {
+        if (--*counter == 0) f();
+    };
+}
+
+//------------------------------------------------------------------------------
 struct ConsecutiveInviteStrategy {
     Clock::duration wait_between_invites;
 
@@ -124,7 +138,7 @@ struct ConcurrentInviteStrategy {
     Clock::duration wait_between_invites;
 
     void run(Room& room, shared_ptr<Conv> conv, size_t wait_for, std::function<void()> h) const {
-        auto in_chat_counter = make_shared<size_t>(wait_for);
+        auto finish = on_nth_invocation(wait_for, h);
 
         auto delay = wait_between_invites;
 
@@ -134,7 +148,7 @@ struct ConcurrentInviteStrategy {
                     conv->invite(username, pubkey);
                     conv->wait_for_user_to_join_chat([=, c = conv](std::string name) {
                             ignore_unused(name);
-                            if (--*in_chat_counter == 0) h();
+                            finish();
                         });
                 });
             });
@@ -267,6 +281,11 @@ void test_create_session(size_t user_count, InviteStrategy invite_strategy) {
 }
 
 //------------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(invite_consecutive_size_2)
+{
+    test_create_session(2, ConsecutiveInviteStrategy{0s});
+}
+
 BOOST_AUTO_TEST_CASE(invite_consecutive_size_3)
 {
     test_create_session(3, ConsecutiveInviteStrategy{0s});
@@ -348,12 +367,9 @@ template<class H> void test_with_session_each_user(size_t user_count, H&& h) {
     using Users = std::vector<User>;
 
     test_with_session(user_count, [=] (Users& users, auto finish) {
-        auto counter = make_shared<size_t>(users.size());
-
-        auto on_finish_one = [=] {
-            if (--*counter) return;
+        auto on_finish_one = on_nth_invocation(users.size(), [=] {
             finish();
-        };
+        });
 
         for (auto& user : users) {
             h(user, on_finish_one);
@@ -386,10 +402,11 @@ BOOST_AUTO_TEST_CASE(test_consecutive_message_exchange)
             }
 
             user.conv.receive_chat([=, &user] (const std::string& source, const std::string& msg) {
-                cout << i << "/" << total_to_receive
-                    << " User " << user.name()
-                    << " received \"" << msg
-                    << "\" from " << source << endl;
+                ignore_unused(msg);
+                //cout << i << "/" << total_to_receive
+                //    << " User " << user.name()
+                //    << " received \"" << msg
+                //    << "\" from " << source << endl;
 
                 state->do_send = source == user.name();
                 return cont();
@@ -422,9 +439,9 @@ BOOST_AUTO_TEST_CASE(test_randomized_message_exchange)
     test_with_session_each_user(user_count, [=] (User& user, auto finish) {
         auto next_msg_id = make_shared<size_t>(0);
 
-        auto one_loop_finished = [finish, cnt = make_shared<size_t>(2)] {
-            if (--*cnt == 0) finish();
-        };
+        auto one_loop_finished = on_nth_invocation(2, [=] {
+            finish();
+        });
 
         async_loop([=, &user] (unsigned int i, auto cont) {
             if (i == message_count) {
@@ -458,3 +475,76 @@ BOOST_AUTO_TEST_CASE(test_randomized_message_exchange)
     });
 }
 
+template<class F> auto lazy_post(io_service& ios, F&& f) {
+    return [&ios, f] { ios.post(f); };
+}
+
+BOOST_AUTO_TEST_CASE(test_ddos_hello)
+{
+    io_service ios;
+
+    std::vector<Room> rs;
+
+    constexpr size_t N = 20;
+
+    for (unsigned int i = 0; i < N; ++i) {
+        rs.emplace_back(ios, str("alice", i));
+    }
+
+    EchoServer server(ios);
+
+    auto server_ep = server.local_endpoint();
+
+    bool stop_mallory = false;
+
+    // Mallory starts to connect to the server as often as possible.
+    async_loop([&] (unsigned int i, auto continue_loop) {
+        auto mallory = make_shared<Room>(ios, str("mallory", i));
+
+        mallory->connect(server_ep, [=, m = mallory, &stop_mallory] (auto ec) {
+            if (stop_mallory) return;
+            BOOST_CHECK(!ec);
+            continue_loop();
+        });
+    });
+
+    auto has_all_alices = [] (const Room& room) {
+        // TODO: This could be done more efficiently.
+        for (unsigned int i = 0; i < N; ++i) {
+            auto alice = str("alice", i);
+            if (room.users().count(alice) == 0 && room.username() != alice) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    auto finish = on_nth_invocation(N, [&] {
+        for (auto& r : rs) {
+            r.stop();
+        }
+        server.stop();
+        stop_mallory = true;
+    });
+
+    for (size_t i = 0; i < rs.size(); ++i) {
+        auto& r = rs[i];
+
+        wait(i * 10ms, ios, [&] {
+            r.connect(server_ep, [&] (auto ec) {
+                BOOST_CHECK(!ec);
+
+                async_loop([&](unsigned int, auto continue_waiting) {
+                    r.wait_for_user_to_join([=, &r] (std::string, const auto&) {
+                        if (has_all_alices(r)) {
+                            return finish();
+                        }
+                        continue_waiting();
+                    });
+                });
+            });
+        });
+    }
+
+    ios.run();
+}

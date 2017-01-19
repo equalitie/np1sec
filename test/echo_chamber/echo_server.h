@@ -61,6 +61,9 @@ struct EchoServerImpl : public std::enable_shared_from_this<EchoServerImpl> {
     void broadcast(std::vector<uint8_t>);
     void send_head(const std::shared_ptr<Connection>& c);
     void send(const std::shared_ptr<Connection>& c, const std::vector<uint8_t>& data);
+
+    static std::string decode_message(std::string orign);
+
 #if ECHO_SERVER_PRINT_STATS
     size_t read_cnt = 0;
     size_t write_cnt = 0;
@@ -127,8 +130,18 @@ void EchoServerImpl::start_reading(const std::shared_ptr<Connection>& c)
 #if ECHO_SERVER_PRINT_STATS
                            ++read_cnt;
 #endif // if ECHO_SERVER_PRINT_STATS
-                           broadcast(std::vector<uint8_t>( c->rx_buffer.begin()
-                                                         , c->rx_buffer.begin() + size));
+
+                           std::vector<uint8_t> data( c->rx_buffer.begin()
+                                                    , c->rx_buffer.begin() + size);
+
+#if ECHO_SERVER_LOG_MESSAGES
+                           std::cout << "Server received on port:"
+                                << c->socket.remote_endpoint().port() << " "
+                                << decode_message(std::string(data.begin(), data.end()))
+                                << std::endl;
+#endif
+
+                           broadcast(data);
                            start_reading(c);
                         });
             });
@@ -176,7 +189,7 @@ void EchoServerImpl::send(const std::shared_ptr<Connection>& c, const std::vecto
     send_head(c);
 }
 
-static inline std::string decode_message(std::string orign)
+inline std::string EchoServerImpl::decode_message(std::string orign)
 {
     auto name_end = orign.find(';');
     assert(name_end != std::string::npos);
@@ -193,10 +206,6 @@ static inline std::string decode_message(std::string orign)
 inline
 void EchoServerImpl::broadcast(std::vector<uint8_t> data)
 {
-#if ECHO_SERVER_LOG_MESSAGES
-    std::cout << decode_message(std::string(data.begin(), data.end())) << std::endl;
-#endif
-
     for (auto& c : connections) {
         send(c, data);
     }

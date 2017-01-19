@@ -37,10 +37,11 @@ struct RoomImpl : public std::enable_shared_from_this<RoomImpl>
     np1sec::PrivateKey _private_key;
     np1sec::Room _np1sec_room;
 
-    Pipe<error_code> _connect_pipe;
+    Pipe<> _connect_pipe;
     Pipe<Conv> _created_conversation_pipe;
     Pipe<Conv> _invitation_pipe;
     Pipe<std::string, np1sec::PublicKey> _user_joined_pipe;
+    Pipe<> _disconnect_pipe;
 
     RoomImpl(boost::asio::io_service& ios, std::string name)
         : _name(std::move(name))
@@ -54,11 +55,21 @@ struct RoomImpl : public std::enable_shared_from_this<RoomImpl>
 
     template<class H> void connect(tcp::endpoint remote_ep, H&& h)
     {
-        _client->connect(remote_ep, [=] (error_code ec) {
+        connect_socket(remote_ep, [=] (error_code ec) {
                 if (ec) return h(ec);
-                _connect_pipe.schedule(get_io_service(), std::move(h));
-                _np1sec_room.connect();
+                connect_room([=, h = std::move(h)] { h(ec); });
             });
+    }
+
+    template<class H> void connect_socket(tcp::endpoint remote_ep, H&& h)
+    {
+        _client->connect(remote_ep, std::forward<H>(h));
+    }
+
+    template<class H> void connect_room(H&& h)
+    {
+        _connect_pipe.schedule(get_io_service(), std::move(h));
+        _np1sec_room.connect();
     }
 
     boost::asio::io_service& get_io_service() {
@@ -77,12 +88,13 @@ struct RoomImpl : public std::enable_shared_from_this<RoomImpl>
 
     void connected() override
     {
-        _connect_pipe.apply(boost::system::error_code());
+        _connect_pipe.apply();
     }
 
     void disconnected() override
     {
-        std::cout << _name << " TODO: disconnected" << std::endl;
+        std::cout << _name << " RoomInterface::disconnected room_ptr:" << &_np1sec_room << std::endl;
+        _disconnect_pipe.apply();
     }
 
     void user_joined(const std::string& name, const np1sec::PublicKey& pubkey) override
@@ -134,18 +146,25 @@ public:
 
     void stop() {
         _impl->stop();
-        _impl.reset();
+    }
+
+    bool stopped() const {
+        return _impl->_client->stopped();
     }
 
     std::string username() const {
         return _impl->_name;
     }
 
+    std::map<std::string, np1sec::PublicKey> users() const {
+        return get_np1sec_room()->users();
+    }
+
     ~Room() {
         if (_impl) _impl->stop();
     }
 
-    np1sec::Room* get_np1sec_room() {
+    np1sec::Room* get_np1sec_room() const {
         return &_impl->_np1sec_room;
     }
 
@@ -161,6 +180,27 @@ public:
     }
 
     template<class H>
+    void disconnect_room(H&& h) {
+        _impl->_disconnect_pipe.schedule(_ios, std::forward<H>(h));
+        get_np1sec_room()->disconnect();
+    }
+
+    template<class H>
+    void on_disconnect_room(H&& h) {
+        _impl->_disconnect_pipe.schedule(_ios, std::forward<H>(h));
+    }
+
+    template<class H>
+    void connect_socket(const tcp::endpoint& ep, H&& h) {
+        _impl->connect_socket(ep, std::forward<H>(h));
+    }
+
+    template<class H>
+    void connect_room(H&& h) {
+        _impl->connect_room(std::forward<H>(h));
+    }
+
+    template<class H>
     void create_conversation(H&& h) {
         _impl->_created_conversation_pipe.schedule(_ios, std::forward<H>(h));
         _impl->_np1sec_room.create_conversation();
@@ -172,6 +212,11 @@ public:
     }
 
     boost::asio::io_service& get_io_service() { return _ios; }
+
+    uint16_t local_port() {
+        return _impl->_client->local_endpoint().port();
+    }
+
 private:
     boost::asio::io_service& _ios;
     std::shared_ptr<RoomImpl> _impl;
