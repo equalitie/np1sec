@@ -117,6 +117,14 @@ class Room
 		m_outbound_message_filter = std::forward<F>(f);
 	}
 
+	void debug_disable_fsck(bool disable = true) {
+		m_debug_disable_fsck = disable;
+	}
+
+	bool is_fsck_enabled() const {
+		return !m_debug_disable_fsck;
+	}
+
 	protected:
 	void user_removed(const std::string& username);
 	void user_disconnected(const std::string& username);
@@ -132,6 +140,8 @@ class Room
 	bool m_disconnecting;
 	Hash m_disconnect_nonce;
 	
+	bool m_debug_disable_fsck = false;
+
 	struct User
 	{
 		std::string username;

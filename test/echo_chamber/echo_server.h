@@ -251,6 +251,10 @@ public:
         _impl->stop();
     }
 
+    boost::asio::io_service& get_io_service() const {
+        return _impl->acceptor.get_io_service();
+    }
+
     tcp::endpoint local_endpoint() const {
         return _impl->acceptor.local_endpoint();
     }

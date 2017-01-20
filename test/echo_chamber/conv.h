@@ -23,8 +23,9 @@
 struct ConvImpl : public std::enable_shared_from_this<ConvImpl>
                 , public np1sec::ConversationInterface {
 
-    ConvImpl(np1sec::Conversation* np1sec_conv)
-        : np1sec_conv(np1sec_conv)
+    ConvImpl(std::string username, np1sec::Conversation* np1sec_conv)
+        : my_username(std::move(username))
+        , np1sec_conv(np1sec_conv)
     {}
 
     void user_invited(const std::string&, const std::string&) override {}
@@ -32,7 +33,11 @@ struct ConvImpl : public std::enable_shared_from_this<ConvImpl>
     void user_authenticated(const std::string&, const np1sec::PublicKey&) override {}
     void user_authentication_failed(const std::string&) override {}
     void user_joined(const std::string&) override {}
-    void user_left(const std::string&) override {}
+
+    void user_left(const std::string& username) override {
+        //std::cout << my_username << " ConvImpl::user_left(" << username << ")" << std::endl;
+        user_left_pipe.apply(username);
+    }
     void votekick_registered(const std::string&, const std::string&, bool) override {}
 
     void user_joined_chat(const std::string& username) override {
@@ -51,24 +56,28 @@ struct ConvImpl : public std::enable_shared_from_this<ConvImpl>
         joined_chat_pipe.apply();
     }
 
-    void left() override {}
+    void left() override {
+        std::cout << "TODO: " << my_username << " ConvImpl::left()" << std::endl;
+    }
 
     ~ConvImpl() {
         np1sec_conv->leave(false);
     }
 
+    std::string my_username;
     np1sec::Conversation* np1sec_conv;
     Pipe<> join_pipe;
     Pipe<> joined_chat_pipe;
     Pipe<std::string> user_joined_chat_pipe;
+    Pipe<std::string> user_left_pipe;
     Pipe<std::string, std::string> chat_pipe;
     std::function<void()> on_joined;
 };
 
 class Conv {
 public:
-    Conv(boost::asio::io_service& ios, np1sec::Conversation* c)
-        : _ios(&ios), _impl(std::make_shared<ConvImpl>(c))
+    Conv(std::string username, boost::asio::io_service& ios, np1sec::Conversation* c)
+        : _ios(&ios), _impl(std::make_shared<ConvImpl>(std::move(username), c))
     {}
 
     Conv(const Conv&) = delete;
@@ -102,6 +111,12 @@ public:
     void wait_for_user_to_join_chat(H&& h)
     {
         _impl->user_joined_chat_pipe.schedule(*_ios, std::forward<H>(h));
+    }
+
+    template<class H>
+    void wait_for_user_to_leave(H&& h)
+    {
+        _impl->user_left_pipe.schedule(*_ios, std::forward<H>(h));
     }
 
     template<class H>

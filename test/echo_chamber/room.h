@@ -44,6 +44,14 @@ struct RoomImpl : public std::enable_shared_from_this<RoomImpl>
     Pipe<> _disconnect_pipe;
     bool _enable_message_logging = false;
 
+	/* Called before the message is processed. If the function returns false,
+	 * the message won't be processed. It is used for debugging and testing. */
+	std::function<bool(const std::string&, const np1sec::Message&)> m_inbound_message_filter;
+
+	/* Called before the message is sent. If the function returns false,
+	 * the message won't be sent. It is used for debugging and testing. */
+	std::function<bool(const np1sec::Message&)> m_outbound_message_filter;
+
     RoomImpl(boost::asio::io_service& ios, std::string name)
         : _name(std::move(name))
         , _client(std::make_shared<Client>(ios, [=] (std::string name, std::string msg) {
@@ -59,14 +67,16 @@ struct RoomImpl : public std::enable_shared_from_this<RoomImpl>
             if (_enable_message_logging) {
                 std::cout << _name << " << " << sender << " " << msg << std::endl;
             }
-            return true;
+            if (!m_inbound_message_filter) return true;
+            return m_inbound_message_filter(sender, msg);
         });
 
         _np1sec_room.set_outbound_message_filter([=] (const Message& msg) {
             if (_enable_message_logging) {
                 std::cout << _name << " >> " << msg << std::endl;
             }
-            return true;
+            if (!m_outbound_message_filter) return true;
+            return m_outbound_message_filter(msg);
         });
     }
 
@@ -126,7 +136,7 @@ struct RoomImpl : public std::enable_shared_from_this<RoomImpl>
 
     np1sec::ConversationInterface* created_conversation(np1sec::Conversation* c) override
     {
-        Conv conv(get_io_service(), c);
+        Conv conv(_name, get_io_service(), c);
         auto retval = conv.get_impl();
         _created_conversation_pipe.apply(std::move(conv));
         return retval;
@@ -134,7 +144,7 @@ struct RoomImpl : public std::enable_shared_from_this<RoomImpl>
 
     np1sec::ConversationInterface* invited_to_conversation(np1sec::Conversation* c, const std::string&) override
     {
-        Conv conv(get_io_service(), c);
+        Conv conv(_name, get_io_service(), c);
         auto retval = conv.get_impl();
 
         _invitation_pipe.apply(std::move(conv));
@@ -151,7 +161,7 @@ class Room {
 
 public:
     Room(boost::asio::io_service& ios, std::string name)
-        : _ios(ios)
+        : _ios(&ios)
         , _impl(std::make_shared<RoomImpl>(ios, std::move(name)))
     {}
 
@@ -191,7 +201,7 @@ public:
 
     template<class H>
     void wait_for_user_to_join(H&& h) {
-        _impl->_user_joined_pipe.schedule(_ios, std::forward<H>(h));
+        _impl->_user_joined_pipe.schedule(*_ios, std::forward<H>(h));
         //_impl->wait_for_user_to_join(std::forward<H>(h));
     }
 
@@ -202,13 +212,13 @@ public:
 
     template<class H>
     void disconnect_room(H&& h) {
-        _impl->_disconnect_pipe.schedule(_ios, std::forward<H>(h));
+        _impl->_disconnect_pipe.schedule(*_ios, std::forward<H>(h));
         get_np1sec_room()->disconnect();
     }
 
     template<class H>
     void on_disconnect_room(H&& h) {
-        _impl->_disconnect_pipe.schedule(_ios, std::forward<H>(h));
+        _impl->_disconnect_pipe.schedule(*_ios, std::forward<H>(h));
     }
 
     template<class H>
@@ -223,23 +233,33 @@ public:
 
     template<class H>
     void create_conversation(H&& h) {
-        _impl->_created_conversation_pipe.schedule(_ios, std::forward<H>(h));
+        _impl->_created_conversation_pipe.schedule(*_ios, std::forward<H>(h));
         _impl->_np1sec_room.create_conversation();
     }
 
     template<class H>
     void wait_for_invite(H&& h) {
-        _impl->_invitation_pipe.schedule(_ios, std::forward<H>(h));
+        _impl->_invitation_pipe.schedule(*_ios, std::forward<H>(h));
     }
 
-    boost::asio::io_service& get_io_service() { return _ios; }
+    boost::asio::io_service& get_io_service() { return *_ios; }
 
     uint16_t local_port() {
         return _impl->_client->local_endpoint().port();
     }
 
+	template<class F>
+	void set_inbound_message_filter(F&& f) {
+		_impl->m_inbound_message_filter = std::forward<F>(f);
+	}
+
+	template<class F>
+	void set_outbound_message_filter(F&& f) {
+		_impl->m_outbound_message_filter = std::forward<F>(f);
+	}
+
 private:
-    boost::asio::io_service& _ios;
+    boost::asio::io_service* _ios;
     std::shared_ptr<RoomImpl> _impl;
 };
 

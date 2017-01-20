@@ -200,10 +200,14 @@ void wait_for_invite_and_users(Room& room, size_t num_users, function<void(Conv)
                         return h(move(*conv_p));
                     }
 
-                    auto count = make_shared<size_t>(num_users - size);
+                    auto N = num_users - size;
+                    auto count = make_shared<size_t>(N);
 
-                    for (size_t i = 0; i < num_users - size; ++i) {
-                        conv_p->wait_for_user_to_join_chat([=](std::string) {
+                    // TODO: Sometimes we get "user joined chat" event even when
+                    //       that user is already in the conversation after it's
+                    //       been created. Add a test for that.
+                    for (size_t i = 0; i < N; ++i) {
+                        conv_p->wait_for_user_to_join_chat([=, &room](std::string) {
                             if (--*count == 0) {
                                 h(move(*conv_p));
                             }
@@ -356,7 +360,7 @@ template<class H> void test_with_session(size_t user_count, H&& h) {
             [&] (Users new_users) {
                 BOOST_CHECK_EQUAL(new_users.size(), user_count);
                 users = move(new_users);
-                h(users, finish);
+                h(server, users, finish);
             });
 
     ios.run();
@@ -367,7 +371,7 @@ template<class H> void test_with_session(size_t user_count, H&& h) {
 template<class H> void test_with_session_each_user(size_t user_count, H&& h) {
     using Users = std::vector<User>;
 
-    test_with_session(user_count, [=] (Users& users, auto finish) {
+    test_with_session(user_count, [=] (EchoServer&, Users& users, auto finish) {
         auto on_finish_one = on_nth_invocation(users.size(), [=] {
             finish();
         });
@@ -548,4 +552,129 @@ BOOST_AUTO_TEST_CASE(test_ddos_hello)
     }
 
     ios.run();
+}
+
+void test_message_dropping(np1sec::Message::Type message_type_to_drop)
+{
+    using Users = std::vector<User>;
+
+    constexpr size_t orig_session_count = 2;
+
+    auto join_new_guy = [=] (EchoServer& server, auto h) {
+        auto room = make_shared<Room>(server.get_io_service(), "new_guy");
+        room->get_np1sec_room()->debug_disable_fsck();
+        //room->enable_message_logging();
+
+        room->connect(server.local_endpoint(), [=] (error_code ec) {
+            BOOST_CHECK(!ec);
+
+            room->wait_for_invite([=] (Conv conv) {
+                auto conv_p = move_to_shared(conv);
+
+                conv_p->join([=] {
+                    conv_p->wait_until_joined_chat([=] {
+                         h(User{move(*room), move(*conv_p)});
+                    });
+                });
+            });
+        });
+    };
+
+    auto wait_for_user = [=] (Room& room, std::string username, auto h) {
+        async_loop([=, &room](unsigned int, auto continue_loop) {
+            room.wait_for_user_to_join([=](std::string name, PublicKey pubkey) {
+                if (username == name) {
+                    return h(move(pubkey));
+                }
+                continue_loop();
+            });
+        });
+    };
+
+    test_with_session(orig_session_count, [&] (EchoServer& server, Users& users, auto finish) {
+        BOOST_CHECK_EQUAL(users.size(), orig_session_count);
+
+        /* Match indices with usernames (user with index 0 shall have name "user0",...) */
+        std::sort(users.begin(), users.end(),
+                  [](const User& a, const User& b)
+                  { return a.name() < b.name(); });
+
+        const size_t inviter_i = 0;
+        const size_t mallory_i = 1; // The mallicious user
+
+        auto& ios = server.get_io_service();
+        auto& inviter = users[inviter_i];
+        auto& mallory = users[mallory_i];
+
+        /* Mallory won't respond to messages of certain type from the new_guy */
+        mallory.room.set_inbound_message_filter(
+                [=](const std::string& sender, const np1sec::Message& msg) {
+            if (sender == "new_guy" && msg.type == message_type_to_drop) {
+                return false;
+            }
+            return true;
+        });
+
+        auto on_finish_one = on_nth_invocation(2*(users.size() - 1) + (1), [=] {
+            finish();
+        });
+
+        wait_for_user(inviter.room, "new_guy", [=, &users, &ios](PublicKey pubkey) {
+            auto& inviter = users[inviter_i];
+
+            inviter.conv.invite("new_guy", pubkey);
+
+            for (size_t i = 0; i < users.size(); ++i) {
+                auto& user = users[i];
+
+                user.room.get_np1sec_room()->debug_disable_fsck();
+
+                if (i == mallory_i) continue;
+
+                auto name = user.name();
+
+                /* Wait for the new guy to join chat */
+                user.conv.wait_for_user_to_join_chat([=, &ios](std::string new_guy) {
+                    BOOST_REQUIRE(new_guy == "new_guy");
+                    ios.post(on_finish_one);
+                });
+
+                /* Wait for Mallory to leave */
+                user.conv.wait_for_user_to_leave([=, &ios, &users](std::string username) {
+                    BOOST_REQUIRE(username == users[mallory_i].name());
+                    ios.post(on_finish_one);
+                });
+            }
+        });
+
+        join_new_guy(server, [=, &ios, &users](User user) {
+            users.push_back(move(user));
+            ios.post(on_finish_one);
+        });
+    });
+}
+
+BOOST_AUTO_TEST_CASE(test_drop_message_Join)
+{
+    test_message_dropping(np1sec::Message::Type::Join);
+}
+
+BOOST_AUTO_TEST_CASE(test_drop_message_KeyExchangePublicKey)
+{
+    test_message_dropping(np1sec::Message::Type::KeyExchangePublicKey);
+}
+
+BOOST_AUTO_TEST_CASE(test_drop_message_KeyExchangeSecretShare)
+{
+    test_message_dropping(np1sec::Message::Type::KeyExchangeSecretShare);
+}
+
+BOOST_AUTO_TEST_CASE(test_drop_message_Acceptance)
+{
+    test_message_dropping(np1sec::Message::Type::KeyExchangeAcceptance);
+}
+
+BOOST_AUTO_TEST_CASE(test_drop_message_KeyActivation)
+{
+    test_message_dropping(np1sec::Message::Type::KeyActivation);
 }
