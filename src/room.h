@@ -106,7 +106,17 @@ class Room
 	}
 	
 	
-	
+	/* Debug */
+	template<class F>
+	void set_inbound_message_filter(F&& f) {
+		m_inbound_message_filter = std::forward<F>(f);
+	}
+
+	template<class F>
+	void set_outbound_message_filter(F&& f) {
+		m_outbound_message_filter = std::forward<F>(f);
+	}
+
 	protected:
 	void user_removed(const std::string& username);
 	void user_disconnected(const std::string& username);
@@ -133,6 +143,14 @@ class Room
 	std::map<std::string, User> m_users;
 	
 	ConversationList m_conversations;
+
+	/* Called before the message is processed. If the function returns false,
+	 * the message won't be processed. It is used for debugging and testing. */
+	std::function<bool(const std::string&, const Message&)> m_inbound_message_filter;
+
+	/* Called before the message is sent. If the function returns false,
+	 * the message won't be sent. It is used for debugging and testing. */
+	std::function<bool(const Message&)> m_outbound_message_filter;
 };
 
 } // namespace np1sec

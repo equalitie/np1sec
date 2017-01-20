@@ -100,6 +100,11 @@ void Room::create_conversation()
 
 void Room::message_received(const std::string& sender, const std::string& text_message)
 {
+	auto filter = [&] (Message& message) {
+		if (!m_inbound_message_filter) return true;
+		return m_inbound_message_filter(sender, message);
+	};
+
 	if (m_disconnecting) {
 		if (sender != username()) {
 			return;
@@ -108,6 +113,7 @@ void Room::message_received(const std::string& sender, const std::string& text_m
 		Message np1sec_message;
 		try {
 			np1sec_message = Message::decode(text_message);
+			if (!filter(np1sec_message)) return;
 		} catch(MessageFormatException) {
 			return;
 		}
@@ -136,6 +142,7 @@ void Room::message_received(const std::string& sender, const std::string& text_m
 	Message np1sec_message;
 	try {
 		np1sec_message = Message::decode(text_message);
+		if (!filter(np1sec_message)) return;
 	} catch(MessageFormatException) {
 		return;
 	}
@@ -277,6 +284,9 @@ void Room::left_room()
 
 void Room::send_message(const Message& message)
 {
+	if (m_outbound_message_filter && !m_outbound_message_filter(message)) {
+		return;
+	}
 	send_message(message.encode());
 }
 
