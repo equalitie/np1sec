@@ -234,6 +234,7 @@ void create_session(io_service& ios,
 
     for (size_t i = 0; i < client_count; ++i) {
         auto r = make_shared<Room>(ios, str("user", i));
+        //r->enable_message_logging();
 
         r->connect(server_ep, [=] (error_code ec) {
             BOOST_CHECK(!ec);

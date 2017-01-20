@@ -42,6 +42,7 @@ struct RoomImpl : public std::enable_shared_from_this<RoomImpl>
     Pipe<Conv> _invitation_pipe;
     Pipe<std::string, np1sec::PublicKey> _user_joined_pipe;
     Pipe<> _disconnect_pipe;
+    bool _enable_message_logging = false;
 
     RoomImpl(boost::asio::io_service& ios, std::string name)
         : _name(std::move(name))
@@ -51,7 +52,23 @@ struct RoomImpl : public std::enable_shared_from_this<RoomImpl>
                     }))
         , _private_key(np1sec::PrivateKey::generate(true))
         , _np1sec_room(this, _name, _private_key)
-    {}
+    {
+        using np1sec::Message;
+
+        _np1sec_room.set_inbound_message_filter([=] (const std::string& sender, const Message& msg) {
+            if (_enable_message_logging) {
+                std::cout << _name << " << " << sender << " " << msg << std::endl;
+            }
+            return true;
+        });
+
+        _np1sec_room.set_outbound_message_filter([=] (const Message& msg) {
+            if (_enable_message_logging) {
+                std::cout << _name << " >> " << msg << std::endl;
+            }
+            return true;
+        });
+    }
 
     template<class H> void connect(tcp::endpoint remote_ep, H&& h)
     {
@@ -146,6 +163,10 @@ public:
 
     void stop() {
         _impl->stop();
+    }
+
+    void enable_message_logging(bool enable = true) {
+        _impl->_enable_message_logging = enable;
     }
 
     bool stopped() const {
