@@ -259,12 +259,24 @@ void create_session(io_service& ios,
 
 //------------------------------------------------------------------------------
 template<class InviteStrategy>
-void test_create_session(size_t user_count, InviteStrategy invite_strategy) {
+void test_create_session(size_t user_count,
+                         InviteStrategy invite_strategy,
+                         Clock::duration kill_duration = 0s) {
     io_service ios;
 
     EchoServer server(ios);
 
     bool callback_called = false;
+
+    asio::steady_timer timer(ios);
+
+    if (kill_duration.count()) {
+        timer.expires_from_now(kill_duration);
+        timer.async_wait([&ios] (auto error) {
+            if (error) return;
+            ios.stop();
+        });
+    }
 
     create_session(ios, user_count, server.local_endpoint(), invite_strategy,
             [&] (std::vector<User> users) {
@@ -272,6 +284,7 @@ void test_create_session(size_t user_count, InviteStrategy invite_strategy) {
 
                 callback_called = true;
                 server.stop();
+                timer.cancel();
 
                 /*
                  * TODO: ATM Rooms can't be destroyed inside on receive handlers.
@@ -328,7 +341,7 @@ BOOST_AUTO_TEST_CASE(invite_concurrent_size_4_delay_100ms)
 
 BOOST_AUTO_TEST_CASE(invite_concurrent_size_3_delay_0ms)
 {
-    test_create_session(3, ConcurrentInviteStrategy{0ms});
+    test_create_session(3, ConcurrentInviteStrategy{0ms}, 10s);
 }
 
 //------------------------------------------------------------------------------
