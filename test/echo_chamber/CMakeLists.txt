@@ -23,5 +23,5 @@ include_directories(
 
 file(GLOB sources "${CMAKE_SOURCE_DIR}/test/echo_chamber/*.cc")
 
-add_executable(echo_chamber ${sources})
+add_executable(echo_chamber EXCLUDE_FROM_ALL ${sources})
 target_link_libraries(echo_chamber ${Boost_LIBRARIES} np1sec)
