@@ -28,6 +28,7 @@ using error_code = boost::system::error_code;
 using std::move;
 using std::shared_ptr;
 using std::unique_ptr;
+using std::weak_ptr;
 using std::make_shared;
 using std::make_unique;
 using std::cout;
@@ -220,11 +221,11 @@ void wait_for_invite_and_users(Room& room, size_t num_users, function<void(Conv)
 
 //------------------------------------------------------------------------------
 template<class InviteStrategy>
-void create_session(io_service& ios,
-                    size_t client_count,
-                    tcp::endpoint server_ep,
-                    InviteStrategy invite_strategy,
-                    std::function<void(std::vector<User>)>&& handler)
+std::function<void()> create_session(io_service& ios,
+                                     size_t client_count,
+                                     tcp::endpoint server_ep,
+                                     InviteStrategy invite_strategy,
+                                     std::function<void(std::vector<User>)>&& handler)
 {
     auto result = make_shared<std::vector<User>>();
 
@@ -236,25 +237,42 @@ void create_session(io_service& ios,
         }
     };
 
+    std::list<shared_ptr<Room>> rooms;
+
     for (size_t i = 0; i < client_count; ++i) {
         auto r = make_shared<Room>(ios, str("user", i));
+
+        rooms.push_back(r);
         //r->enable_message_logging();
 
         r->connect(server_ep, [=] (error_code ec) {
             BOOST_CHECK(!ec);
 
+            weak_ptr<Room> w = r;
+
             if (i == 0) {
                 create_conv_and_wait(*r, client_count, invite_strategy, [=] (Conv conv) {
-                        on_one_client_done(move(*r), move(conv));
+                        if (auto r = w.lock()) {
+                            on_one_client_done(move(*r), move(conv));
+                        }
                     });
             }
             else {
                 wait_for_invite_and_users(*r, client_count, [=] (Conv conv) {
-                        on_one_client_done(move(*r), move(conv));
+                        if (auto r = w.lock()) {
+                            on_one_client_done(move(*r), move(conv));
+                        }
                     });
             }
         });
     }
+
+    return [rooms = move(rooms), result] {
+        for (auto& room : rooms) {
+            if (room->has_impl()) { room->stop(); }
+        }
+        result->clear();
+    };
 }
 
 //------------------------------------------------------------------------------
@@ -270,15 +288,8 @@ void test_create_session(size_t user_count,
 
     asio::steady_timer timer(ios);
 
-    if (kill_duration.count()) {
-        timer.expires_from_now(kill_duration);
-        timer.async_wait([&ios] (auto error) {
-            if (error) return;
-            ios.stop();
-        });
-    }
-
-    create_session(ios, user_count, server.local_endpoint(), invite_strategy,
+    auto cancel =
+        create_session(ios, user_count, server.local_endpoint(), invite_strategy,
             [&] (std::vector<User> users) {
                 BOOST_CHECK_EQUAL(users.size(), user_count);
 
@@ -292,6 +303,15 @@ void test_create_session(size_t user_count,
                  */
                 ios.post([us = move_to_shared(users)] {});
             });
+
+    if (kill_duration.count()) {
+        timer.expires_from_now(kill_duration);
+        timer.async_wait([cancel = move(cancel), &server] (auto error) {
+            if (error) return;
+            cancel();
+            server.stop();
+        });
+    }
 
     ios.run();
 
@@ -331,12 +351,12 @@ BOOST_AUTO_TEST_CASE(invite_concurrent_size_3_delay_100ms)
 
 BOOST_AUTO_TEST_CASE(invite_concurrent_size_6_delay_3s)
 {
-    test_create_session(6, ConcurrentInviteStrategy{3s});
+    test_create_session(6, ConcurrentInviteStrategy{3s}, 60s);
 }
 
 BOOST_AUTO_TEST_CASE(invite_concurrent_size_4_delay_100ms)
 {
-    test_create_session(4, ConcurrentInviteStrategy{100ms});
+    test_create_session(4, ConcurrentInviteStrategy{100ms}, 30s);
 }
 
 BOOST_AUTO_TEST_CASE(invite_concurrent_size_3_delay_0ms)
@@ -369,7 +389,7 @@ template<class H> void test_with_session(size_t user_count, H&& h) {
         ios.post([&] { users.clear(); });
     };
 
-    create_session(ios, user_count, server.local_endpoint(), invite_strategy,
+    auto cancel = create_session(ios, user_count, server.local_endpoint(), invite_strategy,
             [&] (Users new_users) {
                 BOOST_CHECK_EQUAL(new_users.size(), user_count);
                 users = move(new_users);

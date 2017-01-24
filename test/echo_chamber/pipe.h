@@ -65,6 +65,11 @@ public:
             });
     }
 
+    void clear() {
+        _queued_args  = decltype(_queued_args)();
+        _queued_funcs = decltype(_queued_funcs)();
+    }
+
 private:
     template <class F, class Tuple, size_t... Is>
     static

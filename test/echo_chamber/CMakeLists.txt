@@ -11,11 +11,8 @@ find_package(Threads)
 add_definitions(-DBOOST_TEST_DYN_LINK)
 add_definitions(-DBOOST_THREAD_VERSION=4)
 
-set(GLOB ADDRESS_SANITIZER -fsanitize=address)
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 \
-                                        -pthread \
-                                        -ggdb ")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -pthread -ggdb ")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
 
 include_directories(
   "${Boost_INCLUDE_DIR}"

@@ -25,8 +25,7 @@
 #include "conv.h"
 #include "client.h"
 
-struct RoomImpl : public std::enable_shared_from_this<RoomImpl>
-                , public np1sec::RoomInterface {
+struct RoomImpl : public np1sec::RoomInterface {
     using tcp = boost::asio::ip::tcp;
     using error_code = boost::system::error_code;
 
@@ -120,7 +119,7 @@ struct RoomImpl : public std::enable_shared_from_this<RoomImpl>
 
     void disconnected() override
     {
-        std::cout << _name << " RoomInterface::disconnected room_ptr:" << &_np1sec_room << std::endl;
+        //std::cout << _name << " RoomInterface::disconnected room_ptr:" << &_np1sec_room << std::endl;
         _disconnect_pipe.apply();
     }
 
@@ -131,7 +130,7 @@ struct RoomImpl : public std::enable_shared_from_this<RoomImpl>
 
     void user_left(const std::string&, const np1sec::PublicKey&) override
     {
-        std::cout << _name << " TODO: user_left" << std::endl;
+        //std::cout << _name << " TODO: user_left" << std::endl;
     }
 
     np1sec::ConversationInterface* created_conversation(np1sec::Conversation* c) override
@@ -152,7 +151,21 @@ struct RoomImpl : public std::enable_shared_from_this<RoomImpl>
     }
 
     void stop() {
+        if (_client->stopped()) return;
+
         _client->stop();
+        _np1sec_room.disconnect();
+
+        /* Pipes may hold shared from this, thus preventing destruction */
+        _connect_pipe.clear();
+        _created_conversation_pipe.clear();
+        _invitation_pipe.clear();
+        _user_joined_pipe.clear();
+        _disconnect_pipe.clear();
+    }
+
+    ~RoomImpl() {
+        stop();
     }
 };
 
@@ -172,7 +185,16 @@ public:
     Room& operator=(Room&&) = default;
 
     void stop() {
+        assert(_impl);
         _impl->stop();
+    }
+
+    bool has_impl() const {
+        return _impl.get();
+    }
+
+    std::weak_ptr<RoomImpl> get_impl() const {
+        return _impl;
     }
 
     void enable_message_logging(bool enable = true) {

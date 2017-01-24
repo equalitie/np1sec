@@ -20,8 +20,7 @@
 
 #include "pipe.h"
 
-struct ConvImpl : public std::enable_shared_from_this<ConvImpl>
-                , public np1sec::ConversationInterface {
+struct ConvImpl : public np1sec::ConversationInterface {
 
     ConvImpl(std::string username, np1sec::Conversation* np1sec_conv)
         : my_username(std::move(username))
