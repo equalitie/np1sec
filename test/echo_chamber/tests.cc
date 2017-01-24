@@ -395,6 +395,7 @@ template<class H> void test_with_session_each_user(size_t user_count, H&& h) {
     });
 }
 
+//------------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(test_consecutive_message_exchange)
 {
     const size_t user_count = 10;
@@ -432,6 +433,7 @@ BOOST_AUTO_TEST_CASE(test_consecutive_message_exchange)
         });
     });
 }
+//------------------------------------------------------------------------------
 
 struct RandomDuration {
     std::random_device rd;
@@ -492,10 +494,7 @@ BOOST_AUTO_TEST_CASE(test_randomized_message_exchange)
         });
     });
 }
-
-template<class F> auto lazy_post(io_service& ios, F&& f) {
-    return [&ios, f] { ios.post(f); };
-}
+//------------------------------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(test_ddos_hello)
 {
@@ -567,11 +566,12 @@ BOOST_AUTO_TEST_CASE(test_ddos_hello)
     ios.run();
 }
 
+//------------------------------------------------------------------------------
 void test_message_dropping(np1sec::Message::Type message_type_to_drop)
 {
     using Users = std::vector<User>;
 
-    constexpr size_t orig_session_count = 2;
+    constexpr size_t orig_session_count = 4;
 
     auto join_new_guy = [=] (EchoServer& server, auto h) {
         auto room = make_shared<Room>(server.get_io_service(), "new_guy");
@@ -589,17 +589,6 @@ void test_message_dropping(np1sec::Message::Type message_type_to_drop)
                          h(User{move(*room), move(*conv_p)});
                     });
                 });
-            });
-        });
-    };
-
-    auto wait_for_user = [=] (Room& room, std::string username, auto h) {
-        async_loop([=, &room](unsigned int, auto continue_loop) {
-            room.wait_for_user_to_join([=](std::string name, PublicKey pubkey) {
-                if (username == name) {
-                    return h(move(pubkey));
-                }
-                continue_loop();
             });
         });
     };
@@ -632,17 +621,19 @@ void test_message_dropping(np1sec::Message::Type message_type_to_drop)
             finish();
         });
 
-        wait_for_user(inviter.room, "new_guy", [=, &users, &ios](PublicKey pubkey) {
+        inviter.room.wait_for_user_to_join([=, &users, &ios] (std::string username, PublicKey pubkey) {
+            BOOST_REQUIRE(username == "new_guy");
+
             auto& inviter = users[inviter_i];
 
-            inviter.conv.invite("new_guy", pubkey);
+            inviter.conv.invite(username, pubkey);
 
             for (size_t i = 0; i < users.size(); ++i) {
                 auto& user = users[i];
 
                 user.room.get_np1sec_room()->debug_disable_fsck();
 
-                if (i == mallory_i) continue;
+                if (i == mallory_i || user.name() == "new_guy") continue;
 
                 auto name = user.name();
 
@@ -691,3 +682,5 @@ BOOST_AUTO_TEST_CASE(test_drop_message_KeyActivation)
 {
     test_message_dropping(np1sec::Message::Type::KeyActivation);
 }
+
+//------------------------------------------------------------------------------
