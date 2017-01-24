@@ -81,18 +81,18 @@ status and the ability to participate in the conversation.
         |  |  +---------+           +----------|-------+     |
         |  |  |         |           |          |       |     |
         V  |  V         |           |          V       |     |
-      Not invited --> Invited --> Joining --> Joined --+---->+
+      Not invited --> Invited --> Joined --> In chat --+---->+
                    |           |           |              |
                    |           |           |           C::leave
                    |           |           |             CI::user_left
                    |           |           |             CI::left     
                    |           |           |
-                   |           |        CI::user_joined
-                   |           |        CI::joined
+                   |           |        CI::user_joined_chat
+                   |           |        CI::joined_chat
                    |           |
                    |        C::join
-                   |          CI::user_joining
-                   |          CI::joining
+                   |          CI::user_joined
+                   |          CI::joined
                    |                             
                 C::invite                         +-------------------------------------+
                   CI::user_invited                | Legend: C  := Conversation          |
@@ -102,14 +102,14 @@ status and the ability to participate in the conversation.
                                                   +-------------------------------------+
 
 ```
-We say that a user is a `Participant` if she is either in the `Joining` or
-`Joined` state.  The `Joining` state is only temporary and indicates that _some_
+We say that a user is a `Participant` if she is either in the `Joined` or
+`In chat` state.  The `Joined` state is only temporary and indicates that _some_
 of the messages sent may be decoded by _some_ of the participants and also that
 the user may be able to decode _some_ of the messages other participants sent. A
-user cannot tell whether someone is in the `Joined` state until that user has
-joined as well.
+user cannot tell whether someone is in the `In chat` state until that user is
+in that chat as well.
 
-Participants who are in the `Joined` state may call `Conversation::send_chat()`
+Participants who are in the `In chat` state may call `Conversation::send_chat()`
 and receive `ConversationInterface::message_received()` events to participate in
 the secure conversation.
 

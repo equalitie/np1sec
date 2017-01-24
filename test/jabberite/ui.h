@@ -75,15 +75,15 @@ class Jabberite
 	virtual void invitation_cancelled(int conversation_id, std::string inviter, std::string invitee) = 0;
 	virtual void user_authenticated(int conversation_id, std::string username, np1sec::PublicKey public_key) = 0;
 	virtual void user_authentication_failed(int conversation_id, std::string username) = 0;
-	virtual void user_joining(int conversation_id, std::string username) = 0;
+	virtual void user_joined(int conversation_id, std::string username) = 0;
 	virtual void user_left(int conversation_id, std::string username) = 0;
 	virtual void votekick_registered(int conversation_id, std::string kicker, std::string victim, bool kicked) = 0;
 	
-	virtual void user_joined(int conversation_id, std::string username) = 0;
+	virtual void user_joined_chat(int conversation_id, std::string username) = 0;
 	virtual void message_received(int conversation_id, std::string sender, std::string message) = 0;
 	
-	virtual void joining(int conversation_id) = 0;
 	virtual void joined(int conversation_id) = 0;
+	virtual void joined_chat(int conversation_id) = 0;
 	virtual void left(int conversation_id) = 0;
 	
 	int conversation_id(np1sec::Conversation* conversation);

@@ -88,18 +88,18 @@ class ConversationInterface
 	virtual void user_authentication_failed(const std::string& username) = 0;
 
 	/**
-	 * Indicate that a previously invited user \p username started joining
-	 * this conversation.
+	 * Indicate that a previously invited user \p username has joined
+	 * the conversation.
 	 *
-	 * Once the user \p username started 'joining' this conversation her messages
+	 * Once the user \p username has 'joined' this conversation her messages
 	 * may be decryptable by *some* of the participants and she can decrypt
 	 * messages from *some* of the participants as well.
 	 *
 	 * To make sure this user is able to decrypt/receive our messages
-	 * we need to wait for the ConversationInterface::user_joined
+	 * we need to wait for the ConversationInterface::user_joined_chat
 	 * callback.
 	 */
-	virtual void user_joining(const std::string& username) = 0;
+	virtual void user_joined(const std::string& username) = 0;
 
 	// TODO: reason
 	/**
@@ -119,7 +119,7 @@ class ConversationInterface
 	 * that she can decrypt every message we send to this channel from this
 	 * point onwards.
 	 */
-	virtual void user_joined(const std::string& username) = 0;
+	virtual void user_joined_chat(const std::string& username) = 0;
 
 	/**
 	 * Indicate that we received a \p message from the \p sender
@@ -135,13 +135,13 @@ class ConversationInterface
 	 * and that what we send *may* be decrypted by some of the participants in
 	 * this conversation.
 	 */
-	virtual void joining() = 0;
+	virtual void joined() = 0;
 
 	/**
 	 * Indicate that we can now receive and decrypt messages from all
-	 * users who joined this conversation.
+	 * users in this conversation who are also "in chat"
 	 */
-	virtual void joined() = 0;
+	virtual void joined_chat() = 0;
 
 	/**
 	 * Indicate that we have left this conversation.
@@ -233,7 +233,7 @@ class RoomInterface
 	 *
 	 * A conversation created in this way will initially contain only 
 	 * ourselves as the only participant with the conversation state
-	 * set to "Joined".
+	 * set to "In chat".
 	 */
 	virtual ConversationInterface* created_conversation(Conversation* conversation) = 0;
 
@@ -248,8 +248,8 @@ class RoomInterface
 	 * Our state in the conversation created this way shall be
 	 * "Invited". To become a participant we need to call
 	 * the Conversation::join method and wait for the 
-	 * ConversationInterface::joining and
-	 * ConversationInterface::joined callbacks.
+	 * ConversationInterface::joined and
+	 * ConversationInterface::joined_chat callbacks.
 	 */
 	virtual ConversationInterface* invited_to_conversation(Conversation* conversation, const std::string& username) = 0;
 };

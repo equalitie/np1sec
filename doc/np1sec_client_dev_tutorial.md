@@ -205,16 +205,16 @@ Once the invited user receives this invitation, the library shall notify her by 
 ```c++
 virtual void RoomInterface::invited_to_conversation(Conversation* conversation, std::string& username) = 0;
 ```
-From that point on, the user may decide to accept the invitation by invoking `Conversation::join` or reject it by invoking `Conversation::leave`. When that user decides to _join_, he transitions from the state _Invited_ into state _Joining_. This is indicated to that user through the `ConversationInterface::joining()` callback and to the rest of the users in that conversation through the `ConversationInterface::user_joining(const std::string& username)` callback.
+From that point on, the user may decide to accept the invitation by invoking `Conversation::join` or reject it by invoking `Conversation::leave`. When that user decides to _join_, he transitions from the state _Invited_ into state _Joined_. This is indicated to that user through the `ConversationInterface::joined()` callback and to the rest of the users in that conversation through the `ConversationInterface::user_joined(const std::string& username)` callback.
 
-While the user is in this state, it is possible that she may be able to decrypt _some_ of the messages circulating in that conversation and also that _some_ of the other already joined or joining users may decrypt her messages. To make sure _everyone_ who is in state _Joined_ in that conversation is able to read her messages, she needs to wait for the `ConversationInterface::joined()` callback (equivalently, others need to wait for the `ConversationInterface::user_joined(username)` callback).
+While the user is in this state, it is possible that she may be able to decrypt _some_ of the messages circulating in that conversation and also that _some_ of the other participants may decrypt her messages. To make sure _everyone_ who is in state _InChat_ in that conversation is able to read her messages, she needs to wait for the `ConversationInterface::joined_chat()` callback (equivalently, others need to wait for the `ConversationInterface::user_joined_chat(username)` callback).
 
 While the user is in the _Invited_ state, those who sent the invitation can cancel it by calling the `Conversation::cancel_invite(username)` function. In that case the invitee shall be notified through the `ConversationInterface::invitation_cancelled(inviter, invitee)`. If every inviter of an invitee does so, the invitee's conversation shall be destroyed and thus she'll no longer be able to join it.
 
 This is the crux of the invitation process. For more details about how to transition between the different states in the Conversation, please consult the [Conversation and Users section of the (n+1)sec API document](np1sec_api.md#conversations-and-users).
 
 # Leaving a conversation
-As sketched in the previous paragraph, once a conversation is created the user may be in one of three different states: _Invited_, _Joining_ and _Joined_. While in any of these states, the use may choose to leave voluntarily or be made left non voluntarily. In the former case, the user needs to invoke the function
+As sketched in the previous paragraph, once a user creates or is invited into a conversation, she'll be in one of three different states: _Invited_, _Joined_ and _InChat_. While in any of these states, the user may choose to leave voluntarily or be made left non voluntarily. In the former case, the user needs to invoke the function
 
 ```c++
     /* Set detach to true to receive the ConversationInterface::left() event */
@@ -224,7 +224,7 @@ If the `detach` argument to this function is `true` the leaving process shall be
 
 The user may be forced to leave non voluntarily by others canceling her invitation (as discussed in the previous chapter) while in the _Invited_ state.
 
-Whether the user leaves non-voluntarily or executes _Conversation::leave(**true**)_, she shall receive the `Conversation::left` even after which the conversation gets destroyed implicitly.
+Whether the user leaves non-voluntarily or executes _Conversation::leave(**true**)_, she shall receive the `Conversation::left` event after which the conversation gets destroyed implicitly.
 
 # Authentication
 To avoid the man in the middle attack, (n+1)sec exposes (through its API) each user's public key. It does so in two occasions. The first time is when a user joins the Room through the `RoomInterface::user_joined(username, public_key)` callback. This public key should be consulted and verified by the user of the client before that new user is to be invited into a conversation.

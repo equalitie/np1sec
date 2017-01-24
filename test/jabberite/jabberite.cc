@@ -205,15 +205,15 @@ class JabberiteConversationInterface final : public np1sec::ConversationInterfac
 	void invitation_cancelled(const std::string& inviter, const std::string& invitee);
 	void user_authenticated(const std::string& username, const np1sec::PublicKey& public_key);
 	void user_authentication_failed(const std::string& username);
-	void user_joining(const std::string& username);
+	void user_joined(const std::string& username);
 	void user_left(const std::string& username);
 	void votekick_registered(const std::string& kicker, const std::string& victim, bool kicked);
 	
-	void user_joined(const std::string& username);
+	void user_joined_chat(const std::string& username);
 	void message_received(const std::string& sender, const std::string& message);
 	
-	void joining();
 	void joined();
+	void joined_chat();
 	void left();
 	
 	protected:
@@ -244,9 +244,9 @@ void JabberiteConversationInterface::user_authentication_failed(const std::strin
 	jabberite->user_authentication_failed(id(), username);
 }
 
-void JabberiteConversationInterface::user_joining(const std::string& username)
+void JabberiteConversationInterface::user_joined(const std::string& username)
 {
-	jabberite->user_joining(id(), username);
+	jabberite->user_joined(id(), username);
 }
 
 void JabberiteConversationInterface::user_left(const std::string& username)
@@ -259,9 +259,9 @@ void JabberiteConversationInterface::votekick_registered(const std::string& kick
 	jabberite->votekick_registered(id(), kicker, victim, kicked);
 }
 
-void JabberiteConversationInterface::user_joined(const std::string& username)
+void JabberiteConversationInterface::user_joined_chat(const std::string& username)
 {
-	jabberite->user_joined(id(), username);
+	jabberite->user_joined_chat(id(), username);
 }
 
 void JabberiteConversationInterface::message_received(const std::string& sender, const std::string& message)
@@ -269,14 +269,14 @@ void JabberiteConversationInterface::message_received(const std::string& sender,
 	jabberite->message_received(id(), sender, message);
 }
 
-void JabberiteConversationInterface::joining()
-{
-	jabberite->joining(id());
-}
-
 void JabberiteConversationInterface::joined()
 {
 	jabberite->joined(id());
+}
+
+void JabberiteConversationInterface::joined_chat()
+{
+	jabberite->joined_chat(id());
 }
 
 void JabberiteConversationInterface::left()
