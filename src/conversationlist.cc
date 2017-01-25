@@ -102,6 +102,7 @@ void ConversationList::message_received(const std::string& sender, const Convers
 		) {
 			try {
 				ConversationStatusMessage message = ConversationStatusMessage::decode(conversation_message);
+
 				if (
 					   message.invitee_username == m_room->username()
 					&& message.invitee_long_term_public_key == m_room->public_key()
@@ -127,9 +128,14 @@ void ConversationList::message_received(const std::string& sender, const Convers
 						it++;
 					}
 				}
-			} catch(MessageFormatException) {}
-			
-			clear_invite(sender, conversation_message.conversation_public_key);
+
+				if (message.invitee_username == m_room->username()) {
+					clear_invite(sender, conversation_message.conversation_public_key);
+				}
+			} catch(MessageFormatException) {
+				// TODO: Shouldn't we clear all invites from the sender at this point?
+			    clear_invite(sender, conversation_message.conversation_public_key);
+			}
 		}
 	}
 }
