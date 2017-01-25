@@ -315,7 +315,7 @@ bool Conversation::user_is_votekicked(const std::string&victim, const std::strin
 	return m_participants.at(participant).votekick_peers.count(victim) > 0;
 }
 
-bool Conversation::participant_in_chat(const std::string& username) const
+bool Conversation::participant_joined(const std::string& username) const
 {
 	if (!m_participants.count(username)) {
 		throw InvalidUserException();
@@ -323,7 +323,7 @@ bool Conversation::participant_in_chat(const std::string& username) const
 	if (!m_participants.at(username).is_participant && !m_participants.at(username).authenticated) {
 		throw InvalidUserException();
 	}
-	return m_encrypted_chat.user_in_chat(username);
+	return m_encrypted_chat.user_joined(username);
 }
 
 std::string Conversation::invitee_inviter(const std::string& username) const
@@ -337,9 +337,9 @@ std::string Conversation::invitee_inviter(const std::string& username) const
 	return m_participants.at(username).inviter;
 }
 
-bool Conversation::in_chat() const
+bool Conversation::joined() const
 {
-	return m_encrypted_chat.user_in_chat(m_room->username());
+	return m_encrypted_chat.user_joined(m_room->username());
 }
 
 bool Conversation::is_invite() const
@@ -830,11 +830,11 @@ void Conversation::message_received(const std::string& sender, const Conversatio
 		
 		bool self_joined = (sender == m_room->username());
 		
-		if (interface()) interface()->user_joined(sender);
+		if (interface()) interface()->user_joining(sender);
 		
 		if (self_joined) {
 			m_room->conversation_set_participant(this);
-			if (interface()) interface()->joined();
+			if (interface()) interface()->joining();
 		}
 	} else if (conversation_message.type == Message::Type::Leave) {
 		LeaveMessage message;
@@ -1132,7 +1132,7 @@ bool Conversation::am_participant() const
 
 bool Conversation::am_chatting() const
 {
-	return m_encrypted_chat.in_chat();
+	return m_encrypted_chat.joined();
 }
 
 

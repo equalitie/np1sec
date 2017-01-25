@@ -62,8 +62,8 @@ class EncryptedChat
 	
 	
 	
-	bool in_chat() const;
-	bool user_in_chat(const std::string& username) const;
+	bool joined() const;
+	bool user_joined(const std::string& username) const;
 	
 	void initialize_latest_session(const Hash& session_id);
 	void create_solo_session(const Hash& session_id);

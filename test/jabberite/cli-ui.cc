@@ -47,15 +47,15 @@ class CliJabberite final : public Jabberite
 	void invitation_cancelled(int conversation_id, std::string inviter, std::string invitee);
 	void user_authenticated(int conversation_id, std::string username, np1sec::PublicKey public_key);
 	void user_authentication_failed(int conversation_id, std::string username);
-	void user_joined(int conversation_id, std::string username);
+	void user_joining(int conversation_id, std::string username);
 	void user_left(int conversation_id, std::string username);
 	void votekick_registered(int conversation_id, std::string kicker, std::string victim, bool kicked);
 	
-	void user_joined_chat(int conversation_id, std::string username);
+	void user_joined(int conversation_id, std::string username);
 	void message_received(int conversation_id, std::string sender, std::string message);
 	
+	void joining(int conversation_id);
 	void joined(int conversation_id);
-	void joined_chat(int conversation_id);
 	void left(int conversation_id);
 	
 	void dump(int conversation_id);
@@ -163,7 +163,7 @@ void CliJabberite::user_authentication_failed(int conversation_id, std::string u
 	if (m_verbose) dump(conversation_id);
 }
 
-void CliJabberite::user_joined(int conversation_id, std::string username)
+void CliJabberite::user_joining(int conversation_id, std::string username)
 {
 	print("** <" + std::to_string(conversation_id) + "> " + username + " joined the conversation\n");
 	if (m_verbose) dump(conversation_id);
@@ -181,7 +181,7 @@ void CliJabberite::votekick_registered(int conversation_id, std::string kicker, 
 	if (m_verbose) dump(conversation_id);
 }
 
-void CliJabberite::user_joined_chat(int conversation_id, std::string username)
+void CliJabberite::user_joined(int conversation_id, std::string username)
 {
 	print("** <" + std::to_string(conversation_id) + "> " + username + " joined the chat session\n");
 	if (m_verbose) dump(conversation_id);
@@ -192,13 +192,13 @@ void CliJabberite::message_received(int conversation_id, std::string sender, std
 	print("** <" + std::to_string(conversation_id) + "> <" + sender + "> " + message + "\n");
 }
 
-void CliJabberite::joined(int conversation_id)
+void CliJabberite::joining(int conversation_id)
 {
-	print("** <" + std::to_string(conversation_id) + "> you joined the conversation\n");
+	print("** <" + std::to_string(conversation_id) + "> you are joining the conversation\n");
 	if (m_verbose) dump(conversation_id);
 }
 
-void CliJabberite::joined_chat(int conversation_id)
+void CliJabberite::joined(int conversation_id)
 {
 	print("** <" + std::to_string(conversation_id) + "> you joined the chat session\n");
 	if (m_verbose) dump(conversation_id);
@@ -215,7 +215,7 @@ void CliJabberite::dump(int conversation_id)
 	np1sec::Conversation* conversation = this->conversation(conversation_id);
 	
 	print(std::string("Conversation status <") + std::to_string(conversation_id) + ">:\n");
-	print(std::string("  Status: ") + (conversation->is_invite() ? "invited" : conversation->in_chat() ? "chatting" : "participant") + "\n");
+	print(std::string("  Status: ") + (conversation->is_invite() ? "invited" : conversation->joined() ? "chatting" : "participant") + "\n");
 	print(std::string("Participants:\n"));
 	for (const std::string& username : conversation->participants()) {
 		print(std::string("  ") + username + "\n");
@@ -226,7 +226,7 @@ void CliJabberite::dump(int conversation_id)
 		} else {
 			print(std::string("    Identity: Unauthenticated\n"));
 		}
-		print(std::string("    In chat: ") + (conversation->participant_in_chat(username) ? "yes" : "no") + "\n");
+		print(std::string("    In chat: ") + (conversation->participant_joined(username) ? "yes" : "no") + "\n");
 	}
 	print(std::string("Invitees:\n"));
 	for (const std::string& username : conversation->invitees()) {
