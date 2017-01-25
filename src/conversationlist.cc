@@ -134,7 +134,7 @@ void ConversationList::message_received(const std::string& sender, const Convers
 				}
 			} catch(MessageFormatException) {
 				// TODO: Shouldn't we clear all invites from the sender at this point?
-			    clear_invite(sender, conversation_message.conversation_public_key);
+				clear_invite(sender, conversation_message.conversation_public_key);
 			}
 		}
 	}
