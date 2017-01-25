@@ -204,9 +204,6 @@ void wait_for_invite_and_users(Room& room, size_t num_users, function<void(Conv)
                     auto N = num_users - size;
                     auto count = make_shared<size_t>(N);
 
-                    // TODO: Sometimes we get "user joined chat" event even when
-                    //       that user is already in the conversation after it's
-                    //       been created. Add a test for that.
                     for (size_t i = 0; i < N; ++i) {
                         conv_p->wait_for_user_to_join_chat([=, &room](std::string) {
                             if (--*count == 0) {
