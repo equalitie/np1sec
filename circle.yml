@@ -1,0 +1,5 @@
+deployment:
+  echochamber:
+    branch: master
+    commands:
+      - curl -v -X POST https://circleci.com/api/v1/project/equalitie/echochamber/tree/master?circle-token=$ECHOCHAMBER_CI_KEY
