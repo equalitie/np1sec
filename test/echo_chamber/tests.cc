@@ -362,6 +362,95 @@ BOOST_AUTO_TEST_CASE(invite_concurrent_size_3_delay_0ms)
 }
 
 //------------------------------------------------------------------------------
+/* Create a session of `user_count` users, then, after everyone joined chats
+ * of everyone else, introduce a new client "new_guy" and expect that once
+ * that client joins chats of other clients they'll receive a "new_guy joined
+ * chat" event. */
+BOOST_AUTO_TEST_CASE(test_session_join_order)
+{
+    using Users = std::vector<User>;
+
+    io_service ios;
+
+    size_t user_count = 5;
+    bool callback_called = false;
+
+    EchoServer server(ios);
+
+    /* The test seems to pass if the ConsecutiveInvite
+     * strategy is used. */
+    //ConsecutiveInviteStrategy invite_strategy{10ms};
+    ConcurrentInviteStrategy invite_strategy{0s};
+
+    auto finish = [&server, &ios](const shared_ptr<Users>& users) {
+        server.stop();
+        ios.post([users] { users->clear(); });
+    };
+
+    auto join_new_guy = [=, &server] (auto h) {
+        auto room = make_shared<Room>(server.get_io_service(), "new_guy");
+        room->get_np1sec_room()->debug_disable_fsck();
+
+        room->connect(server.local_endpoint(), [=] (error_code ec) {
+            BOOST_CHECK(!ec);
+
+            room->wait_for_invite([=] (Conv conv) {
+                auto conv_p = move_to_shared(conv);
+
+                conv_p->join([=] {
+                    conv_p->wait_until_joined_chat([=] {
+                         h(User{move(*room), move(*conv_p)});
+                    });
+                });
+            });
+        });
+    };
+
+    auto cancel = create_session(ios, user_count, server.local_endpoint(), invite_strategy,
+                                 [&] (Users users_) {
+        BOOST_CHECK_EQUAL(users_.size(), user_count);
+        callback_called = true;
+
+        auto users = move_to_shared(users_);
+
+        auto on_finish_one = on_nth_invocation(users->size() + 1, [users, finish] {
+                finish(users);
+            });
+
+        auto& inviter = (*users)[0];
+
+        inviter.room.wait_for_user_to_join([=, &inviter] (std::string username, PublicKey pubkey) {
+            for (auto& user : *users) {
+                if (&user == &inviter) {
+                    user.conv.invite(username, pubkey);
+                    user.conv.wait_for_user_to_join_chat([=, u = user.name()](std::string name) {
+                            BOOST_CHECK_EQUAL(name, "new_guy");
+                            on_finish_one();
+                        });
+                }
+                else {
+                    /* Wait for the new guy to join chat */
+                    user.conv.wait_for_user_to_join_chat([=, u = user.name()](std::string new_guy) {
+                        BOOST_CHECK_EQUAL(new_guy, "new_guy");
+                        on_finish_one();
+                    });
+                }
+            }
+        });
+
+        join_new_guy([on_finish_one, users] (User user) {
+            BOOST_REQUIRE_EQUAL(user.name(), "new_guy");
+            users->push_back(move(user));
+            on_finish_one();
+        });
+    });
+
+    ios.run();
+
+    BOOST_CHECK(callback_called);
+}
+
+//------------------------------------------------------------------------------
 template<class H> void test_with_session(size_t user_count, H&& h) {
     using Users = std::vector<User>;
 
