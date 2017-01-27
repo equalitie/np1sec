@@ -389,7 +389,6 @@ BOOST_AUTO_TEST_CASE(test_session_join_order)
 
     auto join_new_guy = [=, &server] (auto h) {
         auto room = make_shared<Room>(server.get_io_service(), "new_guy");
-        room->get_np1sec_room()->debug_disable_fsck();
 
         room->connect(server.local_endpoint(), [=] (error_code ec) {
             BOOST_CHECK(!ec);
