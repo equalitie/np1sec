@@ -1,5 +1,8 @@
 \documentclass{article}
 
+\usepackage{enumitem}
+\usepackage{url}
+
 \title{(n+1)sec protocol specification}
 \author{eQualit.ie}
 
@@ -10,6 +13,9 @@
 \def\field#1{\textit{#1}}
 
 \def\smfield#1{\textsf{#1}}
+
+\def\concat{\mathbin{+\!\!\!+\,}}
+\def\xor{\oplus}
 
 
 \newenvironment{basicmessage}[2]{
@@ -159,6 +165,209 @@ maybe we can skip this?
 
 
 
+\section{Cryptography}
+\label{sec:cryptography}
+
+The (n+1)sec protocol makes use of several different cryptographic techniques to implement the security properties outlined in the previous section.
+In addition to standard cryptographic constructions such as symmetric ciphers and public-key signatures, (n+1)sec uses versions of the \emph{Triple Diffie-Hellman} deniable authentication scheme, and the 
+
+% TODO finish
+
+\subsection{Triple Diffie-Hellman authenticated key exchange}
+\label{sec:cryptography/triple-diffie-hellman}
+
+In several places, the (n+1)sec protocol makes use of the Triple Diffie-Hellman deniable authenticated key exchange protocol \cite{tdh}.
+Like the traditional Diffie-Hellman key exchange protocol, the Triple Diffie-Hellman protocol allows two parties to exchange a shared secret over a communication channel on which an eavesdropper may be present, which can be used as the basis of an ephemeral symmetric key which achieves perfect forward secrecy.
+
+Unlike traditional Diffie-Hellman, the Triple Diffie-Hellman protocol provides authentication of the protocol participants, which makes the protocol secure in the face of men in the middle or other active attackers.
+This authentication component of the Triple Diffie-Hellman protocol is a form of \emph{deniable} authentication: the messages exchanged in the protocol do not contain any artifacts that an attacker could use as cryptographic proof that communication between two partners occurred, which simpler schemes such as traditional Diffie-Hellman augmented with cryptographic signatures would.
+
+The Triple Diffie-Hellman protocol yields a secret that is known only to the parties holding the private keys of the protocol participants.
+By communicating proof that the two parties know this secret, without necessarily using this secret as the base of a symmetric key, the Triple Diffie-Hellman protocol can also be used as a deniable authentication protocol, allowing two parties to authenticate each other under the allowance of deniability.
+
+\subsubsection{Notation}
+\label{sec:cryptography/triple-diffie-hellman/notation}
+
+In the remainder of this section, we use $G$ to denote a finite cyclic group of prime order $N$ with generator $g$, and $H$ to denote a cryptographic hash function.
+The Triple Diffie-Hellman protocol can be defined in terms of these parameter components, and the description below will use these components abstractly.
+The specific algorithms used to implement these cryptographic primitives in the (n+1)sec protocol are described in Section~\ref{sec:cryptography/cryptographic-primitives}.
+
+\subsubsection{Protocol}
+\label{sec:cryptography/triple-diffie-hellman/protocol}
+
+The Triple Diffie-Hellman protocol takes place between two parties, denoted Alice and Bob, who each possess a private key and know each other's corresponding public key; these public keys are used as the basis of authentication.
+Alice and Bob's private keys take the form of natural numbers $A$ and $B$, respectively, with $1 \leq A, B < N$, where $N$ is the order of the group $G$.
+The corresponding public keys are the group values $g^A$ and $g^B$, respectively.
+
+When starting a Triple Diffie-Hellman session, Alice and Bob both generate ephemeral private keys, denoted $a$ and $b$ with $1 \leq a, b < N$, that are used for the duration of the session, and used to derive a shared secret that forms the basis of a symmetric key.
+As in traditional Diffie-Hellman, these ephemeral keys are not saved to long-term storage, and erased after the completion of a session, and this forms the basis of forward secrecy: the session secret is based (among others) on these ephemeral keys, which means that compromise of the long-term keys $A$ and $B$ will not jeopardize past session keys.
+Alice and Bob announce their respective ephemeral public keys, $g^a$ and $g^b$.
+
+Alice and Bob then compute the terms $g^{Ab}$, $g^{aB}$, and $g^{ab}$.
+These terms can be computed by Alice as $g^{Ab} = (g^b)^A$, $g^{aB} = (g^B)^a$, and $g^{ab} = (g^b)^a$, respectively; symmetrically, Bob can compute them as $g^{Ab} = (g^A)^b$, $g^{aB} = (g^a)^B$, and $g^{ab} = (g^a)^b$.
+Using these terms as input to a key derivation function, described below, yields a shared secret $S = f(g^{Ab}, g^{aB}, g^{ab})$.
+
+A key property of the Triple Diffie-Hellman protocol is that the key derivation function uses the terms $g^{Ab}$, $g^{aB}$, and $g^{ab}$, but not $g^{AB}$.
+Because all terms used by the key derivation function are based on at least one ephemeral key, an attacker who holds both ephemeral private keys -- but neither of the long term private keys -- is also in a position to compute the secret $S$.
+Indeed, an attacker knowing $a$, $b$, $g^A$, and $g^B$ can compute $g^{Ab} = (g^A)^b$, $g^{aB} = (g^B)^a$, and $g^{ab}$ = $((g)^a)^b$.
+
+This property has two critical consequences that (n+1)sec relies upon.
+A person who knows the public keys of Alice and Bob can generate their own ephemeral private keys $a'$ and $b'$, compute the assorted secret $S$, and thereby forge a convincing exchange between Alice and Bob that is indistinguishable for a third party to a genuine exchange between Alice and Bob.
+Because of this forgeability, a genuine exchange between Alice and Bob is useless to a third party as a cryptographic proof of communication between Alice and Bob, which forms the basis of deniable authentication (described below).
+Furthermore, the (n+1)sec protocol makes use of the possibility of computing a shared Triple Diffie-Hellman secret based on both ephemeral private keys as part of a denial-of-service recovery procedure, described in Section~\ref{todo:cryptography/key-exchange-reveal}.
+
+\subsubsection{Secret computation}
+\label{sec:cryptography/triple-diffie-hellman/secret-computation}
+
+The Triple Diffie-Hellman protocol computes a secret based on the public keys and private keys of the two participants of the protocol.
+It does this by computing the terms $g^{Ab}$, $g^{aB}$, and $g^{ab}$, and using these terms as input to a key derivation function.
+
+As described in Section~\ref{sec:cryptography/cryptographic-primitives}, (n+1)sec uses the Ed25519 Twisted Edwards curve \ref{ed25519} as its cryptographic group $G$.
+The terms $g^{Ab}$, $g^{aB}$, and $g^{ab}$ are therefore points $(x, y)$ on that curve.
+To compute the shared secret $S = f(g^{Ab}, g^{aB}, g^{ab})$, (n+1)sec uses the following procedure:
+\begin{enumerate}
+\item Compute $g^{Ab}$, $g^{aB}$, $g^{ab}$.
+\item For each of $g^{Ab}$, $g^{aB}$, $g^{ab}$, encode the point as a 32-byte stream encoding the $x$-coordinate in little endian encoding.
+\item Sort the $x$-coordinate byte streams of the three points in lexicographical order, denoted $x_1$, $x_2$, $x_3$, with $x_1 \leq x_2 \leq x_3$.
+\item Compute $S = H(x_1 \concat x_2 \concat x_3)$, where $\concat$ expresses concatenation.
+\end{enumerate}
+The shared secret $S$ for keys $A$, $a$, $B$, $b$ is also denoted $TDH(g^A, g^a, g^B, g^b)$.
+
+% TODO not implemented like this at the moment
+
+\subsubsection{Authentication}
+\label{sec:cryptography/triple-diffie-hellman/authentication}
+
+The Triple Diffie-Hellman protocol exchanges a secret shared by two participants each identified by a pair of public keys.
+When one party then sends a message indicating knowledge of the secret, such as a message encrypted using the secret-derived symmetric key or a hash of the secret, this proves to the other party that the sender possesses the private keys on which the secret is based.
+Using this scheme, the Triple Diffie-Hellman protocol can be used as a deniable authentication system.
+
+If Alice and Bob exchange a secret $S$, based on Alice's public keys $g^A$ and $g^a$ and Bob's public keys $g^B$ and $g^b$, and Bob then sends a message $m(S)$ derived from $S$ that could not have been derived from any message sent by Alice, this proves to Alice that Bob possesses both the private keys $B$ and $b$.
+Bob can then use his ephemeral private key $b$ to generate \emph{deniable signatures} of further messages.
+When Alice receives such a message signed using the $b$ private key, she can verify that the message was sent by Bob (for she knows that Bob possesses both $B$ and $b$).
+But Alice cannot prove this fact to a third party, for as far as the third party is concerned Alice could possess both $a$ and $b$, and have forged the $b$-based signature as well as $m(S)$.
+
+The (n+1)sec protocol implements this scheme using the following authentication challenge protocol:
+\begin{description}[noitemsep]
+\item[Participants.] User $A$ with username $U_A$ has announced long term public key $g^A$ and emphemeral public key $g^a$. User $B$ with username $U_B$ has announced $g^B$ and $g^b$.
+\item[Round 1.] User $A$ sends user $B$ an \emph{authentication challenge} nonce $N$.
+\item[Round 2.] User $B$ sends user $A$ the \emph{authentication confirmation} $T = H(U_B \concat N \concat TDH(g^A, g^a, g^B, g^b))$.
+\item[Computation.] User $A$ verifies the correctness of the authentication confirmation. If it is correct, $A$ knows that $B$ possesses the private key $b$.
+\end{description}
+
+The (n+1)sec protocol uses the authentication challenge protocol in several places to provide mutual deniable authentication between users, in such a way that authentication of $B$ to $A$ and authentication of $A$ to $B$ typically run in parallel.
+This takes the form of a message from a user with username $U_A$, long term public key $g^A$, and ephemeral public key $g^a$, to a user with username $U_B$, long term public key $g^B$, and ephemeral public key $g^b$, containing an authentication challenge $N$; followed by a message from $B$ to $A$ containing the authentication confirmation $T = H(U_B \concat N \concat TDH(g^A, g^a, g^B, g^b))$.
+When $A$ receives that message with a correct value of $T$, $A$ can then mark $B$ as being authenticated for the ephemeral public key $g^b$, and accept messages from $B$ signed against that public key.
+
+% TODO T = H(TDH() ++ N ++ U) at the moment, which risks a length extension attack.
+% TODO round 1 is skipped sometimes
+
+%\subsubsection{Security properties}
+%\label{sec:cryptography/triple-diffie-hellman/security-properties}
+
+% TODO security properties section
+
+
+\subsection{Group Key Exchange}
+\label{sec:cryptography/group-key-exchange}
+
+Chat messages in (n+1)sec sent to a conversation are encrypted using a symmetric key known to all participants of the conversation.
+The participants of a conversation negotiate such a key each time a new participant joins the conversation, or a previous participant leaves the conversation.
+
+To exchange such a symmetric key among a group of participants, the (n+1)sec protocol makes use of a \emph{group key exchange} protocol.
+A group key protocol is an extension of the traditional Diffie-Hellman key exchange protocol; where the Diffie-Hellman protocol allows two parties to exchange a shared secret over an untrusted communication channel to be used to derive a symmetric key, a group key exchange protocol can achieve the same thing for larger collections of users.
+The (n+1)sec protocol invokes an instance of a group key exchange protocol each time a conversation requires a new shared symmetric key.
+
+A complication of group key exchange protocols that has no equivalent in the two-party Diffie-Hellman key exchange protocol lies in the possibility of \emph{denial of service} attacks.
+A participant in a group key exchange protocol might send messages containing invalid contribitions to the key exchange, in a way that other participants cannot readily detect, causing the key exchange mechanism to fail.
+While most group key exchange protocols will verify at the end that a key was exchanged successfully, and notice the problem if one of the participants to the exchange acted maliciously, most key exchange protocols cannot then determine which participant was responsible for the failure.
+Should the participants of the conversation then simply try again to exchange a key, the malicious participant could keep disrupting the negotiation of a key indefinitely, freezing conversation progress without anyone being able to determine the party responsible for this breakdown.
+
+The (n+1)sec protocol makes use of a version of the Abdalla-Chevalier-Manulis-Pointcheval GKE+P authenticated group key exchange \cite{acmp}.
+The version of this protocol used by (n+1)sec is modified in such a way that both the participants of a key exchange, and nonparticipating observants of a key exchange, can always determine the party responsible for any failures of the key exchange; these participants can then choose not to include the responsible party in further key exchange attempts, and solve the problem thereby.
+
+\subsubsection{Cryptography}
+\label{sec:cryptography/group-key-exchange/cryptography}
+
+The (n+1)sec group key exchange protocol takes place when a group of conversation participants decide that they need a new shared key between themselves.
+This happens only when all participants have already authenticated each other, and each participant has a signing key accepted as genuine by all participants.
+All communications involved in the group key exchange protocol are signed using the author's such signing key; this aspect of the protocol ensures authentication of all participants involved in a group key exchange procedure.
+
+In this context, the group key exchange protocol has the following conceptual steps:
+\begin{enumerate}
+\item All participants in the key exchange are ordered in a circle. Participants are denoted $U_0$ to $U_{n-1}$, with indices taken modulo $n$: $U_n = U_0$, $U_{-1} = U_{n-1}$. Participant $U_i$ has public key $k_i = g^{m_i}$.
+\item Each participant $U_i$ generates a temporary private key $x_i$, used for the duration of the key exchange, and broadcasts the associated public key $y_i = g^{x_i}$.
+\item Each participant $U_i$ computes a Triple Diffie-Hellman secret shared with his left and right neighbours in the circle: $d_{i-1, i} = TDH(k_{i-1}, y_{i-1}, k_i, y_i)$; $d_{i, i+1} = TDH(k_i, y_i, k_{i+1}, y_{i+1})$.
+\item Each participant $U_i$ computes and broadcasts the XOR sum of their two Triple Diffie-Hellman secrets: $z_i = d_{i-1, i} \xor d_{i, i+1}$.
+\item By combining the linear combinations $z$ of the secrets $d$, each participant computes the secrets $d_{j, j+1}$ for all $0 \leq j < n$. Each participant $U_i$ computes these values by computing $d_{i+1, i+2} := z_{i+1} \xor d_{i, i+1}$, $d_{i+2, i+3} := z_{i+2} \xor d_{i+1, i+2}$, \ldots
+\item Each participant $U_i$ computes the shared secret $S = d_{0, 1} \concat d_{1, 2} \concat \ldots \concat d_{n-2, n-1} \concat d_{n-1, 0}$. This secret is used as input to a key derivation function.
+\end{enumerate}
+
+This protocol derives its security from the fact that the Triple Diffie-Hellman secrets $d_{j, j+1}$ can be recovered by the participants of the exchange, but not by any eavesdropper.
+The different values of $z_j$ form a system of linear equations in the variables $d_{j, j+1}$; the protocol publishes the information that $d_{0, 1} \xor d_{1, 2} = z_{1}$, $d_{1, 2} \xor d_{2, 3} = z_2$, and so on.
+Of these $n$ equations, $n - 1$ are independent; the last one can be derived from the first $n - 1$, for $z_0 = d_{n-1, 0} \xor d_{0, 1} = \bigoplus_{i=1, n-1} z_i$.
+This makes the values of $z$ a system of $n - 1$ independent linear equations in $n$ variables, which provides no usable information to an eavesdropper.
+Only by knowing the value of at least one secret $d$ are participants able to compute the values of all other secrets $d_{j, j+1}$, for this gives the equation system a unique solution.
+
+When the cryptographic protocol above is finished, the participants confirm to each other that they have all computed the same value of $S$.
+If this is not the case, this indicates that at least one of the participants $U_i$ is malicious, and has broadcast a value of $z_i$ that is not derived correctly from the public key $y_i$ they announced.
+In this situation, the participants of the protocol can all reveal their private key $x_i$; this allows all participants (and nonparticipating observers) to compute the correct values $y_j$ and $z_j$ that all participants should have announced.
+By comparing these expected values to the values actually broadcast, participants and observers can identify the malicious participant, and start a new group key exchange without that participant.
+
+\subsubsection{Protocol}
+\label{sec:cryptography/group-key-exchange/protocol}
+
+The (n+1)sec protocol implements a concrete version of the abstract protocol described in the previous section.
+This protocol gets invoked when the set of chat-eligible members of a conversation changes, for reasons such as members joining and leaving the conversation.
+It also gets invoked when an existing group key has been in use for some time; by replacing a group key after a finite time limit, this limits the risk of the compromise of a symmetric group key, and thereby ensures that the compromise of any short-term keys compromises only a small fragment of long-running conversations.
+The details of the invocation of the group key exchange protocol are described from Section~\ref{sec:conversation-state-machine} onwards.
+
+The group key exchange protocol implemented by (n+1)sec consists of a maximum of four phases.
+After completing the two cryptographic phases described in Section~\ref{sec:cryptography/group-key-exchange/cryptography}, a third phase takes place in which the participants of the exchange verify that they have all computed the same shared secret.
+If this is indeed the case, the exchange finishes with a successful completion.
+If not, a fourth phase starts in which all participants reveal their temporary private keys, facilitating denial-of-service recovery.
+
+Concretely, (n+1)sec implements the following protocol:
+\begin{description}[noitemsep]
+\item[Participants.] The protocol initiates for a set of participants $v$, each having a username $U_v$ and a long term public key $k_v$ known by all participants. Participants are sorted in lexicographical order by username, and denoted $U_0$ to $U_{n-1}$.
+\item[Round 1.] Each participant $U_i$ generates a random private key $x_i$ and public key $y_i = g^{x_i}$, and broadcasts $y_i$.
+\item[Round 2.] Each participant $U_i$ proceeds as follows:
+	\begin{itemize}[noitemsep,nolistsep]\renewcommand{\labelitemi}{--}
+	\item compute $\texttt{groupid} := H(U_0 \concat k_0 \concat y_0 \concat \ldots \concat U_{n-1} \concat k_{n-1} \concat y_{n-1})$;
+	\item compute $d_{i-1, i} = H(TDH(k_{i-1}, y_{i-1}, k_i, y_i) \concat \texttt{groupid})$ and $d_{i, i+1} = H(TDH(k_i, y_i, k_{i+1}, y_{i+1}) \concat \texttt{groupid})$;
+	\item compute $z_i = d_{i-1, i} \xor d_{i, i+1}$;
+	\item broadcast $(z_i, \texttt{groupid})$.
+	\end{itemize}
+\item[Round 3.] Each participant $U_i$ proceeds as follows:
+	\begin{itemize}[noitemsep,nolistsep]\renewcommand{\labelitemi}{--}
+	\item verify that all participants have sent the correct \texttt{groupid}. If not, abort, and mark all participants that sent an invalid \texttt{groupid} as malicious;
+	\item compute $d_{j, j+1}$ for all $0 \leq j < n$, by computing $d_{j, j+1} := z_j \xor d_{j-1, j}$;
+	\item compute $S := H(d_{0, 1} \concat d_{1, 2} \concat \ldots \concat d_{n-2, n-1} \concat d_{n-1, 0})$;
+	\item broadcast $H(S \concat \texttt{groupid})$.
+	\end{itemize}
+\item[Round 4.] Each participant $U_i$ proceeds as follows:
+	\begin{itemize}[noitemsep,nolistsep]\renewcommand{\labelitemi}{--}
+	\item verify that all participants have sent the correct $H(S \concat \texttt{groupid})$. If so, accept $S$ as the exchanged key, and finish.
+	\item if not, broadcast the private key $x_i$.
+	\end{itemize}
+\item[Aftermath.] If participants disagreed on the value of $H(S \concat \texttt{groupid})$, and the private keys $x_j$ were broadcast, each participant computes the correct values of $y_j$, $z_j$, and $H(S \concat \texttt{groupid})$ for each participant; marks all participants that broadcast invalid values as malicious; and aborts.
+\end{description}
+
+When this protocol completes, the participants have either accepted a group key, or have aborted having marked a nonempty set of participants as malicious.
+Participants can then start exchanging messages encrypted using this group key; or, in the case of unsuccessful abortion, can remove the malicious participants from the conversation and start a new invocation of the group key exchange protocol for the reduced set of participants.
+The details of this response are described in Sections~\ref{sec:conversation-state-machine} and~\ref{sec:messages}.
+
+% TODO security properties
+
+
+
+\subsection{Cryptographic primitives}
+\label{sec:cryptography/cryptographic-primitives}
+
+
+choice of primitives -- elliptic curves, signatures, sha256, aes-gcm
+
+
 \section{Carrier Chatrooms}
 \label{sec:carrier-chatrooms}
 exact carrier chatroom model
@@ -168,18 +377,8 @@ carrier limitations (based on high level API)
 invitable user list
 
 
-\section{Cryptography}
-\label{sec:cryptography}
-triple diffie hellman deniable authentication
-
-key exchange protocol
-
-signatures?
-
-choice of primitives -- elliptic curves, sha256, aes-gcm
-
-
 \section{The Conversation State Machine}
+\label{sec:conversation-state-machine}
 
 %=== introduction to the state machine model ===
 %why do we use a state machine model?
@@ -216,6 +415,7 @@ participant: member who has fully joined, can participate in key negotiations, c
 
 
 \section{Messages}
+\label{sec:messages}
 list of messages
 
 describes for each message the semantics of the message; the time it may/must be sent; and in a declarative css-style way, the effect of a conversation packet on the conversation state machine
@@ -300,11 +500,11 @@ It contains the authentication challenge that forms the base of this authenticat
 \messagefield{username}{string}
 \messagefield{long-term-public-key}{publickey}
 \messagefield{room-public-key}{publickey}
-\messagefield{authentication-nonce}{nonce}
+\messagefield{authentication-challenge}{nonce}
 \end{basicmessage}
 
 A \message{ROOM\_AUTHENTICATION\_REQUEST} message is a request to the client that uses the identity consisting of the (\field{username}, \field{long-term-public-key}, \field{room-public-key}) triple to authenticate itself to the user using the (\field{sender}, \field{my-long-term-public-key}, \field{my-room-public-key}) identity.
-It declares that \field{sender} will consider \field{username} authenticated for this identity after receiving a valid authentication confirmation for this pair of identities, described in Section~\ref{todo:cryptography/authentication}, using \field{authentication-nonce} as the authentication nonce.
+It declares that \field{sender} will consider \field{username} authenticated for this identity after receiving a valid authentication confirmation for this pair of identities, described in Section~\ref{todo:cryptography/authentication}, using \field{authentication-challenge} as the authentication challenge.
 
 A \message{ROOM\_AUTHENTICATION\_REQUEST} message is addressed to the user with username \field{username} and private keys matching the \field{long-term-public-key} and \field{room-public-key}.
 Any client that does not have this complete identity ---including clients that use this username but use different keys--- SHOULD ignore the message.
@@ -334,7 +534,7 @@ Any client that does not have this complete identity ---including clients that u
 The client that does have this identity, if any, should consider the authentication valid if and only if
 \begin{itemize}
 \item that client previously sent a \message{ROOM\_AUTHENTICATION\_REQUEST} to the user with identity (\field{username}, \field{long-term-public-key}, \field{room-public-key}), and
-\item the \field{authentication-confirmation} field equals the expected authentication token computed from the \field{authentication-nonce} sent in the accompanying \message{ROOM\_AUTHENTICATION\_REQUEST} message, as specified in Section~\ref{todo:cryptography/authentication}.
+\item the \field{authentication-confirmation} field equals the expected authentication token computed from the \field{authentication-challenge} sent in the accompanying \message{ROOM\_AUTHENTICATION\_REQUEST} message, as specified in Section~\ref{todo:cryptography/authentication}.
 \end{itemize}
 If both requirements hold, this proves that the \field{sender} holds the private key corresponding to \field{my-long-term-public-key}.
 
@@ -442,11 +642,11 @@ It contains the authentication challenge that forms the base of this authenticat
 
 \begin{conversationmessage}{CONVERSATION\_AUTHENTICATION\_REQUEST}{0x15}
 \messagefield{username}{string}
-\messagefield{authentication-nonce}{nonce}
+\messagefield{authentication-challenge}{nonce}
 \end{conversationmessage}
 
 A \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message is a request to the identified member \field{username} to authenticate itself to the \field{sender}, for \field{username}'s and \field{sender}'s long term public keys and conversation public keys described by the conversation state machine.
-It declares that \field{sender} will consider \field{username} authenticated for this identity after receiving a valid authentication confirmation for this pair of identities, described in Section~\ref{todo:cryptography/authentication}, using \field{authentication-nonce} as the authentication nonce.
+It declares that \field{sender} will consider \field{username} authenticated for this identity after receiving a valid authentication confirmation for this pair of identities, described in Section~\ref{todo:cryptography/authentication}, using \field{authentication-challenge} as the authentication challenge.
 The \field{username} identified member, upon receiving a \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message, can authenticate itself to the \field{sender} by sending a \message{CONVERSATION\_AUTHENTICATION} message containing this authentication confirmation.
 
 The \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message has no effect on the conversation state machine besides the \smfield{status hash}.
