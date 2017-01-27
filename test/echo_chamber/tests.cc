@@ -511,6 +511,7 @@ BOOST_AUTO_TEST_CASE(test_randomized_message_exchange)
         });
     });
 }
+
 //------------------------------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE(test_ddos_hello)
@@ -581,6 +582,87 @@ BOOST_AUTO_TEST_CASE(test_ddos_hello)
     }
 
     ios.run();
+}
+
+//------------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(test_ratcheting)
+{
+    const size_t user_count = 3;
+    const size_t message_count = 100;
+
+    size_t ratchets_to_send = 5;
+
+    auto send_ratchet = [](User& user) {
+        auto& conv = *user.conv.get_np1sec_conv();
+        auto& ec   = conv.m_encrypted_chat;
+
+        ec.send_ratchet(ec.latest_session_id());
+    };
+
+    test_with_session_each_user(user_count, [&] (User& user, auto finish) {
+        auto next_msg_id = make_shared<size_t>(0);
+
+        auto random_duration = make_shared<RandomDuration>(100ms, 50ms);
+
+        bool is_mallory = user.name() == "user0";
+
+        auto one_loop_finished = on_nth_invocation(2 + (is_mallory ? 1 : 0), finish);
+
+        if (is_mallory) {
+            send_ratchet(user);
+
+            user.room.set_inbound_message_filter(
+                [ =
+                , &user
+                , &ratchets_to_send
+                , key_activation_counter = make_shared<unsigned int>(user_count) ]
+                (const std::string&, const np1sec::Message& msg)
+                {
+
+                    if (msg.type != np1sec::Message::Type::KeyActivation) {
+                        return true;
+                    }
+                    if (ratchets_to_send && --*key_activation_counter == 0) {
+                        *key_activation_counter = user_count;
+                        send_ratchet(user);
+                        if (--ratchets_to_send == 0) {
+                            one_loop_finished();
+                        }
+                    }
+                    return true;
+                });
+        }
+
+        async_loop([=, &user] (unsigned int i, auto cont) {
+            if (i == message_count) {
+                return one_loop_finished();
+            }
+
+            user.conv.send_chat(str("Message #", (*next_msg_id)++));
+
+            wait(random_duration->get(), user.room.get_io_service(), [=] {
+                cont();
+            });
+        });
+
+        async_loop([=, &user] (unsigned int i, auto cont) {
+            const size_t total_to_receive = user_count * message_count;
+
+            if (i == total_to_receive) {
+                return one_loop_finished();
+            }
+
+            user.conv.receive_chat([=, &user] (const std::string& source, const std::string& msg) {
+                ignore_unused(source, msg);
+                //cout << i << "/" << total_to_receive
+                //    << " User " << user.name()
+                //    << " received \"" << msg
+                //    << "\" from " << source << endl;
+
+                return cont();
+            });
+        });
+    });
 }
 
 //------------------------------------------------------------------------------

@@ -8,6 +8,7 @@ project (echo_chamber)
 find_package(Boost ${BOOST_VERSION} COMPONENTS system thread unit_test_framework REQUIRED)
 find_package(Threads)
 
+add_definitions(-Dprotected=public)
 add_definitions(-DBOOST_TEST_DYN_LINK)
 add_definitions(-DBOOST_THREAD_VERSION=4)
 

@@ -424,11 +424,16 @@ void EncryptedChat::prepare_session_replacement(Hash key_id)
 {
 	m_session_ratchet_timer = Timer(m_conversation->room()->interface(), c_session_ratchet_timeout, [key_id, this] {
 		if (m_key_exchanges.empty() && m_latest_session_id == key_id) {
-			KeyRatchetMessage message;
-			message.key_id = key_id;
-			m_conversation->send_message(message.encode());
+			send_ratchet(key_id);
 		}
 	});
+}
+
+void EncryptedChat::send_ratchet(Hash key_id)
+{
+	KeyRatchetMessage message;
+	message.key_id = key_id;
+	m_conversation->send_message(message.encode());
 }
 
 void EncryptedChat::progress_sessions()
