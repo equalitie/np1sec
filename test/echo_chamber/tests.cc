@@ -377,9 +377,8 @@ BOOST_AUTO_TEST_CASE(test_session_join_order)
 
     EchoServer server(ios);
 
-    /* The test seems to pass if the ConsecutiveInvite
-     * strategy is used. */
-    //ConsecutiveInviteStrategy invite_strategy{10ms};
+    /* The test seems to pass if the ConsecutiveInvite strategy is used. */
+    //ConsecutiveInviteStrategy invite_strategy{0ms};
     ConcurrentInviteStrategy invite_strategy{0s};
 
     auto finish = [&server, &ios](const shared_ptr<Users>& users) {
@@ -422,18 +421,12 @@ BOOST_AUTO_TEST_CASE(test_session_join_order)
             for (auto& user : *users) {
                 if (&user == &inviter) {
                     user.conv.invite(username, pubkey);
-                    user.conv.wait_for_user_to_join_chat([=, u = user.name()](std::string name) {
-                            BOOST_CHECK_EQUAL(name, "new_guy");
-                            on_finish_one();
-                        });
                 }
-                else {
-                    /* Wait for the new guy to join chat */
-                    user.conv.wait_for_user_to_join_chat([=, u = user.name()](std::string new_guy) {
-                        BOOST_CHECK_EQUAL(new_guy, "new_guy");
-                        on_finish_one();
-                    });
-                }
+                /* Wait for the new guy to join chat */
+                user.conv.wait_for_user_to_join_chat([=, u = user.name()](std::string name) {
+                    BOOST_CHECK_EQUAL(name, "new_guy");
+                    on_finish_one();
+                });
             }
         });
 
