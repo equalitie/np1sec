@@ -93,27 +93,6 @@ std::ostream& operator<<(std::ostream& os, const np1sec::ConsistencyCheckMessage
 	return os;
 }
 
-template<class R> struct Range {
-	const R& inner;
-};
-
-template<class R> Range<R> range(const R& inner) {
-	return Range<R>{inner};
-}
-
-template<class R>
-std::ostream& operator<<(std::ostream& os, const Range<R>& r)
-{
-	auto& range = r.inner;
-
-	os << "[";
-	for (auto i = range.begin(); i != range.end(); ++i) {
-		if (i != range.begin()) os << ", ";
-		os << *i;
-	}
-	return os << "]";
-}
-
 std::ostream& operator<<(std::ostream& os, const np1sec::ConversationStatusMessage::Participant& p)
 {
 	return os << p.username;
