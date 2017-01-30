@@ -191,27 +191,29 @@ void wait_for_invite_and_users(Room& room, size_t num_users, function<void(Conv)
     room.wait_for_invite([=, &room] (Conv conv) {
         auto conv_p = move_to_shared(conv);
 
+        auto finish = [conv_p, h = move(h)] { h(move(*conv_p)); };
+
         conv_p->join([=, &room] {
             conv_p->wait_until_joined_chat([=, &room] {
-                    auto size = conv_p->get_np1sec_conv()->participants().size();
+                auto participants = conv_p->get_np1sec_conv()->participants();
 
-                    assert(size <= num_users);
+                assert(participants.size() <= num_users);
 
-                    if (size == num_users) {
-                        return h(move(*conv_p));
-                    }
+                if (participants.size() == num_users) {
+                    return finish();
+                }
 
-                    auto N = num_users - size;
-                    auto count = make_shared<size_t>(N);
+                auto N = num_users - participants.size();
+                auto count = make_shared<size_t>(N);
 
-                    for (size_t i = 0; i < N; ++i) {
-                        conv_p->wait_for_user_to_join_chat([=, &room](std::string) {
-                            if (--*count == 0) {
-                                h(move(*conv_p));
-                            }
-                        });
-                    }
-                });
+                for (size_t i = 0; i < N; ++i) {
+                    conv_p->wait_for_user_to_join_chat([=, &room](std::string) {
+                        if (--*count == 0) {
+                            finish();
+                        }
+                    });
+                }
+            });
         });
     });
 }
@@ -372,7 +374,7 @@ BOOST_AUTO_TEST_CASE(test_session_join_order)
 
     io_service ios;
 
-    size_t user_count = 5;
+    size_t user_count = 3;
     bool callback_called = false;
 
     EchoServer server(ios);
@@ -406,6 +408,11 @@ BOOST_AUTO_TEST_CASE(test_session_join_order)
 
     auto cancel = create_session(ios, user_count, server.local_endpoint(), invite_strategy,
                                  [&] (Users users_) {
+        /* Make sure the first user is the one with name "user0" */
+        std::sort(users_.begin(), users_.end(),
+                  [] (const User& u1, const User& u2)
+                  { return u1.name() < u2.name(); });
+
         BOOST_CHECK_EQUAL(users_.size(), user_count);
         callback_called = true;
 
@@ -417,7 +424,10 @@ BOOST_AUTO_TEST_CASE(test_session_join_order)
 
         auto& inviter = (*users)[0];
 
+        BOOST_REQUIRE_EQUAL(inviter.name(), "user0");
+
         inviter.room.wait_for_user_to_join([=, &inviter] (std::string username, PublicKey pubkey) {
+            BOOST_REQUIRE_EQUAL(username, "new_guy");
             for (auto& user : *users) {
                 if (&user == &inviter) {
                     user.conv.invite(username, pubkey);
