@@ -60,9 +60,14 @@ public:
 
         auto args = std::make_shared<Tuple>(std::move(_queued_args.front()));
         _queued_args.pop();
-        ios.post([args = std::move(args), h = std::move(h)] {
+        ios.post([args = std::move(args), h = std::forward<H>(h)] {
                 apply_f(std::move(h), std::move(*args));
             });
+    }
+
+    void clear() {
+        _queued_args  = decltype(_queued_args)();
+        _queued_funcs = decltype(_queued_funcs)();
     }
 
 private:

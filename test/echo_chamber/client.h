@@ -40,6 +40,10 @@ public:
         _socket.close();
     }
 
+    bool stopped() const {
+        return _stopped;
+    }
+
     void connect(tcp::endpoint remote_ep, std::function<void(error_code)> h)
     {
         _socket.async_connect(remote_ep,
@@ -63,6 +67,10 @@ public:
         _tx_queue.push(name + ';' + msg);
         assert(_tx_queue.back().size() <= MAX_MESSAGE_SIZE);
         if (!is_sending) send_head();
+    }
+
+    tcp::endpoint local_endpoint() {
+        return _socket.local_endpoint();
     }
 
 private:

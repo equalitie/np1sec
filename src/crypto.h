@@ -48,6 +48,7 @@ namespace np1sec
 	
 	typedef ByteArray<c_private_key_length> SerializedPrivateKey;
 	
+	//! Structure representing cryptographic key pair
 	class PrivateKey
 	{
 		protected:
@@ -57,9 +58,16 @@ namespace np1sec
 		explicit PrivateKey(gcry_sexp_t sexp);
 		
 		public:
+		/** Constructor */
 		PrivateKey();
+
+		/** Copy constructor */
 		PrivateKey(const PrivateKey& other);
+
+		/** Assignment operator */
 		PrivateKey& operator=(const PrivateKey& other);
+
+		/** Destructor */
 		~PrivateKey();
 		
 		bool is_null() const
@@ -72,11 +80,13 @@ namespace np1sec
 			return m_private_key;
 		}
 		
+		/** Return the public key */
 		const PublicKey& public_key() const
 		{
 			return m_public_key;
 		}
 		
+		/** Generate a cryptographic key pair */
 		static PrivateKey generate(bool transient);
 		
 		SerializedPrivateKey serialize() const;

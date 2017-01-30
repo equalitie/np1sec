@@ -31,28 +31,99 @@
 namespace np1sec
 {
 
+//! Room class
 class Room
 {
 	public:
-	Room(RoomInterface* interface, const std::string& username, const PrivateKey& private_key);
-	
 	/*
 	 * Public API
 	 */
-	/* Accessors */
+
+	/**
+	 * Construct the room, no interface callbacks shall be called until
+	 * the Room::connect() function is called.
+	 */
+	Room(RoomInterface* interface, const std::string& username, const PrivateKey& private_key);
+
+	/**
+	 * True after Room::connect() was called but before
+	 * RoomInterface::disconnected() called back.
+	 */
 	bool connected() const;
+
+	/**
+	 * Return the map of authenticated users and their corresponding public keys.
+	 */
 	std::map<std::string, PublicKey> users() const;
+
+	/**
+	 * Return the set of conversations we created
+	 *
+	 * TODO: Proofread
+	 * These are conversations we've created using the Room::create_conversation
+	 * function but before we left them (ConversationInterface::left).
+	 */
 	std::set<Conversation*> conversations() const;
+
+	/**
+	 * Return the set of conversations we were invited into
+	 *
+	 * TODO: Proofread
+	 * These are conversations created through the RoomInterface::invited_to_conversation
+	 * callback callback before we left them (ConversationInterface::left).
+	 */
 	std::set<Conversation*> invites() const;
 	
 	/* Operations */
+
+	/**
+	 * Indicate to the library that the comunication link is ready to be used.
+	 */
 	void connect();
+
+	/**
+	 * Broadcast a Quit message and destroy all conversations
+	 *
+	 * Inside this function the RoomInterface::disconnected
+	 * callback is executed.
+	 */
 	void disconnect();
+
+	/**
+	 * Initiate the creation of a new secure conversation.
+	 *
+	 * Once the conversation is created, the
+	 * RoomInterface::created_conversation callback will be executed.
+	 */
 	void create_conversation();
 	
 	/* Callbacks */
+
+	/**
+	 * Tell the library that a new (n+1)sec message has arrived.
+	 *
+	 * The library doesn't own a communication channel and thus relies
+	 * on the user to transport the encrypted messages between other
+	 * users (e.g. using XMPP).
+	 *
+	 * This function is the *input* for the library. The *output*
+	 * must be implemented through the RoomInterface::send_message
+	 * function.
+	 *
+	 * \param sender Clear text user name of the sender
+	 * \param text_message Encrypted message.
+	 */
 	void message_received(const std::string& sender, const std::string& text_message);
+
+
+	/**
+	 * Indicate to the library a user has left.
+	 */
 	void user_left(const std::string& username);
+
+	/**
+	 * TODO
+	 */
 	void left_room();
 	
 	
@@ -106,7 +177,25 @@ class Room
 	}
 	
 	
-	
+	/* Debug */
+	template<class F>
+	void set_inbound_message_filter(F&& f) {
+		m_inbound_message_filter = std::forward<F>(f);
+	}
+
+	template<class F>
+	void set_outbound_message_filter(F&& f) {
+		m_outbound_message_filter = std::forward<F>(f);
+	}
+
+	void debug_disable_fsck(bool disable = true) {
+		m_debug_disable_fsck = disable;
+	}
+
+	bool is_fsck_enabled() const {
+		return !m_debug_disable_fsck;
+	}
+
 	protected:
 	void user_removed(const std::string& username);
 	void user_disconnected(const std::string& username);
@@ -122,6 +211,8 @@ class Room
 	bool m_disconnecting;
 	Hash m_disconnect_nonce;
 	
+	bool m_debug_disable_fsck = false;
+
 	struct User
 	{
 		std::string username;
@@ -133,6 +224,14 @@ class Room
 	std::map<std::string, User> m_users;
 	
 	ConversationList m_conversations;
+
+	/* Called before the message is processed. If the function returns false,
+	 * the message won't be processed. It is used for debugging and testing. */
+	std::function<bool(const std::string&, const Message&)> m_inbound_message_filter;
+
+	/* Called before the message is sent. If the function returns false,
+	 * the message won't be sent. It is used for debugging and testing. */
+	std::function<bool(const Message&)> m_outbound_message_filter;
 };
 
 } // namespace np1sec

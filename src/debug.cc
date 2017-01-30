@@ -93,27 +93,6 @@ std::ostream& operator<<(std::ostream& os, const np1sec::ConsistencyCheckMessage
 	return os;
 }
 
-template<class R> struct Range {
-	const R& inner;
-};
-
-template<class R> Range<R> range(const R& inner) {
-	return Range<R>{inner};
-}
-
-template<class R>
-std::ostream& operator<<(std::ostream& os, const Range<R>& r)
-{
-	auto& range = r.inner;
-
-	os << "[";
-	for (auto i = range.begin(); i != range.end(); ++i) {
-		if (i != range.begin()) os << ", ";
-		os << *i;
-	}
-	return os << "]";
-}
-
 std::ostream& operator<<(std::ostream& os, const np1sec::ConversationStatusMessage::Participant& p)
 {
 	return os << p.username;
@@ -128,7 +107,7 @@ std::ostream& operator<<(std::ostream& os, const np1sec::ConversationStatusMessa
 
 std::ostream& operator<<(std::ostream& os, const np1sec::ConversationStatusMessage::UnconfirmedInvite& i)
 {
-	return os << "inviter:" << i.username
+	return os << "inviter:" << i.inviter
 		<< " username:" << i.username;
 }
 
@@ -237,33 +216,53 @@ std::ostream& operator<<(std::ostream& os, const np1sec::KeyRatchetMessage& msg)
 	return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const np1sec::JoinMessage&)
+{
+	return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const np1sec::QuitMessage&)
+{
+	return os;
+}
+
+template<class M> struct ConvMsg {
+	const np1sec::Message& msg;
+};
+
+template<class M>
+std::ostream& operator<<(std::ostream& os, const ConvMsg<M>& wrap) {
+	auto conv_msg = np1sec::ConversationMessage::decode(wrap.msg);
+	return os //<< conv_msg.conversation_public_key << " "
+		<< wrap.msg.type << " " << M::decode(conv_msg);
+}
+
 std::ostream& operator<<(std::ostream& os, const np1sec::Message& msg)
 {
 	using namespace np1sec;
 	using Type = Message::Type;
 
-	os << msg.type << " ";
-
 	switch (msg.type) {
-		case Type::Hello: os << HelloMessage::decode(msg); break;
-		case Type::RoomAuthenticationRequest: os << RoomAuthenticationRequestMessage::decode(msg); break;
-		case Type::RoomAuthentication: os << RoomAuthenticationMessage::decode(msg); break;
-		case Type::Invite: os << InviteMessage::decode(ConversationMessage::decode(msg)); break;
-		case Type::ConsistencyCheck: os << ConsistencyCheckMessage::decode(ConversationMessage::decode(msg)); break;
-		case Type::ConversationStatus: os << ConversationStatusMessage::decode(ConversationMessage::decode(msg)); break;
-		case Type::ConversationConfirmation: os << ConversationConfirmationMessage::decode(ConversationMessage::decode(msg)); break;
-		case Type::InviteAcceptance: os << InviteAcceptanceMessage::decode(ConversationMessage::decode(msg)); break;
-		case Type::AuthenticationRequest: os << AuthenticationRequestMessage::decode(ConversationMessage::decode(msg)); break;
-		case Type::Authentication: os << AuthenticationMessage::decode(ConversationMessage::decode(msg)); break;
-		case Type::AuthenticateInvite: os << AuthenticateInviteMessage::decode(ConversationMessage::decode(msg)); break;
-		case Type::Join: break;
-		case Type::KeyExchangePublicKey: os << KeyExchangePublicKeyMessage::decode(ConversationMessage::decode(msg)); break;
-		case Type::KeyExchangeSecretShare: os << KeyExchangeSecretShareMessage::decode(ConversationMessage::decode(msg)); break;
-		case Type::KeyExchangeAcceptance: os << KeyExchangeAcceptanceMessage::decode(ConversationMessage::decode(msg)); break;
-		case Type::KeyActivation: os << KeyActivationMessage::decode(ConversationMessage::decode(msg)); break;
+		case Type::Hello: os << msg.type << " " << HelloMessage::decode(msg); break;
+		case Type::Quit: os << msg.type << " " << QuitMessage::decode(msg); break;
+		case Type::RoomAuthenticationRequest: os << msg.type << " " << RoomAuthenticationRequestMessage::decode(msg); break;
+		case Type::RoomAuthentication: os << msg.type << " " << RoomAuthenticationMessage::decode(msg); break;
+		case Type::Invite: os << ConvMsg<InviteMessage>{msg}; break;
+		case Type::ConsistencyCheck: os << ConvMsg<ConsistencyCheckMessage>{msg}; break;
+		case Type::ConversationStatus: os << ConvMsg<ConversationStatusMessage>{msg}; break;
+		case Type::ConversationConfirmation: os << ConvMsg<ConversationConfirmationMessage>{msg}; break;
+		case Type::InviteAcceptance: os << ConvMsg<InviteAcceptanceMessage>{msg}; break;
+		case Type::AuthenticationRequest: os << ConvMsg<AuthenticationRequestMessage>{msg}; break;
+		case Type::Authentication: os << ConvMsg<AuthenticationMessage>{msg}; break;
+		case Type::AuthenticateInvite: os << ConvMsg<AuthenticateInviteMessage>{msg}; break;
+		case Type::Join: os << ConvMsg<JoinMessage>{msg}; break;
+		case Type::KeyExchangePublicKey: os << ConvMsg<KeyExchangePublicKeyMessage>{msg}; break;
+		case Type::KeyExchangeSecretShare: os << ConvMsg<KeyExchangeSecretShareMessage>{msg}; break;
+		case Type::KeyExchangeAcceptance: os << ConvMsg<KeyExchangeAcceptanceMessage>{msg}; break;
+		case Type::KeyActivation: os << ConvMsg<KeyActivationMessage>{msg}; break;
 		case Type::ConsistencyStatus: break;
-		case Type::KeyRatchet: os << KeyRatchetMessage::decode(ConversationMessage::decode(msg)); break;
-		default: os << "TODO"; break;
+		case Type::KeyRatchet: os << ConvMsg<KeyRatchetMessage>{msg}; break;
+		default: os << msg.type << " TODO"; break;
 	}
 
 	return os;	
