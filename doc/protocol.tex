@@ -11,8 +11,8 @@
 
 \def\message#1{\texttt{#1}}
 \def\field#1{\textit{#1}}
-
-\def\smfield#1{\textsf{#1}}
+\def\smfield#1{\textsl{#1}}
+\def\type#1{\textsf{#1}}
 
 \def\concat{\mathbin{+\!\!\!+\,}}
 \def\xor{\oplus}
@@ -20,7 +20,7 @@
 
 \newenvironment{basicmessage}[2]{
 \newcommand{\messagefield}[2]{
-\field{##1} & \textsf{##2} \\
+\field{##1} & \type{##2} \\
 \hline
 }
 \begin{tabular}{|l|l|}
@@ -34,7 +34,7 @@
 
 \newenvironment{conversationmessage}[2]{
 \newcommand{\messagefield}[2]{
-& \field{##1} & \textsf{##2} \\
+& \field{##1} & \type{##2} \\
 \hline
 }
 \begin{tabular}{|l|l|l|}
@@ -42,11 +42,25 @@
 \multicolumn{3}{|c|}{\message{#1} [#2]} \\
 \hline
 \hline
-\field{conversation-public-key} & \multicolumn{2}{l|}{\textsf{publickey}} \\
+\field{conversation-public-key} & \multicolumn{2}{l|}{\type{publickey}} \\
 \hline
-\field{conversation-signature} & \multicolumn{2}{l|}{\textsf{signature}} \\
+\field{conversation-signature} & \multicolumn{2}{l|}{\type{signature}} \\
 \hline
 \field{conversation-message-body} & \multicolumn{2}{l|}{} \\
+\hline
+}{
+\end{tabular}
+}
+
+\newenvironment{struct}[1]{
+\newcommand{\structfield}[2]{
+\smfield{##1} & \type{##2} \\
+\hline
+}
+\begin{tabular}{|l|l|}
+\hline
+\multicolumn{2}{|c|}{Structure \type{#1}} \\
+\hline
 \hline
 }{
 \end{tabular}
@@ -130,10 +144,6 @@ on a protocol level, np1sec conversations are represented by state machines repr
 \subsection{Joining a conversation}
 
 
-\subsection{Events}
-Merge into state machine?
-
-
 \subsection{Key agreement}
 
 
@@ -160,7 +170,6 @@ maybe we can skip this?
 % participants, invitees, people who can be invited
 % authentication, public keys
 % messages, event ordering
-% votekicks, conversation title?
 % cryptographic assurances
 
 
@@ -169,9 +178,10 @@ maybe we can skip this?
 \label{sec:cryptography}
 
 The (n+1)sec protocol makes use of several different cryptographic techniques to implement the security properties outlined in the previous section.
-In addition to standard cryptographic constructions such as symmetric ciphers and public-key signatures, (n+1)sec uses versions of the \emph{Triple Diffie-Hellman} deniable authentication scheme, and the 
+In addition to standard cryptographic constructions such as symmetric ciphers and public-key signatures, (n+1)sec uses versions of the \emph{Triple Diffie-Hellman} deniable authentication scheme, and the Abdalla-Chevalier-Manulis-Pointcheval GKE+P authenticated group key exchange protocol.
 
-% TODO finish
+In the remainder of this section, we introduce the nonstandard cryptographic techniques used in the (n+1)sec protocol.
+Section~\ref{sec:cryptography/cryptographic-primitives} describes and motivates the choice of standard cryptographic primitives used in the (n+1)sec protocol.
 
 \subsection{Triple Diffie-Hellman authenticated key exchange}
 \label{sec:cryptography/triple-diffie-hellman}
@@ -214,7 +224,7 @@ Indeed, an attacker knowing $a$, $b$, $g^A$, and $g^B$ can compute $g^{Ab} = (g^
 This property has two critical consequences that (n+1)sec relies upon.
 A person who knows the public keys of Alice and Bob can generate their own ephemeral private keys $a'$ and $b'$, compute the assorted secret $S$, and thereby forge a convincing exchange between Alice and Bob that is indistinguishable for a third party to a genuine exchange between Alice and Bob.
 Because of this forgeability, a genuine exchange between Alice and Bob is useless to a third party as a cryptographic proof of communication between Alice and Bob, which forms the basis of deniable authentication (described below).
-Furthermore, the (n+1)sec protocol makes use of the possibility of computing a shared Triple Diffie-Hellman secret based on both ephemeral private keys as part of a denial-of-service recovery procedure, described in Section~\ref{todo:cryptography/key-exchange-reveal}.
+Furthermore, the (n+1)sec protocol makes use of the possibility of computing a shared Triple Diffie-Hellman secret based on both ephemeral private keys as part of a denial-of-service recovery procedure, described in Section~\ref{sec:cryptography/group-key-exchange/protocol}.
 
 \subsubsection{Secret computation}
 \label{sec:cryptography/triple-diffie-hellman/secret-computation}
@@ -222,7 +232,7 @@ Furthermore, the (n+1)sec protocol makes use of the possibility of computing a s
 The Triple Diffie-Hellman protocol computes a secret based on the public keys and private keys of the two participants of the protocol.
 It does this by computing the terms $g^{Ab}$, $g^{aB}$, and $g^{ab}$, and using these terms as input to a key derivation function.
 
-As described in Section~\ref{sec:cryptography/cryptographic-primitives}, (n+1)sec uses the Ed25519 Twisted Edwards curve \ref{ed25519} as its cryptographic group $G$.
+As described in Section~\ref{sec:cryptography/cryptographic-primitives}, (n+1)sec uses the Ed25519 Twisted Edwards curve \cite{ed25519} as its cryptographic group $G$.
 The terms $g^{Ab}$, $g^{aB}$, and $g^{ab}$ are therefore points $(x, y)$ on that curve.
 To compute the shared secret $S = f(g^{Ab}, g^{aB}, g^{ab})$, (n+1)sec uses the following procedure:
 \begin{enumerate}
@@ -359,13 +369,20 @@ The details of this response are described in Sections~\ref{sec:conversation-sta
 
 % TODO security properties
 
-
-
 \subsection{Cryptographic primitives}
 \label{sec:cryptography/cryptographic-primitives}
 
+The (n+1)sec system makes use of certain cryptographic primitives to achieve its security properties.
+In particilar, the (n+1)sec protocol uses a cryptographic hash function; a digital signature scheme; and a symmetric cipher.
+Additionally, the (n+1)sec protocol makes use of a secure finite cyclic group in which the Diffie-Hellman protocol can be performed.
 
-choice of primitives -- elliptic curves, signatures, sha256, aes-gcm
+The (n+1)sec protocol uses the following algorithms as implementations of these abstract primitives:
+\begin{description}[noitemsep]
+\item[Cryptographic hash.] (n+1)sec uses the SHA256 cryptographic hash algorithm as its hash function and random oracle. SHA256 provides a sufficiently secure hash primitive for the level of security provided by (n+1)sec and is widely implemented.
+\item[Signature scheme.] (n+1)sec uses the Ed25519 elliptic curve signature scheme as its signature primitive. The Ed25519 scheme has been chosen as the signature primitive due to its efficiency and more secure implementability over other elliptic-curve digital signature algorithms.
+\item[Cyclic group.] (n+1)sec uses the Curve25519 elliptic curve as its finite cyclic group in which to perform Diffie-Hellman. This choice makes it possible to use public keys for both signatures and Diffie-Hellman computations interchangeably.
+\item[Symmetric cipher.] When encrypting messages sent to a conversation using a symmetric key known to the members of that conversation, (n+1)sec uses the AES-256 algorithm in Galois/Counter Mode (GCM) as its symmetric cipher. The (n+1)sec protocol follows the suggestion by the original OTR protocol \cite{otr} of using counter mode.
+\end{description}
 
 
 \section{Carrier Chatrooms}
@@ -380,22 +397,176 @@ invitable user list
 \section{The Conversation State Machine}
 \label{sec:conversation-state-machine}
 
-%=== introduction to the state machine model ===
-%why do we use a state machine model?
-%upsides and downsides
+The key abstraction of the (n+1)sec protocol is the \emph{conversation}, which is the context in which chats take place.
+An (n+1)sec conversation is an agreement between a group of users to exchange encrypted chat in a setting that behaves like a conventional chatroom, by exchanging (n+1)sec messages in a single carrier chat room.
+As such, a conversation has such things as a participant list, an ordered sequence of chat messages and related events, and indications of when participants join and leave the conversation.
+For the purposes of security, conversations also keep track of what users are able to receive which chat messages at each point.
 
-%=== participants ===
+Conversations are a \emph{distributed} notion.
+When a group of users participating in a conversation, this fact is not recorded on the chat server, or in any other way regulated by the carrier chat infrastructure; instead, conversations exist only in the memory of the clients of their participants, and they rely on distributed coordination to keep the abstraction intact.
+For such a distributed coordinated abstraction to behave like a conventional chatroom, it is critical that its participants are at all times in agreement about such things as the member list, the chat transcript, and the state and history of the conversation in general.
 
-%=== state machine hash ===
-%NOT: the details of how this hash is computed
+Achieving and maintaining this agreement is a challenging affair.
+Because communication over the channel provioded by the carrier chat room is not instantaneous ---messages take a nonzero time to arrive at the carrier chat room after being sent by a user, and then take another nonzero time before being received by all other users--- multiple processes involved in maintaining a conversation might happen simultaneously in an interleaved fashion.
+For example, a new user might attempt to join a conversation at the unfortunate time when a group key exchange procedure (as described in Section~\ref{sec:cryptography/group-key-exchange}) is in progress.
+For another example, a conversation participant might stop responding due to connectivity problems while the process to accept a new user into the conversation is in progress, which should not cause the user-acceptance procedure to freeze indefinitely while the troubled participant fails to participate.
+Resolving these potential conflicts in a way that reliably results in agreement between conversation participants about what happened and in what order is a famously difficult problem.
+This problem becomes more difficult still if a conversation might contain malicious participants, that seek to sow confusion and prevent participants from reaching agreement, and thereby make coherent conversation impossible.
 
-%=== events ===
+The (n+1)sec protocol approaches this problem using the following structure:
+\begin{itemize}
+\item Conversations have a formally specified state, referred to as the \emph{conversation state machine}, of which all conversation participants maintain a copy. Different participants of a conversation maintain identical copies of this state machine at all times.
+\item The (n+1)sec protocol specifies for each chat message sent in a carrier chat room how this affects any conversations taking place in that chat room. Clients of conversation participants implement that specification precisely.
+\item Because different users in a carrier chat room receive the same messages in that room in the same order, different conversation participants perform the same modifications to their copies of the conversation state machine. Thus, when all participants in a conversation have finished processing all carrier chat room messages up to a certain point, they all maintain identical copies of the conversation state machine.
+\item All messages that a conversation participant can send that affect a conversation are designed in such a way that the visible interpretation of the message remains intact, no matter what intervening events may have occurred between the time that the sender sent the message and the time other participants receive it. For example, if a new group key exchange procedure finishes while a participant is sending a chat message, the design of both the chat message process and the key exchange process is such that the chat message is still received and interpreted as desired, and only by the expected recipients.
+\end{itemize}
 
-%=== key exchanges ===
-%including: latest session id
+The remainder of this section describes the detailed procedure involved in participating in a conversation and maintaining the assorted state machine; the procedure of joining a conversation; and the exact content and semantics of the conversation state machine.
+An overview of the messages of (n+1)sec, and their specified consequences for the state machines of any conversations that might be affected, is described in Section~\ref{sec:messages}.
 
-%=== joining ===
-%importing a state machine
+\subsection{Participating in a conversation}
+\label{sec:conversation-state-machine/participating}
+
+The (n+1)sec conversation state machine specification defines an \emph{ideal abstract computation}.
+It defines how an ideal chunk of conceptual state evolves in response to a sequence of messages in a carrier chat room, and the semantics of these changes in state.
+As such, the (n+1)sec conversation state machine specification can be interpreted as a definition of a function from an initial state, and a sequence of carrier chat room messages, to a resulting state.
+With an interpretation of this state and modifications of this state as events in a conversation, this specification defines an ideal abstract interpretation of a sequence of carrier room messages as a sequence of conversation events.
+
+An (n+1)sec client can \emph{passively participate} in a conversation by implementing this abstract computation.
+By acquiring a copy of the current conversation state machine contents (described in Section~\ref{sec:conversation-state-machine/joining}) and then interpreting carrier chat room messages according to the specification of the conversation state machine, the client can keep exact track of the state machine contents, as well as most events happening in the conversation.
+A passive participant of a conversation can not decrypt chat messages sent to the conversation, as these chat messages are encrypted using a key that the passive participant does not know; but the passive participant can keep track of the list of members of the conversation and their status, as well as all other details of the conversation other than the chat message content.
+In particular, a passive participant can maintain a complete copy of the state machine contents specified by the abstract computation, despite not being able to decrypt any chat messages.
+The joining procedure, described in Section~\ref{sec:conversation-state-machine/joining}, relies on this ability, for a user who is invited to but not yet part of a conversation should be able to keep track of the conversation's members when deciding whether or not to join the conversation.
+
+An (n+1)sec client can \emph{actively participate} in a conversation by keeping track of the conversation state machine as above, while also sending messages to the conversation when the conversation allows or requires them to.
+When a user is invited to a conversation, that conversation's state machine changes in such a way that it will respond to messages by the invited user.
+By responding to that situation, the invited user can ---all going well--- eventually become a proper member, participate in key exchanges, send chat messages to the conversation, and decrypt messages sent by others.
+
+By implementing a conversation state machine's abstract computation and thereby maintaining identical copies of the conversation state machine, participants in a conversation can remain in agreement about the status and events of a conversation, and thereby achieve the distributed abstraction of a chatroom that behaves in a conventional way.
+This agreement, however, relies on the different participants implementing the abstract computation \emph{exactly}; if different participants of a conversation interpret a message in such a way that they end up representing a \emph{slightly} different version of the conversation state machine, the distributed abstraction of a coherent chatroom will unravel in short order, making further coherent chat impossible.
+For example, if a carrier chat room message by user $U$ is interpreted by one participant $A$ as valid and processed, while being interpreted by another participant $B$ as invalid and ignored, user $B$ may eventually remove user $U$ from the conversation because of a perceived failure to participate in some process of which the ignored message was part.
+If $A$ then judges that $U$ is still a member in good standing, while $B$ decides that $U$ is no longer a member of the conversation and initiates a group key exchange procedure that does not include $U$, coherent chat in this conversation cannot continue.
+
+To avoid this contingency, members of a conversation regularly publish a checksum of the contents of the conversation state machine, as maintained by them.
+When receiving such a message, all other members compare this checksum against the checksum of their own copy; when these values are not equal, this indicates that the views of the conversation between the different members have diverged.
+
+When such a divergence is detected, those members that notice that other members have divergent conversation state machine contents remove the diverging users from the contents of their copies of the conversation state machine, and announce that fact.
+After receiving that announcement, the victims of this divergement in turn remove the announcers from their own copies of the conversation state machine, and announce this as well.
+After several such messages, the incoherent conversation has split itself into two or more parts, with each resulting conversation consisting of all members of the original conversation that still have consistent state machines among themselves.
+In effect, the incoherent conversation has then split itself into two or more internally coherent successor conversations.
+
+\subsection{Joining a conversation}
+\label{sec:conversation-state-machine/joining}
+
+Conversations in (n+1)sec can be joined only after being invited into the conversation by one of the existing participants of the conversation.
+When this happens, the invited user performs a procedure to acquire a copy of the conversation state machine, and becomes a passive participant of the conversation.
+When this procedure finishes, the invited user can determine and keep track of the members of the conversation, and decide whether or not to accept the invitation based on that information.
+If the invited user wishes to accept the invitation and join the conversation as an active participant, they can announce this fact by sending a message to the conversation, and thereby start the process that ---all going well--- will lead to them becoming a proper participant with the ability to take part in chat.
+
+To allow the invitee to acquire an up-to-date copy of the conversation state machine, the invitee and the inviter follow the following protocol:
+\begin{enumerate}
+\item The inviter sends a message containing an invitation for the invitee to join the conversation.
+\item The inviter waits until they receive this invitation message back from the carrier chat room. When they do, the inviter sends a message containing the contents of the conversation state machine \emph{after processing the invitation message}.
+\item The invitee records all carrier chat room messages received after the invitation message, until they receive the message containing the conversation state machine contents.
+\item When the invitee receives the message containing the conversation state machine contents, they construct a local copy of the state machine based on these contents. They then process all recorded messages, from but excluding the invitation message, up to and including the conversation state machine contents message, in the context of the newly constructed state machine copy.
+\item After having processed the message containing the conversation state machine contents, the invitee has a copy of the same conversation state machine as the existing members of the conversation, and in particular the inviter. The invitee can now process further carrier chat room messages normally, and implement a passive participant of the conversation.
+\end{enumerate}
+
+After having become a passive participant through this protocol, the invitee can send a message accepting the invitation and become an active participant thereby.
+The new member of the conversation is at that point still several steps removed from the status where they can participate in chat; the details of the procedure involved for a new member to become a chatting participant are described in Section~\ref{sec:conversation-state-machine/contents/members}.
+
+\subsection{State machine contents}
+\label{sec:conversation-state-machine/contents}
+
+Users participating in an (n+1)sec conversation maintain a copy of the state of the conversation state machine.
+The \emph{state} of the conversation state machine is represented by a valuation of the structure described below.
+
+\begin{struct}{conversation state machine}
+\structfield{members}{set of member}
+\structfield{key-exchanges}{list of key-exchange}
+\structfield{latest-session-id}{hash}
+\structfield{timeouts}{relation of member}
+\structfield{events}{list of event}
+\structfield{status-checksum}{hash}
+\end{struct}
+
+The remainder of this section describes the semantics and detailed structure of each of these fields.
+
+\subsubsection{Members}
+\label{sec:conversation-state-machine/contents/members}
+
+A conversation's \emph{members} are those users in its carrier chat room that are allowed to actively participate in the conversation.
+A conversation state machine contains the complete set of its members, along with assorted metadata.
+
+A conversation member is identified by their username and long term public key.
+Those members that have replied to their initial invitation message, as described in Section~\ref{sec:conversation-state-machine/joining}, also have a \smfield{conversation-public-key}; messages sent by those members to the conversation are signed against this key, which is used to verify those messages' authenticity.
+
+A conversation member can be one of four different types, indicating the member's progress in the process of joining the conversation.
+A \emph{participant} of a conversation is a member that has finished joining the conversation, and is able to participate in key exchanges and chat.
+Participants are represented in the conversation state machine by the \type{participant} structure.
+
+\begin{struct}{participant}
+\structfield{username}{string}
+\structfield{long-term-public-key}{publickey}
+\structfield{conversation-public-key}{publickey}
+\end{struct}
+
+A participant is a member of the conversation that has been accepted by the conversation's other participants as a user that can participate in conversation chat.
+Participants take part in all key exchange processes initiated after the member became a participant; moreover, participants have the privilege of inviting other users to the conversation.
+Participants can participate in a conversation's chat sessions once a key exchange process has finished successfully of which they are a part.
+If no such key exchange has yet completed, than a participant is not yet able to participate in chat sessions; however, it is an invariant that for all participants of a conversation, either that participant is able to participate in chat sessions, or a key exchange process is in progress that will make this happen.
+
+%Members that are not participants are called \emph{invitees}.
+%Invitee members
+
+An \emph{unidentified invitee} of a conversation is an invitee member that has been invited to the conversation using an \message{INVITE} message (described in Section~\ref{sec:messages/invite}), but that has not yet replied.
+Unidentified invitees are represented in the conversation state machine by the \type{unidentified-invitee} structure.
+
+\begin{struct}{unidentified-invitee}
+\structfield{username}{string}
+\structfield{long-term-public-key}{publickey}
+\structfield{inviter}{participant reference}
+\end{struct}
+
+
+
+%An \emph{unauthenticated identified invitee} of a conversation is an invitee member that has 
+
+\begin{struct}{identified-invitee}
+\structfield{username}{string}
+\structfield{long-term-public-key}{publickey}
+\structfield{conversation-public-key}{publickey}
+\structfield{inviter}{participant reference}
+\end{struct}
+
+\begin{struct}{authenticated-invitee}
+\structfield{username}{string}
+\structfield{long-term-public-key}{publickey}
+\structfield{conversation-public-key}{publickey}
+\structfield{inviter}{participant reference}
+\end{struct}
+
+
+
+
+
+
+\subsubsection{Key exchanges}
+\label{sec:conversation-state-machine/contents/key-exchanges}
+
+\subsubsection{Latest session id}
+\label{sec:conversation-state-machine/contents/latest-session-id}
+
+\subsubsection{Timeouts}
+\label{sec:conversation-state-machine/contents/timeouts}
+
+\subsubsection{Events}
+\label{sec:conversation-state-machine/contents/events}
+
+\subsubsection{State machine checksum}
+\label{sec:conversation-state-machine/contents/checksum}
+
+
 
 
 Terminology:
@@ -414,15 +585,14 @@ participant: member who has fully joined, can participate in key negotiations, c
 
 
 
+\subsection{Carrier chat room events}
+% messages: see section 7
+% quit events
+
+
 \section{Messages}
 \label{sec:messages}
-list of messages
 
-describes for each message the semantics of the message; the time it may/must be sent; and in a declarative css-style way, the effect of a conversation packet on the conversation state machine
-
-conversation hash computation
-
-rules on what packets apply to what conversations?
 
 \subsection{Message structure}
 
@@ -551,11 +721,11 @@ Conversation messages have a shared structure expressing the relation between me
 \multicolumn{2}{|c|}{Conversation message general structure} \\
 \hline
 \hline
-\field{conversation-public-key} & \textsf{publickey} \\
+\field{conversation-public-key} & \type{publickey} \\
 \hline
-\field{message-signature} & \textsf{signature} \\
+\field{message-signature} & \type{signature} \\
 \hline
-\field{message-body} & \textsf{octet-stream} \\
+\field{message-body} & \type{octet-stream} \\
 \hline
 \end{tabular}
 
@@ -574,7 +744,7 @@ Some aspects of a client's state for a particular conversation, such as the dete
 
 Conversation messages contain a signature of the message body, which is used to verify authenticity of messages sent by conversation members.
 This signature is computed as a cryptographic signature of the message's \field{message-body} octet stream, as described in Section~\ref{todo:cryptography/signatures}, using the private key corresponding to the message's \field{conversation-public-key}.
-On receiving any converstaion message, clients should verify this signature, by confirming that the message's \field{message-signature} is a valid signature of the message's \field{message-body} for the \field{conversation-public-key}.
+On receiving any conversation message, clients should verify this signature, by confirming that the message's \field{message-signature} is a valid signature of the message's \field{message-body} for the \field{conversation-public-key}.
 If this signature is not valid, implementations MUST NOT modify the conversation state machine of any conversations.
 Implementations SHOULD ignore messages with invalid signatures entirely, though they MAY raise some form of impersonation warning instead.
 
@@ -588,12 +758,13 @@ The \message{INVITE\_ACCEPTANCE} message, described in Section~\ref{sec:messages
 These \message{INVITE\_ACCEPTANCE} messages carry a \field{message-signature} signed based on its \field{conversation-public-key} as normal, but are addressed to a larger collection of conversations.
 The details of this anomaly are specified in Section~\ref{sec:messages/invite-acceptance}.
 
-When an implementation receives a conversation message with a valid signature addressed to one or more conversations of which the implementation is maintaining a representation, the implementation must digest the message into those conversations' \smfield{status hash}, as described in Section~\ref{todo:conversation-state-machine/hash}.
+When an implementation receives a conversation message with a valid signature addressed to one or more conversations of which the implementation is maintaining a representation, the implementation must digest the message into those conversations' \smfield{status-checksum}, as described in Section~\ref{todo:conversation-state-machine/hash}.
 For each of those conversations to which the message is addressed, the implementation must then perform the message-specific processing specified in the remainder of this section.
 
 \subsubsection{Event messages}
 
 \subsubsection{INVITE}
+\label{sec:messages/invite}
 
 The \message{INVITE} (= 0x11) message is sent by a conversation participant to invite a new user to the conversation, identified by a (username, long term public key) pair.
 An \message{INVITE} message informs the invited user of the existence of the conversation, and allows the invited user to start tracking the status of the conversation.
@@ -649,7 +820,7 @@ A \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message is a request to the id
 It declares that \field{sender} will consider \field{username} authenticated for this identity after receiving a valid authentication confirmation for this pair of identities, described in Section~\ref{todo:cryptography/authentication}, using \field{authentication-challenge} as the authentication challenge.
 The \field{username} identified member, upon receiving a \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message, can authenticate itself to the \field{sender} by sending a \message{CONVERSATION\_AUTHENTICATION} message containing this authentication confirmation.
 
-The \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message has no effect on the conversation state machine besides the \smfield{status hash}.
+The \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message has no effect on the conversation state machine besides the \smfield{status-checksum}.
 
 \subsubsection{CONVERSATION\_AUTHENTICATION}
 
@@ -688,7 +859,7 @@ Any other participants may also send such an \message{AUTHENTICATE\_INVITE} mess
 
 If the conversation state machine addressed by an \message{AUTHENTICATE\_INVITE} message contains an unauthenticated identified member with identity triple (\field{username}, \field{long-term-public-key}, \field{conversation-public-key}), and the \field{sender} is a participant of the conversation, then the unauthenticated member gets promoted to an authenticated member.
 The newly-authenticated member's inviter becomes the message's \field{sender}.
-If not, the \message{AUTHENTICATE\_INVITE} message has no effect on the conversation state machine besides the \smfield{status hash}.
+If not, the \message{AUTHENTICATE\_INVITE} message has no effect on the conversation state machine besides the \smfield{status-checksum}.
 
 \subsubsection{CANCEL\_INVITE}
 
@@ -780,12 +951,6 @@ TODO how to render this?
 \subsubsection{CHAT}
 
 
-
-
-\section{Events}
-maybe roll this section into the conversation state machine section?
-
-list of events here. Individual events are introduced in the messages section; this section has an overview, and details of what's in each event.
 
 
 \bibliographystyle{abbrv}
