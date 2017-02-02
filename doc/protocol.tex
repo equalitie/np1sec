@@ -436,13 +436,13 @@ An (n+1)sec client can \emph{passively participate} in a conversation by impleme
 By acquiring a copy of the current conversation state machine contents (described in Section~\ref{sec:conversation-state-machine/joining}) and then interpreting carrier chat room messages according to the specification of the conversation state machine, the client can keep exact track of the state machine contents, as well as most events happening in the conversation.
 A passive participant of a conversation can not decrypt chat messages sent to the conversation, as these chat messages are encrypted using a key that the passive participant does not know; but the passive participant can keep track of the list of members of the conversation and their status, as well as all other details of the conversation other than the chat message content.
 In particular, a passive participant can maintain a complete copy of the state machine contents specified by the abstract computation, despite not being able to decrypt any chat messages.
-The joining procedure, described in Section~\ref{sec:conversation-state-machine/joining}, relies on this ability, for a user who is invited to but not yet part of a conversation should be able to keep track of the conversation's members when deciding whether or not to join the conversation.
+The joining procedure, described in Section~\ref{sec:conversation-state-machine/joining}, relies on this ability, for a user who is invited to but not yet part of a conversation should be able to keep track of the conversation's list of members when deciding whether or not to join the conversation.
 
 An (n+1)sec client can \emph{actively participate} in a conversation by keeping track of the conversation state machine as above, while also sending messages to the conversation when the conversation allows or requires them to.
 When a user is invited to a conversation, that conversation's state machine changes in such a way that it will respond to messages by the invited user.
 By responding to that situation, the invited user can ---all going well--- eventually become a proper member, participate in key exchanges, send chat messages to the conversation, and decrypt messages sent by others.
 
-By implementing a conversation state machine's abstract computation and thereby maintaining identical copies of the conversation state machine, participants in a conversation can remain in agreement about the status and events of a conversation, and thereby achieve the distributed abstraction of a chatroom that behaves in a conventional way.
+By implementing a conversation state machine's abstract computation and maintaining identical copies of the conversation state machine, participants in a conversation can remain in agreement about the status and events of a conversation, and thereby achieve the distributed abstraction of a chatroom that behaves in a conventional way.
 This agreement, however, relies on the different participants implementing the abstract computation \emph{exactly}; if different participants of a conversation interpret a message in such a way that they end up representing a \emph{slightly} different version of the conversation state machine, the distributed abstraction of a coherent chatroom will unravel in short order, making further coherent chat impossible.
 For example, if a carrier chat room message by user $U$ is interpreted by one participant $A$ as valid and processed, while being interpreted by another participant $B$ as invalid and ignored, user $B$ may eventually remove user $U$ from the conversation because of a perceived failure to participate in some process of which the ignored message was part.
 If $A$ then judges that $U$ is still a member in good standing, while $B$ decides that $U$ is no longer a member of the conversation and initiates a group key exchange procedure that does not include $U$, coherent chat in this conversation cannot continue.
@@ -495,15 +495,43 @@ The remainder of this section describes the semantics and detailed structure of 
 \subsubsection{Members}
 \label{sec:conversation-state-machine/contents/members}
 
-A conversation's \emph{members} are those users in its carrier chat room that are allowed to actively participate in the conversation.
-A conversation state machine contains the complete set of its members, along with assorted metadata.
+An (n+1)sec conversation at any point in time has a set of \emph{participants}, which are those users in the conversation's carrier chat room that are involved or potentially involved with chat in the conversation.
+Every time the set of participants of a conversation changes ---when a new participant joins a conversation, or when an existing participant leaves the conversation--- the participants of the conversation perform a key exchange procedure (as outlined in Section~\ref{sec:cryptography/group-key-exchange}), which will yield a key shared between the conversation participants that can be used to encrypt chat messages with.
+A newly joined participant of a conversation may not be in the possession of a shared key yet if the key exchange procedure is still in progress, but it is an invariant of conversation that every participant is either in possession of such a session key, or is involved in a key exchange process that aims to accomplish this.
 
-A conversation member is identified by their username and long term public key.
-Those members that have replied to their initial invitation message, as described in Section~\ref{sec:conversation-state-machine/joining}, also have a \smfield{conversation-public-key}; messages sent by those members to the conversation are signed against this key, which is used to verify those messages' authenticity.
+Participants of a conversation are identified by their username and long term public key, which together define their identity.
+Participants also have a \emph{conversation public key}, which is a temporary key used to sign messages addressed to a conversation.
+This conversation public key is used as the ephemeral public key used in the Triple Diffie-Hellman deniable authentication protocol, as described in Section~\ref{sec:cryptography/triple-diffie-hellman}, which is used by the different participants in a conversation to authenticate each other.
+By signing conversation messages using an ephemeral public key in this way, conversation participants can verify the authenticity of messages without violating deniability.
+Users participating in multiple conversations must use different conversation public keys for different conversations, which allows users of a carrier chat room to identify the conversation addressed by a particular carrier chat room message, as detailed in Section~\ref{sec:messages/conversation-messages}.
 
-A conversation member can be one of four different types, indicating the member's progress in the process of joining the conversation.
-A \emph{participant} of a conversation is a member that has finished joining the conversation, and is able to participate in key exchanges and chat.
-Participants are represented in the conversation state machine by the \type{participant} structure.
+Besides participants, a conversation may have zero or more \emph{invitee} users.
+A conversation's invitees, if any, are those users in its carrier chat room that have been invited by one the conversation's participants to join the conversation, and that have either not yet replied to this invitation, or have yet to complete the procedure that ultimately grants participantship.
+
+Several steps are involved between the invitation of a new user into a conversation, and the promotion of that user to a proper participant.
+New users follow the following process:
+\begin{description}[noitemsep]
+\item[Step 1.] A participant of the conversation sends an \message{INVITE} message (Section~\ref{sec:messages/invites}) to a user in the carrier chat room. This message contains the long term public key of the invitee, as well as their username.
+\item[Step 2.] The invitee obtains a copy of the conversation state machine, as described in Section~\ref{sec:conversation-state-machine/joining}.
+\item[Step 3.] The invitee sends an \message{INVITE\_ACCEPTANCE} message (Section~\ref{sec:messages/invite-acceptance}) to the conversation. This message contains the fresh conversation public key the invitee will use for this conversation.
+\item[Step 4.] The invitee identifies themself to the participants in the conversation, and vice versa, as outlined in Sections~\ref{sec:messages/conversation-authentication-request} and~\ref{sec:messages/conversation-authentication}.
+\item[Step 5.] The participant that invited the invitee sends an \message{AUTHENTICATE\_INVITE} message (Section~\ref{sec:messages/authenticate-invite}) to the conversation, indicating that they have successfully authenticated the invitee as having the expected identity.
+\item[Step 6.] The invitee sends a \message{JOIN} message (Section~\ref{sec:messages/join}) to the conversation. This promotes the invitee to a participant.
+\item[Aftermath.] After the invitee gets promoted to a participant, a key exchange process begins to negotiate a key known to the new participant. When this completes, the new participant can participate in chat in the conversation.
+\end{description}
+
+A conversation's participants and its invitees together are denoted as that conversation's \emph{members}.
+The members of a conversation are those users in its carrier chat room whose messages can potentially affect the conversation's state machine.
+A conversation state machine contains the complete set of its members, along with relevant metadata.
+
+
+
+
+
+
+%A conversation member can be one of four different types, indicating the member's progress in the process of joining the conversation.
+%A \emph{participant} of a conversation is a member that has finished joining the conversation, and is able to participate in key exchanges and chat.
+%Participants are represented in the conversation state machine by the \type{participant} structure.
 
 \begin{struct}{participant}
 \structfield{username}{string}
@@ -511,15 +539,15 @@ Participants are represented in the conversation state machine by the \type{part
 \structfield{conversation-public-key}{publickey}
 \end{struct}
 
-A participant is a member of the conversation that has been accepted by the conversation's other participants as a user that can participate in conversation chat.
-Participants take part in all key exchange processes initiated after the member became a participant; moreover, participants have the privilege of inviting other users to the conversation.
-Participants can participate in a conversation's chat sessions once a key exchange process has finished successfully of which they are a part.
-If no such key exchange has yet completed, than a participant is not yet able to participate in chat sessions; however, it is an invariant that for all participants of a conversation, either that participant is able to participate in chat sessions, or a key exchange process is in progress that will make this happen.
+%A participant is a member of the conversation that has been accepted by the conversation's other participants as a user that can participate in conversation chat.
+%Participants take part in all key exchange processes initiated after the member became a participant; moreover, participants have the privilege of inviting other users to the conversation.
+%Participants can participate in a conversation's chat sessions once a key exchange process has finished successfully of which they are a part.
+%If no such key exchange has yet completed, than a participant is not yet able to participate in chat sessions; however, it is an invariant that for all participants of a conversation, either that participant is able to participate in chat sessions, or a key exchange process is in progress that will make this happen.
 
 %Members that are not participants are called \emph{invitees}.
 %Invitee members
 
-An \emph{unidentified invitee} of a conversation is an invitee member that has been invited to the conversation using an \message{INVITE} message (described in Section~\ref{sec:messages/invite}), but that has not yet replied.
+%An \emph{unidentified invitee} of a conversation is an invitee member that has been invited to the conversation using an \message{INVITE} message (described in Section~\ref{sec:messages/invite}), but that has not yet replied.
 Unidentified invitees are represented in the conversation state machine by the \type{unidentified-invitee} structure.
 
 \begin{struct}{unidentified-invitee}
@@ -603,6 +631,7 @@ opcode / sender / payload struct
 tons of icky details here
 
 \subsection{Room messages}
+\label{sec:messages/room-messages}
 
 Room messages are (n+1)sec messages that do not address any particular conversations.
 They are used to announce a client as being (n+1)sec capable; to announce a client's cryptographic identity in the form of a public key; and for different (n+1)sec clients in a room to confirm each other's identities.
@@ -734,8 +763,8 @@ To denote the conversation to which a conversation message is addressed, convers
 The conversation addressed by a conversation message, then, is that conversation (if any) that contains an identified member with username \field{sender} and conversation public key \field{conversation-public-key}.
 Conversation messages also carry a \field{message-signature}, which is a signature of the message-specific body of the message signed using the private key corresponding to \field{conversation-public-key}.
 
-The members of a conversation, as described in Section~\ref{todo:conversation-state-machine}, share a representation of the abstract \emph{conversation state machine} that defines the state of the conversation.
-Coordination between members of a conversation relies on the different members maintaining consensus about the exact state of this state machine; if members of a conversation somehow come to disagree about the state of this state machine, the conversation can no longer be maintained, as described in Section~\ref{todo:conversation-state-machine/inconsistency}.
+The members of a conversation, as described in Section~\ref{sec:conversation-state-machine}, share a representation of the abstract \emph{conversation state machine} that defines the state of the conversation.
+Coordination between members of a conversation relies on the different members maintaining consensus about the exact state of this state machine; if members of a conversation somehow come to disagree about the state of this state machine, the conversation can no longer be maintained, as described in Section~\ref{sec:conversation-state-machine/participating}.
 It is therefore critical that different members of a conversation process conversation messages in such a way that the abstract conversation state machine is affected in precisely identical ways between their clients.
 
 This section specifies for each conversation message what effect the message has on the abstract conversation state machine of each conversation to which it applies.
@@ -778,6 +807,7 @@ An \message{INVITE} message
 
 
 \subsubsection{CONVERSATION\_STATUS}
+\label{sec:messages/conversation-status}
 
 \begin{conversationmessage}{CONVERSATION\_STATUS}{0x12}
 \messagefield{username}{string}
@@ -786,6 +816,7 @@ An \message{INVITE} message
 \end{conversationmessage}
 
 \subsubsection{CONVERSATION\_CONFIRMATION}
+\label{sec:messages/conversation-confirmation}
 
 \begin{conversationmessage}{CONVERSATION\_CONFIRMATION}{0x13}
 \messagefield{username}{string}
@@ -806,6 +837,7 @@ An \message{INVITE} message
 Addressed-conversation exception documentation here.
 
 \subsubsection{CONVERSATION\_AUTHENTICATION\_REQUEST}
+\label{sec:messages/conversation-authentication-request}
 
 The \message{CONVERSATION\_AUTHENTICATION\_REQUEST} (= 0x15) message is used to request a conversation member to authenticate itself for the cryptographic identity consisting of its long term public key and conversation public key.
 It is the in-conversation analogue of the \message{ROOM\_AUTHENTICATION\_REQUEST} message.
@@ -823,6 +855,7 @@ The \field{username} identified member, upon receiving a \message{CONVERSATION\_
 The \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message has no effect on the conversation state machine besides the \smfield{status-checksum}.
 
 \subsubsection{CONVERSATION\_AUTHENTICATION}
+\label{sec:messages/conversation-authentication}
 
 The \message{CONVERSATION\_AUTHENTICATION} (= 0x16) message provides confirmation of a cryptographic identity to a member of a conversation.
 It is the in-conversation analogue of the \message{ROOM\_AUTHENTICATION} message.
@@ -841,6 +874,7 @@ TODO: This, and the above message, probably needs to be formalized.
 
 
 \subsubsection{AUTHENTICATE\_INVITE}
+\label{sec:messages/authenticate-invite}
 
 The \message{AUTHENTICATE\_INVITE} (= 0x17) message is sent by a conversation participant to promote an identified, unauthenticated invitee to an authenticated invitee.
 Afterwards, the authenticated invitee is able to join the conversation as a participant.
@@ -862,6 +896,7 @@ The newly-authenticated member's inviter becomes the message's \field{sender}.
 If not, the \message{AUTHENTICATE\_INVITE} message has no effect on the conversation state machine besides the \smfield{status-checksum}.
 
 \subsubsection{CANCEL\_INVITE}
+\label{sec:messages/cancel-invite}
 
 The \message{CANCEL\_INVITE} (= 0x18) message is sent by a conversation participant to retract any invitations for a given (username, long term public key) pair.
 
@@ -877,6 +912,7 @@ A \message{CANCEL\_INVITE} message removes from the conversation state machine a
 Participants of the conversation, and invitations by inviters other than \field{sender}, are not affected.
 
 \subsubsection{JOIN}
+\label{sec:messages/join}
 
 The \message{JOIN} (= 0x19) message is sent by an authenticated invitee to upgrade their own status to a participant of the conversation.
 This triggers the creation of a new key exchange process.
@@ -887,20 +923,24 @@ TODO how to render this?
 \end{conversationmessage}
 
 \subsubsection{LEAVE}
+\label{sec:messages/leave}
 
 TODO how to render this?
 
 \subsubsection{CONSISTENCY\_STATUS}
+\label{sec:messages/consistency-status}
 
 TODO how to render this?
 
 \subsubsection{CONSISTENCY\_CHECK}
+\label{sec:messages/consistency-check}
 
 \begin{conversationmessage}{CONSISTENCY\_CHECK}{0x23}
 \messagefield{conversation-status-hash}{hash}
 \end{conversationmessage}
 
 \subsubsection{TIMEOUT}
+\label{sec:messages/timeout}
 
 \begin{conversationmessage}{TIMEOUT}{0x24}
 \messagefield{username}{string}
@@ -908,6 +948,7 @@ TODO how to render this?
 \end{conversationmessage}
 
 \subsubsection{KEY\_EXCHANGE\_PUBLIC\_KEY}
+\label{sec:messages/key-exchange-public-key}
 
 \begin{conversationmessage}{KEY\_EXCHANGE\_PUBLIC\_KEY}{0x31}
 \messagefield{key-id}{hash}
@@ -915,6 +956,7 @@ TODO how to render this?
 \end{conversationmessage}
 
 \subsubsection{KEY\_EXCHANGE\_SECRET\_SHARE}
+\label{sec:messages/key-exchange-secret-share}
 
 \begin{conversationmessage}{KEY\_EXCHANGE\_SECRET\_SHARE}{0x32}
 \messagefield{key-id}{hash}
@@ -923,6 +965,7 @@ TODO how to render this?
 \end{conversationmessage}
 
 \subsubsection{KEY\_EXCHANGE\_ACCEPTANCE}
+\label{sec:messages/key-exchange-acceptance}
 
 \begin{conversationmessage}{KEY\_EXCHANGE\_ACCEPTANCE}{0x33}
 \messagefield{key-id}{hash}
@@ -930,6 +973,7 @@ TODO how to render this?
 \end{conversationmessage}
 
 \subsubsection{KEY\_EXCHANGE\_REVEAL}
+\label{sec:messages/key-exchange-reveal}
 
 \begin{conversationmessage}{KEY\_EXCHANGE\_REVEAL}{0x34}
 \messagefield{key-id}{hash}
@@ -937,18 +981,21 @@ TODO how to render this?
 \end{conversationmessage}
 
 \subsubsection{KEY\_ACTIVATION}
+\label{sec:messages/key-activation}
 
 \begin{conversationmessage}{KEY\_ACTIVATION}{0x41}
 \messagefield{key-id}{hash}
 \end{conversationmessage}
 
 \subsubsection{KEY\_RATCHET}
+\label{sec:messages/key-ratchet}
 
 \begin{conversationmessage}{KEY\_RATCHET}{0x42}
 \messagefield{key-id}{hash}
 \end{conversationmessage}
 
 \subsubsection{CHAT}
+\label{sec:messages/chat}
 
 
 
