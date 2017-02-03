@@ -72,3 +72,31 @@ $ ./jabberite --account=alice@localhost --password="alice-password" --server=con
 
 $ ./jabberite --account=bob@localhost --password="bob-password" --server=conference.localhost --room=np1sec-test-room
 ```
+
+## Running unit and integration tests
+
+(n+1)sec unit and integration tests can be found in the tests/echo_chamber directory. They
+have additional dependencies to `boost-all-dev` and g++ version 5.4 or greater. To
+compile them, one needs to `make` them explicitly by running the command
+
+```
+$ make echo_chamber
+```
+
+These tests are self sufficient and don't need a connection to a XMPP server.
+
+To run them one by one, one would execute
+
+```
+$ ./echo_chamber --log_level=test_suite
+```
+
+Or to run a particular test, one would use
+
+```
+$ ./echo_chamber --log_level=test_suite --run_test=<name_of_the_test>
+```
+
+For more ways to tweak the execution of the tests please consult
+the documentation on [Boost.Test](http://www.boost.org/doc/libs/1_63_0/libs/test/doc/html/boost_test/utf_reference/rt_param_reference.html)
+library.
