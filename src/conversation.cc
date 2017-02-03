@@ -1574,6 +1574,8 @@ Conversation::EventReference Conversation::first_user_event(const std::string& u
 
 bool Conversation::fsck()
 {
+	if (!m_room->is_fsck_enabled()) return true;
+
 	if (!am_authenticated()) {
 		assert(!m_interface);
 	}

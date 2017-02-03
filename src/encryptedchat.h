@@ -90,6 +90,7 @@ class EncryptedChat
 	void create_key_exchange();
 	void create_session(const Hash& key_id);
 	void prepare_session_replacement(Hash key_id);
+	void send_ratchet(Hash key_id);
 	void progress_sessions();
 	
 	

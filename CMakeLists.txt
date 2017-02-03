@@ -15,8 +15,8 @@ find_package_handle_standard_args(gcrypt DEFAULT_MSG GCRYPT_INCLUDE_DIR GCRYPT_L
 
 
 
-#add_compile_options(-std=c++11 -Wall -Wextra)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${GCRYPT_INCLUDE_DIR})
