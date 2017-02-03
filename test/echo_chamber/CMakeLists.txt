@@ -4,6 +4,11 @@ set(CMAKE_BUILD_TYPE Debug)
 set(GLOB BOOST_VERSION 1.58)
 
 ################################################################################
+if (CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.4)
+    message(FATAL_ERROR "Require at least gcc-5.4")
+endif()
+
+################################################################################
 project (echo_chamber)
 find_package(Boost ${BOOST_VERSION} COMPONENTS system thread unit_test_framework REQUIRED)
 find_package(Threads)
