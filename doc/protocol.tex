@@ -292,7 +292,6 @@ The (n+1)sec protocol uses the authentication challenge protocol in several plac
 This takes the form of a message from a user with username $U_A$, long term public key $g^A$, and ephemeral public key $g^a$, to a user with username $U_B$, long term public key $g^B$, and ephemeral public key $g^b$, containing an authentication challenge $N$; followed by a message from $B$ to $A$ containing the authentication confirmation $T = H(U_B \concat N \concat TDH(g^A, g^a, g^B, g^b))$.
 When $A$ receives that message with a correct value of $T$, $A$ can then mark $B$ as being authenticated for the ephemeral public key $g^b$, and accept messages from $B$ signed against that public key.
 
-% TODO improve code: T = H(TDH() ++ N ++ U) at the moment, which risks a length extension attack.
 % TODO incorrect specification: round 1 is skipped sometimes
 
 %\subsubsection{Security properties}

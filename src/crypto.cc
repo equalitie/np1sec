@@ -611,9 +611,9 @@ Hash authentication_token(
 		peer_long_term_key,
 		peer_ephemeral_key
 	);
-	std::string buffer = token.as_string();
+	std::string buffer = username;
 	buffer += nonce.as_string();
-	buffer += username;
+	buffer += token.as_string();
 	return hash(buffer);
 }
 
