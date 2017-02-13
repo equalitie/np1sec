@@ -330,7 +330,7 @@ In this context, the group key exchange protocol has the following conceptual st
 \begin{enumerate}
 \item All participants in the key exchange are ordered in a circle. Participants are denoted $U_0$ to $U_{n-1}$, with indices taken modulo $n$: $U_n = U_0$, $U_{-1} = U_{n-1}$. Participant $U_i$ has public key $k_i = g^{m_i}$.
 \item Each participant $U_i$ generates a temporary private key $x_i$, used for the duration of the key exchange, and broadcasts the associated public key $y_i = g^{x_i}$.
-\item Each participant $U_i$ computes a Triple Diffie-Hellman secret shared with his or her left and right neighbors in the circle: $d_{i-1, i} = TDH(k_{i-1}, y_{i-1}, k_i, y_i)$; $d_{i, i+1} = TDH(k_i, y_i, k_{i+1}, y_{i+1})$.
+\item Each participant $U_i$ computes a Triple Diffie-Hellman secret shared with their left and right neighbors in the circle: $d_{i-1, i} = TDH(k_{i-1}, y_{i-1}, k_i, y_i)$; $d_{i, i+1} = TDH(k_i, y_i, k_{i+1}, y_{i+1})$.
 \item Each participant $U_i$ computes and broadcasts the XOR sum of their two Triple Diffie-Hellman secrets: $z_i = d_{i-1, i} \xor d_{i, i+1}$.
 \item By combining the linear combinations $z$ of the secrets $d$, each participant computes the secrets $d_{j, j+1}$ for all $0 \leq j < n$. Each participant $U_i$ computes these values by computing $d_{i+1, i+2} := z_{i+1} \xor d_{i, i+1}$, $d_{i+2, i+3} := z_{i+2} \xor d_{i+1, i+2}$, \ldots
 \item Each participant $U_i$ computes the shared secret $S = d_{0, 1} \concat d_{1, 2} \concat \ldots \concat d_{n-2, n-1} \concat d_{n-1, 0}$. This secret is used as input to a key derivation function.
@@ -1140,7 +1140,7 @@ On receiving any conversation message, clients should verify this signature, by 
 If this signature is not valid, implementations MUST NOT modify the conversation state machine of any conversations.
 Implementations SHOULD ignore messages with invalid signatures entirely, though they MAY raise some form of impersonation warning instead.
 
-If a conversation message has a valid signature matching its \field{conversation-public-key}, the message is addressed to any conversations, existing in the carrier chat room in which the message was sent, that contain an identified member with username \field{sender} and conversation public key \field{conversation-public-key}.
+If a conversation message has a valid signature matching its \field{conversation-public-key}, the message is addressed to any conversations existing in the carrier chat room in which the message was sent that contain an identified member with username \field{sender} and conversation public key \field{conversation-public-key}.
 Conversations matching these conditions are said to be \emph{addressed by} the conversation message.
 On receiving a conversation message with a valid signature, implementations MUST NOT modify the conversation state machine of any conversations that are not addressed by the message.
 Implementations MUST modify the conversation state machine of any conversations addressed by the message for which the implementation is maintaining a representation, by implementing the rules specified below.
@@ -1164,7 +1164,7 @@ Event messages should never be sent for any other reason.
 
 Event messages, when received, must correspond to the expectation for event messages encoded in the conversation state machine.
 A conversation's state machine contains a sequence of pending events; for each pending event, the conversation state machine further records which members of the conversation have yet to contribute to it.
-The conversation state machine demands that members send event messages \emph{when their corresponding events are created}, \emph{in the order at which the events are created}, and \emph{in no other situations}.
+The conversation state machine demands that members send event messages \emph{when their corresponding events are created}, \emph{in the order in which the events are created}, and \emph{in no other situations}.
 
 Implementing this, a conversation state machine addressed by a received event message is affected in the following way:
 \begin{itemize}
@@ -1194,13 +1194,13 @@ All identified members of the conversation, including the \field{sender}, send a
 An \message{INVITE} message affects the conversation state machine addressed by it in the following way:
 \begin{enumerate}
 \item If the conversation contains an identified member with username \field{username}, or if the \field{sender} is not a participant of the conversation, the \message{INVITE} message has no effect.
-\item If the conversation already contains an unidentified invitee with username \field{username}, long term public key \field{long-term-public-key}, and inviter \field{sender}, the \message{INVITE} message has no effect.
-\item Otherwise, a new \type{unidentified-invitee} is added to the conversation, with username \field{username}, long term public key \field{long-term-public-key}, and inviter \field{sender}. If the conversation contains any existing unidentified invitees with username \field{username} and inviter \field{sender}, those unidentified invitees are removed from the conversation.
+\item If the conversation already contains an unidentified invitee with username \field{username}, long-term public key \field{long-term-public-key}, and inviter \field{sender}, the \message{INVITE} message has no effect.
+\item Otherwise, a new \type{unidentified-invitee} is added to the conversation, with username \field{username}, long-term public key \field{long-term-public-key}, and inviter \field{sender}. If the conversation contains any existing unidentified invitees with username \field{username} and inviter \field{sender}, those unidentified invitees are removed from the conversation.
 \item A \type{conversation-confirmation-contribution} event is added to the conversation, for all identified members of the conversation, with invitee-username \field{username}, invitee-long-term-public-key \field{long-term-public-key}, and status-checksum equal to the conversation state machine's \smfield{status-checksum} after digesting the \message{INVITE} message. All identified members MUST send a \message{CONVERSATION\_CONFIRMATION} message matching this event.
 \item A \type{conversation-confirmation-status} event is added to the conversation, after the \type{conversation-confirmation-contribution} event above, for the \field{sender} of the \message{INVITE} message. This event has invitee-username \field{username} and invitee-long-term-public-key \field{long-term-public-key}.
 
 The \smfield{state-machine-hash} of this event is equal to the digest $H(\texttt{state-machine})$, where \texttt{state-machine} is the encoding of the conversation state machine as described in Section~\ref{todo:messages/message-encoding}, with a \smfield{status-checksum} after digesting the \message{INVITE} message, after adding the \type{unidentified-invitee} representing the invited user, after adding the \type{conversation-confirmation-contribution} event above, \emph{before} adding the \type{conversation-status-contribution} event.
-The \field{sender} of the \message{INVITE} message MUST send a \message{CONVERSATION\_STATUS} message, after having sent the \message{CONVERSATION\_CONFIRMATION} message above, with username \field{username}, long term public key \field{long-term-public-key}, and conversation state machine equal to \texttt{state-machine}.
+The \field{sender} of the \message{INVITE} message MUST send a \message{CONVERSATION\_STATUS} message, after having sent the \message{CONVERSATION\_CONFIRMATION} message above, with username \field{username}, long-term public key \field{long-term-public-key}, and conversation state machine equal to \texttt{state-machine}.
 \label{item:messages/invite/conversation-status-event}
 \end{enumerate}
 
@@ -1235,9 +1235,9 @@ The user with username \field{username} and public key \field{long-term-public-k
 To do this, and to correctly interpret future messages addressed to this conversation, it is not sufficient for the invited user to decode the conversation state machine status stored in the \field{conversation-state-machine} field.
 Instead, the user must reconstruct the status of the conversation state machine as it is after processing all messages up to and including the \message{CONVERSATION\_STATUS} message.
 
-The invited user can reconstruct this status by following the following procedure, outlined in Section~\ref{sec:conversation-state-machine/joining}:
+The invited user can reconstruct this status by following the procedure below, outlined in Section~\ref{sec:conversation-state-machine/joining}:
 \begin{enumerate}
-\item The invited user records all carrier chat room events ---carrier chat room messages, as well as notifications of users joining and leaving the carrier chat room--- after the most recent \message{INVITE} message, addressed to this conversation, with username \field{username}, long term public key \field{long-term-public-key}, and sender \field{sender}.
+\item The invited user records all carrier chat room events ---carrier chat room messages, as well as notifications of users joining and leaving the carrier chat room--- after the most recent \message{INVITE} message addressed to this conversation, with username \field{username}, long-term public key \field{long-term-public-key}, and sender \field{sender}.
 \item When receiving the \message{CONVERSATION\_STATUS} message, the invited user constructs a local copy of the conversation state machine described by the \field{conversation-state-machine} field.
 \item The invited user adds to this conversation state machine the \type{conversation-status-contribution} event described in Item~\ref{item:messages/invite/conversation-status-event} of Section~\ref{sec:messages/invite}.
 \item The invited user processes all recorded carrier chat room events, starting from the event immediately following the \message{INVITE} message, up to and including the \message{CONVERSATION\_STATUS} message, that are addressed to the conversation.
@@ -1288,13 +1288,13 @@ When the unidentified invitee gets promoted to an identified invitee, they can s
 
 All conversation messages other than the \message{INVITE\_ACCEPTANCE} message are addressed to the conversation, if any, that contains an identified member with username \field{sender} and conversation public key \field{conversation-public-key}.
 As a consequence, other conversation messages can be addressed at a given conversation only when sent by an identified member of the conversation.
-The \message{INVITE\_ACCEPTANCE} message is an exception to this rule, which makes it the single message that can be sent by an unidentified invitee to the conversation to which they are invited.
+The \message{INVITE\_ACCEPTANCE} message is an exception to this rule, which makes it the only message that can be sent by an unidentified invitee to the conversation to which they are invited.
 
 An \message{INVITE\_ACCEPTANCE} message is addressed to all conversations, if any, that contain an identified member with username \field{sender} and conversation public key \field{conversation-public-key}, or contain an identified member with username \field{inviter-username} and conversation public key \field{inviter-conversation-public-key}.
 As a consequence, \message{INVITE\_ACCEPTANCE} messages MUST be processed by any conversations matching this broader-than-usual condition; in particular, such conversations MUST digest the \message{INVITE\_ACCEPTANCE} message into their state machine's \smfield{status-digest} field, as described in Section~\ref{sec:conversation-state-machine/operations/messages}.
 
-If a conversation state machine addressed by an \message{INVITE\_ACCEPTANCE} message contains an unidentified invitee with username \field{sender}, long term public key \field{my-long-term-public-key}, and inviter \field{inviter-username}, and also contains a participant with username \field{inviter-username}, long term public key \field{inviter-long-term-public-key}, and conversation public key \field{inviter-conversation-public-key}, then this unidentified invitee gets promoted to an identified invitee with conversation public key \field{conversation-public-key}.
-This promotion is implemented by removing from the conversation state machine all unidentified invitees with username \field{sender}, and adding an \type{identified-invitee} with username \field{sender}, long term public key \field{my-long-term-public-key}, conversation public key \field{conversation-public-key}, and inviter \field{inviter-username}.
+If a conversation state machine addressed by an \message{INVITE\_ACCEPTANCE} message contains an unidentified invitee with username \field{sender}, long-term public key \field{my-long-term-public-key}, and inviter \field{inviter-username}, and also contains a participant with username \field{inviter-username}, long-term public key \field{inviter-long-term-public-key}, and conversation public key \field{inviter-conversation-public-key}, then this unidentified invitee gets promoted to an identified invitee with conversation public key \field{conversation-public-key}.
+This promotion is implemented by removing from the conversation state machine all unidentified invitees with username \field{sender}, and adding an \type{identified-invitee} with username \field{sender}, long-term public key \field{my-long-term-public-key}, conversation public key \field{conversation-public-key}, and inviter \field{inviter-username}.
 
 If instead a conversation state machine addressed by an \message{INVITE\_ACCEPTANCE} message already contains an identified member ---be it an unauthenticated identified invitee, authenticated invitee, or participant--- with username \field{sender}, this member is removed from the conversation state machine.
 
@@ -1302,7 +1302,7 @@ If instead a conversation state machine addressed by an \message{INVITE\_ACCEPTA
 \subsubsection{CONVERSATION\_AUTHENTICATION\_REQUEST}
 \label{sec:messages/conversation-authentication-request}
 
-The \message{CONVERSATION\_AUTHENTICATION\_REQUEST} (= 0x15) message is used to request an identified conversation member to authenticate themself for the cryptographic identity consisting of their long term public key and conversation public key.
+The \message{CONVERSATION\_AUTHENTICATION\_REQUEST} (= 0x15) message is used to request an identified conversation member to authenticate themself for the cryptographic identity consisting of their long-term public key and conversation public key.
 It is the in-conversation analogue of the \message{ROOM\_AUTHENTICATION\_REQUEST} message.
 It contains the authentication challenge that forms the base of this authentication process.
 
@@ -1311,9 +1311,9 @@ It contains the authentication challenge that forms the base of this authenticat
 \messagefield{authentication-challenge}{nonce}
 \end{conversationmessage}
 
-A \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message is a request to the identified member \field{username} to authenticate themself to the \field{sender}, for \field{username}'s and \field{sender}'s long term public keys and conversation public keys described by the conversation state machine.
+A \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message is a request to the identified member \field{username} to authenticate themself to the \field{sender}, for \field{username}'s and \field{sender}'s long-term public keys and conversation public keys described by the conversation state machine.
 It declares that \field{sender} will consider \field{username} authenticated for this identity after receiving a valid authentication confirmation for this pair of identities, described in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}, using \field{authentication-challenge} as the authentication challenge.
-The \field{username} identified member, upon receiving a \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message, can authenticate itself to the \field{sender} by sending a \message{CONVERSATION\_AUTHENTICATION} message containing this authentication confirmation.
+The \field{username} identified member, upon receiving a \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message, can authenticate themself to the \field{sender} by sending a \message{CONVERSATION\_AUTHENTICATION} message containing this authentication confirmation.
 
 Other than adjusting a conversation's \smfield{status-checksum}, a \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message does not affect the addressed conversation's state machine.
 
@@ -1330,13 +1330,13 @@ Assuming the authentication confirmation is valid, this allows the recipient mem
 \messagefield{authentication-confirmation}{hash}
 \end{conversationmessage}
 
-A \message{CONVERSATION\_AUTHENTICATION} message is a confirmation to the identified member \field{username} that the \field{sender} holds the private keys corresponding to their long term public key and conversation public key as described by the conversation state machine.
+A \message{CONVERSATION\_AUTHENTICATION} message is a confirmation to the identified member \field{username} that the \field{sender} holds the private keys corresponding to their long-term public key and conversation public key as described by the conversation state machine.
 The \emph{authentication-confirmation} should contain the authentication confirmation described in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}; if it does, this proves that the sender does indeed hold these private keys.
 
 The member \field{username} should consider the authentication valid if and only if
 \begin{itemize}
 \item that member previously sent a \message{CONVERSATION\_AUTHENTICATION\_REQUEST} to the member \emph{username}, and
-\item the \field{authentication-confirmation} field equals the expected authentication confirmation computed from the \field{authentication-challenge} sent in the accompanying \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message, for \field{username}'s and \field{sender}'s long term public keys and conversation public keys described in the conversation state machine, as specified in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}.
+\item the \field{authentication-confirmation} field equals the expected authentication confirmation computed from the \field{authentication-challenge} sent in the accompanying \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message, for \field{username}'s and \field{sender}'s long-term public keys and conversation public keys described in the conversation state machine, as specified in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}.
 \end{itemize}
 If both requirements hold, this proves that the \field{sender} holds the private keys corresponding to their public keys described by the conversation state machine.
 
@@ -1369,7 +1369,7 @@ If not, the \message{AUTHENTICATE\_INVITE} message has no effect on the conversa
 \subsubsection{CANCEL\_INVITE}
 \label{sec:messages/cancel-invite}
 
-The \message{CANCEL\_INVITE} (= 0x18) message is sent by a conversation participant to retract any invitations for a given (username, long term public key) pair.
+The \message{CANCEL\_INVITE} (= 0x18) message is sent by a conversation participant to retract any invitations for a given (username, long-term public key) pair.
 
 \begin{conversationmessage}{CANCEL\_INVITE}{0x18}
 \messagefield{username}{string}
@@ -1379,7 +1379,7 @@ The \message{CANCEL\_INVITE} (= 0x18) message is sent by a conversation particip
 A \message{CANCEL\_INVITE} message indicates that the \field{sender} wants to retract an active invitation for a given user.
 If no active invitations for the described member exist, or the member described by the \message{CANCEL\_INVITE} message has since become a participant of the conversation, the message has no effect.
 
-A \message{CANCEL\_INVITE} message removes from the conversation state machine any invited members ---be they unidentified invitees, unauthenticated identified invitees, or authenticated invitees--- with username \field{username}, long term public key \field{long-term-public-key}, and inviter \field{sender}.
+A \message{CANCEL\_INVITE} message removes from the conversation state machine any invited members ---be they unidentified invitees, unauthenticated identified invitees, or authenticated invitees--- with username \field{username}, long-term public key \field{long-term-public-key}, and inviter \field{sender}.
 Participants of the conversation, and invitations by inviters other than \field{sender}, are not affected.
 
 
@@ -1401,7 +1401,7 @@ When the \field{sender} is promoted to a participant like this, a new \type{key-
 This key exchange has \smfield{key-exchange-id} equal to the conversation state machine's \smfield{status-checksum} field after digesting the \message{JOIN} message; a \smfield{stage} of \textsc{Public-Key}; and a set of \smfield{participants} that contains one \type{key-exchange-participant} for each participant in the conversation, including the newly-promoted \field{sender}, each with all contributions unset.
 
 When this key exchange is created, a \type{key-exchange-contribution} event is added to the conversation state machine's event queue, with \smfield{key-exchange-id} equal to the \smfield{key-exchange-id} of the newly created key exchange, and \smfield{stage} equal to \textsc{Public-Key}.
-All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_PUBLIC\_KEY} message for this key exchange, containing their public-key contribution for the key exchange process.
+All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_PUBLIC\_KEY} message for this key exchange, containing their public key contribution for the key exchange process.
 
 
 \subsubsection{LEAVE}
@@ -1468,7 +1468,7 @@ This judgement may cause the timed out member to be removed from the conversatio
 A \message{TIMEOUT} message is a declaration by the \field{sender} that the member with username \field{username} is either judged timed out (if $\field{set-timeout} = \textsf{true}$), or judged no longer timed out (if $\field{set-timeout} = \textsf{false}$).
 This triggers a possible removal of the timed-out member from the conversation, as described in Section~\ref{sec:conversation-state-machine/contents/timeouts}.
 
-If the conversation state machine addressed by a \message{TIMEOUT} message does not contain an identified member with username \field{username}, or it does not contain a participant with username \field{sender}, the \message{TIMEOUT} message has no effect on the conversation state machine besides the \smfield{status-checksum}.
+If the conversation state machine addressed by a \message{TIMEOUT} message does not contain an identified member with username \field{username}, or does not contain a participant with username \field{sender}, the \message{TIMEOUT} message has no effect on the conversation state machine besides the \smfield{status-checksum}.
 Otherwise, the conversation state machine sets the \smfield{timeout-matrix} field $t_{\field{sender},\field{username}}$ to \textsf{true} if $\field{set-timeout} = \textsf{true}$, and to \textsf{false} otherwise.
 Afterwards, a symmetric or asymmetric split of the conversation may occur depending on the contents of the \smfield{timeout-matrix}, as described in Section~\ref{sec:conversation-state-machine/contents/timeouts}.
 
@@ -1499,14 +1499,14 @@ If it does, the message's \field{session-public-key} is stored as the \field{sen
 If, after setting the \field{sender}'s \smfield{session-public-key} field in this way, all participants of the conversation have a \smfield{session-public-key} set, the key exchange reaches the \textsc{Secret-Share} stage.
 When this happens, the \type{key-exchange}'s \smfield{stage} field is set to \textsc{Secret-Share}.
 Afterwards, a \type{key-exchange-contribution} event is added to the conversation state machine's event queue, with \smfield{key-exchange-id} equal to the \smfield{key-exchange-id} of the key exchange, and \smfield{stage} equal to \textsc{Secret-Share}.
-All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_SECRET\_SHARE} message for this key exchange, containing their secret-share contribution for the key exchange process.
+All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_SECRET\_SHARE} message for this key exchange, containing their secret share contribution for the key exchange process.
 
 
 \subsubsection{KEY\_EXCHANGE\_SECRET\_SHARE}
 \label{sec:messages/key-exchange-secret-share}
 
 The \message{KEY\_EXCHANGE\_SECRET\_SHARE} message is sent by participants of a conversation to submit their \textsc{Secret-Share} contributions to a key exchange process.
-This contribution contains their linear combination of secrets shared with their neighbours in the key exchange logical circle.
+This contribution contains their linear combination of secrets shared with their neighbors in the key exchange logical circle.
 
 \begin{conversationmessage}{KEY\_EXCHANGE\_SECRET\_SHARE}{0x32}
 \messagefield{key-exchange-id}{hash}
@@ -1527,12 +1527,12 @@ If it does not, the \message{KEY\_EXCHANGE\_SECRET\_SHARE} message does not affe
 
 If it does, the message's \field{group-hash} field is checked against the expected value derived from the contents of the conversation state machine.
 If the \field{group-hash} is not equal to \texttt{groupid}, as specified in Section~\ref{sec:cryptography/group-key-exchange/protocol}, the \field{sender} is removed from the conversation.
-It it is equal, the message's \field{secret-share} is stored as the \field{sender}'s \smfield{secret-share} in the \type{key-exchange} referred to.
+If it is equal, the message's \field{secret-share} is stored as the \field{sender}'s \smfield{secret-share} in the \type{key-exchange} referred to.
 
 If, after setting the \field{sender}'s \smfield{secret-share} field in this way, all participants of the conversation have a \smfield{secret-share} set, the key exchange reaches the \textsc{Acceptance} stage.
-When this happens, the \type{key-exchange}'s \smfield{stage} field is set to \textsc{Acceptance}.
+When this happens, the \smfield{stage} field of the \type{key-exchange} is set to \textsc{Acceptance}.
 Afterwards, a \type{key-exchange-contribution} event is added to the conversation state machine's event queue, with \smfield{key-exchange-id} equal to the \smfield{key-exchange-id} of the key exchange, and \smfield{stage} equal to \textsc{Acceptance}.
-All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_ACCEPTANCE} message for this key exchange, containing their key-digest contribution for the key exchange process.
+All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_ACCEPTANCE} message for this key exchange, containing their key digest contribution for the key exchange process.
 
 
 \subsubsection{KEY\_EXCHANGE\_ACCEPTANCE}
@@ -1567,7 +1567,7 @@ Afterwards, a \type{key-activation-contribution} event is added to the conversat
 All participants of the conversation MUST send a \message{KEY\_ACTIVATION} message with \field{key-id} set to the \smfield{key-exchange-id}, indicating that they will henceforth encrypt chat messages with the newly accepted key.
 
 If instead, when finishing the \textsc{Acceptance} stage, not all participants of the key exchange have submitted the same value of the \smfield{key-digest} field, the key exchange reaches the \textsc{Reveal} stage.
-If this happens, the \type{key-exchange}'s \smfield{stage} field is set to \textsc{Reveal}.
+If this happens, the \smfield{stage} field of the \type{key-exchange} is set to \textsc{Reveal}.
 Afterwards, a \type{key-exchange-contribution} event is added to the conversation state machine's event queue, with \smfield{key-exchange-id} equal to the \smfield{key-exchange-id} of the key exchange, and \smfield{stage} equal to \textsc{Reveal}.
 All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_REVEAL} message for this key exchange, containing their reveal contribution for the key exchange process.
 
@@ -1600,7 +1600,7 @@ When this happens, the \type{key-exchange} is removed from the conversation stat
 This judgement is determined in the following way:
 \begin{enumerate}
 \item First, for each participant, the public key corresponding to their recorded \smfield{session-private-key} is computed. If for any participant this public key does not match their recorded \smfield{session-public-key}, all participants for which these keys do not match are marked as \emph{malicious}, and the judgement halts.
-\item If the previous step does not yield any malicious participants, then by using the private keys of all participants, the secret shares for all participants are computed. This makes use of the fact that a Triple Diffie-Hellman secret between two parties can be computed when knowing the ephemeral private key of both parties, and the long term private key of neither party, as described in Section~\ref{sec:cryptography/triple-diffie-hellman/protocol}. If for any participant this public key does not match their recorded \smfield{secret-share}, all participants for which these secret shares do not match are marked as \emph{malicious}, and the judgement halts.
+\item If the previous step does not yield any malicious participants, then by using the private keys of all participants, the secret shares for all participants are computed. This makes use of the fact that a Triple Diffie-Hellman secret between two parties can be computed when knowing the ephemeral private key of both parties, and the long-term private key of neither party, as described in Section~\ref{sec:cryptography/triple-diffie-hellman/protocol}. If for any participant this public key does not match their recorded \smfield{secret-share}, all participants for which these secret shares do not match are marked as \emph{malicious}, and the judgement halts.
 \item If the previous steps do not yield any malicious participants, then by using the shared secrets of all participants, the shared key $S$ and key checksum $H(S \concat \texttt{groupid})$ are computed. All participants for which this computed key checksum does not match their recorded \smfield{key-digest}, of which there should be at least one, are marked as \emph{malicious}, and the judgement is finished.
 \end{enumerate}
 After computing a nonempty set of malicious participants of the key exchange procedure, the malicious participants of the key exchange are removed from the conversation.
@@ -1625,7 +1625,7 @@ As such, the effect of a \message{KEY\_ACTIVATION} message on the conversation s
 If that event is a \type{key-activation-contribution} event, with \smfield{key-exchange-id} equal to \field{key-id}, the \field{sender} is removed from that pending event.
 If the first event has any other form, or if the state machine does not describe any pending events that include \field{sender}, the \field{sender} is removed from the conversation.
 
-If, after removing the \field{sender} from the \type{key-activation-contribution} event in this way, the \type{key-activation-contribution} event does not have any remaining members left ---if that event's \smfield{members} field is empty, after removign \field{sender} from it--- then the key identified by \field{key-id} has been accepted by all participants described in the \type{key-activation-contribution}'s \smfield{participants} field.
+If, after removing the \field{sender} from the \type{key-activation-contribution} event in this way, the \type{key-activation-contribution} event does not have any remaining members left ---if the \smfield{members} field of that event is empty, after removing \field{sender} from it--- then the key identified by \field{key-id} has been accepted by all participants described in the \type{key-activation-contribution} \smfield{participants} field.
 Because all these participants are also participant to any key exchange processes that may have taken place after the exchange negotiating the \field{key-id} key, this implies that all these \smfield{participants} will have access to all future encrypted chat in the conversation.
 To mark this fact, the conversation state machine sets the \smfield{in-chat} field to \textsf{true} for all participants in the \smfield{participants} set.
 
@@ -1633,7 +1633,7 @@ To mark this fact, the conversation state machine sets the \smfield{in-chat} fie
 \subsubsection{KEY\_RATCHET}
 \label{sec:messages/key-ratchet}
 
-The \message{KEY\_RATCHET} message is sent by a participant of a conversation to announce their opinion that the most recently negotiated chat key has been in use for too long, and should be replaced.
+The \message{KEY\_RATCHET} message is sent by a participant of a conversation to announce their opinion that the most recently negotiated chat key has been in use for too long and should be replaced.
 This triggers a new key exchange process, which will negotiate a replacement key.
 
 \begin{conversationmessage}{KEY\_RATCHET}{0x42}
@@ -1643,7 +1643,7 @@ This triggers a new key exchange process, which will negotiate a replacement key
 A \message{KEY\_RATCHET} message indicates that the \field{sender} is of the opinion that the chat key negotiated by the most recent successfully finished key exchange process needs to be replaced with a new key, to avoid using a chat key for a long enough time that attacking the secrets on which it is based is a realistic attack possibility.
 The message field \field{key-id} is the id of the key for which the \field{sender} holds this opinion; if this key is still the most recently exchanged key when the \message{KEY\_RATCHET} message is received, and no existing key exchange is in progress to replace it, a new key exchange progress is initiated.
 
-If the \field{sender} of the \message{KEY\_RATCHET} message is not a participant of the conversation state machine addressed by the \message{KEY\_RATCHET} message, the conversation state machine is not affected by the \message{KEY\_RATCHET} message other than adjusting the conversation's \smfield{status-checksum}.
+If the \field{sender} of the \message{KEY\_RATCHET} message is not a participant of the conversation state machine addressed by the \message{KEY\_RATCHET} message, the conversation state machine is not affected by the \message{KEY\_RATCHET} message other than adjusting the \smfield{status-checksum} of the conversation.
 Likewise, if the conversation state machine's \smfield{latest-key-exchange-id} field is not equal to \field{key-id}, or the state machine's \smfield{key-exchanges} list contains at least one active key exchange, the \message{KEY\_RATCHET} message has no effect.
 
 If the \field{sender} is a participant of the conversation state machine, \smfield{latest-key-exchange-id} is equal to \field{key-id}, and no key exchanges are in progress in the conversation state machine, a new \type{key-exchange} is added to the conversation state machine.
@@ -1657,7 +1657,7 @@ All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_PUBLIC\
 \label{sec:messages/chat}
 
 The \message{CHAT} message is sent by a participant of a conversation to send an encrypted chat message to the participants of the conversation.
-This message is encrypted with the key most recently activated by the message's sender using a \message{KEY\_ACTIVATION} message, and can be decrypted by those participants that were party to the key exchange process that negotiated that key.
+This message is encrypted with the key most recently activated by the sender of the message using a \message{KEY\_ACTIVATION} message, and can be decrypted by those participants that were party to the key exchange process that negotiated that key.
 
 \begin{conversationmessage}{CHAT}{0x43}
 \messagefield{encrypted-message}{octet-stream}
@@ -1702,10 +1702,10 @@ The decrypted contents of an encrypted message are signed using the session-priv
 This \field{signature} is computed over the \type{octet-stream} making up the \field{message-body}.
 A participant that decrypted a chat message MUST verify this signature before attempting to display the chat message inside, and SHOULD ignore the message if this signature is not valid.
 
-As a protection against replay attacks the decrypted contents of an encrypted message contain a \field{message-id} field, which holds the number of messages previously sent by \field{sender} encrypted using this key.
+As a protection against replay attacks, the decrypted contents of an encrypted message contain a \field{message-id} field, which holds the number of messages previously sent by \field{sender} encrypted using this key.
 To avoid accepting a replayed copy of an earlier message sent by \field{sender} as valid, a participant that decrypted a chat message MUST verify the correctness of this \field{message-id} field, and SHOULD ignore the message if the \field{message-id} is not valid.
 
-If the \field{signature} and the \field{message-id} of a decrypted message are both valid, this indicates that the encrypted message is authentic.
+If the \field{signature} and \field{message-id} of a decrypted message are both valid, this indicates that the encrypted message is authentic.
 In this case, the implementation SHOULD display the transmitted \field{message} to the user, as sent by the participant \field{sender}.
 
 
