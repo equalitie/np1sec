@@ -36,7 +36,7 @@ $ make
 
 # Testing (n+1)sec
 
-To test (n+1)sec in a graphic interface, you can install the [(n+1)sec plugin for Pidgin](https://github.com/equalitie/np1sec-test-client).
+To test (n+1)sec in a graphic interface, you can install the [(n+1)sec plugin for Pidgin](https://github.com/equalitie/np1sec-test-client). A comprehensive [report of (n+1)sec test results](https://github.com/equalitie/np1sec/blob/master/doc/np1sec-test-report.pdf) is included in this repository.
 
 ## Running the jabberite test client
 
@@ -100,3 +100,5 @@ $ ./echo_chamber --log_level=test_suite --run_test=<name_of_the_test>
 For more ways to tweak the execution of the tests please consult
 the documentation on [Boost.Test](http://www.boost.org/doc/libs/1_63_0/libs/test/doc/html/boost_test/utf_reference/rt_param_reference.html)
 library.
+
+
