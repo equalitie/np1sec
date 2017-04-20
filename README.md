@@ -5,7 +5,7 @@
 
 ![(n+1)sec](https://learn.equalit.ie/mw/images/7/7f/Np1sec-web.jpg)
 
-The protocol underlying this multiparty communication security is described in this [paper](https://learn.equalit.ie/wiki/Np1sec). An experimental GUI client, in the form of a Pidgin plugin is [here](https://github.com/equalitie/np1sec-test-client). A command line client, called Jabberite, is included in this repository and described [below](https://github.com/equalitie/np1sec/blob/master/README.md#testing-np1sec). This client is used for instance in [EchoChamber](https://github.com/equalitie/EchoChamber), a testing platform for the (n+1)sec protocol that simulates network conditions and peer behavior to produce programmer-friendly benchmark data.
+The protocol underlying this multiparty communication security is described in this [paper](doc/protocol.pdf). An experimental GUI client, in the form of a Pidgin plugin is [here](https://github.com/equalitie/np1sec-test-client). A command line client, called Jabberite, is included in this repository and described [below](https://github.com/equalitie/np1sec/blob/master/README.md#testing-np1sec). This client is used for instance in [EchoChamber](https://github.com/equalitie/EchoChamber), a testing platform for the (n+1)sec protocol that simulates network conditions and peer behavior to produce programmer-friendly benchmark data.
 
 
 # Building (n+1)sec

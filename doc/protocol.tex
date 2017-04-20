@@ -133,7 +133,7 @@ This symmetric key is negotiated each time the list of Participants of a Convers
 % by exchanging np1sec messages in a given chatroom of some description, np1sec clients can engage in encrypted communications with other np1sec clients in that same room.
 % within certain limitations, np1sec can work on top of arbitrary text chat systems; the details are in Section~\ref{sec:carrier-chatrooms}.
 
-% when entering a room, an np1sec client sends a message announcing their presence as an np1sec-capabel client.
+% when entering a room, an np1sec client sends a message announcing their presence as an np1sec-capable client.
 % as part of this announcement, the client announces a public key, and requests other np1sec clients in the room to identify themselves.
 % when this happens, the new signup and the old client engage in a mutual authentication protocol, after which they are (hopefully) both assured of each other's identity.
 
@@ -150,7 +150,7 @@ This symmetric key is negotiated each time the list of Participants of a Convers
 
 
 \subsection{Conversation state machine}
-% on a protocol level, np1sec conversations are represented by state machines represented identically across all clients that take part in the conversation. The np1sec protocol specifies in detail how messages and chat events are to affect this idealized state machine, which implementations need to follow to the letter to stay compatible.
+% on a protocol level, np1sec conversations are represented by state machines represented identically across all clients that take part in the conversation. The np1sec protocol specifies in detail how messages and chat events are to affect this idealized state machine, and which implementations need to follow to the latter to stay compatible.
 
 
 \subsection{Joining a conversation}
@@ -239,7 +239,7 @@ These terms can be computed by Alice as $g^{Ab} = (g^b)^A$, $g^{aB} = (g^B)^a$, 
 Using these terms as input to a key derivation function, described below, yields a shared secret $S = f(g^{Ab}, g^{aB}, g^{ab})$.
 
 A key property of the Triple Diffie-Hellman protocol is that the key derivation function uses the terms $g^{Ab}$, $g^{aB}$, and $g^{ab}$, but not $g^{AB}$.
-Because all terms used by the key derivation function are based on at least one ephemeral key, an attacker who holds both ephemeral private keys -- but neither of the long term private keys -- is also in a position to compute the secret $S$.
+Because all terms used by the key derivation function are based on at least one ephemeral key, an attacker who holds both ephemeral private keys -- but neither of the long-term private keys -- is also in a position to compute the secret $S$.
 Indeed, an attacker knowing $a$, $b$, $g^A$, and $g^B$ can compute $g^{Ab} = (g^A)^b$, $g^{aB} = (g^B)^a$, and $g^{ab}$ = $((g)^a)^b$.
 
 This property has two critical consequences that (n+1)sec relies upon.
@@ -282,14 +282,14 @@ But Alice cannot prove this fact to a third party, for as far as the third party
 
 The (n+1)sec protocol implements this scheme using the following authentication challenge protocol:
 \begin{description}[noitemsep]
-\item[Participants.] User $A$ with username $U_A$ has announced long term public key $g^A$ and emphemeral public key $g^a$. User $B$ with username $U_B$ has announced $g^B$ and $g^b$.
+\item[Participants.] User $A$ with username $U_A$ has announced long-term public key $g^A$ and emphemeral public key $g^a$. User $B$ with username $U_B$ has announced $g^B$ and $g^b$.
 \item[Round 1.] User $A$ sends user $B$ an \emph{authentication challenge} nonce $N$.
 \item[Round 2.] User $B$ sends user $A$ the \emph{authentication confirmation} $T = H(U_B \concat N \concat TDH(g^A, g^a, g^B, g^b))$.
 \item[Computation.] User $A$ verifies the correctness of the authentication confirmation. If it is correct, $A$ knows that $B$ possesses the private key $b$.
 \end{description}
 
 The (n+1)sec protocol uses the authentication challenge protocol in several places to provide mutual deniable authentication between users, in such a way that authentication of $B$ to $A$ and authentication of $A$ to $B$ typically run in parallel.
-This takes the form of a message from a user with username $U_A$, long term public key $g^A$, and ephemeral public key $g^a$, to a user with username $U_B$, long term public key $g^B$, and ephemeral public key $g^b$, containing an authentication challenge $N$; followed by a message from $B$ to $A$ containing the authentication confirmation $T = H(U_B \concat N \concat TDH(g^A, g^a, g^B, g^b))$.
+This takes the form of a message from a user with username $U_A$, long-term public key $g^A$, and ephemeral public key $g^a$, to a user with username $U_B$, long-term public key $g^B$, and ephemeral public key $g^b$, containing an authentication challenge $N$; followed by a message from $B$ to $A$ containing the authentication confirmation $T = H(U_B \concat N \concat TDH(g^A, g^a, g^B, g^b))$.
 When $A$ receives that message with a correct value of $T$, $A$ can then mark $B$ as being authenticated for the ephemeral public key $g^b$, and accept messages from $B$ signed against that public key.
 
 % TODO incorrect specification: round 1 is skipped sometimes
@@ -311,12 +311,12 @@ A group key protocol is an extension of the traditional Diffie-Hellman key excha
 The (n+1)sec protocol invokes an instance of a group key exchange protocol each time a conversation requires a new shared symmetric key.
 
 A complication of group key exchange protocols that has no equivalent in the two-party Diffie-Hellman key exchange protocol lies in the possibility of \emph{denial of service} attacks.
-A participant in a group key exchange protocol might send messages containing invalid contribitions to the key exchange, in a way that other participants cannot readily detect, causing the key exchange mechanism to fail.
-While most group key exchange protocols will verify at the end that a key was exchanged successfully, and notice the problem if one of the participants to the exchange acted maliciously, most key exchange protocols cannot then determine which participant was responsible for the failure.
+A participant in a group key exchange protocol might send messages containing invalid contributions to the key exchange, in a way that other participants cannot readily detect, causing the key exchange mechanism to fail.
+While most group key exchange protocols will verify in the end that a key was exchanged successfully, and notice the problem if one of the participants to the exchange acted maliciously, most key exchange protocols cannot then determine which participant was responsible for the failure.
 Should the participants of the conversation then simply try again to exchange a key, the malicious participant could keep disrupting the negotiation of a key indefinitely, freezing conversation progress without anyone being able to determine the party responsible for this breakdown.
 
 The (n+1)sec protocol makes use of a version of the Abdalla-Chevalier-Manulis-Pointcheval GKE+P authenticated group key exchange \cite{acmp}.
-The version of this protocol used by (n+1)sec is modified in such a way that both the participants of a key exchange, and nonparticipating observants of a key exchange, can always determine the party responsible for any failures of the key exchange; these participants can then choose not to include the responsible party in further key exchange attempts, and solve the problem thereby.
+The version of this protocol used by (n+1)sec is modified in such a way that both the participants of a key exchange and non-participating observants of a key exchange can always determine the party responsible for any failures of the key exchange; these participants can then choose not to include the responsible party in further key exchange attempts, and solve the problem thereby.
 
 
 \subsubsection{Cryptography}
@@ -330,7 +330,7 @@ In this context, the group key exchange protocol has the following conceptual st
 \begin{enumerate}
 \item All participants in the key exchange are ordered in a circle. Participants are denoted $U_0$ to $U_{n-1}$, with indices taken modulo $n$: $U_n = U_0$, $U_{-1} = U_{n-1}$. Participant $U_i$ has public key $k_i = g^{m_i}$.
 \item Each participant $U_i$ generates a temporary private key $x_i$, used for the duration of the key exchange, and broadcasts the associated public key $y_i = g^{x_i}$.
-\item Each participant $U_i$ computes a Triple Diffie-Hellman secret shared with his left and right neighbours in the circle: $d_{i-1, i} = TDH(k_{i-1}, y_{i-1}, k_i, y_i)$; $d_{i, i+1} = TDH(k_i, y_i, k_{i+1}, y_{i+1})$.
+\item Each participant $U_i$ computes a Triple Diffie-Hellman secret shared with their left and right neighbors in the circle: $d_{i-1, i} = TDH(k_{i-1}, y_{i-1}, k_i, y_i)$; $d_{i, i+1} = TDH(k_i, y_i, k_{i+1}, y_{i+1})$.
 \item Each participant $U_i$ computes and broadcasts the XOR sum of their two Triple Diffie-Hellman secrets: $z_i = d_{i-1, i} \xor d_{i, i+1}$.
 \item By combining the linear combinations $z$ of the secrets $d$, each participant computes the secrets $d_{j, j+1}$ for all $0 \leq j < n$. Each participant $U_i$ computes these values by computing $d_{i+1, i+2} := z_{i+1} \xor d_{i, i+1}$, $d_{i+2, i+3} := z_{i+2} \xor d_{i+1, i+2}$, \ldots
 \item Each participant $U_i$ computes the shared secret $S = d_{0, 1} \concat d_{1, 2} \concat \ldots \concat d_{n-2, n-1} \concat d_{n-1, 0}$. This secret is used as input to a key derivation function.
@@ -344,7 +344,7 @@ Only by knowing the value of at least one secret $d$ are participants able to co
 
 When the cryptographic protocol above is finished, the participants confirm to each other that they have all computed the same value of $S$.
 If this is not the case, this indicates that at least one of the participants $U_i$ is malicious, and has broadcast a value of $z_i$ that is not derived correctly from the public key $y_i$ they announced.
-In this situation, the participants of the protocol can all reveal their private key $x_i$; this allows all participants (and nonparticipating observers) to compute the correct values $y_j$ and $z_j$ that all participants should have announced.
+In this situation, the participants of the protocol can all reveal their private key $x_i$; this allows all participants (and non-participating observers) to compute the correct values $y_j$ and $z_j$ that all participants should have announced.
 By comparing these expected values to the values actually broadcast, participants and observers can identify the malicious participant, and start a new group key exchange without that participant.
 
 
@@ -363,7 +363,7 @@ If not, a fourth phase starts in which all participants reveal their temporary p
 
 Concretely, (n+1)sec implements the following protocol:
 \begin{description}[noitemsep]
-\item[Participants.] The protocol initiates for a set of participants $v$, each having a username $U_v$ and a long term public key $k_v$ known by all participants. Participants are sorted in lexicographical order by username, and denoted $U_0$ to $U_{n-1}$.
+\item[Participants.] The protocol initiates for a set of participants $v$, each having a username $U_v$ and a long-term public key $k_v$ known by all participants. Participants are sorted in lexicographical order by username, and denoted $U_0$ to $U_{n-1}$.
 \item[Round 1.] Each participant $U_i$ generates a random private key $x_i$ and public key $y_i = g^{x_i}$, and broadcasts $y_i$.
 \item[Round 2.] Each participant $U_i$ proceeds as follows:
 	\begin{itemize}[noitemsep,nolistsep]\renewcommand{\labelitemi}{--}
@@ -398,7 +398,7 @@ The details of this response are described in Sections~\ref{sec:conversation-sta
 \label{sec:cryptography/cryptographic-primitives}
 
 The (n+1)sec system makes use of certain cryptographic primitives to achieve its security properties.
-In particilar, the (n+1)sec protocol uses a cryptographic hash function; a digital signature scheme; and a symmetric cipher.
+In particular, the (n+1)sec protocol uses a cryptographic hash function; a digital signature scheme; and a symmetric cipher.
 Additionally, the (n+1)sec protocol makes use of a secure finite cyclic group in which the Diffie-Hellman protocol can be performed.
 
 The (n+1)sec protocol uses the following algorithms as implementations of these abstract primitives:
@@ -429,17 +429,17 @@ The (n+1)sec protocol uses the following algorithms as implementations of these 
 
 The key abstraction of the (n+1)sec protocol is the \emph{conversation}, which is the context in which chats take place.
 An (n+1)sec conversation is an agreement between a group of users to exchange encrypted chat in a setting that behaves like a conventional chatroom, by exchanging (n+1)sec messages in a single carrier chat room.
-As such, a conversation has such things as a participant list, an ordered sequence of chat messages and related events, and indications of when participants join and leave the conversation.
+As such, a conversation has such things as a participants list, an ordered sequence of chat messages and related events, and indications of when participants join and leave the conversation.
 For the purposes of security, conversations also keep track of what users are able to receive which chat messages at each point.
 
 Conversations are a \emph{distributed} notion.
-When a group of users participating in a conversation, this fact is not recorded on the chat server, or in any other way regulated by the carrier chat infrastructure; instead, conversations exist only in the memory of the clients of their participants, and they rely on distributed coordination to keep the abstraction intact.
+When a group of users is participating in a conversation, this fact is not recorded on the chat server, or in any other way regulated by the carrier chat infrastructure; instead, conversations exist only in the memory of the clients of their participants, and they rely on distributed coordination to keep the abstraction intact.
 For such a distributed coordinated abstraction to behave like a conventional chatroom, it is critical that its participants are at all times in agreement about such things as the member list, the chat transcript, and the state and history of the conversation in general.
 
 Achieving and maintaining this agreement is a challenging affair.
-Because communication over the channel provioded by the carrier chat room is not instantaneous ---messages take a nonzero time to arrive at the carrier chat room after being sent by a user, and then take another nonzero time before being received by all other users--- multiple processes involved in maintaining a conversation might happen simultaneously in an interleaved fashion.
+Because communication over the channel provided by the carrier chat room is not instantaneous ---messages take a nonzero time to arrive at the carrier chat room after being sent by a user, and then take another nonzero time before being received by all other users--- multiple processes involved in maintaining a conversation might happen simultaneously in an interleaved fashion.
 For example, a new user might attempt to join a conversation at the unfortunate time when a group key exchange procedure (as described in Section~\ref{sec:cryptography/group-key-exchange}) is in progress.
-For another example, a conversation participant might stop responding due to connectivity problems while the process to accept a new user into the conversation is in progress, which should not cause the user-acceptance procedure to freeze indefinitely while the troubled participant fails to participate.
+For another example, a conversation participant might stop responding due to connectivity problems while the process to accept a new user into the conversation is in progress, which should not cause the user acceptance procedure to freeze indefinitely while the troubled participant fails to participate.
 Resolving these potential conflicts in a way that reliably results in agreement between conversation participants about what happened and in what order is a famously difficult problem.
 This problem becomes more difficult still if a conversation might contain malicious participants, that seek to sow confusion and prevent participants from reaching agreement, and thereby make coherent conversation impossible.
 
@@ -448,7 +448,7 @@ The (n+1)sec protocol approaches this problem using the following structure:
 \item Conversations have a formally specified state, referred to as the \emph{conversation state machine}, of which all conversation participants maintain a copy. Different participants of a conversation maintain identical copies of this state machine at all times.
 \item The (n+1)sec protocol specifies for each chat message sent in a carrier chat room how this affects any conversations taking place in that chat room. Clients of conversation participants implement that specification precisely.
 \item Because different users in a carrier chat room receive the same messages in that room in the same order, different conversation participants perform the same modifications to their copies of the conversation state machine. Thus, when all participants in a conversation have finished processing all carrier chat room messages up to a certain point, they all maintain identical copies of the conversation state machine.
-\item All messages that a conversation participant can send that affect a conversation are designed in such a way that the visible interpretation of the message remains intact, no matter what intervening events may have occurred between the time that the sender sent the message and the time other participants receive it. For example, if a new group key exchange procedure finishes while a participant is sending a chat message, the design of both the chat message process and the key exchange process is such that the chat message is still received and interpreted as desired, and only by the expected recipients.
+\item All messages that a conversation participant can send that affect a conversation are designed in such a way that the visible interpretation of the message remains intact, no matter what intervening events may have occurred between the time when the sender sent the message and the time other participants receive it. For example, if a new group key exchange procedure finishes while a participant is sending a chat message, the design of both the chat message process and the key exchange process is such that the chat message is still received and interpreted as desired, and only by the expected recipients.
 \end{itemize}
 
 The remainder of this section describes the detailed procedure involved in participating in a conversation and maintaining the assorted state machine; the procedure of joining a conversation; and the exact content and semantics of the conversation state machine.
@@ -465,7 +465,7 @@ With an interpretation of this state and modifications of this state as events i
 
 An (n+1)sec client can \emph{passively participate} in a conversation by implementing this abstract computation.
 By acquiring a copy of the current conversation state machine contents (described in Section~\ref{sec:conversation-state-machine/joining}) and then interpreting carrier chat room messages according to the specification of the conversation state machine, the client can keep exact track of the state machine contents, as well as most events happening in the conversation.
-A passive participant of a conversation can not decrypt chat messages sent to the conversation, as these chat messages are encrypted using a key that the passive participant does not know; but the passive participant can keep track of the list of members of the conversation and their status, as well as all other details of the conversation other than the chat message content.
+A passive participant of a conversation cannot decrypt chat messages sent to the conversation, as these chat messages are encrypted using a key that the passive participant does not know; but the passive participant can keep track of the list of members of the conversation and their status, as well as all other details of the conversation other than the chat message content.
 In particular, a passive participant can maintain a complete copy of the state machine contents specified by the abstract computation, despite not being able to decrypt any chat messages.
 The joining procedure, described in Section~\ref{sec:conversation-state-machine/joining}, relies on this ability, for a user who is invited to but not yet part of a conversation should be able to keep track of the conversation's list of members when deciding whether or not to join the conversation.
 
@@ -533,7 +533,7 @@ An (n+1)sec conversation at any point in time has a set of \emph{participants}, 
 Every time the set of participants of a conversation changes ---when a new participant joins a conversation, or when an existing participant leaves the conversation--- the participants of the conversation perform a key exchange procedure (as outlined in Section~\ref{sec:cryptography/group-key-exchange}), which will yield a key shared between the conversation participants that can be used to encrypt chat messages with.
 A newly joined participant of a conversation may not be in the possession of a shared key yet if the key exchange procedure is still in progress, but it is an invariant of conversation that every participant is either in possession of such a session key, or is involved in a key exchange process that aims to accomplish this.
 
-Participants of a conversation are identified by their username and long term public key, which together define their identity.
+Participants of a conversation are identified by their username and long-term public key, which together define their identity.
 Participants also have a \emph{conversation public key}, which is a temporary key used to sign messages addressed to a conversation.
 This conversation public key is used as the ephemeral public key used in the Triple Diffie-Hellman deniable authentication protocol, as described in Section~\ref{sec:cryptography/triple-diffie-hellman}, which is used by the different participants in a conversation to authenticate each other.
 By signing conversation messages using an ephemeral public key in this way, conversation participants can verify the authenticity of messages without violating deniability.
@@ -546,17 +546,17 @@ Several steps are involved between the invitation of a new user into a conversat
 New users follow the following process:
 
 \begin{description}[noitemsep]
-\item[Step 1.] An existing participant of the conversation sends an \message{INVITE} message (Section~\ref{sec:messages/invite}) to a user in the carrier chat room. This message contains the long term public key of the invitee, as well as their username.
+\item[Step 1.] An existing participant of the conversation sends an \message{INVITE} message (Section~\ref{sec:messages/invite}) to a user in the carrier chat room. This message contains the long-term public key of the invitee, as well as their username.
 \item[Step 2.] The invitee obtains a copy of the conversation state machine, as described in Section~\ref{sec:conversation-state-machine/joining}.
 \item[Step 3.] The invitee sends an \message{INVITE\_ACCEPTANCE} message (Section~\ref{sec:messages/invite-acceptance}) to the conversation. This message contains the fresh conversation public key the invitee will use for this conversation.
 \item[Step 4.] The invitee identifies themself to the participants in the conversation, and vice versa, as outlined in Sections~\ref{sec:messages/conversation-authentication-request} and~\ref{sec:messages/conversation-authentication}.
 \item[Step 5.] The participant that invited the invitee sends an \message{AUTHENTICATE\_INVITE} message (Section~\ref{sec:messages/authenticate-invite}) to the conversation, indicating that they have successfully authenticated the invitee as having the expected identity.
 \item[Step 6.] The invitee sends a \message{JOIN} message (Section~\ref{sec:messages/join}) to the conversation. This promotes the invitee to a participant.
-\item[Aftermath.] After the invitee gets promoted to a participant, a key exchange process begins to negotiate a key known to the new participant. When this completes, the new participant can participate in chat in the conversation.
+\item[Aftermath.] After the invitee is promoted to a participant, a key exchange process begins to negotiate a key known to the new participant. When this completes, the new participant can participate in chat in the conversation.
 \end{description}
 
 For invitees of a conversation, the conversation state machine keeps track of the participant that invited them, denoted the \emph{inviter} of the invitee.
-If the participant that invited an invitee leaves the conversation while the joining process is still in progress ---the invitee has not yet become a participant themselves--- then the invitation disappears, and the invitee is forcibly removed from the conversation.
+If the participant that invited an invitee leaves the conversation while the joining process is still in progress ---the invitee has not yet become a participant themself--- then the invitation disappears, and the invitee is forcibly removed from the conversation.
 This measure stops conversations from containing ``orphaned'' invitees that are not there by request of any of the conversation's current participants.
 Of course, if an invitee gets dropped from a conversation because of the departure of their inviter, other participants of the conversation may invite the invitee again, and restart the invitation process.
 
@@ -576,18 +576,18 @@ A conversation's participants are each represented in the conversation state mac
 A conversation state machine stores, for each participant, their \smfield{username}, \smfield{long-term-public-key}, and \smfield{conversation-public-key}.
 It also stores a flag \smfield{in-chat} indicating whether the conversation has yet negotiated a chat key to which the participant has access.
 
-An \emph{unidentified invitee} of a conversation is an invitee member that has been invited to the conversation using an \message{INVITE} message, but that has not yet replied with an \message{INVITE\_ACCEPTANCE} message.
+An \emph{unidentified invitee} of a conversation is an invitee member that has been invited to the conversation using an \message{INVITE} message, but has not yet replied with an \message{INVITE\_ACCEPTANCE} message.
 Unidentified invitees are represented in the conversation state machine by the \type{unidentified-invitee} structure:
 \begin{struct}{unidentified-invitee}
 \structfield{username}{string}
 \structfield{long-term-public-key}{publickey}
 \structfield{inviter}{participant reference}
 \end{struct}
-An unidentified invitee of a conversation has a \smfield{username} and \smfield{long-term-public-key}, which is the long term identity that has been invited into the conversation.
-An unidentified invitee does not yet have an empheral public key, for that key is not announced by the invitee until their \message{INVITE\_ACCEPTANCE} message.
+An unidentified invitee of a conversation has a \smfield{username} and \smfield{long-term-public-key}, which is the long-term identity that has been invited into the conversation.
+An unidentified invitee does not yet have an ephemeral public key, for that key is not announced by the invitee until their \message{INVITE\_ACCEPTANCE} message.
 The conversation state machine also stores, for each unidentified invitee, the \smfield{inviter} participant that invited them.
 
-An \emph{unauthenticated identified invitee} of a conversation is an invitee member that has been invited to the conversation with an \message{INVITE} message and who has replied with an \message{INVITE\_ACCEPTANCE} message, but who has not yet been authenticated by their inviter via an \message{AUTHENTICATE\_INVITE} message.
+An \emph{unauthenticated identified invitee} of a conversation is an invitee member that has been invited to the conversation with an \message{INVITE} message and has replied with an \message{INVITE\_ACCEPTANCE} message, but has not yet been authenticated by their inviter via an \message{AUTHENTICATE\_INVITE} message.
 Unauthenticated identified invitees are represented in the conversation state machine by the \type{identified-invitee} structure:
 \begin{struct}{identified-invitee}
 \structfield{username}{string}
@@ -606,7 +606,7 @@ Authenticated invitees are represented in the conversation state machine by the 
 \structfield{conversation-public-key}{publickey}
 \structfield{inviter}{participant reference}
 \end{struct}
-An authenticated invitee is stored the same way in a conversation state machine as an unauthenticated identified invitee; their only difference is the status of their authentication process.
+An authenticated invitee is stored in a conversation state machine in the same way as an unauthenticated identified invitee; their only difference is the status of their authentication process.
 Authenticated invitees can become independent participants by sending a \message{JOIN} message to the conversation.
 
 
@@ -614,9 +614,9 @@ A conversation state machine contains a field \smfield{members}, which is the se
 This field is an unordered collection of the conversation's members, each represented as either a \type{participant}, \type{unidentified-invitee}, \type{identified-invitee}, or \type{authenticated-invitee} structure.
 
 The identified members of a conversation ---that is, those members that are either unauthenticated identified invitees, authenticated invitees, or participants--- are uniquely identified by their username.
-That is to say, a user of a carrier chat room may participate in a conversation with \emph{at most one} long term public key and conversation public key; if a conversation state machine contains an identified member with a given username, it may not contain any other members (identified or not) with that same username.
-However, if a conversation state machine does not contain any identified members with a given username, it may contain multiple different unidentified invitees with the same username; this allows multiple participants in a conversation to attempt to invite a user to a conversation using different long term public keys.
-As soon as that carrier chat room user actively participates in the conversation by replying with an \message{INVITE\_ACCEPTANCE} message, and thereby become an unauthenticated identified invitee, the remaining unidentified invitee structures are removed from the conversation state machine, as described in Section~\ref{sec:messages/invite-acceptance}.
+That is to say, a user of a carrier chat room may participate in a conversation with \emph{at most one} long-term public key and conversation public key; if a conversation state machine contains an identified member with a given username, it may not contain any other members (identified or not) with that same username.
+However, if a conversation state machine does not contain any identified members with a given username, it may contain multiple different unidentified invitees with the same username; this allows multiple participants in a conversation to attempt to invite a user to a conversation using different long-term public keys.
+As soon as that carrier chat room user actively participates in the conversation by replying with an \message{INVITE\_ACCEPTANCE} message, and thereby becomes an unauthenticated identified invitee, the remaining unidentified invitee structures are removed from the conversation state machine, as described in Section~\ref{sec:messages/invite-acceptance}.
 
 
 \subsubsection{Key exchanges}
@@ -624,7 +624,7 @@ As soon as that carrier chat room user actively participates in the conversation
 
 The (n+1)sec protocol makes use of a group key exchange protocol, described in Section~\ref{sec:cryptography/group-key-exchange}, to distribute a shared symmetric key between all participants of a conversation, which is used by that conversation's participants to encrypt chat messages.
 An instance of this protocol initiates every time the set of participants in a conversation changes ---that is, whenever a new participant gets promoted into the conversation, and whenever a participant leaves the conversation--- as well as in certain other conditions (see Section~\ref{sec:messages/key-ratchet}).
-Each instance of the protocol initiated attempts to exchange a key between all users who are a participant of the conversation at the time the key exchange protocol gets initiated.
+Each instance of the protocol initiates attempts to exchange a key between all users who are participants of the conversation at the time the key exchange protocol gets initiated.
 
 The group key exchange protocol is a process that requires nontrivial time to complete.
 When a key exchange process is initiated, those participants that are already in possession of a chat key will continue to send chat messages encrypted using this old key; only when the key exchange process finishes do the participants involved switch to using the key exchanged thereby.
@@ -652,11 +652,11 @@ When this happens, the key exchange procedure can identify those participants th
 
 
 A conversation's state machine contains a record of all key exchanges that are in progress in the conversation at any given point in time.
-For each such key exchange, the conversation state machine stores all information about the key exchange that users not party to the key exchange ha access to; roughly speaking, this means that the conversation state machine stores a history of all public contributions to the key exchange procedure by its participants.
+For each such key exchange, the conversation state machine stores all information about the key exchange that users not party to the key exchange have access to; roughly speaking, this means that the conversation state machine stores a history of all public contributions to the key exchange procedure by its participants.
 The key exchange protocol is designed in such a way that this information is sufficient for users that passively participate in the conversation to determine whether a key exchange finished successfully, and if not, which participants contributed maliciously and are therefore afterwards removed from the conversation.
 
 The information about a key exchange contained in a conversation's state machine is \emph{not} sufficient for a passively participating user to compute the chat key negotiated by the key exchange process.
-This is of course intentional; a key exchange process is a procedure to negotiate a key known only to the participants of the key exchange, and not to anyone else.
+This is of course intentional; a key exchange process is a procedure to negotiate a key known only to the participants of the key exchange, and to no one else.
 As a consequence, (n+1)sec clients that participate in a key exchange need to store more information than the contents of the conversation state machine.
 In particular, as long as a key exchange is ongoing, its participants need to store the secrets on which their contributions are based, which form the missing parts that allow these participants to compute the chat key negotiated by the key exchange process.
 However, these secrets do not form part of the conversation state machine of the conversation of which the key exchange is part, which consists only of those parts of the state of a conversation that users passively participating in a conversation can keep track of.
@@ -697,13 +697,13 @@ The \type{key-exchange-participant} structure contains four fields representing 
 \end{description}
 
 A conversation state machine stores a list \smfield{key-exchanges} of all active key exchange processes, each represented by a \type{key-exchange} structure, in the order in which they were initiated.
-This ordering of the recorded key exchanges is relevant when a key exchange process finishes; for when a key exchange process completes successfully, all earlier key exchange processes in the conversation get cancelled, and removed from the conversation state machine.
+This ordering of the recorded key exchanges is relevant when a key exchange process finishes; for when a key exchange process completes successfully, all earlier key exchange processes in the conversation get cancelled and removed from the conversation state machine.
 Active key exchange processes also get cancelled, and thereby removed from the conversation state machine, when one of the participants involved in the key exchange leaves the conversation.
 
 New key exchange processes get initiated, and added to the conversation state machine, when a new participant joins the conversation; when a participant leaves the conversation; and when the currently active chat key gets replaced by a fresh key to limit the duration for which any particular chat key is in use.
 These procedures are described in more detail in Sections~\ref{sec:messages/invite-acceptance}, \ref{sec:conversation-state-machine/operations/removing}, and~\ref{sec:messages/key-ratchet}, respectively.
 
-Besides storing a lost of active key exchanges, a conversation state machine also stores the \smfield{key-exchange-id} of the most recent key exchange that completed successfully.
+Besides storing a lot of active key exchanges, a conversation state machine also stores the \smfield{key-exchange-id} of the most recent key exchange that completed successfully.
 This piece of information is stored in the conversation state machine's \smfield{latest-key-exchange-id} field.
 This tracked piece of information is used in determining whether the currently used chat key has been in use for long enough that it should be replaced with a fresh key, as described in Section~\ref{sec:messages/key-ratchet}.
 The procedure of keeping the \smfield{latest-key-exchange-id} field up-to-date is described in Section~\ref{sec:messages/key-exchange-acceptance}.
@@ -717,10 +717,10 @@ For example, active key exchanges require their participants to contribute their
 For another example, when a participant of a conversation invites a new user, existing identified members of the conversation are required to send a message confirming that they are part of the conversation, which allows the new invitee to confirm the set of members of the conversation.
 In either case, the normal function of the conversation ---or parts of it--- cannot proceed until all relevent members of the conversation have contributed their part.
 
-In these situations, a member that does not cooperate by sending their contribution the conversation processes ---perhaps because they maliciously want to sabotage the conversation, or maybe simply because they are suffering network connectivity problems--- can hold up useful activity in the conversation indefinitely.
-To avoid (n+1)sec conversations from being entirely at the mercy of malicious saboteurs and unfortunate network contingencies alike, conversations need to enforce participation in situations where a member contribution is mandatory --- by removing nonparticipating members from the conversation, if need be.
+In these situations, a member that does not cooperate by sending their contribution to the conversation processes ---perhaps because they maliciously want to sabotage the conversation, or maybe simply because they are suffering network connectivity problems--- can hold up useful activity in the conversation indefinitely.
+To avoid (n+1)sec conversations from being entirely at the mercy of malicious saboteurs and unfortunate network contingencies alike, conversations need to enforce participation in situations where a member contribution is mandatory --- by removing non-participating members from the conversation, if need be.
 
-To coordinate this enforcement in an orderly fashion, it is important that a conversation's state machine keeps close track of the contributions of its members that the conversation is still waiting on.
+To coordinate this enforcement in an orderly fashion, it is important that a conversation's state machine keeps close track of the contributions of its members that the conversation is still waiting for.
 This record of pending member contributions can then be used as the base of a timeout mechanism, removing from a conversation those members that do not contribute for a sufficiently long time.
 This timeout mechanism is described in more detail in Section~\ref{sec:conversation-state-machine/contents/timeouts}.
 
@@ -728,7 +728,7 @@ The (n+1)sec protocol codifies this concept by storing in each conversation stat
 An \emph{event} is a record in a conversation state machine of a particular future contribution the conversation expects of some subset of its members.
 Events are added to this queue whenever an activity takes place that requires some members of the conversation to respond; for example, when a key exchange progresses from the \textsc{Public-Key} stage to the \textsc{Secret-Share} stage as its last remaining participant sends in their public key, an event is created, denoting that all participants of that key exchange process are to send in a message containing their secret share.
 Events are removed for a given member once the contribution described by the event is received by the conversation.
-If an event for a member stays in the event queue for too long a time, this triggers a timeout procedure for the offending member.
+If an event for a member stays in the event queue for too long, this triggers a timeout procedure for the offending member.
 
 
 A conversation state machine stores a queue of pending events \smfield{event-queue} as a sequence of \type{event} structures:
@@ -741,7 +741,7 @@ An event specifies, in its \smfield{contribution} field, a specific type of mess
 The \smfield{members} field of an event specifies the set of identified members from which such a message is expected.
 This set shrinks each time one of the members in the set sends their contribution message to the conversation; when all members have sent their contribution and the \smfield{members} set is empty, the event is removed from the \smfield{event-queue}.
 
-To simplify nonparticipation timeout tracking, members of a conversation must send their event contributions in the order in which the events were created.
+To simplify non-participation timeout tracking, members of a conversation must send their event contributions in the order in which the events were created.
 To facilitate this, a conversation state machine's \smfield{event-queue} field is structured as a \emph{list}, rather than a set.
 Whenever a conversation member sends a message that could function as an event contribution, it is verified that this message matches the \emph{first} event in the conversation's event queue for which the sender is part of the event's \smfield{members} set.
 If this is not the case ---if the conversation does not contain an event matching the message, or the event matching the message is preceeded by a different event that includes the message's sender, or the conversation does not contain any events that include the message's sender--- then this is considered an error, and handled appropriately.
@@ -795,7 +795,7 @@ A \type{key-exchange-contribution} event need not refer to a key exchange presen
 Thus, a \type{key-exchange-contribution} event may refer to a historic key exchange process that has since been cancelled.
 
 A \type{key-activation-contribution} event is created when a key exchange process finishes successfully.
-It records the expectation that the participants of that key exchange send a \message{KEY\_ACTIVATION} message, indicating that they will start using the newly negoatiated key for all further chat messages.
+It records the expectation that the participants of that key exchange send a \message{KEY\_ACTIVATION} message, indicating that they will start using the newly negotiated key for all further chat messages.
 \begin{struct}{key-activation-contribution}
 \structfield{key-exchange-id}{hash}
 \structfield{participants}{set of participant reference}
@@ -811,7 +811,7 @@ The details of this expectation are described in Section~\ref{sec:messages/key-a
 Conversations in (n+1)sec implement a timeout procedure.
 One reason for this, as described in the previous section, is that a member of a conversation could otherwise hold up activity in a conversation indefinitely by failing to participate in a critical process happening inside a conversation.
 This could happen either intentionally as part of a malicious attack, or unintentionally as a side effect of network connectivity problems.
-In either case, the conversation has no other option but to eventually remove the nonparticipating member, and continue without them.
+In either case, the conversation has no other option but to eventually remove the non-participating member, and continue without them.
 
 Another reason why timeouts are a necessary component of (n+1)sec conversations lies in the desideratum that the members of a conversation are aware of the exact list of users taking part in a chat session.
 If a participant of a chat session stops receiving chat messages from a certain point onwards because of connectivity problems, the other participants of the chat should notice this absence; it should not be possible for a situation to arise in which a certain participant of a conversation has long since been disconnected from the network, while the other participants of the chat remain under the impression that this absentee is still present.
@@ -819,7 +819,7 @@ To avoid this situation, members of a conversation send regular keepalive messag
 
 Unfortunately, timeouts are not a trivial notion to implement in a distributed setting.
 Conversations cannot rely on the carrier chat room infrastructure to perform the bookkeeping of whom and when to remove from a conversation due to inactivity.
-Both the possibility of a malicious member remaining connected to the carrier chat room infrastructure while not participating in the conversation, and the possibility of a malicious carrier chat room silently disconnecting a chat participant, are situations in which a conversation's participants need to pass a judgement of timeout status independent from the carrier chat room.
+Both the possibility of a malicious member remaining connected to the carrier chat room infrastructure while not participating in the conversation, and the possibility of a malicious carrier chat room silently disconnecting a chat participant are situations in which a conversation's participants need to pass a judgement of timeout status independent from the carrier chat room.
 
 Instead, the members of a conversation need to determine in a purely distributed fashion which members have been nonresponsive long enough to warrant a forcible removal from the conversation.
 Reaching distributed consensus on this matter is challenging; a situation might easily arise in which a message sent by member $A$ arrives just in time for member $B$ to consider $A$ fast enough to avoid a timeout, but just too late for member $C$ to consider the same.
@@ -835,11 +835,11 @@ Participants can send \message{TIMEOUT} messages, as described in Section~\ref{s
 Whenever this matrix reaches one of certain conditions ---described below--- the conversation removes those members that have been deemed timed out; this situation can arise after receiving a \message{TIMEOUT} message, or after a conversation member leaves the conversion (voluntarily or otherwise).
 
 If a conversation ever acquires a subset of participants $V$, such that for all participants $P \in V$ and all participants $Q \not\in V$, $t_{P,Q} = \textsf{true}$ ---that is, if there is ever a set of participants that together have declared all other participants timed out--- a \emph{symmetric split} between the two groups of participants happens.
-All participants $P$ in $V$ remove from their version of the conversation state machine all participants $Q \not\in V$, and declared them timed out; and symmetrically, all participants $Q \not\in V$ remove from their version of the conversation state machine all participants $P \in V$.
+All participants $P$ in $V$ remove from their version of the conversation state machine all participants $Q \not\in V$, and declare them timed out; and symmetrically, all participants $Q \not\in V$ remove from their version of the conversation state machine all participants $P \in V$.
 Afterwards, the two resulting conversations go their own separate independent ways, using the same procedure as the one described in Section~\ref{sec:conversation-state-machine/participating}.
 
 The (n+1)sec protocol uses this symmetric notion of timeouts as a defense against malicious participants of a conversation, who might otherwise try to destroy a conversation by declaring all its members as being timed out.
-The symmetric notion makes this impossible; if a malicious participant $P$, or even a collection of colluding malicious participants $V$, maliciously declare a set of other participants timed out, all they will accomplish is a situation where the non-malicious fragment of the conversation remain in a conversation of which the malicious participants $V$ are not part.
+The symmetric notion makes this impossible; if a malicious participant $P$, or even a collection of colluding malicious participants $V$, maliciously declare a set of other participants timed out, all they will accomplish is a situation where the non-malicious fragment of the conversation remains in a conversation of which the malicious participants $V$ are not part.
 
 If a symmetric split occurs in a conversation, all users passively participating in the conversation will reach the same conclusion of a split happening.
 Theoretically, any such user could afterwards continue to passively participate in both of the resulting conversations.
@@ -946,7 +946,7 @@ The remainder of this section summarizes the modifications that happen to a conv
 
 When a member is removed from a conversation, that member is removed from the \smfield{members} set of all pending events in the conversation state machine's \smfield{event-queue}.
 If this removes the last member from an event's \smfield{members} set, the affected event is removed from the event queue, as described in Section~\ref{sec:messages/event-messages}.
-Is this removes the last member from a \type{key-activation-contribution} event, this declares \smfield{in-chat} all participants in that event's \smfield{participants} set, as described in Section~\ref{sec:messages/key-activation}.
+If this removes the last member from a \type{key-activation-contribution} event, this declares \smfield{in-chat} all participants in that event's \smfield{participants} set, as described in Section~\ref{sec:messages/key-activation}.
 The member removed from the conversation is also removed from the \smfield{participants} sets of all \type{key-activation-contribution} events, if any.
 
 If the removed member was a participant of the conversation, this causes the cancellation of all active key exchange procedures of which the removed participant was a part.
@@ -1001,7 +1001,7 @@ They are used to announce a client as being (n+1)sec capable; to announce a clie
 \label{sec:messages/quit}
 
 The \message{QUIT} (= 0x01) message causes the sender to effectively leave the room as far as the (n+1)sec protocol is concerned.
-A user that sent a \message{QUIT} message is considered in the same state as a user who has not announced (n+1)sec capability; the user has thus left the room from the point of view of the (n+1)sec abstraction, even if the user has not left the carrier chat room.
+A user who has sent a \message{QUIT} message is considered in the same state as a user who has not announced (n+1)sec capability; the user has thus left the room from the point of view of the (n+1)sec abstraction, even if the user has not left the carrier chat room.
 
 \begin{basicmessage}{QUIT}{0x01}
 \messagefield{cookie}{nonce}
@@ -1140,7 +1140,7 @@ On receiving any conversation message, clients should verify this signature, by 
 If this signature is not valid, implementations MUST NOT modify the conversation state machine of any conversations.
 Implementations SHOULD ignore messages with invalid signatures entirely, though they MAY raise some form of impersonation warning instead.
 
-If a conversation message has a valid signature matching its \field{conversation-public-key}, the message is addressed to any conversations, existing in the carrier chat room in which the message was sent, that contain an identified member with username \field{sender} and conversation public key \field{conversation-public-key}.
+If a conversation message has a valid signature matching its \field{conversation-public-key}, the message is addressed to any conversations existing in the carrier chat room in which the message was sent that contain an identified member with username \field{sender} and conversation public key \field{conversation-public-key}.
 Conversations matching these conditions are said to be \emph{addressed by} the conversation message.
 On receiving a conversation message with a valid signature, implementations MUST NOT modify the conversation state machine of any conversations that are not addressed by the message.
 Implementations MUST modify the conversation state machine of any conversations addressed by the message for which the implementation is maintaining a representation, by implementing the rules specified below.
@@ -1164,7 +1164,7 @@ Event messages should never be sent for any other reason.
 
 Event messages, when received, must correspond to the expectation for event messages encoded in the conversation state machine.
 A conversation's state machine contains a sequence of pending events; for each pending event, the conversation state machine further records which members of the conversation have yet to contribute to it.
-The conversation state machine demands that members send event messages \emph{when their corresponding events are created}, \emph{in the order at which the events are created}, and \emph{in no other situations}.
+The conversation state machine demands that members send event messages \emph{when their corresponding events are created}, \emph{in the order in which the events are created}, and \emph{in no other situations}.
 
 Implementing this, a conversation state machine addressed by a received event message is affected in the following way:
 \begin{itemize}
@@ -1194,13 +1194,13 @@ All identified members of the conversation, including the \field{sender}, send a
 An \message{INVITE} message affects the conversation state machine addressed by it in the following way:
 \begin{enumerate}
 \item If the conversation contains an identified member with username \field{username}, or if the \field{sender} is not a participant of the conversation, the \message{INVITE} message has no effect.
-\item If the conversation already contains an unidentified invitee with username \field{username}, long term public key \field{long-term-public-key}, and inviter \field{sender}, the \message{INVITE} message has no effect.
-\item Otherwise, a new \type{unidentified-invitee} is added to the conversation, with username \field{username}, long term public key \field{long-term-public-key}, and inviter \field{sender}. If the conversation contains any existing unidentified invitees with username \field{username} and inviter \field{sender}, those unidentified invitees are removed from the conversation.
+\item If the conversation already contains an unidentified invitee with username \field{username}, long-term public key \field{long-term-public-key}, and inviter \field{sender}, the \message{INVITE} message has no effect.
+\item Otherwise, a new \type{unidentified-invitee} is added to the conversation, with username \field{username}, long-term public key \field{long-term-public-key}, and inviter \field{sender}. If the conversation contains any existing unidentified invitees with username \field{username} and inviter \field{sender}, those unidentified invitees are removed from the conversation.
 \item A \type{conversation-confirmation-contribution} event is added to the conversation, for all identified members of the conversation, with invitee-username \field{username}, invitee-long-term-public-key \field{long-term-public-key}, and status-checksum equal to the conversation state machine's \smfield{status-checksum} after digesting the \message{INVITE} message. All identified members MUST send a \message{CONVERSATION\_CONFIRMATION} message matching this event.
 \item A \type{conversation-confirmation-status} event is added to the conversation, after the \type{conversation-confirmation-contribution} event above, for the \field{sender} of the \message{INVITE} message. This event has invitee-username \field{username} and invitee-long-term-public-key \field{long-term-public-key}.
 
 The \smfield{state-machine-hash} of this event is equal to the digest $H(\texttt{state-machine})$, where \texttt{state-machine} is the encoding of the conversation state machine as described in Section~\ref{todo:messages/message-encoding}, with a \smfield{status-checksum} after digesting the \message{INVITE} message, after adding the \type{unidentified-invitee} representing the invited user, after adding the \type{conversation-confirmation-contribution} event above, \emph{before} adding the \type{conversation-status-contribution} event.
-The \field{sender} of the \message{INVITE} message MUST send a \message{CONVERSATION\_STATUS} message, after having sent the \message{CONVERSATION\_CONFIRMATION} message above, with username \field{username}, long term public key \field{long-term-public-key}, and conversation state machine equal to \texttt{state-machine}.
+The \field{sender} of the \message{INVITE} message MUST send a \message{CONVERSATION\_STATUS} message, after having sent the \message{CONVERSATION\_CONFIRMATION} message above, with username \field{username}, long-term public key \field{long-term-public-key}, and conversation state machine equal to \texttt{state-machine}.
 \label{item:messages/invite/conversation-status-event}
 \end{enumerate}
 
@@ -1235,9 +1235,9 @@ The user with username \field{username} and public key \field{long-term-public-k
 To do this, and to correctly interpret future messages addressed to this conversation, it is not sufficient for the invited user to decode the conversation state machine status stored in the \field{conversation-state-machine} field.
 Instead, the user must reconstruct the status of the conversation state machine as it is after processing all messages up to and including the \message{CONVERSATION\_STATUS} message.
 
-The invited user can reconstruct this status by following the following procedure, outlined in Section~\ref{sec:conversation-state-machine/joining}:
+The invited user can reconstruct this status by following the procedure below, outlined in Section~\ref{sec:conversation-state-machine/joining}:
 \begin{enumerate}
-\item The invited user records all carrier chat room events ---carrier chat room messages, as well as notifications of users joining and leaving the carrier chat room--- after the most recent \message{INVITE} message, addressed to this conversation, with username \field{username}, long term public key \field{long-term-public-key}, and sender \field{sender}.
+\item The invited user records all carrier chat room events ---carrier chat room messages, as well as notifications of users joining and leaving the carrier chat room--- after the most recent \message{INVITE} message addressed to this conversation, with username \field{username}, long-term public key \field{long-term-public-key}, and sender \field{sender}.
 \item When receiving the \message{CONVERSATION\_STATUS} message, the invited user constructs a local copy of the conversation state machine described by the \field{conversation-state-machine} field.
 \item The invited user adds to this conversation state machine the \type{conversation-status-contribution} event described in Item~\ref{item:messages/invite/conversation-status-event} of Section~\ref{sec:messages/invite}.
 \item The invited user processes all recorded carrier chat room events, starting from the event immediately following the \message{INVITE} message, up to and including the \message{CONVERSATION\_STATUS} message, that are addressed to the conversation.
@@ -1288,13 +1288,13 @@ When the unidentified invitee gets promoted to an identified invitee, they can s
 
 All conversation messages other than the \message{INVITE\_ACCEPTANCE} message are addressed to the conversation, if any, that contains an identified member with username \field{sender} and conversation public key \field{conversation-public-key}.
 As a consequence, other conversation messages can be addressed at a given conversation only when sent by an identified member of the conversation.
-The \message{INVITE\_ACCEPTANCE} message is an exception to this rule, which makes it the single message that can be sent by an unidentified invitee to the conversation to which they are invited.
+The \message{INVITE\_ACCEPTANCE} message is an exception to this rule, which makes it the only message that can be sent by an unidentified invitee to the conversation to which they are invited.
 
 An \message{INVITE\_ACCEPTANCE} message is addressed to all conversations, if any, that contain an identified member with username \field{sender} and conversation public key \field{conversation-public-key}, or contain an identified member with username \field{inviter-username} and conversation public key \field{inviter-conversation-public-key}.
 As a consequence, \message{INVITE\_ACCEPTANCE} messages MUST be processed by any conversations matching this broader-than-usual condition; in particular, such conversations MUST digest the \message{INVITE\_ACCEPTANCE} message into their state machine's \smfield{status-digest} field, as described in Section~\ref{sec:conversation-state-machine/operations/messages}.
 
-If a conversation state machine addressed by an \message{INVITE\_ACCEPTANCE} message contains an unidentified invitee with username \field{sender}, long term public key \field{my-long-term-public-key}, and inviter \field{inviter-username}, and also contains a participant with username \field{inviter-username}, long term public key \field{inviter-long-term-public-key}, and conversation public key \field{inviter-conversation-public-key}, then this unidentified invitee gets promoted to an identified invitee with conversation public key \field{conversation-public-key}.
-This promotion is implemented by removing from the conversation state machine all unidentified invitees with username \field{sender}, and adding an \type{identified-invitee} with username \field{sender}, long term public key \field{my-long-term-public-key}, conversation public key \field{conversation-public-key}, and inviter \field{inviter-username}.
+If a conversation state machine addressed by an \message{INVITE\_ACCEPTANCE} message contains an unidentified invitee with username \field{sender}, long-term public key \field{my-long-term-public-key}, and inviter \field{inviter-username}, and also contains a participant with username \field{inviter-username}, long-term public key \field{inviter-long-term-public-key}, and conversation public key \field{inviter-conversation-public-key}, then this unidentified invitee gets promoted to an identified invitee with conversation public key \field{conversation-public-key}.
+This promotion is implemented by removing from the conversation state machine all unidentified invitees with username \field{sender}, and adding an \type{identified-invitee} with username \field{sender}, long-term public key \field{my-long-term-public-key}, conversation public key \field{conversation-public-key}, and inviter \field{inviter-username}.
 
 If instead a conversation state machine addressed by an \message{INVITE\_ACCEPTANCE} message already contains an identified member ---be it an unauthenticated identified invitee, authenticated invitee, or participant--- with username \field{sender}, this member is removed from the conversation state machine.
 
@@ -1302,7 +1302,7 @@ If instead a conversation state machine addressed by an \message{INVITE\_ACCEPTA
 \subsubsection{CONVERSATION\_AUTHENTICATION\_REQUEST}
 \label{sec:messages/conversation-authentication-request}
 
-The \message{CONVERSATION\_AUTHENTICATION\_REQUEST} (= 0x15) message is used to request an identified conversation member to authenticate themself for the cryptographic identity consisting of their long term public key and conversation public key.
+The \message{CONVERSATION\_AUTHENTICATION\_REQUEST} (= 0x15) message is used to request an identified conversation member to authenticate themself for the cryptographic identity consisting of their long-term public key and conversation public key.
 It is the in-conversation analogue of the \message{ROOM\_AUTHENTICATION\_REQUEST} message.
 It contains the authentication challenge that forms the base of this authentication process.
 
@@ -1311,9 +1311,9 @@ It contains the authentication challenge that forms the base of this authenticat
 \messagefield{authentication-challenge}{nonce}
 \end{conversationmessage}
 
-A \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message is a request to the identified member \field{username} to authenticate themself to the \field{sender}, for \field{username}'s and \field{sender}'s long term public keys and conversation public keys described by the conversation state machine.
+A \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message is a request to the identified member \field{username} to authenticate themself to the \field{sender}, for \field{username}'s and \field{sender}'s long-term public keys and conversation public keys described by the conversation state machine.
 It declares that \field{sender} will consider \field{username} authenticated for this identity after receiving a valid authentication confirmation for this pair of identities, described in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}, using \field{authentication-challenge} as the authentication challenge.
-The \field{username} identified member, upon receiving a \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message, can authenticate itself to the \field{sender} by sending a \message{CONVERSATION\_AUTHENTICATION} message containing this authentication confirmation.
+The \field{username} identified member, upon receiving a \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message, can authenticate themself to the \field{sender} by sending a \message{CONVERSATION\_AUTHENTICATION} message containing this authentication confirmation.
 
 Other than adjusting a conversation's \smfield{status-checksum}, a \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message does not affect the addressed conversation's state machine.
 
@@ -1330,13 +1330,13 @@ Assuming the authentication confirmation is valid, this allows the recipient mem
 \messagefield{authentication-confirmation}{hash}
 \end{conversationmessage}
 
-A \message{CONVERSATION\_AUTHENTICATION} message is a confirmation to the identified member \field{username} that the \field{sender} holds the private keys corresponding to their long term public key and conversation public key as described by the conversation state machine.
+A \message{CONVERSATION\_AUTHENTICATION} message is a confirmation to the identified member \field{username} that the \field{sender} holds the private keys corresponding to their long-term public key and conversation public key as described by the conversation state machine.
 The \emph{authentication-confirmation} should contain the authentication confirmation described in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}; if it does, this proves that the sender does indeed hold these private keys.
 
 The member \field{username} should consider the authentication valid if and only if
 \begin{itemize}
 \item that member previously sent a \message{CONVERSATION\_AUTHENTICATION\_REQUEST} to the member \emph{username}, and
-\item the \field{authentication-confirmation} field equals the expected authentication confirmation computed from the \field{authentication-challenge} sent in the accompanying \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message, for \field{username}'s and \field{sender}'s long term public keys and conversation public keys described in the conversation state machine, as specified in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}.
+\item the \field{authentication-confirmation} field equals the expected authentication confirmation computed from the \field{authentication-challenge} sent in the accompanying \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message, for \field{username}'s and \field{sender}'s long-term public keys and conversation public keys described in the conversation state machine, as specified in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}.
 \end{itemize}
 If both requirements hold, this proves that the \field{sender} holds the private keys corresponding to their public keys described by the conversation state machine.
 
@@ -1369,7 +1369,7 @@ If not, the \message{AUTHENTICATE\_INVITE} message has no effect on the conversa
 \subsubsection{CANCEL\_INVITE}
 \label{sec:messages/cancel-invite}
 
-The \message{CANCEL\_INVITE} (= 0x18) message is sent by a conversation participant to retract any invitations for a given (username, long term public key) pair.
+The \message{CANCEL\_INVITE} (= 0x18) message is sent by a conversation participant to retract any invitations for a given (username, long-term public key) pair.
 
 \begin{conversationmessage}{CANCEL\_INVITE}{0x18}
 \messagefield{username}{string}
@@ -1379,7 +1379,7 @@ The \message{CANCEL\_INVITE} (= 0x18) message is sent by a conversation particip
 A \message{CANCEL\_INVITE} message indicates that the \field{sender} wants to retract an active invitation for a given user.
 If no active invitations for the described member exist, or the member described by the \message{CANCEL\_INVITE} message has since become a participant of the conversation, the message has no effect.
 
-A \message{CANCEL\_INVITE} message removes from the conversation state machine any invited members ---be they unidentified invitees, unauthenticated identified invitees, or authenticated invitees--- with username \field{username}, long term public key \field{long-term-public-key}, and inviter \field{sender}.
+A \message{CANCEL\_INVITE} message removes from the conversation state machine any invited members ---be they unidentified invitees, unauthenticated identified invitees, or authenticated invitees--- with username \field{username}, long-term public key \field{long-term-public-key}, and inviter \field{sender}.
 Participants of the conversation, and invitations by inviters other than \field{sender}, are not affected.
 
 
@@ -1401,7 +1401,7 @@ When the \field{sender} is promoted to a participant like this, a new \type{key-
 This key exchange has \smfield{key-exchange-id} equal to the conversation state machine's \smfield{status-checksum} field after digesting the \message{JOIN} message; a \smfield{stage} of \textsc{Public-Key}; and a set of \smfield{participants} that contains one \type{key-exchange-participant} for each participant in the conversation, including the newly-promoted \field{sender}, each with all contributions unset.
 
 When this key exchange is created, a \type{key-exchange-contribution} event is added to the conversation state machine's event queue, with \smfield{key-exchange-id} equal to the \smfield{key-exchange-id} of the newly created key exchange, and \smfield{stage} equal to \textsc{Public-Key}.
-All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_PUBLIC\_KEY} message for this key exchange, containing their public-key contribution for the key exchange process.
+All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_PUBLIC\_KEY} message for this key exchange, containing their public key contribution for the key exchange process.
 
 
 \subsubsection{LEAVE}
@@ -1468,7 +1468,7 @@ This judgement may cause the timed out member to be removed from the conversatio
 A \message{TIMEOUT} message is a declaration by the \field{sender} that the member with username \field{username} is either judged timed out (if $\field{set-timeout} = \textsf{true}$), or judged no longer timed out (if $\field{set-timeout} = \textsf{false}$).
 This triggers a possible removal of the timed-out member from the conversation, as described in Section~\ref{sec:conversation-state-machine/contents/timeouts}.
 
-If the conversation state machine addressed by a \message{TIMEOUT} message does not contain an identified member with username \field{username}, or it does not contain a participant with username \field{sender}, the \message{TIMEOUT} message has no effect on the conversation state machine besides the \smfield{status-checksum}.
+If the conversation state machine addressed by a \message{TIMEOUT} message does not contain an identified member with username \field{username}, or does not contain a participant with username \field{sender}, the \message{TIMEOUT} message has no effect on the conversation state machine besides the \smfield{status-checksum}.
 Otherwise, the conversation state machine sets the \smfield{timeout-matrix} field $t_{\field{sender},\field{username}}$ to \textsf{true} if $\field{set-timeout} = \textsf{true}$, and to \textsf{false} otherwise.
 Afterwards, a symmetric or asymmetric split of the conversation may occur depending on the contents of the \smfield{timeout-matrix}, as described in Section~\ref{sec:conversation-state-machine/contents/timeouts}.
 
@@ -1499,14 +1499,14 @@ If it does, the message's \field{session-public-key} is stored as the \field{sen
 If, after setting the \field{sender}'s \smfield{session-public-key} field in this way, all participants of the conversation have a \smfield{session-public-key} set, the key exchange reaches the \textsc{Secret-Share} stage.
 When this happens, the \type{key-exchange}'s \smfield{stage} field is set to \textsc{Secret-Share}.
 Afterwards, a \type{key-exchange-contribution} event is added to the conversation state machine's event queue, with \smfield{key-exchange-id} equal to the \smfield{key-exchange-id} of the key exchange, and \smfield{stage} equal to \textsc{Secret-Share}.
-All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_SECRET\_SHARE} message for this key exchange, containing their secret-share contribution for the key exchange process.
+All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_SECRET\_SHARE} message for this key exchange, containing their secret share contribution for the key exchange process.
 
 
 \subsubsection{KEY\_EXCHANGE\_SECRET\_SHARE}
 \label{sec:messages/key-exchange-secret-share}
 
 The \message{KEY\_EXCHANGE\_SECRET\_SHARE} message is sent by participants of a conversation to submit their \textsc{Secret-Share} contributions to a key exchange process.
-This contribution contains their linear combination of secrets shared with their neighbours in the key exchange logical circle.
+This contribution contains their linear combination of secrets shared with their neighbors in the key exchange logical circle.
 
 \begin{conversationmessage}{KEY\_EXCHANGE\_SECRET\_SHARE}{0x32}
 \messagefield{key-exchange-id}{hash}
@@ -1527,12 +1527,12 @@ If it does not, the \message{KEY\_EXCHANGE\_SECRET\_SHARE} message does not affe
 
 If it does, the message's \field{group-hash} field is checked against the expected value derived from the contents of the conversation state machine.
 If the \field{group-hash} is not equal to \texttt{groupid}, as specified in Section~\ref{sec:cryptography/group-key-exchange/protocol}, the \field{sender} is removed from the conversation.
-It it is equal, the message's \field{secret-share} is stored as the \field{sender}'s \smfield{secret-share} in the \type{key-exchange} referred to.
+If it is equal, the message's \field{secret-share} is stored as the \field{sender}'s \smfield{secret-share} in the \type{key-exchange} referred to.
 
 If, after setting the \field{sender}'s \smfield{secret-share} field in this way, all participants of the conversation have a \smfield{secret-share} set, the key exchange reaches the \textsc{Acceptance} stage.
-When this happens, the \type{key-exchange}'s \smfield{stage} field is set to \textsc{Acceptance}.
+When this happens, the \smfield{stage} field of the \type{key-exchange} is set to \textsc{Acceptance}.
 Afterwards, a \type{key-exchange-contribution} event is added to the conversation state machine's event queue, with \smfield{key-exchange-id} equal to the \smfield{key-exchange-id} of the key exchange, and \smfield{stage} equal to \textsc{Acceptance}.
-All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_ACCEPTANCE} message for this key exchange, containing their key-digest contribution for the key exchange process.
+All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_ACCEPTANCE} message for this key exchange, containing their key digest contribution for the key exchange process.
 
 
 \subsubsection{KEY\_EXCHANGE\_ACCEPTANCE}
@@ -1567,7 +1567,7 @@ Afterwards, a \type{key-activation-contribution} event is added to the conversat
 All participants of the conversation MUST send a \message{KEY\_ACTIVATION} message with \field{key-id} set to the \smfield{key-exchange-id}, indicating that they will henceforth encrypt chat messages with the newly accepted key.
 
 If instead, when finishing the \textsc{Acceptance} stage, not all participants of the key exchange have submitted the same value of the \smfield{key-digest} field, the key exchange reaches the \textsc{Reveal} stage.
-If this happens, the \type{key-exchange}'s \smfield{stage} field is set to \textsc{Reveal}.
+If this happens, the \smfield{stage} field of the \type{key-exchange} is set to \textsc{Reveal}.
 Afterwards, a \type{key-exchange-contribution} event is added to the conversation state machine's event queue, with \smfield{key-exchange-id} equal to the \smfield{key-exchange-id} of the key exchange, and \smfield{stage} equal to \textsc{Reveal}.
 All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_REVEAL} message for this key exchange, containing their reveal contribution for the key exchange process.
 
@@ -1600,7 +1600,7 @@ When this happens, the \type{key-exchange} is removed from the conversation stat
 This judgement is determined in the following way:
 \begin{enumerate}
 \item First, for each participant, the public key corresponding to their recorded \smfield{session-private-key} is computed. If for any participant this public key does not match their recorded \smfield{session-public-key}, all participants for which these keys do not match are marked as \emph{malicious}, and the judgement halts.
-\item If the previous step does not yield any malicious participants, then by using the private keys of all participants, the secret shares for all participants are computed. This makes use of the fact that a Triple Diffie-Hellman secret between two parties can be computed when knowing the ephemeral private key of both parties, and the long term private key of neither party, as described in Section~\ref{sec:cryptography/triple-diffie-hellman/protocol}. If for any participant this public key does not match their recorded \smfield{secret-share}, all participants for which these secret shares do not match are marked as \emph{malicious}, and the judgement halts.
+\item If the previous step does not yield any malicious participants, then by using the private keys of all participants, the secret shares for all participants are computed. This makes use of the fact that a Triple Diffie-Hellman secret between two parties can be computed when knowing the ephemeral private key of both parties, and the long-term private key of neither party, as described in Section~\ref{sec:cryptography/triple-diffie-hellman/protocol}. If for any participant this public key does not match their recorded \smfield{secret-share}, all participants for which these secret shares do not match are marked as \emph{malicious}, and the judgement halts.
 \item If the previous steps do not yield any malicious participants, then by using the shared secrets of all participants, the shared key $S$ and key checksum $H(S \concat \texttt{groupid})$ are computed. All participants for which this computed key checksum does not match their recorded \smfield{key-digest}, of which there should be at least one, are marked as \emph{malicious}, and the judgement is finished.
 \end{enumerate}
 After computing a nonempty set of malicious participants of the key exchange procedure, the malicious participants of the key exchange are removed from the conversation.
@@ -1625,7 +1625,7 @@ As such, the effect of a \message{KEY\_ACTIVATION} message on the conversation s
 If that event is a \type{key-activation-contribution} event, with \smfield{key-exchange-id} equal to \field{key-id}, the \field{sender} is removed from that pending event.
 If the first event has any other form, or if the state machine does not describe any pending events that include \field{sender}, the \field{sender} is removed from the conversation.
 
-If, after removing the \field{sender} from the \type{key-activation-contribution} event in this way, the \type{key-activation-contribution} event does not have any remaining members left ---if that event's \smfield{members} field is empty, after removign \field{sender} from it--- then the key identified by \field{key-id} has been accepted by all participants described in the \type{key-activation-contribution}'s \smfield{participants} field.
+If, after removing the \field{sender} from the \type{key-activation-contribution} event in this way, the \type{key-activation-contribution} event does not have any remaining members left ---if the \smfield{members} field of that event is empty, after removing \field{sender} from it--- then the key identified by \field{key-id} has been accepted by all participants described in the \type{key-activation-contribution} \smfield{participants} field.
 Because all these participants are also participant to any key exchange processes that may have taken place after the exchange negotiating the \field{key-id} key, this implies that all these \smfield{participants} will have access to all future encrypted chat in the conversation.
 To mark this fact, the conversation state machine sets the \smfield{in-chat} field to \textsf{true} for all participants in the \smfield{participants} set.
 
@@ -1633,7 +1633,7 @@ To mark this fact, the conversation state machine sets the \smfield{in-chat} fie
 \subsubsection{KEY\_RATCHET}
 \label{sec:messages/key-ratchet}
 
-The \message{KEY\_RATCHET} message is sent by a participant of a conversation to announce their opinion that the most recently negotiated chat key has been in use for too long, and should be replaced.
+The \message{KEY\_RATCHET} message is sent by a participant of a conversation to announce their opinion that the most recently negotiated chat key has been in use for too long and should be replaced.
 This triggers a new key exchange process, which will negotiate a replacement key.
 
 \begin{conversationmessage}{KEY\_RATCHET}{0x42}
@@ -1643,7 +1643,7 @@ This triggers a new key exchange process, which will negotiate a replacement key
 A \message{KEY\_RATCHET} message indicates that the \field{sender} is of the opinion that the chat key negotiated by the most recent successfully finished key exchange process needs to be replaced with a new key, to avoid using a chat key for a long enough time that attacking the secrets on which it is based is a realistic attack possibility.
 The message field \field{key-id} is the id of the key for which the \field{sender} holds this opinion; if this key is still the most recently exchanged key when the \message{KEY\_RATCHET} message is received, and no existing key exchange is in progress to replace it, a new key exchange progress is initiated.
 
-If the \field{sender} of the \message{KEY\_RATCHET} message is not a participant of the conversation state machine addressed by the \message{KEY\_RATCHET} message, the conversation state machine is not affected by the \message{KEY\_RATCHET} message other than adjusting the conversation's \smfield{status-checksum}.
+If the \field{sender} of the \message{KEY\_RATCHET} message is not a participant of the conversation state machine addressed by the \message{KEY\_RATCHET} message, the conversation state machine is not affected by the \message{KEY\_RATCHET} message other than adjusting the \smfield{status-checksum} of the conversation.
 Likewise, if the conversation state machine's \smfield{latest-key-exchange-id} field is not equal to \field{key-id}, or the state machine's \smfield{key-exchanges} list contains at least one active key exchange, the \message{KEY\_RATCHET} message has no effect.
 
 If the \field{sender} is a participant of the conversation state machine, \smfield{latest-key-exchange-id} is equal to \field{key-id}, and no key exchanges are in progress in the conversation state machine, a new \type{key-exchange} is added to the conversation state machine.
@@ -1657,7 +1657,7 @@ All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_PUBLIC\
 \label{sec:messages/chat}
 
 The \message{CHAT} message is sent by a participant of a conversation to send an encrypted chat message to the participants of the conversation.
-This message is encrypted with the key most recently activated by the message's sender using a \message{KEY\_ACTIVATION} message, and can be decrypted by those participants that were party to the key exchange process that negotiated that key.
+This message is encrypted with the key most recently activated by the sender of the message using a \message{KEY\_ACTIVATION} message, and can be decrypted by those participants that were party to the key exchange process that negotiated that key.
 
 \begin{conversationmessage}{CHAT}{0x43}
 \messagefield{encrypted-message}{octet-stream}
@@ -1702,10 +1702,10 @@ The decrypted contents of an encrypted message are signed using the session-priv
 This \field{signature} is computed over the \type{octet-stream} making up the \field{message-body}.
 A participant that decrypted a chat message MUST verify this signature before attempting to display the chat message inside, and SHOULD ignore the message if this signature is not valid.
 
-As a protection against replay attacks the decrypted contents of an encrypted message contain a \field{message-id} field, which holds the number of messages previously sent by \field{sender} encrypted using this key.
+As a protection against replay attacks, the decrypted contents of an encrypted message contain a \field{message-id} field, which holds the number of messages previously sent by \field{sender} encrypted using this key.
 To avoid accepting a replayed copy of an earlier message sent by \field{sender} as valid, a participant that decrypted a chat message MUST verify the correctness of this \field{message-id} field, and SHOULD ignore the message if the \field{message-id} is not valid.
 
-If the \field{signature} and the \field{message-id} of a decrypted message are both valid, this indicates that the encrypted message is authentic.
+If the \field{signature} and \field{message-id} of a decrypted message are both valid, this indicates that the encrypted message is authentic.
 In this case, the implementation SHOULD display the transmitted \field{message} to the user, as sent by the participant \field{sender}.
 
 
