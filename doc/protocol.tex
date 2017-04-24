@@ -3,6 +3,7 @@
 \usepackage[inline]{enumitem}
 \usepackage{url}
 \usepackage{textcomp}
+\usepackage{todonotes}
 
 \title{(n+1)sec protocol specification --- draft}
 \author{eQualit.ie}
@@ -90,27 +91,6 @@
 \section{Introduction}
 \label{sec:introduction}
 
-%The (n+1)sec system is a protocol for end-to-end encrypted and authenticated textual group chat communications.
-%It aims to provide a platform and paradigm for synchronous text chat similar to those used in commonly used chat systems such as IRC \cite{irc} and Jabber multi user conversations %\cite{jabber}, augmented with the cryptographic tools to guarantee communication security without relying on any third parties for these security assurances.
-
-%The (n+1)sec system, in conscious imitation of the celebrated off-the-record or \emph{OTR} chat cryptography framework \cite{otr}, 
-
-
-% layered on top of a chat network
-
-% this is a protocol spec
-
-% status: draft
-
-% reference implementation
-
-% sections: 2, 3, other
-
-
-
-\section{Protocol Overview}
-\label{sec:protocol-overview}
-
 The (n+1)sec system is a protocol through which users of text chat systems, such as IRC \cite{irc} or Jabber multi-user-chat \cite{jabber}, can hold cryptographically secured multi-party text chat sessions.
 Using an approach similar to OTR \cite{otr}, (n+1)sec clients exchange encoded text messages via a general-purpose group chat room, such as an IRC channel or a Jabber multi-user chat room, and thereby construct end-to-end encrypted chat sessions that use the general-purpose chat room as a carrier.
 
@@ -120,75 +100,218 @@ This cryptography is used to authenticate the identity of the members of the cha
 Chat in (n+1)sec takes place in so-called \emph{conversations}.
 An (n+1)sec Conversation is a chat session, behaviorally similar to IRC channels and the like, that exists as a distributed agreement between a group of people in a carrier chat room to talk to each other, and whose communication takes place via (n+1)sec messages exchanged in a single carrier chat room.
 A Conversation at any point has a set of \emph{participants}, which is part of the state of a Conversation that all participants agree on at any point.
-The different Participants in a Conversation have all authenticated each other's identities, as identified by a public key, and ---some caveats notwithstanding--- chat messages in a Conversation are encrypted in such a way that only its constituent Participants can decrypt.
+The different Participants in a Conversation have all authenticated each other's identities, as identified by a public key, and ---some caveats notwithstanding--- chat messages in a Conversation are encrypted in such a way that only its constituent Participants can decrypt, as well as being signed by the Participant that sent the message.
 
-All communications related to a Conversation are necessarily accompanied by a cryptographic signature based on the public key of the sender.
-Furthermore, all chat messages in a Conversation ---making up the payload of that Conversation--- are encrypted using a symmetric cryptographic key negotiated between, and known only by, the Conversation's Participants.
-This symmetric key is negotiated each time the list of Participants of a Conversation changes (that is, each time a Participant either joins or leaves the Conversation), as well as at regular intervals to reduce the risk of any particular key being compromised.
-
-\subsection{Rooms}
-% The (n+1)sec protocol makes use of 
-
-% the np1sec protocol uses chatrooms as a transport infrastructure.
-% by exchanging np1sec messages in a given chatroom of some description, np1sec clients can engage in encrypted communications with other np1sec clients in that same room.
-% within certain limitations, np1sec can work on top of arbitrary text chat systems; the details are in Section~\ref{sec:carrier-chatrooms}.
-
-% when entering a room, an np1sec client sends a message announcing their presence as an np1sec-capabel client.
-% as part of this announcement, the client announces a public key, and requests other np1sec clients in the room to identify themselves.
-% when this happens, the new signup and the old client engage in a mutual authentication protocol, after which they are (hopefully) both assured of each other's identity.
-
-
-
-
-
-
-
-% np1sec sends messages to rooms. some messages deal with the presence of a user in a room; others are directed at specific conversations and contain metadata about the conversations they apply to.
-
-\subsection{Conversations}
-% This includes the description of how ephemeral public keys are used to identify conversation participants.
-
-
-\subsection{Conversation state machine}
-% on a protocol level, np1sec conversations are represented by state machines represented identically across all clients that take part in the conversation. The np1sec protocol specifies in detail how messages and chat events are to affect this idealized state machine, which implementations need to follow to the letter to stay compatible.
-
-
-\subsection{Joining a conversation}
-
-
-\subsection{Key agreement}
-
-
-\subsection{Chat messages}
+This document functions as the specification of the (n+1)sec protocol.
+Section~\ref{sec:chat-model} contains a description of the behavior that the (n+1)sec system seeks to accomplish, followed in Section~\ref{sec:carrier-chat-rooms} by a description of the properties (n+1)sec demands from the underlying carrier chat infrastructure.
+Section~\ref{sec:cryptography} explains the cryptography, both novel and standard, used by the (n+1)sec protocol.
+Section~\ref{sec:conversation-state-machine} describes the theory behind the operation of (n+1)sec conversations; finally, Section~\ref{sec:messages} specifies the detailed meaning of the messages making up the (n+1)sec protocol.
 
 
 
 \section{Chat Model}
 \label{sec:chat-model}
 
+The (n+1)sec system makes it possible for users to hold group text chat conversations while enjoying security properties such as confidentiality of communications, authenticity of conversation participants, and the confidence that all conversation participants are looking at the same communicated content.
+The (n+1)sec system accomplishes this by exchanging cryptographic messages through a presumably-insecure communications medium, and constructing an abstraction of a coherent secure chat session out of these messages.
+
+Secure communications in (n+1)sec take place in chat sessions called \emph{conversations}.
+An (n+1)sec conversation is a construction similar to a traditional chat room, such as an IRC channel or a Jabber multi-user-chat room.
+A conversation consists of a set of \emph{participants}, which can send text messages to the group as a whole.
+Participants can furthermore leave a conversation, and new participants can join it; together with the history of messages exchangesd, this makes up the main modes of interaction of a conversation.
+
+A conversation is a construction that implements the behavior of a chat room while also guaranteeing a collection of security properties, such as the property that the content of exchanged messages is confidential to everyone other than the conversation's participants.
+The combination of the modes of interaction supported by a conversation, and the security properties it achieves, makes up the conceptual interface of the notion of a conversation; that is, it functions as a specification of the role a conversation can play in constructing a secure chat system.
+
+The remainder of this section contains a specification of this interface.
+It specifies in detail the outside behavior of a conversation; the context in which it lives; and the security properties it accomplishes.
+
 
 \subsection{Rooms}
+\label{sec:chat-model/rooms}
+
+Communications using (n+1)sec take place inside so-called \emph{carrier chat rooms}.
+Carrier chat rooms are an abstract formalization of a general-purpose chat room system, used by (n+1)sec to transport cryptographic messages to a group of users.
+The exact behavior and properties (n+1)sec requires carrier chat rooms to have are detailed in Section~\ref{sec:carrier-chat-rooms}.
+
+Each (n+1)sec conversation takes place inside a particilar carrier chat room, which carries the cryptographic messages that make up the conversation.
+The participants of a conversation are restricted to some subset of the members of the carrier chat room, which may be invited to conversations taking place inside that carrier chat room.
+A carrier chat room can host multiple independent (n+1)sec conversations at the same time, and members of the carrier chat room can be part of any number of these conversations.
+
+Chat user agents that implement the (n+1)sec protocol announce to carrier chat rooms both their (n+1)sec capabilities, and their user's cryptographic identities.
+Through this mechanism, each carrier chat room has associated with it a set of cryptographically identified (n+1)sec-eligible user identities.
+These eligible users form the pool of potential participants for all conversations in that carrier chat room.
 
 
 \subsection{Conversations}
+\label{sec:chat-model/conversations}
 
+A conversation is a secure chat session taking place in a particular carrier chat room.
+It is the basic abstraction supporting secure (n+1)sec communications.
 
-\subsection{Participants}
-% long term public keys
-% invitations
+A conversation is first created when an (n+1)sec-capable user in a carrier chat room creates a conversation with themself as the sole participant.
+Once a conversation exists, the participants of the conversation can then invite other (n+1)sec-capable users in the carrier chat room into the conversation, which can then accept the invitation to join the conversation.
+Participants of a conversation can leave that conversation, either voluntarily or involuntarily --- the latter of which can happen, for example, as a consequence of a network timeout.
+A conversation dissolves when its last participant leaves it.
+
+Participants of a conversation can send chat messages to the conversation, which are received by all participants.
+To the first approximation, these messages are confidential to everyone other than the participants of the conversation and authenticated to the participant that sent the message.
+The exact details of the applicable security properties are specified in Section~\ref{sec:chat-model/cryptographic-assurances}.
 
 
 \subsection{Authentication}
+\label{sec:chat-model/authentication}
+
+Users of the (n+1)sec system are identified by a public key, which forms that user's cryptographic identity.
+When inviting a user into a conversation, (n+1)sec verifies that that user holds the private key corresponding to this cryptographic identity, and messages sent by that user are authenticated as having by sent by that cryptographic identity.
+
+The (n+1)sec system does \emph{not} attempt to draw a link between cryptographic identities, and the real-world personae behind those identities.
+Like systems such as OTR~\cite{otr} and SSH~\cite{ssh}, the (n+1)sec system stops at the point where an abstract cryptographic identity is verified.
+It is the responsibility of the user agent to maintain connections between cryptographic identities and real-world users, using such mechanisms as identity databases, trust-on-first-use schemes, and whatever constructions user agent developers can devise.
+
+
+\subsection{Joining and leaving}
+\label{sec:chat-model/joining-and-leaving}
+
+Chat messages in an (n+1)sec conversation are encrypted using a symmetric key known to all of the conversation's participants.
+This forms the basis of the mechanisms ensuring confidentiality of chat content.
+
+When a participant leaves a conversation, the remaining participants negiotiate a new symmetric key to which the former participant does not have access.
+Once this procedure finishes, the participants switch over to the new symmetric key.
+However, until this key negotiation is finished, messages are exchanged that are encrypted using the old key, to which the former member has access; as a consequence, the former member can still decrypt these messages if they have access to the encrypted messages, despite having nominally left the conversation.
+While this process of negotiating a new key after a participant leaves the conversation takes a fairly short time under normal circumstances, it may take a substantial time to finish when conditions are less fortunate.
+
+As a consequence of this property, the process of a participant leaving a conversation conceptually consists of two separate events.
+First, the departure of the participant is announced, and a new key negotiation starts; only after some time has passed does a second event occur, signaling that all future chat is now reliably confidential from the former participant, as the old key has been fully obsoleted.
+In the meantime, the former participant is no longer present in the conversation, but still potentially in a position to read conversation messages --- a complex (and, hopefully, short-lived) but important state to be represented.
+
+For similar reasons, the same consideration applies when a new participant joins a channel.
+In this situation, there is a hopefully-brief period where the new participant is not yet in a position to participate in the chat, but is already in a position to decrypt a subset of messages exchanged in the conversation.
+Here, too, the proper model that incorporates this complication is a joining process that consists of two separate conceptual events: one event indicating that chat contents are no longer confidential from the newly-arrived participant, and a later event signaling that the participant can now properly participate in the conversation.
 
 
 \subsection{Transcript}
-% event ordering
+\label{sec:chat-model/transcript}
 
+The primary activity taking place inside an (n+1)sec conversation is the exchange of chat messages between its participants.
+Other user-visible events taking place include the joining and leaving of participants (each of which gives rise to two distinct events, as described in Section~\ref{sec:chat-model/joining-and-leaving}); and the invitation of new participants by existing participants.
 
-\subsection{Threat model}
+The history of these events as they take place in a conversation makes up the \emph{transcript} of the conversation.
+The (n+1)sec protocol ensures that the different participants of a conversation witness the same ordered sequence of events making up the conversation transcript.
+
+The desideratum that different participants of a conversation witness the same transcript is something (n+1)sec verifies through cryptographic means.
+The details of this property are described in more detail in Section~\ref{sec:chat-model/cryptographic-assurances}.
 
 
 \subsection{Cryptographic assurances}
+\label{sec:chat-model/cryptographic-assurances}
+
+Conversations in (n+1)sec are \emph{end-to-end secure} group chats.
+The (n+1)sec protocol ensures through cryptographic means that conversations enjoy a collection of security properties, even when the conversation takes place on a completely untrustworthy or actively malicious carrier chat room infrastructure.
+
+The security properties described in this section apply to conversations running inside arbitrarily malicious carrier chat rooms.
+In particular, these security properties remain intact when faced with an attacker in a position to perform the following activities:
+\begin{itemize}
+\item Passively eavesdrop on all chat events inside the carrier chat room;
+\item Modify messages sent by members to the carrier chat room, either by \begin{enumerate*}[label=(\roman*)] \item modifying messages, \item deleting messages, or \item constructing messages from scratch\end{enumerate*};
+\item Forward different versions of chat events to different members of the carrier chat room;
+\item Delay messages sent by members of the carrier chat room indefinitely;
+\item Disconnect members from the carrier chat room;
+\item Collude with a member of the carrier chat room.
+\end{itemize}
+
+In this setting, (n+1)sec can achieve the following security properties:
+\begin{description}[noitemsep]
+\item[Confidentiality.] The content of chat messages exchanged through a conversation is confidential. It is accessible only to \begin{enumerate*}[label=(\roman*)] \item participants of the conversation, \item joining participants of the conversation for which the joining operation is in progress, and \item former participants of the conversation for which the leaving operation is in progress\end{enumerate*}.
+\item[Participant authenticity.] All participants of a conversation can verify the public-key cryptographic identity of all participants in the conversation.
+\item[Message origin authenticity.] All participants of a conversation can verify the public-key cryptographic identity of the author of each message sent to the conversation.
+\item[Deniability.] Participation in a conversation does not leave any cryptographic proof that a conversation's participants can use to prove a participant's participation in that conversation to a third party. Any participant in a conversation, or indeed any nonparticipant of a conversation, can forge a transcript of a conversation involving arbitrary participants and arbitrary chat contents that is cryptographically indistinguishable from the conversation that actually took place.
+\item[Transcript consistency.] Participants of a conversation can verify that they have all witnessed the same sequence of chat events in a conversation. In particular, they can verify that all participants witnessed the same sequence of chat messages, and the same set of participants making up the conversation at each point in time.
+\item[Forward secrecy.] The compromise of any long term private keys that define the cryptographic identity of a participant does not compromise the above security properties for any historic chats, even for an attacker with access to a full carrier chat room transcript. In addition, any \emph{short term} keys used in implementing the abstraction of a conversation are only used for a short amount of time before they are replaced; this ensures that the compromise of a short-term key compromises only a small fragment of long-running conversations.
+\end{description}
+
+
+\subsection{Denial of service}
+\label{sec:chat-model/denial-of-service}
+
+The previous section specified a collection of properties that the (n+1)sec protocol can achieve, no matter what a carrier chat room infrastructure might do to compromise these properties.
+Unfortunately, there is one thing a malicious carrier chat room system can always do to disrupt secure communications: a carrier chat room system can trivially choose to \emph{deny service} to a conversation, by either selectively or broadly refusing to transport messages sent to the chat room.
+
+Because the ability of a carrier chat room system to disrupt successful communications is so easy and so inescapable, the (n+1)sec system makes no attempt to defend against this attack.
+While (n+1)sec can \emph{detect} certain forms of this abuse ---in particular, forms that would compromise the transcript consistency property--- it makes no attempt to recover from this situation.
+Instead, when a carrier chatroom behaves in any way discordant to the requirements described in Section~\ref{sec:carrier-chat-rooms}, affected users will be forcibly removed from any affected conversations, or they will not be able to join these conversations in the first place.
+
+The (n+1)sec protocol does protect against the ability of a \emph{nonprivileged user} of a carrier chat room system to disrupt conversations between honest participants.
+Indeed, any system that could not achieve this would be of limited value in the real world, in which malicious users trying to disrupt communications just for amusement are a constraint that systems inevitably need to deal with.
+As long as the carrier chat room infrastructure is not malicious, as described in Section~\ref{sec:carrier-chat-rooms}, the (n+1)sec protocol can ensure the following properties:
+\begin{itemize}
+\item Any collection of honest participants can create and participate in a conversation between themselves without disruption, no matter what messages are sent by nonparticipants to the carrier chat room.
+\item A malicious participant of a conversation, or a group of colluding malicious participants of a conversation, cannot block a newly invited participant from joining the conversation after having been invited by a honest participant. More generally, a group of malicious participants cannot cause conversation processes to which a honest participant is party to be blocked or delayed indefinitely.
+\item A malicious participant of a conversation, or a group of colluding malicious participants of a conversation, cannot cause a pair of two honest participants of the same conversation to remove each other from the conversation. Any messages sent by the malicious participants cannot cause the honest participants to interpret each other's actions as malicious.
+\end{itemize}
+
+\todo[inline]{This could be formalized in more detail. But then, turning this into a full specification of what the protocol is to accomplish would be overdoing it... Hm.}
+
+
+
+\section{Carrier Chat Rooms}
+\label{sec:carrier-chat-rooms}
+
+The (n+1)sec protocol allows a group of users to hold secure group text chat conversations, implemented as a cryptographic layer on top of an underlying communications system that is not assumed to enforce any relevant security properties.
+By exchanging text messages encapsulating encoded (n+1)sec communications, (n+1)sec clients implement cryptographically secured chat conversations, using a presumed-insecure general-purpose text chat infrastructure as a carrier of encrypted communications.
+
+The (n+1)sec system does not specify or rely on any particular group chat system to serve as the underlying infrastructure for secure (n+1)sec conversations.
+Similar to the OTR~\cite{otr} system, (n+1)sec is designed to work using arbitrary suitable general-purpose group chat systems as a carrier infrastructure, requiring only that this carrier system satisfies certain properties that the (n+1)sec protocol relies on.
+
+The (n+1)sec system uses the popular notion of \emph{chat rooms} as its backing communications infrastructure.
+A chat room, as understood by the (n+1)sec system, is the common modality of group text chat in which a set of \emph{members} of the chat room can send messages to the room, which are then received by all members of the room, along with an indication of which member sent the message; a chat session as a whole consists of the history of all messages sent to the room.
+Common text chat systems that use the chat room model include IRC channels~\cite{irc} and Jabber multi-user-chat rooms~\cite{jabber}.
+
+The (n+1)sec system can implement secure group text chat using arbitrary chat room systems as a carrier infrastructure, as long as that system satisfies certain requirements.
+The remainder of this section specifies in detail what behavior the (n+1)sec system expects carrier chat rooms to exhibit, what properties this carrier chat room needs to satisfy for the (n+1)sec protocol to work properly, and the role these carrier chat rooms play in orchestrating secure (n+1)sec conversations.
+
+
+\subsection{Carrier model and limitations}
+\label{sec:carrier-chat-rooms/carrier-chat-room-model}
+
+The (n+1)sec system uses \emph{chat rooms} as its basic abstraction of the backing infrastructure.
+As far as (n+1)sec is concerned, chat rooms form an atomic notion, with no further structure behind them that (n+1)sec cares about.
+For example, (n+1)sec does not concern itself with how chat rooms are part of conference servers (Jabber multi-user-chat), networks (IRC), or other higher levels of aggregation.
+
+The (n+1)sec system interfaces with an abstract model of a chat room, irrespective of the implementation details of any particular carrier chat room system.
+The model that (n+1)sec relies upon has the following components:
+\begin{itemize}
+\item A chat room contains a consistent, well-defined sets of users ---the \emph{members} of the room--- that are considered part of the room. All users in this room can see this member set. Members get notified when a new member joins the room, or when an existing member leaves the room.
+\item Room members have a recognizable unique identifier that stays stable for the duration for which the member is part of the room. In the rest of this document, this identifier is modeled as a byte string and called the \emph{username} of the member; however, it is to be understood that this identifier need not be an actual username, and might for example consist of a unique connection identifier instead.
+\todo[inline]{Could we support changeable identifiers, like on IRC?}
+\item Room members can send text messages to the room. These messages are received by all members of the room, including the sender, along with the identifier of the member that sent the message.
+\end{itemize}
+
+Besides supporting these modes of interaction, a carrier chat room used by the (n+1)sec system must satisfy certain behavioral properties for (n+1)sec to work correctly on it.
+If these properties are not satisfied, this will not compromise the security properties delineated in Section~\ref{sec:chat-model/cryptographic-assurances}; however, it will make it impossible to create, or maintain, (n+1)sec conversations in the room.
+The carrier chat room needs to satisfy the following properties in order to support (n+1)sec conversations:
+\begin{itemize}
+\item Chat events occurring in the chat room ---which include at least chat messages, joining members, and leaving members--- have a strict and consistent order enforced by the carrier chat system. Different members of the chat room receive the same chat events in the same order. This include schat events originated by the receiving member; for example, if a member sends a chat message, it should be aware of the timing at which it is received by the chat room, relative to other chat events in the same room.
+\todo[inline]{Could we lift this restriction, without turning (n+1)sec into Byzantine Paxos and then some?}
+\item The recognizable unique identifier that identifies a particular member of a chat room corresponds to a particular instantiation of an (n+1)sec client. In particular, multiple (n+1)sec-capable user agents must not share a unique user identifier.
+\todo[inline]{Could we lift this? It seems more of an annoyance than a fundamental restriction.}
+\end{itemize}
+
+It is an unfortunate fact that many commonly used chat systems do not satisfy all these requirements.
+In particular, IRC as usually implemented does not satisfy the requirement that chat events have a well-defined ordering; indeed, users connected to different servers of the same IRC network may receive near-simultaneous chat events in different orders, and the sender of a message generally cannot tell the time at which it is received by the room relative to surrounding events.
+Certain extensions and configurations of IRC networks can avoid this complication, but these extensions are not commonly used by popular IRC networks.
+Jabber multi-user-chats, on the other hand, do not always satisfy the property that unique identifiers are unique to a particular client; in particular, when the Multiple Device Messaging extension is enabled (which it commonly is), this often makes it possible for multiple user agents to use the same username in a way that is indistinguishable to third party members of the chat room.
+
+
+\subsection{User presence}
+\label{sec:carrier-chat-rooms/user-presence}
+
+An (n+1)sec client maintains, for each carrier chat room in which (n+1)sec is operational, a list of user identities of (n+1)sec-capable members of the chat room.
+These identities consist of a pair of a username, and a public key for which the user is known to possess the assorted private key.
+New identities are added to this database when a user confirms their possession of a particular private key, as described in Section~\ref{sec:messages/room-authentication}, and identities are removed when their owner either retracts the identity, or leaves the carrier chat room.
+
+The list of user identities present in a carrier chat room serves as a pool of potential participants that can be invited into any conversations taking place in that carrier chat room.
+However, a user agent MAY also invite participants into a conversation that have not announced their user identities to the chat room, if the user agent has reason to believe that member to be present in the room anyway.
 
 
 
@@ -196,7 +319,7 @@ This symmetric key is negotiated each time the list of Participants of a Convers
 \label{sec:cryptography}
 
 The (n+1)sec protocol makes use of several different cryptographic techniques to implement the security properties outlined in the previous section.
-In addition to standard cryptographic constructions such as symmetric ciphers and public-key signatures, (n+1)sec uses versions of the \emph{Triple Diffie-Hellman} deniable authentication scheme, and the Abdalla-Chevalier-Manulis-Pointcheval GKE+P authenticated group key exchange protocol.
+In addition to standard cryptographic constructions such as symmetric ciphers and public-key signatures, (n+1)sec uses versions of the Triple Diffie-Hellman deniable authentication scheme, and the Abdalla-Chevalier-Manulis-Pointcheval GKE+P authenticated group key exchange protocol.
 
 In the remainder of this section, we introduce the nonstandard cryptographic techniques used in the (n+1)sec protocol.
 Section~\ref{sec:cryptography/cryptographic-primitives} describes and motivates the choice of standard cryptographic primitives used in the (n+1)sec protocol.
@@ -265,7 +388,7 @@ To compute the shared secret $S = f(g^{Ab}, g^{aB}, g^{ab})$, (n+1)sec uses the 
 \end{enumerate}
 The shared secret $S$ for keys $A$, $a$, $B$, $b$ is also denoted $TDH(g^A, g^a, g^B, g^b)$.
 
-% TODO improve code: not implemented like this at the moment
+\todo[inline]{Current implementation uses some different nonstandard encodings, fix this.}
 
 
 \subsubsection{Authentication}
@@ -292,7 +415,7 @@ The (n+1)sec protocol uses the authentication challenge protocol in several plac
 This takes the form of a message from a user with username $U_A$, long term public key $g^A$, and ephemeral public key $g^a$, to a user with username $U_B$, long term public key $g^B$, and ephemeral public key $g^b$, containing an authentication challenge $N$; followed by a message from $B$ to $A$ containing the authentication confirmation $T = H(U_B \concat N \concat TDH(g^A, g^a, g^B, g^b))$.
 When $A$ receives that message with a correct value of $T$, $A$ can then mark $B$ as being authenticated for the ephemeral public key $g^b$, and accept messages from $B$ signed against that public key.
 
-% TODO incorrect specification: round 1 is skipped sometimes
+\todo[inline]{Round 1 is occasionally skipped as an optimization.}
 
 %\subsubsection{Security properties}
 %\label{sec:cryptography/triple-diffie-hellman/security-properties}
@@ -311,8 +434,8 @@ A group key protocol is an extension of the traditional Diffie-Hellman key excha
 The (n+1)sec protocol invokes an instance of a group key exchange protocol each time a conversation requires a new shared symmetric key.
 
 A complication of group key exchange protocols that has no equivalent in the two-party Diffie-Hellman key exchange protocol lies in the possibility of \emph{denial of service} attacks.
-A participant in a group key exchange protocol might send messages containing invalid contribitions to the key exchange, in a way that other participants cannot readily detect, causing the key exchange mechanism to fail.
-While most group key exchange protocols will verify at the end that a key was exchanged successfully, and notice the problem if one of the participants to the exchange acted maliciously, most key exchange protocols cannot then determine which participant was responsible for the failure.
+A participant in a group key exchange protocol might send messages containing invalid contributions to the key exchange, in a way that other participants cannot readily detect, causing the key exchange mechanism to fail.
+While most group key exchange protocols will verify at the end that a key was exchanged successfully, and notice the problem if one of the participants to the exchange acted maliciously, most key exchange protocols cannot then determine \emph{which} participant was responsible for the failure.
 Should the participants of the conversation then simply try again to exchange a key, the malicious participant could keep disrupting the negotiation of a key indefinitely, freezing conversation progress without anyone being able to determine the party responsible for this breakdown.
 
 The (n+1)sec protocol makes use of a version of the Abdalla-Chevalier-Manulis-Pointcheval GKE+P authenticated group key exchange \cite{acmp}.
@@ -330,7 +453,7 @@ In this context, the group key exchange protocol has the following conceptual st
 \begin{enumerate}
 \item All participants in the key exchange are ordered in a circle. Participants are denoted $U_0$ to $U_{n-1}$, with indices taken modulo $n$: $U_n = U_0$, $U_{-1} = U_{n-1}$. Participant $U_i$ has public key $k_i = g^{m_i}$.
 \item Each participant $U_i$ generates a temporary private key $x_i$, used for the duration of the key exchange, and broadcasts the associated public key $y_i = g^{x_i}$.
-\item Each participant $U_i$ computes a Triple Diffie-Hellman secret shared with his left and right neighbours in the circle: $d_{i-1, i} = TDH(k_{i-1}, y_{i-1}, k_i, y_i)$; $d_{i, i+1} = TDH(k_i, y_i, k_{i+1}, y_{i+1})$.
+\item Each participant $U_i$ computes a Triple Diffie-Hellman secret shared with their left and right neighbours in the circle: $d_{i-1, i} = TDH(k_{i-1}, y_{i-1}, k_i, y_i)$; $d_{i, i+1} = TDH(k_i, y_i, k_{i+1}, y_{i+1})$.
 \item Each participant $U_i$ computes and broadcasts the XOR sum of their two Triple Diffie-Hellman secrets: $z_i = d_{i-1, i} \xor d_{i, i+1}$.
 \item By combining the linear combinations $z$ of the secrets $d$, each participant computes the secrets $d_{j, j+1}$ for all $0 \leq j < n$. Each participant $U_i$ computes these values by computing $d_{i+1, i+2} := z_{i+1} \xor d_{i, i+1}$, $d_{i+2, i+3} := z_{i+2} \xor d_{i+1, i+2}$, \ldots
 \item Each participant $U_i$ computes the shared secret $S = d_{0, 1} \concat d_{1, 2} \concat \ldots \concat d_{n-2, n-1} \concat d_{n-1, 0}$. This secret is used as input to a key derivation function.
@@ -344,7 +467,7 @@ Only by knowing the value of at least one secret $d$ are participants able to co
 
 When the cryptographic protocol above is finished, the participants confirm to each other that they have all computed the same value of $S$.
 If this is not the case, this indicates that at least one of the participants $U_i$ is malicious, and has broadcast a value of $z_i$ that is not derived correctly from the public key $y_i$ they announced.
-In this situation, the participants of the protocol can all reveal their private key $x_i$; this allows all participants (and nonparticipating observers) to compute the correct values $y_j$ and $z_j$ that all participants should have announced.
+In this situation, the participants of the protocol can all reveal their ephemeral private key $x_i$; this allows all participants (and nonparticipating observers) to compute the correct values $y_j$ and $z_j$ that all participants should have announced.
 By comparing these expected values to the values actually broadcast, participants and observers can identify the malicious participant, and start a new group key exchange without that participant.
 
 
@@ -369,7 +492,7 @@ Concretely, (n+1)sec implements the following protocol:
 	\begin{itemize}[noitemsep,nolistsep]\renewcommand{\labelitemi}{--}
 	\item compute $\texttt{groupid} := H(U_0 \concat k_0 \concat y_0 \concat \ldots \concat U_{n-1} \concat k_{n-1} \concat y_{n-1})$;
 	\item compute $d_{i-1, i} = H(TDH(k_{i-1}, y_{i-1}, k_i, y_i) \concat \texttt{groupid})$ and $d_{i, i+1} = H(TDH(k_i, y_i, k_{i+1}, y_{i+1}) \concat \texttt{groupid})$;
-	\item compute $z_i = d_{i-1, i} \xor d_{i, i+1}$;
+	\item compute $z_i := d_{i-1, i} \xor d_{i, i+1}$;
 	\item broadcast $(z_i, \texttt{groupid})$.
 	\end{itemize}
 \item[Round 3.] Each participant $U_i$ proceeds as follows:
@@ -388,7 +511,7 @@ Concretely, (n+1)sec implements the following protocol:
 \end{description}
 
 When this protocol completes, the participants have either accepted a group key, or have aborted having marked a nonempty set of participants as malicious.
-Participants can then start exchanging messages encrypted using this group key; or, in the case of unsuccessful abortion, can remove the malicious participants from the conversation and start a new invocation of the group key exchange protocol for the reduced set of participants.
+Participants can then start exchanging messages encrypted using this group key; or, in the case of unsuccessful termination, can remove the malicious participants from the conversation and start a new invocation of the group key exchange protocol for the reduced set of participants.
 The details of this response are described in Sections~\ref{sec:conversation-state-machine} and~\ref{sec:messages}.
 
 % TODO improve document: security properties
@@ -411,30 +534,17 @@ The (n+1)sec protocol uses the following algorithms as implementations of these 
 
 
 
-\section{Carrier Chatrooms}
-\label{sec:carrier-chatrooms}
-
-\subsection{Carrier model}
-
-
-\subsection{Carrier limitations}
-
-
-\subsection{User presence}
-
-
-
 \section{The Conversation State Machine}
 \label{sec:conversation-state-machine}
 
 The key abstraction of the (n+1)sec protocol is the \emph{conversation}, which is the context in which chats take place.
-An (n+1)sec conversation is an agreement between a group of users to exchange encrypted chat in a setting that behaves like a conventional chatroom, by exchanging (n+1)sec messages in a single carrier chat room.
+An (n+1)sec conversation is an agreement between a group of users to exchange encrypted chat in a setting that behaves like a conventional chat room, by exchanging (n+1)sec messages in a single carrier chat room.
 As such, a conversation has such things as a participant list, an ordered sequence of chat messages and related events, and indications of when participants join and leave the conversation.
 For the purposes of security, conversations also keep track of what users are able to receive which chat messages at each point.
 
 Conversations are a \emph{distributed} notion.
 When a group of users participating in a conversation, this fact is not recorded on the chat server, or in any other way regulated by the carrier chat infrastructure; instead, conversations exist only in the memory of the clients of their participants, and they rely on distributed coordination to keep the abstraction intact.
-For such a distributed coordinated abstraction to behave like a conventional chatroom, it is critical that its participants are at all times in agreement about such things as the member list, the chat transcript, and the state and history of the conversation in general.
+For such a distributed coordinated abstraction to behave like a conventional chat room, it is critical that its participants are at all times in agreement about such things as the member list, the chat transcript, and the state and history of the conversation in general.
 
 Achieving and maintaining this agreement is a challenging affair.
 Because communication over the channel provioded by the carrier chat room is not instantaneous ---messages take a nonzero time to arrive at the carrier chat room after being sent by a user, and then take another nonzero time before being received by all other users--- multiple processes involved in maintaining a conversation might happen simultaneously in an interleaved fashion.
@@ -473,8 +583,8 @@ An (n+1)sec client can \emph{actively participate} in a conversation by keeping 
 When a user is invited to a conversation, that conversation's state machine changes in such a way that it will respond to messages by the invited user.
 By responding to that situation, the invited user can ---all going well--- eventually become a proper member, participate in key exchanges, send chat messages to the conversation, and decrypt messages sent by others.
 
-By implementing a conversation state machine's abstract computation and maintaining identical copies of the conversation state machine, participants in a conversation can remain in agreement about the status and events of a conversation, and thereby achieve the distributed abstraction of a chatroom that behaves in a conventional way.
-This agreement, however, relies on the different participants implementing the abstract computation \emph{exactly}; if different participants of a conversation interpret a message in such a way that they end up representing a \emph{slightly} different version of the conversation state machine, the distributed abstraction of a coherent chatroom will unravel in short order, making further coherent chat impossible.
+By implementing a conversation state machine's abstract computation and maintaining identical copies of the conversation state machine, participants in a conversation can remain in agreement about the status and events of a conversation, and thereby achieve the distributed abstraction of a chat room that behaves in a conventional way.
+This agreement, however, relies on the different participants implementing the abstract computation \emph{exactly}; if different participants of a conversation interpret a message in such a way that they end up representing a \emph{slightly} different version of the conversation state machine, the distributed abstraction of a coherent chat room will unravel in short order, making further coherent chat impossible.
 For example, if a carrier chat room message by user $U$ is interpreted by one participant $A$ as valid and processed, while being interpreted by another participant $B$ as invalid and ignored, user $B$ may eventually remove user $U$ from the conversation because of a perceived failure to participate in some process of which the ignored message was part.
 If $A$ then judges that $U$ is still a member in good standing, while $B$ decides that $U$ is no longer a member of the conversation and initiates a group key exchange procedure that does not include $U$, coherent chat in this conversation cannot continue.
 
@@ -864,7 +974,7 @@ A conversation participant $P$ should declare a timeout on member $M$ when one o
 \end{itemize}
 A conversation participant $P$ should retract earlier-declared timeouts on member $M$ when all of these conditions have stopped being true.
 
-% TODO improve protocol: better recursive timeouts
+\todo[inline]{This scheme for timeouting people that don't timeout others quick enough is flaky. Behavior can be oscillating and chaotic, and there are probably DoS attacks possible here.}
 
 
 \subsubsection{State machine checksum}
@@ -971,10 +1081,6 @@ When this key exchange is created, a \type{key-exchange-contribution} event is a
 All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_PUBLIC\_KEY} message for this key exchange, containing their public-key contribution for the key exchange process.
 
 
-%\subsection{Creating a conversation}
-% TODO improve document: creating a conversation
-
-
 
 \section{Messages}
 \label{sec:messages}
@@ -983,11 +1089,13 @@ All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_PUBLIC\
 \subsection{Message structure}
 \label{sec:messages/message-structure}
 
-%opcode / sender / payload struct
+\todo[inline]{Messages consist of an \emph{opcode} byte, plus an opcode-specific struct of fields. Each message is accompanied by a \emph{sender} field containing the username of the user that sent the message.}
 
 
 \subsection{Message encoding}
 \label{sec:messages/message-encoding}
+
+\todo[inline]{Fill in boring encoding details here.}
 
 
 \subsection{Room messages}
@@ -1039,7 +1147,7 @@ A client SHOULD NOT trust the authenticity of the \field{sender}'s identity with
 
 To avoid attacks in which a malicious user could waste unlimited resources by sending a large amount of \message{HELLO} messages claiming different identities, an implementation MAY limit the amount of active invitable identities for a particular \field{sender} to 1, or limit it based on some other characteristic.
 If so, a \message{HELLO} message claiming an identity the implementation does not currently consider active MAY be interpreted by the implementation as an implicit retraction of any earlier claimed identities by this \field{sender}.
-If an implementation does interpret a \message{HELLO} message as a retraction of earlier identities in this way, it may only retract these identities for the sake of representing the visible users in the room, as described in Section~\ref{sec:carrier-chatrooms}.
+If an implementation does interpret a \message{HELLO} message as a retraction of earlier identities in this way, it may only retract these identities for the sake of representing the visible users in the room, as described in Section~\ref{sec:carrier-chat-rooms}.
 In particular, the \message{HELLO} message MUST NOT have any effect on any conversations of which the \field{sender} is a member.
 
 The \field{solicit-replies} flag, if set, indicates that the sender requests all (n+1)sec-capable clients in the room to identify themselves; this is generally the case after a user has just joined a room, and wants to be able to invite the people in it to conversations.
@@ -1199,7 +1307,7 @@ An \message{INVITE} message affects the conversation state machine addressed by 
 \item A \type{conversation-confirmation-contribution} event is added to the conversation, for all identified members of the conversation, with invitee-username \field{username}, invitee-long-term-public-key \field{long-term-public-key}, and status-checksum equal to the conversation state machine's \smfield{status-checksum} after digesting the \message{INVITE} message. All identified members MUST send a \message{CONVERSATION\_CONFIRMATION} message matching this event.
 \item A \type{conversation-confirmation-status} event is added to the conversation, after the \type{conversation-confirmation-contribution} event above, for the \field{sender} of the \message{INVITE} message. This event has invitee-username \field{username} and invitee-long-term-public-key \field{long-term-public-key}.
 
-The \smfield{state-machine-hash} of this event is equal to the digest $H(\texttt{state-machine})$, where \texttt{state-machine} is the encoding of the conversation state machine as described in Section~\ref{todo:messages/message-encoding}, with a \smfield{status-checksum} after digesting the \message{INVITE} message, after adding the \type{unidentified-invitee} representing the invited user, after adding the \type{conversation-confirmation-contribution} event above, \emph{before} adding the \type{conversation-status-contribution} event.
+The \smfield{state-machine-hash} of this event is equal to the digest $H(\texttt{state-machine})$, where \texttt{state-machine} is the encoding of the conversation state machine as described in Section~\ref{sec:messages/message-encoding}, with a \smfield{status-checksum} after digesting the \message{INVITE} message, after adding the \type{unidentified-invitee} representing the invited user, after adding the \type{conversation-confirmation-contribution} event above, \emph{before} adding the \type{conversation-status-contribution} event.
 The \field{sender} of the \message{INVITE} message MUST send a \message{CONVERSATION\_STATUS} message, after having sent the \message{CONVERSATION\_CONFIRMATION} message above, with username \field{username}, long term public key \field{long-term-public-key}, and conversation state machine equal to \texttt{state-machine}.
 \label{item:messages/invite/conversation-status-event}
 \end{enumerate}
