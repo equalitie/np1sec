@@ -11,7 +11,7 @@
 \setlength{\parskip}{1em}
 \setlength{\parindent}{0em}
 
-\def\message#1{\texttt{#1}}
+\def\npmessage#1{\texttt{#1}}
 \def\field#1{\textit{#1}}
 \def\smfield#1{\textsl{#1}}
 \def\type#1{\textsf{#1}}
@@ -30,7 +30,7 @@
 }
 \hspace{2em minus 2em}\begin{tabular}{|l|l|}
 \hline
-\multicolumn{2}{|c|}{\message{#1} [#2]} \\
+\multicolumn{2}{|c|}{\npmessage{#1} [#2]} \\
 \hline
 \hline
 }{
@@ -44,7 +44,7 @@
 }
 \hspace{2em minus 2em}\begin{tabular}{|l|l|l|}
 \hline
-\multicolumn{3}{|c|}{\message{#1} [#2]} \\
+\multicolumn{3}{|c|}{\npmessage{#1} [#2]} \\
 \hline
 \hline
 \field{conversation-public-key} & \multicolumn{2}{l|}{\type{publickey}} \\
@@ -656,12 +656,12 @@ Several steps are involved between the invitation of a new user into a conversat
 New users follow the following process:
 
 \begin{description}[noitemsep]
-\item[Step 1.] An existing participant of the conversation sends an \message{INVITE} message (Section~\ref{sec:messages/invite}) to a user in the carrier chat room. This message contains the long term public key of the invitee, as well as their username.
+\item[Step 1.] An existing participant of the conversation sends an \npmessage{INVITE} message (Section~\ref{sec:messages/invite}) to a user in the carrier chat room. This message contains the long term public key of the invitee, as well as their username.
 \item[Step 2.] The invitee obtains a copy of the conversation state machine, as described in Section~\ref{sec:conversation-state-machine/joining}.
-\item[Step 3.] The invitee sends an \message{INVITE\_ACCEPTANCE} message (Section~\ref{sec:messages/invite-acceptance}) to the conversation. This message contains the fresh conversation public key the invitee will use for this conversation.
+\item[Step 3.] The invitee sends an \npmessage{INVITE\_ACCEPTANCE} message (Section~\ref{sec:messages/invite-acceptance}) to the conversation. This message contains the fresh conversation public key the invitee will use for this conversation.
 \item[Step 4.] The invitee identifies themself to the participants in the conversation, and vice versa, as outlined in Sections~\ref{sec:messages/conversation-authentication-request} and~\ref{sec:messages/conversation-authentication}.
-\item[Step 5.] The participant that invited the invitee sends an \message{AUTHENTICATE\_INVITE} message (Section~\ref{sec:messages/authenticate-invite}) to the conversation, indicating that they have successfully authenticated the invitee as having the expected identity.
-\item[Step 6.] The invitee sends a \message{JOIN} message (Section~\ref{sec:messages/join}) to the conversation. This promotes the invitee to a participant.
+\item[Step 5.] The participant that invited the invitee sends an \npmessage{AUTHENTICATE\_INVITE} message (Section~\ref{sec:messages/authenticate-invite}) to the conversation, indicating that they have successfully authenticated the invitee as having the expected identity.
+\item[Step 6.] The invitee sends a \npmessage{JOIN} message (Section~\ref{sec:messages/join}) to the conversation. This promotes the invitee to a participant.
 \item[Aftermath.] After the invitee gets promoted to a participant, a key exchange process begins to negotiate a key known to the new participant. When this completes, the new participant can participate in chat in the conversation.
 \end{description}
 
@@ -686,7 +686,7 @@ A conversation's participants are each represented in the conversation state mac
 A conversation state machine stores, for each participant, their \smfield{username}, \smfield{long-term-public-key}, and \smfield{conversation-public-key}.
 It also stores a flag \smfield{in-chat} indicating whether the conversation has yet negotiated a chat key to which the participant has access.
 
-An \emph{unidentified invitee} of a conversation is an invitee member that has been invited to the conversation using an \message{INVITE} message, but that has not yet replied with an \message{INVITE\_ACCEPTANCE} message.
+An \emph{unidentified invitee} of a conversation is an invitee member that has been invited to the conversation using an \npmessage{INVITE} message, but that has not yet replied with an \npmessage{INVITE\_ACCEPTANCE} message.
 Unidentified invitees are represented in the conversation state machine by the \type{unidentified-invitee} structure:
 \begin{struct}{unidentified-invitee}
 \structfield{username}{string}
@@ -694,10 +694,10 @@ Unidentified invitees are represented in the conversation state machine by the \
 \structfield{inviter}{participant reference}
 \end{struct}
 An unidentified invitee of a conversation has a \smfield{username} and \smfield{long-term-public-key}, which is the long term identity that has been invited into the conversation.
-An unidentified invitee does not yet have an empheral public key, for that key is not announced by the invitee until their \message{INVITE\_ACCEPTANCE} message.
+An unidentified invitee does not yet have an empheral public key, for that key is not announced by the invitee until their \npmessage{INVITE\_ACCEPTANCE} message.
 The conversation state machine also stores, for each unidentified invitee, the \smfield{inviter} participant that invited them.
 
-An \emph{unauthenticated identified invitee} of a conversation is an invitee member that has been invited to the conversation with an \message{INVITE} message and who has replied with an \message{INVITE\_ACCEPTANCE} message, but who has not yet been authenticated by their inviter via an \message{AUTHENTICATE\_INVITE} message.
+An \emph{unauthenticated identified invitee} of a conversation is an invitee member that has been invited to the conversation with an \npmessage{INVITE} message and who has replied with an \npmessage{INVITE\_ACCEPTANCE} message, but who has not yet been authenticated by their inviter via an \npmessage{AUTHENTICATE\_INVITE} message.
 Unauthenticated identified invitees are represented in the conversation state machine by the \type{identified-invitee} structure:
 \begin{struct}{identified-invitee}
 \structfield{username}{string}
@@ -706,9 +706,9 @@ Unauthenticated identified invitees are represented in the conversation state ma
 \structfield{inviter}{participant reference}
 \end{struct}
 Unauthenticated identified invitees have a \smfield{conversation-public-key} as well as a \smfield{username} and \smfield{long-term-public-key}.
-This conversation public key is announced by the invitee in their \message{INVITE\_ACCEPTANCE} message.
+This conversation public key is announced by the invitee in their \npmessage{INVITE\_ACCEPTANCE} message.
 
-An \emph{authenticated invitee} of a conversation is an invitee member that has been authenticated by their inviter with an \message{INVITE\_ACCEPTANCE} message.
+An \emph{authenticated invitee} of a conversation is an invitee member that has been authenticated by their inviter with an \npmessage{INVITE\_ACCEPTANCE} message.
 Authenticated invitees are represented in the conversation state machine by the \type{authenticated-invitee} structure:
 \begin{struct}{authenticated-invitee}
 \structfield{username}{string}
@@ -717,7 +717,7 @@ Authenticated invitees are represented in the conversation state machine by the 
 \structfield{inviter}{participant reference}
 \end{struct}
 An authenticated invitee is stored the same way in a conversation state machine as an unauthenticated identified invitee; their only difference is the status of their authentication process.
-Authenticated invitees can become independent participants by sending a \message{JOIN} message to the conversation.
+Authenticated invitees can become independent participants by sending a \npmessage{JOIN} message to the conversation.
 
 
 A conversation state machine contains a field \smfield{members}, which is the set of all the members of the conversation.
@@ -726,7 +726,7 @@ This field is an unordered collection of the conversation's members, each repres
 The identified members of a conversation ---that is, those members that are either unauthenticated identified invitees, authenticated invitees, or participants--- are uniquely identified by their username.
 That is to say, a user of a carrier chat room may participate in a conversation with \emph{at most one} long term public key and conversation public key; if a conversation state machine contains an identified member with a given username, it may not contain any other members (identified or not) with that same username.
 However, if a conversation state machine does not contain any identified members with a given username, it may contain multiple different unidentified invitees with the same username; this allows multiple participants in a conversation to attempt to invite a user to a conversation using different long term public keys.
-As soon as that carrier chat room user actively participates in the conversation by replying with an \message{INVITE\_ACCEPTANCE} message, and thereby become an unauthenticated identified invitee, the remaining unidentified invitee structures are removed from the conversation state machine, as described in Section~\ref{sec:messages/invite-acceptance}.
+As soon as that carrier chat room user actively participates in the conversation by replying with an \npmessage{INVITE\_ACCEPTANCE} message, and thereby become an unauthenticated identified invitee, the remaining unidentified invitee structures are removed from the conversation state machine, as described in Section~\ref{sec:messages/invite-acceptance}.
 
 
 \subsubsection{Key exchanges}
@@ -752,7 +752,7 @@ For example, when two new members of a conversation are promoted to participants
 As a consequence, multiple key exchanges can be going on in the context of a given conversation at any time.
 
 When a key exchange procedure finishes successfully, the conversation participants involved in the key exchange will switch to using the chat key produced by the key exchange for all further chat.
-To coordinate this, each participant will send a \message{KEY\_ACTIVATION} message announcing the chat key they will use from that point onward, and will encrypt all chat messages sent after sending that \message{KEY\_ACTIVATION} message using the newly activated key.
+To coordinate this, each participant will send a \npmessage{KEY\_ACTIVATION} message announcing the chat key they will use from that point onward, and will encrypt all chat messages sent after sending that \npmessage{KEY\_ACTIVATION} message using the newly activated key.
 The successful completion of a key exchange will also cancel all remaining active key exchanges that started before the just-finished key exchange; this ensures that the progression of chat keys used over time follows a monotone sequence, and no keys ever get activated that have since been superceded by more recent keys.
 
 Key exchange procedures do not always finish successfully.
@@ -861,35 +861,35 @@ An event's \smfield{contribution} can refer to one of several different possible
 The different possible contribution structures are outlined below.
 
 
-A \type{conversation-status-contribution} event is created when a conversation participant sends an \message{INVITE} message.
-It records the expectation that the sender of that invitation sends a \message{CONVERSATION\_STATUS} message containing an encoding of the conversation state machine for the benefit of the invited user.
+A \type{conversation-status-contribution} event is created when a conversation participant sends an \npmessage{INVITE} message.
+It records the expectation that the sender of that invitation sends a \npmessage{CONVERSATION\_STATUS} message containing an encoding of the conversation state machine for the benefit of the invited user.
 \begin{struct}{conversation-status-contribution}
 \structfield{invitee-username}{string}
 \structfield{invitee-long-term-public-key}{publickey}
 \structfield{state-machine-hash}{hash}
 \end{struct}
-A \type{conversation-status-contribution} contains the \smfield{invitee-username} and \smfield{invitee-long-term-public-key} of the user invited by the \message{INVITE} message, as well as the hash of the encoding of the conversation state machine that is to be sent to the invited user.
-A \type{conversation-status-contribution} event is satisfied after receiving a \message{CONVERSATION\_STATUS} message, with message fields \field{username} and \field{long-term-public-key} equal to the event's \smfield{invitee-username} and \smfield{invitee-long-term-public-key} fields, and with a \field{conversation-state-machine} whose hash is equal to the \smfield{state-machine-hash}.
+A \type{conversation-status-contribution} contains the \smfield{invitee-username} and \smfield{invitee-long-term-public-key} of the user invited by the \npmessage{INVITE} message, as well as the hash of the encoding of the conversation state machine that is to be sent to the invited user.
+A \type{conversation-status-contribution} event is satisfied after receiving a \npmessage{CONVERSATION\_STATUS} message, with message fields \field{username} and \field{long-term-public-key} equal to the event's \smfield{invitee-username} and \smfield{invitee-long-term-public-key} fields, and with a \field{conversation-state-machine} whose hash is equal to the \smfield{state-machine-hash}.
 The details of this expectation are described in Section~\ref{sec:messages/conversation-status}.
 
-A \type{conversation-confirmation-contribution} event is created when a conversation participant sends an \message{INVITE} message.
-It records the expectation that the members of the conversation, including the sender of the \message{INVITE} message, send a \message{CONVERSATION\_CONFIRMATION} message confirming their presence in the conversation for the benefit of the invited user.
+A \type{conversation-confirmation-contribution} event is created when a conversation participant sends an \npmessage{INVITE} message.
+It records the expectation that the members of the conversation, including the sender of the \npmessage{INVITE} message, send a \npmessage{CONVERSATION\_CONFIRMATION} message confirming their presence in the conversation for the benefit of the invited user.
 \begin{struct}{conversation-confirmation-contribution}
 \structfield{invitee-username}{string}
 \structfield{invitee-long-term-public-key}{publickey}
 \structfield{status-checksum}{hash}
 \end{struct}
-A \type{conversation-confirmation-contribution} contains the \smfield{invitee-username} and \smfield{invitee-long-term-public-key} of the user invited by the \message{INVITE} message, as well as the value of the conversation state machine's \smfield{status-checksum} after processing the \message{INVITE} message.
-A \type{conversation-confirmation-contribution} event is satisfied after receiving a \message{CONVERSATION\_CONFIRMATION} message, with message fields \field{username} and \field{long-term-public-key} equal to the event's \smfield{invitee-username} and \smfield{invitee-long-term-public-key} fields, and with a \field{conversation-status-checksum} message field equal to the \smfield{status-checksum} field.
+A \type{conversation-confirmation-contribution} contains the \smfield{invitee-username} and \smfield{invitee-long-term-public-key} of the user invited by the \npmessage{INVITE} message, as well as the value of the conversation state machine's \smfield{status-checksum} after processing the \npmessage{INVITE} message.
+A \type{conversation-confirmation-contribution} event is satisfied after receiving a \npmessage{CONVERSATION\_CONFIRMATION} message, with message fields \field{username} and \field{long-term-public-key} equal to the event's \smfield{invitee-username} and \smfield{invitee-long-term-public-key} fields, and with a \field{conversation-status-checksum} message field equal to the \smfield{status-checksum} field.
 The details of this expectation are described in Section~\ref{sec:messages/conversation-confirmation}.
 
-A \type{consistency-check-contribution} event is created when a conversation member sends a \message{CONSISTENCY\_STATUS} keepalive message.
-It records the expectation that the sender of that message sends a \message{CONSISTENCY\_CHECK} message, containing the conversation's \smfield{status-checksum} field as it was after receiving the \message{CONSISTENCY\_STATUS} message.
+A \type{consistency-check-contribution} event is created when a conversation member sends a \npmessage{CONSISTENCY\_STATUS} keepalive message.
+It records the expectation that the sender of that message sends a \npmessage{CONSISTENCY\_CHECK} message, containing the conversation's \smfield{status-checksum} field as it was after receiving the \npmessage{CONSISTENCY\_STATUS} message.
 \begin{struct}{consistency-check-contribution}
 \structfield{status-checksum}{hash}
 \end{struct}
-A \type{conversation-check-contribution} contains the conversation state machine's \smfield{status-checksum} as it was after processing the \message{CONSISTENCY\_STATUS} message.
-A \type{conversation-check-contribution} event is satisfied after receiving a \message{CONSISTENCY\_CHECK} message, whose message field \field{conversation-status-checksum} is equal to the \smfield{status-checksum} field.
+A \type{conversation-check-contribution} contains the conversation state machine's \smfield{status-checksum} as it was after processing the \npmessage{CONSISTENCY\_STATUS} message.
+A \type{conversation-check-contribution} event is satisfied after receiving a \npmessage{CONSISTENCY\_CHECK} message, whose message field \field{conversation-status-checksum} is equal to the \smfield{status-checksum} field.
 The details of this expectation are described in Section~\ref{sec:messages/consistency-check}.
 
 A \type{key-exchange-contribution} event is created when a new key exchange process is instantiated, or when an existing key exchange process reaches a new stage.
@@ -899,19 +899,19 @@ It records the expectation that the participants of that key exchange send their
 \structfield{stage}{\normalfont \textsc{Public-Key}, \textsc{Secret-Share}, \textsc{Acceptance}, \textsc{Reveal}}
 \end{struct}
 A \type{key-exchange-contribution} contains the \smfield{key-exchange-id} of the key exchange referred to, as well as the key exchange \smfield{stage} for which a contribution is expected.
-Depending on the value of the \smfield{stage} field, a \type{key-exchange-contribution} event is satisfied after respectively receiving either a \message{KEY\_EXCHANGE\_PUBLIC\_KEY}, \message{KEY\_EXCHANGE\_SECRET\_SHARE}, \message{KEY\_EXCHANGE\_ACCEPTANCE}, or \message{KEY\_EXCHANGE\_REVEAL} message, with a \field{key-exchange-id} message field set to \smfield{key-exchange-id}.
+Depending on the value of the \smfield{stage} field, a \type{key-exchange-contribution} event is satisfied after respectively receiving either a \npmessage{KEY\_EXCHANGE\_PUBLIC\_KEY}, \npmessage{KEY\_EXCHANGE\_SECRET\_SHARE}, \npmessage{KEY\_EXCHANGE\_ACCEPTANCE}, or \npmessage{KEY\_EXCHANGE\_REVEAL} message, with a \field{key-exchange-id} message field set to \smfield{key-exchange-id}.
 The details of this expectation are described in Sections~\ref{sec:messages/key-exchange-public-key} through~\ref{sec:messages/key-exchange-reveal}.
 A \type{key-exchange-contribution} event need not refer to a key exchange present in the conversation state machine's \smfield{key-exchanges} list; when a key exchange process is cancelled, the representing \type{key-exchange} is removed from the conversation's \smfield{key-exchanges}, but the assorted \type{key-exchange-contribution} event remains in place.
 Thus, a \type{key-exchange-contribution} event may refer to a historic key exchange process that has since been cancelled.
 
 A \type{key-activation-contribution} event is created when a key exchange process finishes successfully.
-It records the expectation that the participants of that key exchange send a \message{KEY\_ACTIVATION} message, indicating that they will start using the newly negoatiated key for all further chat messages.
+It records the expectation that the participants of that key exchange send a \npmessage{KEY\_ACTIVATION} message, indicating that they will start using the newly negoatiated key for all further chat messages.
 \begin{struct}{key-activation-contribution}
 \structfield{key-exchange-id}{hash}
 \structfield{participants}{set of participant reference}
 \end{struct}
 A \type{key-activation-contribution} contains the \smfield{key-exchange-id} of the successfully completed key exchange, as well as the set \smfield{participants} of all participants of the conversation that finished this key exchange.
-A \type{key-activation-contribution} event is satisfied after receiving a \message{KEY\_ACTIVATION} message, whose message field \field{key-id} equals the \smfield{key-exchange-id} field.
+A \type{key-activation-contribution} event is satisfied after receiving a \npmessage{KEY\_ACTIVATION} message, whose message field \field{key-id} equals the \smfield{key-exchange-id} field.
 The details of this expectation are described in Section~\ref{sec:messages/key-activation}.
 
 
@@ -941,8 +941,8 @@ The decision of whether or not a member is actually removed from a conversation 
 
 To implement this scheme, a conversation state machine contains a field \smfield{timeout-matrix}, which is a matrix of bits.
 For each participant $P$ of the conversation, and for each identified member $M$ of the conversation, the \smfield{timeout-matrix} field stores a \type{boolean} $t_{P,M}$, indicating whether participant $P$ considers member $M$ to have met the condition for a timeout.
-Participants can send \message{TIMEOUT} messages, as described in Section~\ref{sec:messages/timeout}, to the conversation to modify their fragments of this \smfield{timeout-matrix}.
-Whenever this matrix reaches one of certain conditions ---described below--- the conversation removes those members that have been deemed timed out; this situation can arise after receiving a \message{TIMEOUT} message, or after a conversation member leaves the conversion (voluntarily or otherwise).
+Participants can send \npmessage{TIMEOUT} messages, as described in Section~\ref{sec:messages/timeout}, to the conversation to modify their fragments of this \smfield{timeout-matrix}.
+Whenever this matrix reaches one of certain conditions ---described below--- the conversation removes those members that have been deemed timed out; this situation can arise after receiving a \npmessage{TIMEOUT} message, or after a conversation member leaves the conversion (voluntarily or otherwise).
 
 If a conversation ever acquires a subset of participants $V$, such that for all participants $P \in V$ and all participants $Q \not\in V$, $t_{P,Q} = \textsf{true}$ ---that is, if there is ever a set of participants that together have declared all other participants timed out--- a \emph{symmetric split} between the two groups of participants happens.
 All participants $P$ in $V$ remove from their version of the conversation state machine all participants $Q \not\in V$, and declared them timed out; and symmetrically, all participants $Q \not\in V$ remove from their version of the conversation state machine all participants $P \in V$.
@@ -969,7 +969,7 @@ Implementations SHOULD follow these recommendations when there is no specific re
 A conversation participant $P$ should declare a timeout on member $M$ when one of the following conditions arises:
 \begin{itemize}
 \item A particular event for the member $M$ has been pending for more than 60 seconds, or
-\item The member $M$ has not sent a \message{CONSISTENCY\_STATUS} message for more than 120 seconds, or
+\item The member $M$ has not sent a \npmessage{CONSISTENCY\_STATUS} message for more than 120 seconds, or
 \item The member $M$ is a participant of the conversation, and should have declared a timeout on a third member $N$ more than 60 seconds ago.
 \end{itemize}
 A conversation participant $P$ should retract earlier-declared timeouts on member $M$ when all of these conditions have stopped being true.
@@ -1011,8 +1011,8 @@ Non-(n+1)sec messages are those messages that do not decode as a valid (n+1)sec 
 
 Room messages are (n+1)sec messages that are addressed at a carrier chat room in general, rather than any specific conversation, described in Section~\ref{sec:messages/room-messages}.
 These messages are generally informative about the (n+1)sec capable users present in the carrier chat room, and do not affect any conversation state machines.
-The exception to this generalization is the \message{QUIT} message, described in Section~\ref{sec:messages/quit}, which announces a retraction of the sender's (n+1)sec capability.
-When a user sends a \message{QUIT} message in a carrier chat room, this is treated identically as if the user had left the carrier chat room instead, according to the specification outlined in Section~\ref{sec:conversation-state-machine/operations/leaving}.
+The exception to this generalization is the \npmessage{QUIT} message, described in Section~\ref{sec:messages/quit}, which announces a retraction of the sender's (n+1)sec capability.
+When a user sends a \npmessage{QUIT} message in a carrier chat room, this is treated identically as if the user had left the carrier chat room instead, according to the specification outlined in Section~\ref{sec:conversation-state-machine/operations/leaving}.
 
 Conversation messages, which form the majority of (n+1)sec messages, are messages that are addressed to a specific conversation.
 Conversation messages carry a field used to specify the exact conversation to which they are addressed, as specified in detail in Section~\ref{sec:messages/conversation-messages}.
@@ -1078,7 +1078,7 @@ When a key exchange is created in this way, a new \type{key-exchange} is added t
 This key exchange has \smfield{key-exchange-id} equal to the conversation state machine's \smfield{status-checksum} field after digesting the carrier chat room event; a \smfield{stage} of \textsc{Public-Key}; and a set of \smfield{participants} that contains one \type{key-exchange-participant} for each remaining participant in the conversation, each with all contributions unset.
 
 When this key exchange is created, a \type{key-exchange-contribution} event is added to the conversation state machine's event queue, with \smfield{key-exchange-id} equal to the \smfield{key-exchange-id} of the newly created key exchange, and \smfield{stage} equal to \textsc{Public-Key}.
-All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_PUBLIC\_KEY} message for this key exchange, containing their public-key contribution for the key exchange process.
+All participants of the conversation MUST send a \npmessage{KEY\_EXCHANGE\_PUBLIC\_KEY} message for this key exchange, containing their public-key contribution for the key exchange process.
 
 
 
@@ -1108,27 +1108,27 @@ They are used to announce a client as being (n+1)sec capable; to announce a clie
 \subsubsection{QUIT}
 \label{sec:messages/quit}
 
-The \message{QUIT} (= 0x01) message causes the sender to effectively leave the room as far as the (n+1)sec protocol is concerned.
-A user that sent a \message{QUIT} message is considered in the same state as a user who has not announced (n+1)sec capability; the user has thus left the room from the point of view of the (n+1)sec abstraction, even if the user has not left the carrier chat room.
+The \npmessage{QUIT} (= 0x01) message causes the sender to effectively leave the room as far as the (n+1)sec protocol is concerned.
+A user that sent a \npmessage{QUIT} message is considered in the same state as a user who has not announced (n+1)sec capability; the user has thus left the room from the point of view of the (n+1)sec abstraction, even if the user has not left the carrier chat room.
 
 \begin{basicmessage}{QUIT}{0x01}
 \messagefield{cookie}{nonce}
 \end{basicmessage}
 
-A \message{QUIT} message declares the \field{sender} to have effectively left the (n+1)sec room.
+A \npmessage{QUIT} message declares the \field{sender} to have effectively left the (n+1)sec room.
 An implementation should handle it in the same way as the user leaving the carrier chat room.
 
-When receiving a \message{QUIT} message, the client SHOULD retract all cryptographic identities of the \field{sender}, the same way it would do if the \field{sender} were to leave the carrier chat room instead.
+When receiving a \npmessage{QUIT} message, the client SHOULD retract all cryptographic identities of the \field{sender}, the same way it would do if the \field{sender} were to leave the carrier chat room instead.
 The client MUST remove the \field{sender} from all conversations of which they are a member, the same way as if the \field{sender} had left the carrier chat room instead, as described in Section~\ref{sec:conversation-state-machine/operations/leaving}.
 
-The \field{cookie} field carries no significance for clients receiving a \message{QUIT} message and should be ignored.
-The field is included to allow an implementation to recognize when it receives its own \message{QUIT} message, and thus leave the (n+1)sec room in a predictable state when connecting to a carrier chat room in which they are already present.
+The \field{cookie} field carries no significance for clients receiving a \npmessage{QUIT} message and should be ignored.
+The field is included to allow an implementation to recognize when it receives its own \npmessage{QUIT} message, and thus leave the (n+1)sec room in a predictable state when connecting to a carrier chat room in which they are already present.
 
 
 \subsubsection{HELLO}
 \label{sec:messages/hello}
 
-The \message{HELLO} (= 0x02) message announces the sender's (n+1)sec capability, as well as their cryptographic identity.
+The \npmessage{HELLO} (= 0x02) message announces the sender's (n+1)sec capability, as well as their cryptographic identity.
 It is sent either by a client when it enters a room to announce its presence to other (n+1)sec users in the room, or in reply to such a message by existing users in the room to announce their presence to the newcomer.
 
 \begin{basicmessage}{HELLO}{0x02}
@@ -1137,29 +1137,29 @@ It is sent either by a client when it enters a room to announce its presence to 
 \messagefield{solicit-replies}{boolean}
 \end{basicmessage}
 
-A \message{HELLO} message sent to a room by a user \field{sender} indicates that \field{sender} is an (n+1)sec-capable chat client, claiming to possess the private key corresponding to \field{long-term-public-key}.
-Based on this declaration, the user receiving the \message{HELLO} message is able to invite the \field{sender} to any current and future conversations, using the announced \field{long-term-public-key}.
+A \npmessage{HELLO} message sent to a room by a user \field{sender} indicates that \field{sender} is an (n+1)sec-capable chat client, claiming to possess the private key corresponding to \field{long-term-public-key}.
+Based on this declaration, the user receiving the \npmessage{HELLO} message is able to invite the \field{sender} to any current and future conversations, using the announced \field{long-term-public-key}.
 
-A \message{HELLO} message sent by a particular user only indicates that this user \emph{claims} to possess the private key corresponding to the \field{long-term-public-key}.
+A \npmessage{HELLO} message sent by a particular user only indicates that this user \emph{claims} to possess the private key corresponding to the \field{long-term-public-key}.
 A client can confirm this cryptographic identity by performing an authentication procedure, as described in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}, using the \field{room-public-key} as the \field{sender}'s ephemeral public key for authentication purposes.
-This authentication procedure is implemented using the \message{ROOM\_AUTHENTICATION\_REQUEST} and \message{ROOM\_AUTHENTICATION} messages.
+This authentication procedure is implemented using the \npmessage{ROOM\_AUTHENTICATION\_REQUEST} and \npmessage{ROOM\_AUTHENTICATION} messages.
 A client SHOULD NOT trust the authenticity of the \field{sender}'s identity without having successfully completed such an authentication procedure, and ---from a user interface perspective--- should probably avoid depicting the \field{sender} to hold \field{long-term-public-key} in any way until the authentication procedure is successfully completed.
 
-To avoid attacks in which a malicious user could waste unlimited resources by sending a large amount of \message{HELLO} messages claiming different identities, an implementation MAY limit the amount of active invitable identities for a particular \field{sender} to 1, or limit it based on some other characteristic.
-If so, a \message{HELLO} message claiming an identity the implementation does not currently consider active MAY be interpreted by the implementation as an implicit retraction of any earlier claimed identities by this \field{sender}.
-If an implementation does interpret a \message{HELLO} message as a retraction of earlier identities in this way, it may only retract these identities for the sake of representing the visible users in the room, as described in Section~\ref{sec:carrier-chat-rooms}.
-In particular, the \message{HELLO} message MUST NOT have any effect on any conversations of which the \field{sender} is a member.
+To avoid attacks in which a malicious user could waste unlimited resources by sending a large amount of \npmessage{HELLO} messages claiming different identities, an implementation MAY limit the amount of active invitable identities for a particular \field{sender} to 1, or limit it based on some other characteristic.
+If so, a \npmessage{HELLO} message claiming an identity the implementation does not currently consider active MAY be interpreted by the implementation as an implicit retraction of any earlier claimed identities by this \field{sender}.
+If an implementation does interpret a \npmessage{HELLO} message as a retraction of earlier identities in this way, it may only retract these identities for the sake of representing the visible users in the room, as described in Section~\ref{sec:carrier-chat-rooms}.
+In particular, the \npmessage{HELLO} message MUST NOT have any effect on any conversations of which the \field{sender} is a member.
 
 The \field{solicit-replies} flag, if set, indicates that the sender requests all (n+1)sec-capable clients in the room to identify themselves; this is generally the case after a user has just joined a room, and wants to be able to invite the people in it to conversations.
-If this flag is set, any clients that wish to identify themselves can reply with a \message{HELLO} message of their own, repeating their already-established identity to the new user.
+If this flag is set, any clients that wish to identify themselves can reply with a \npmessage{HELLO} message of their own, repeating their already-established identity to the new user.
 However, to avoid bandwidth amplification attacks, implementations SHOULD avoid replying to a message with \field{solicit-replies} set from a \field{sender} to which it has already identified itself.
-To avoid infinite sequences of \message{HELLO} replies, a reply message to a message with \field{solicit-replies} set SHOULD NOT itself have \field{solicit-replies} set.
+To avoid infinite sequences of \npmessage{HELLO} replies, a reply message to a message with \field{solicit-replies} set SHOULD NOT itself have \field{solicit-replies} set.
 
 
 \subsubsection{ROOM\_AUTHENTICATION\_REQUEST}
 \label{sec:messages/room-authentication-request}
 
-The \message{ROOM\_AUTHENTICATION\_REQUEST} (= 0x03) message is used to request a client to authenticate itself based on the cryptographic identity announced in an earlier \message{HELLO} message.
+The \npmessage{ROOM\_AUTHENTICATION\_REQUEST} (= 0x03) message is used to request a client to authenticate itself based on the cryptographic identity announced in an earlier \npmessage{HELLO} message.
 It contains the authentication challenge that forms the base of this authentication process.
 
 \begin{basicmessage}{ROOM\_AUTHENTICATION\_REQUEST}{0x03}
@@ -1171,19 +1171,19 @@ It contains the authentication challenge that forms the base of this authenticat
 \messagefield{authentication-challenge}{nonce}
 \end{basicmessage}
 
-A \message{ROOM\_AUTHENTICATION\_REQUEST} message is a request to the client that uses the identity consisting of the (\field{username}, \field{long-term-public-key}, \field{room-public-key}) triple to authenticate itself to the user using the (\field{sender}, \field{my-long-term-public-key}, \field{my-room-public-key}) identity.
+A \npmessage{ROOM\_AUTHENTICATION\_REQUEST} message is a request to the client that uses the identity consisting of the (\field{username}, \field{long-term-public-key}, \field{room-public-key}) triple to authenticate itself to the user using the (\field{sender}, \field{my-long-term-public-key}, \field{my-room-public-key}) identity.
 It declares that \field{sender} will consider \field{username} authenticated for this identity after receiving a valid authentication confirmation for this pair of identities, described in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}, using \field{authentication-challenge} as the authentication challenge.
 
-A \message{ROOM\_AUTHENTICATION\_REQUEST} message is addressed to the user with username \field{username} and private keys matching the \field{long-term-public-key} and \field{room-public-key}.
+A \npmessage{ROOM\_AUTHENTICATION\_REQUEST} message is addressed to the user with username \field{username} and private keys matching the \field{long-term-public-key} and \field{room-public-key}.
 Any client that does not have this complete identity ---including clients that use this username but use different keys--- SHOULD ignore the message.
-The client that does have this identity, if any, can authenticate itself to the \field{sender} by sending a \message{ROOM\_AUTHENTICATION} message containing the authentication confirmation described above.
+The client that does have this identity, if any, can authenticate itself to the \field{sender} by sending a \npmessage{ROOM\_AUTHENTICATION} message containing the authentication confirmation described above.
 
 
 \subsubsection{ROOM\_AUTHENTICATION}
 \label{sec:messages/room-authentication}
 
-The \message{ROOM\_AUTHENTICATION} (= 0x04) message provides confirmation of a cryptographic identity to a single recipient.
-Assuming the authentication confirmation is valid, this allows the recipient to confirm that the sender holds the private keys they claimed to possess in a \message{HELLO} message.
+The \npmessage{ROOM\_AUTHENTICATION} (= 0x04) message provides confirmation of a cryptographic identity to a single recipient.
+Assuming the authentication confirmation is valid, this allows the recipient to confirm that the sender holds the private keys they claimed to possess in a \npmessage{HELLO} message.
 
 \begin{basicmessage}{ROOM\_AUTHENTICATION}{0x04}
 \messagefield{my-long-term-public-key}{publickey}
@@ -1194,15 +1194,15 @@ Assuming the authentication confirmation is valid, this allows the recipient to 
 \messagefield{authentication-confirmation}{hash}
 \end{basicmessage}
 
-A \message{ROOM\_AUTHENTICATION} message is a confirmation to the client using the identity consisting of the (\field{username}, \field{long-term-public-key}, \field{room-public-key}) triple that the \field{sender} holds the private keys corresponding to \field{my-long-term-public-key} and \field{my-room-public-key}.
+A \npmessage{ROOM\_AUTHENTICATION} message is a confirmation to the client using the identity consisting of the (\field{username}, \field{long-term-public-key}, \field{room-public-key}) triple that the \field{sender} holds the private keys corresponding to \field{my-long-term-public-key} and \field{my-room-public-key}.
 The \emph{authentication-confirmation} should contain the authentication confirmation described in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}; if it does, this proves that the sender does indeed hold these private keys.
 
-A \message{ROOM\_AUTHENTICATION} message is addressed to the user with username \field{username} and private keys matching the \field{long-term-public-key} and \field{room-public-key}.
+A \npmessage{ROOM\_AUTHENTICATION} message is addressed to the user with username \field{username} and private keys matching the \field{long-term-public-key} and \field{room-public-key}.
 Any client that does not have this complete identity ---including clients that use this username but use different keys--- SHOULD ignore the message.
 The client that does have this identity, if any, should consider the authentication valid if and only if
 \begin{itemize}
-\item that client previously sent a \message{ROOM\_AUTHENTICATION\_REQUEST} to the user with identity (\field{username}, \field{long-term-public-key}, \field{room-public-key}), and
-\item the \field{authentication-confirmation} field equals the expected authentication confirmation computed from the \field{authentication-challenge} sent in the accompanying \message{ROOM\_AUTHENTICATION\_REQUEST} message, as specified in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}.
+\item that client previously sent a \npmessage{ROOM\_AUTHENTICATION\_REQUEST} to the user with identity (\field{username}, \field{long-term-public-key}, \field{room-public-key}), and
+\item the \field{authentication-confirmation} field equals the expected authentication confirmation computed from the \field{authentication-challenge} sent in the accompanying \npmessage{ROOM\_AUTHENTICATION\_REQUEST} message, as specified in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}.
 \end{itemize}
 If both requirements hold, this proves that the \field{sender} holds the private key corresponding to \field{my-long-term-public-key}.
 
@@ -1254,8 +1254,8 @@ On receiving a conversation message with a valid signature, implementations MUST
 Implementations MUST modify the conversation state machine of any conversations addressed by the message for which the implementation is maintaining a representation, by implementing the rules specified below.
 
 There is one exception that applies to this specification of conversations addressed by conversation messages.
-The \message{INVITE\_ACCEPTANCE} message, described in Section~\ref{sec:messages/invite-acceptance}, is used by unidentified members of a conversation to upgrade their status to an identified member, and is addressed to and processed by certain conversations beyond those that include the \field{sender} as an identified member.
-These \message{INVITE\_ACCEPTANCE} messages carry a \field{message-signature} signed based on its \field{conversation-public-key} as normal, but are addressed to a larger collection of conversations.
+The \npmessage{INVITE\_ACCEPTANCE} message, described in Section~\ref{sec:messages/invite-acceptance}, is used by unidentified members of a conversation to upgrade their status to an identified member, and is addressed to and processed by certain conversations beyond those that include the \field{sender} as an identified member.
+These \npmessage{INVITE\_ACCEPTANCE} messages carry a \field{message-signature} signed based on its \field{conversation-public-key} as normal, but are addressed to a larger collection of conversations.
 The details of this anomaly are specified in Section~\ref{sec:messages/invite-acceptance}.
 
 When an implementation receives a conversation message with a valid signature addressed to one or more conversations of which the implementation is maintaining a representation, the implementation must digest the message into those conversations' \smfield{status-checksum}, as described in Section~\ref{sec:conversation-state-machine/operations/messages}.
@@ -1284,43 +1284,43 @@ Implementing this, a conversation state machine addressed by a received event me
 \subsubsection{INVITE}
 \label{sec:messages/invite}
 
-The \message{INVITE} (= 0x11) message is sent by a conversation participant to invite a new user to the conversation, identified by a (username, long term public key) pair.
-An \message{INVITE} message informs the invited user of the existence of the conversation, and allows the invited user to start tracking the status of the conversation.
+The \npmessage{INVITE} (= 0x11) message is sent by a conversation participant to invite a new user to the conversation, identified by a (username, long term public key) pair.
+An \npmessage{INVITE} message informs the invited user of the existence of the conversation, and allows the invited user to start tracking the status of the conversation.
 
 \begin{conversationmessage}{INVITE}{0x11}
 \messagefield{username}{string}
 \messagefield{long-term-public-key}{publickey}
 \end{conversationmessage}
 
-An \message{INVITE} message indicates that the \field{sender} wants to invite the user \field{username} into the conversation, assuming that user holds the private key corresponding to \field{long-term-public-key}.
+An \npmessage{INVITE} message indicates that the \field{sender} wants to invite the user \field{username} into the conversation, assuming that user holds the private key corresponding to \field{long-term-public-key}.
 It also provides an opportunity for that user to acquire a copy of the conversation's state machine, allowing them to decide whether or not to accept the invitation.
-After receiving both the \message{INVITE} message and this copy of the state machine, the invited user can accept the invitation with a \message{INVITE\_ACCEPTANCE} message.
+After receiving both the \npmessage{INVITE} message and this copy of the state machine, the invited user can accept the invitation with a \npmessage{INVITE\_ACCEPTANCE} message.
 
-After receiving an \message{INVITE} message, the \field{sender} of this message sends a \message{CONVERSATION\_STATUS} message containing an encoding of the conversation state machine as it is after processing the \message{INVITE} message, allowing the invited user to construct and track a copy of the conversation state machine and thereby learn the status of the conversation to which they are invited.
-All identified members of the conversation, including the \field{sender}, send a \message{CONVERSATION\_CONFIRMATION} confirming their presence in the conversation.
+After receiving an \npmessage{INVITE} message, the \field{sender} of this message sends a \npmessage{CONVERSATION\_STATUS} message containing an encoding of the conversation state machine as it is after processing the \npmessage{INVITE} message, allowing the invited user to construct and track a copy of the conversation state machine and thereby learn the status of the conversation to which they are invited.
+All identified members of the conversation, including the \field{sender}, send a \npmessage{CONVERSATION\_CONFIRMATION} confirming their presence in the conversation.
 
-An \message{INVITE} message affects the conversation state machine addressed by it in the following way:
+An \npmessage{INVITE} message affects the conversation state machine addressed by it in the following way:
 \begin{enumerate}
-\item If the conversation contains an identified member with username \field{username}, or if the \field{sender} is not a participant of the conversation, the \message{INVITE} message has no effect.
-\item If the conversation already contains an unidentified invitee with username \field{username}, long term public key \field{long-term-public-key}, and inviter \field{sender}, the \message{INVITE} message has no effect.
+\item If the conversation contains an identified member with username \field{username}, or if the \field{sender} is not a participant of the conversation, the \npmessage{INVITE} message has no effect.
+\item If the conversation already contains an unidentified invitee with username \field{username}, long term public key \field{long-term-public-key}, and inviter \field{sender}, the \npmessage{INVITE} message has no effect.
 \item Otherwise, a new \type{unidentified-invitee} is added to the conversation, with username \field{username}, long term public key \field{long-term-public-key}, and inviter \field{sender}. If the conversation contains any existing unidentified invitees with username \field{username} and inviter \field{sender}, those unidentified invitees are removed from the conversation.
-\item A \type{conversation-confirmation-contribution} event is added to the conversation, for all identified members of the conversation, with invitee-username \field{username}, invitee-long-term-public-key \field{long-term-public-key}, and status-checksum equal to the conversation state machine's \smfield{status-checksum} after digesting the \message{INVITE} message. All identified members MUST send a \message{CONVERSATION\_CONFIRMATION} message matching this event.
-\item A \type{conversation-confirmation-status} event is added to the conversation, after the \type{conversation-confirmation-contribution} event above, for the \field{sender} of the \message{INVITE} message. This event has invitee-username \field{username} and invitee-long-term-public-key \field{long-term-public-key}.
+\item A \type{conversation-confirmation-contribution} event is added to the conversation, for all identified members of the conversation, with invitee-username \field{username}, invitee-long-term-public-key \field{long-term-public-key}, and status-checksum equal to the conversation state machine's \smfield{status-checksum} after digesting the \npmessage{INVITE} message. All identified members MUST send a \npmessage{CONVERSATION\_CONFIRMATION} message matching this event.
+\item A \type{conversation-confirmation-status} event is added to the conversation, after the \type{conversation-confirmation-contribution} event above, for the \field{sender} of the \npmessage{INVITE} message. This event has invitee-username \field{username} and invitee-long-term-public-key \field{long-term-public-key}.
 
-The \smfield{state-machine-hash} of this event is equal to the digest $H(\texttt{state-machine})$, where \texttt{state-machine} is the encoding of the conversation state machine as described in Section~\ref{sec:messages/message-encoding}, with a \smfield{status-checksum} after digesting the \message{INVITE} message, after adding the \type{unidentified-invitee} representing the invited user, after adding the \type{conversation-confirmation-contribution} event above, \emph{before} adding the \type{conversation-status-contribution} event.
-The \field{sender} of the \message{INVITE} message MUST send a \message{CONVERSATION\_STATUS} message, after having sent the \message{CONVERSATION\_CONFIRMATION} message above, with username \field{username}, long term public key \field{long-term-public-key}, and conversation state machine equal to \texttt{state-machine}.
+The \smfield{state-machine-hash} of this event is equal to the digest $H(\texttt{state-machine})$, where \texttt{state-machine} is the encoding of the conversation state machine as described in Section~\ref{sec:messages/message-encoding}, with a \smfield{status-checksum} after digesting the \npmessage{INVITE} message, after adding the \type{unidentified-invitee} representing the invited user, after adding the \type{conversation-confirmation-contribution} event above, \emph{before} adding the \type{conversation-status-contribution} event.
+The \field{sender} of the \npmessage{INVITE} message MUST send a \npmessage{CONVERSATION\_STATUS} message, after having sent the \npmessage{CONVERSATION\_CONFIRMATION} message above, with username \field{username}, long term public key \field{long-term-public-key}, and conversation state machine equal to \texttt{state-machine}.
 \label{item:messages/invite/conversation-status-event}
 \end{enumerate}
 
-A user receiving an \message{INVITE} message addressed to a conversation to which they are not a member, with \field{username} and \field{long-term-public-key} matching the user's identity, is invited to join the conversation to which the \message{INVITE} message is addressed.
+A user receiving an \npmessage{INVITE} message addressed to a conversation to which they are not a member, with \field{username} and \field{long-term-public-key} matching the user's identity, is invited to join the conversation to which the \npmessage{INVITE} message is addressed.
 To make an informed decision as to whether or not to accept this invitation, the invited user needs to first determine the status of the conversation, by acquiring a copy of the conversation's state machine.
-The invited user can acquire such a copy by following the procedure outlined in Section~\ref{sec:conversation-state-machine/joining}, recording all messages in the carrier chat room after the \message{INVITE} message, until they receive the accompanying \message{CONVERSATION\_STATUS} message.
+The invited user can acquire such a copy by following the procedure outlined in Section~\ref{sec:conversation-state-machine/joining}, recording all messages in the carrier chat room after the \npmessage{INVITE} message, until they receive the accompanying \npmessage{CONVERSATION\_STATUS} message.
 
 
 \subsubsection{CONVERSATION\_STATUS}
 \label{sec:messages/conversation-status}
 
-The \message{CONVERSATION\_STATUS} (= 0x12) message is sent by the sender of a previous \message{INVITE} message, to inform the user invited by that message of the status of the conversation state machine.
+The \npmessage{CONVERSATION\_STATUS} (= 0x12) message is sent by the sender of a previous \npmessage{INVITE} message, to inform the user invited by that message of the status of the conversation state machine.
 
 \begin{conversationmessage}{CONVERSATION\_STATUS}{0x12}
 \messagefield{username}{string}
@@ -1328,37 +1328,37 @@ The \message{CONVERSATION\_STATUS} (= 0x12) message is sent by the sender of a p
 \messagefield{conversation-state-machine}{state-machine}
 \end{conversationmessage}
 
-A \message{CONVERSATION\_STATUS} message is sent in reply to an \message{INVITE} message by the sender of the \message{INVITE} message.
-It informs the user with username \field{username} and public key \field{long-term-public-key} of the status of the conversation state machine as it was after processing the \message{INVITE} message.
-The sender of an \message{INVITE} message MUST send a \message{CONVERSATION\_STATUS} message in reply after receiving their own \message{INVITE} message, as described in Section~\ref{sec:messages/invite}.
+A \npmessage{CONVERSATION\_STATUS} message is sent in reply to an \npmessage{INVITE} message by the sender of the \npmessage{INVITE} message.
+It informs the user with username \field{username} and public key \field{long-term-public-key} of the status of the conversation state machine as it was after processing the \npmessage{INVITE} message.
+The sender of an \npmessage{INVITE} message MUST send a \npmessage{CONVERSATION\_STATUS} message in reply after receiving their own \npmessage{INVITE} message, as described in Section~\ref{sec:messages/invite}.
 
-A \message{CONVERSATION\_STATUS} message is an event message.
-As such, the effect of a \message{CONVERSATION\_STATUS} message on the conversation state machine addressed by it depends on the first pending event in the conversation state machine for which the \smfield{members} set includes \field{sender}.
+A \npmessage{CONVERSATION\_STATUS} message is an event message.
+As such, the effect of a \npmessage{CONVERSATION\_STATUS} message on the conversation state machine addressed by it depends on the first pending event in the conversation state machine for which the \smfield{members} set includes \field{sender}.
 If that event is a \type{conversation-status-contribution} event, with \smfield{invitee-username} equal to \field{username}, \smfield{invitee-long-term-public-key} equal to \field{long-term-public-key}, and \smfield{state-machine-hash} equal to $H(\field{conversation-state-machine})$, the \field{sender} is removed from that pending event.
 If the first event has any other form, or if the state machine does not describe any pending events that include \field{sender}, the \field{sender} is removed from the conversation.
 
-Other than adjusting a conversation's \smfield{event-queue} and \smfield{status-checksum}, a \message{CONVERSATION\_STATUS} message does not affect the addressed conversation's state machine.
+Other than adjusting a conversation's \smfield{event-queue} and \smfield{status-checksum}, a \npmessage{CONVERSATION\_STATUS} message does not affect the addressed conversation's state machine.
 
-The user with username \field{username} and public key \field{long-term-public-key}, if previously invited to the conversation with an \message{INVITE} message by the same \field{sender}, can construct the status of the conversation state machine and thereby decide whether or not to join the conversation.
+The user with username \field{username} and public key \field{long-term-public-key}, if previously invited to the conversation with an \npmessage{INVITE} message by the same \field{sender}, can construct the status of the conversation state machine and thereby decide whether or not to join the conversation.
 To do this, and to correctly interpret future messages addressed to this conversation, it is not sufficient for the invited user to decode the conversation state machine status stored in the \field{conversation-state-machine} field.
-Instead, the user must reconstruct the status of the conversation state machine as it is after processing all messages up to and including the \message{CONVERSATION\_STATUS} message.
+Instead, the user must reconstruct the status of the conversation state machine as it is after processing all messages up to and including the \npmessage{CONVERSATION\_STATUS} message.
 
 The invited user can reconstruct this status by following the following procedure, outlined in Section~\ref{sec:conversation-state-machine/joining}:
 \begin{enumerate}
-\item The invited user records all carrier chat room events ---carrier chat room messages, as well as notifications of users joining and leaving the carrier chat room--- after the most recent \message{INVITE} message, addressed to this conversation, with username \field{username}, long term public key \field{long-term-public-key}, and sender \field{sender}.
-\item When receiving the \message{CONVERSATION\_STATUS} message, the invited user constructs a local copy of the conversation state machine described by the \field{conversation-state-machine} field.
+\item The invited user records all carrier chat room events ---carrier chat room messages, as well as notifications of users joining and leaving the carrier chat room--- after the most recent \npmessage{INVITE} message, addressed to this conversation, with username \field{username}, long term public key \field{long-term-public-key}, and sender \field{sender}.
+\item When receiving the \npmessage{CONVERSATION\_STATUS} message, the invited user constructs a local copy of the conversation state machine described by the \field{conversation-state-machine} field.
 \item The invited user adds to this conversation state machine the \type{conversation-status-contribution} event described in Item~\ref{item:messages/invite/conversation-status-event} of Section~\ref{sec:messages/invite}.
-\item The invited user processes all recorded carrier chat room events, starting from the event immediately following the \message{INVITE} message, up to and including the \message{CONVERSATION\_STATUS} message, that are addressed to the conversation.
+\item The invited user processes all recorded carrier chat room events, starting from the event immediately following the \npmessage{INVITE} message, up to and including the \npmessage{CONVERSATION\_STATUS} message, that are addressed to the conversation.
 \end{enumerate}
 After implementing this procedure, the invited user has constructed a conversation state machine identical to the conversation state machine represented by the members of the conversation.
 The invited user can then interpret further carrier chat room events that affect the conversation in the same way as all other members of the conversation.
-If the invited user is an unidentified invitee of the conversation ---which they became by the \message{INVITE} message, but which status might have been retracted in the meantime--- they can then choose to become an identified member of the conversation by sending a \message{INVITE\_ACCEPTANCE} message.
+If the invited user is an unidentified invitee of the conversation ---which they became by the \npmessage{INVITE} message, but which status might have been retracted in the meantime--- they can then choose to become an identified member of the conversation by sending a \npmessage{INVITE\_ACCEPTANCE} message.
 
 
 \subsubsection{CONVERSATION\_CONFIRMATION}
 \label{sec:messages/conversation-confirmation}
 
-The \message{CONVERSATION\_CONFIRMATION} message is sent by the identified members of a conversation following an \message{INVITE} message, to confirm their presence in the conversation to the invited user.
+The \npmessage{CONVERSATION\_CONFIRMATION} message is sent by the identified members of a conversation following an \npmessage{INVITE} message, to confirm their presence in the conversation to the invited user.
 
 \begin{conversationmessage}{CONVERSATION\_CONFIRMATION}{0x13}
 \messagefield{username}{string}
@@ -1366,21 +1366,21 @@ The \message{CONVERSATION\_CONFIRMATION} message is sent by the identified membe
 \messagefield{conversation-status-checksum}{hash}
 \end{conversationmessage}
 
-A \message{CONVERSATION\_CONFIRMATION} message is sent in reply to an \message{INVITE} message by the identified members of the conversation.
+A \npmessage{CONVERSATION\_CONFIRMATION} message is sent in reply to an \npmessage{INVITE} message by the identified members of the conversation.
 It confirms to the user with username \field{username} and public key \field{long-term-public-key} that the \field{sender} is indeed part of the conversation.
 
-A \message{CONVERSATION\_CONFIRMATION} message is an event message.
-As such, the effect of a \message{CONVERSATION\_CONFIRMATION} message on the conversation state machine addressed by it depends on the first pending event in the conversation state machine for which the \smfield{members} set includes \field{sender}.
+A \npmessage{CONVERSATION\_CONFIRMATION} message is an event message.
+As such, the effect of a \npmessage{CONVERSATION\_CONFIRMATION} message on the conversation state machine addressed by it depends on the first pending event in the conversation state machine for which the \smfield{members} set includes \field{sender}.
 If that event is a \type{conversation-confirmation-contribution} event, with \smfield{invitee-username} equal to \field{username}, \smfield{invitee-long-term-public-key} equal to \field{long-term-public-key}, and \smfield{status-checksum} equal to \field{conversation-status-checksum}, the \field{sender} is removed from that pending event.
 If the first event has any other form, or if the state machine does not describe any pending events that include \field{sender}, the \field{sender} is removed from the conversation.
 
-Other than adjusting a conversation's \smfield{event-queue} and \smfield{status-checksum}, a \message{CONVERSATION\_STATUS} message does not affect the addressed conversation's state machine.
+Other than adjusting a conversation's \smfield{event-queue} and \smfield{status-checksum}, a \npmessage{CONVERSATION\_STATUS} message does not affect the addressed conversation's state machine.
 
 
 \subsubsection{INVITE\_ACCEPTANCE}
 \label{sec:messages/invite-acceptance}
 
-The \message{INVITE\_ACCEPTANCE} (= 0x14) message is sent by unidentified invitees of a conversation to promote their status to that of an unauthenticated identified invitee.
+The \npmessage{INVITE\_ACCEPTANCE} (= 0x14) message is sent by unidentified invitees of a conversation to promote their status to that of an unauthenticated identified invitee.
 It also announces the conversation public key the invitee will use for this conversation.
 
 \begin{conversationmessage}{INVITE\_ACCEPTANCE}{0x14}
@@ -1390,28 +1390,28 @@ It also announces the conversation public key the invitee will use for this conv
 \messagefield{inviter-conversation-public-key}{publickey}
 \end{conversationmessage}
 
-An \message{INVITE\_ACCEPTANCE} message is sent by an unidentified invitee of a conversation to signify their acceptance of an earlier \message{INVITE} message.
+An \npmessage{INVITE\_ACCEPTANCE} message is sent by an unidentified invitee of a conversation to signify their acceptance of an earlier \npmessage{INVITE} message.
 It contains the invitee's \field{conversation-public-key} that they will use to sign messages as an identified member, as well as the identity of their inviter.
 When the unidentified invitee gets promoted to an identified invitee, they can start identifying themself to the other identified members of the conversation, and vice versa.
 
-All conversation messages other than the \message{INVITE\_ACCEPTANCE} message are addressed to the conversation, if any, that contains an identified member with username \field{sender} and conversation public key \field{conversation-public-key}.
+All conversation messages other than the \npmessage{INVITE\_ACCEPTANCE} message are addressed to the conversation, if any, that contains an identified member with username \field{sender} and conversation public key \field{conversation-public-key}.
 As a consequence, other conversation messages can be addressed at a given conversation only when sent by an identified member of the conversation.
-The \message{INVITE\_ACCEPTANCE} message is an exception to this rule, which makes it the single message that can be sent by an unidentified invitee to the conversation to which they are invited.
+The \npmessage{INVITE\_ACCEPTANCE} message is an exception to this rule, which makes it the single message that can be sent by an unidentified invitee to the conversation to which they are invited.
 
-An \message{INVITE\_ACCEPTANCE} message is addressed to all conversations, if any, that contain an identified member with username \field{sender} and conversation public key \field{conversation-public-key}, or contain an identified member with username \field{inviter-username} and conversation public key \field{inviter-conversation-public-key}.
-As a consequence, \message{INVITE\_ACCEPTANCE} messages MUST be processed by any conversations matching this broader-than-usual condition; in particular, such conversations MUST digest the \message{INVITE\_ACCEPTANCE} message into their state machine's \smfield{status-digest} field, as described in Section~\ref{sec:conversation-state-machine/operations/messages}.
+An \npmessage{INVITE\_ACCEPTANCE} message is addressed to all conversations, if any, that contain an identified member with username \field{sender} and conversation public key \field{conversation-public-key}, or contain an identified member with username \field{inviter-username} and conversation public key \field{inviter-conversation-public-key}.
+As a consequence, \npmessage{INVITE\_ACCEPTANCE} messages MUST be processed by any conversations matching this broader-than-usual condition; in particular, such conversations MUST digest the \npmessage{INVITE\_ACCEPTANCE} message into their state machine's \smfield{status-digest} field, as described in Section~\ref{sec:conversation-state-machine/operations/messages}.
 
-If a conversation state machine addressed by an \message{INVITE\_ACCEPTANCE} message contains an unidentified invitee with username \field{sender}, long term public key \field{my-long-term-public-key}, and inviter \field{inviter-username}, and also contains a participant with username \field{inviter-username}, long term public key \field{inviter-long-term-public-key}, and conversation public key \field{inviter-conversation-public-key}, then this unidentified invitee gets promoted to an identified invitee with conversation public key \field{conversation-public-key}.
+If a conversation state machine addressed by an \npmessage{INVITE\_ACCEPTANCE} message contains an unidentified invitee with username \field{sender}, long term public key \field{my-long-term-public-key}, and inviter \field{inviter-username}, and also contains a participant with username \field{inviter-username}, long term public key \field{inviter-long-term-public-key}, and conversation public key \field{inviter-conversation-public-key}, then this unidentified invitee gets promoted to an identified invitee with conversation public key \field{conversation-public-key}.
 This promotion is implemented by removing from the conversation state machine all unidentified invitees with username \field{sender}, and adding an \type{identified-invitee} with username \field{sender}, long term public key \field{my-long-term-public-key}, conversation public key \field{conversation-public-key}, and inviter \field{inviter-username}.
 
-If instead a conversation state machine addressed by an \message{INVITE\_ACCEPTANCE} message already contains an identified member ---be it an unauthenticated identified invitee, authenticated invitee, or participant--- with username \field{sender}, this member is removed from the conversation state machine.
+If instead a conversation state machine addressed by an \npmessage{INVITE\_ACCEPTANCE} message already contains an identified member ---be it an unauthenticated identified invitee, authenticated invitee, or participant--- with username \field{sender}, this member is removed from the conversation state machine.
 
 
 \subsubsection{CONVERSATION\_AUTHENTICATION\_REQUEST}
 \label{sec:messages/conversation-authentication-request}
 
-The \message{CONVERSATION\_AUTHENTICATION\_REQUEST} (= 0x15) message is used to request an identified conversation member to authenticate themself for the cryptographic identity consisting of their long term public key and conversation public key.
-It is the in-conversation analogue of the \message{ROOM\_AUTHENTICATION\_REQUEST} message.
+The \npmessage{CONVERSATION\_AUTHENTICATION\_REQUEST} (= 0x15) message is used to request an identified conversation member to authenticate themself for the cryptographic identity consisting of their long term public key and conversation public key.
+It is the in-conversation analogue of the \npmessage{ROOM\_AUTHENTICATION\_REQUEST} message.
 It contains the authentication challenge that forms the base of this authentication process.
 
 \begin{conversationmessage}{CONVERSATION\_AUTHENTICATION\_REQUEST}{0x15}
@@ -1419,18 +1419,18 @@ It contains the authentication challenge that forms the base of this authenticat
 \messagefield{authentication-challenge}{nonce}
 \end{conversationmessage}
 
-A \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message is a request to the identified member \field{username} to authenticate themself to the \field{sender}, for \field{username}'s and \field{sender}'s long term public keys and conversation public keys described by the conversation state machine.
+A \npmessage{CONVERSATION\_AUTHENTICATION\_REQUEST} message is a request to the identified member \field{username} to authenticate themself to the \field{sender}, for \field{username}'s and \field{sender}'s long term public keys and conversation public keys described by the conversation state machine.
 It declares that \field{sender} will consider \field{username} authenticated for this identity after receiving a valid authentication confirmation for this pair of identities, described in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}, using \field{authentication-challenge} as the authentication challenge.
-The \field{username} identified member, upon receiving a \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message, can authenticate itself to the \field{sender} by sending a \message{CONVERSATION\_AUTHENTICATION} message containing this authentication confirmation.
+The \field{username} identified member, upon receiving a \npmessage{CONVERSATION\_AUTHENTICATION\_REQUEST} message, can authenticate itself to the \field{sender} by sending a \npmessage{CONVERSATION\_AUTHENTICATION} message containing this authentication confirmation.
 
-Other than adjusting a conversation's \smfield{status-checksum}, a \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message does not affect the addressed conversation's state machine.
+Other than adjusting a conversation's \smfield{status-checksum}, a \npmessage{CONVERSATION\_AUTHENTICATION\_REQUEST} message does not affect the addressed conversation's state machine.
 
 
 \subsubsection{CONVERSATION\_AUTHENTICATION}
 \label{sec:messages/conversation-authentication}
 
-The \message{CONVERSATION\_AUTHENTICATION} (= 0x16) message provides confirmation of a cryptographic identity to a member of a conversation.
-It is the in-conversation analogue of the \message{ROOM\_AUTHENTICATION} message.
+The \npmessage{CONVERSATION\_AUTHENTICATION} (= 0x16) message provides confirmation of a cryptographic identity to a member of a conversation.
+It is the in-conversation analogue of the \npmessage{ROOM\_AUTHENTICATION} message.
 Assuming the authentication confirmation is valid, this allows the recipient member to confirm that the sender holds the private keys corresponding to their public keys described by the conversation state machine.
 
 \begin{conversationmessage}{CONVERSATION\_AUTHENTICATION}{0x16}
@@ -1438,23 +1438,23 @@ Assuming the authentication confirmation is valid, this allows the recipient mem
 \messagefield{authentication-confirmation}{hash}
 \end{conversationmessage}
 
-A \message{CONVERSATION\_AUTHENTICATION} message is a confirmation to the identified member \field{username} that the \field{sender} holds the private keys corresponding to their long term public key and conversation public key as described by the conversation state machine.
+A \npmessage{CONVERSATION\_AUTHENTICATION} message is a confirmation to the identified member \field{username} that the \field{sender} holds the private keys corresponding to their long term public key and conversation public key as described by the conversation state machine.
 The \emph{authentication-confirmation} should contain the authentication confirmation described in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}; if it does, this proves that the sender does indeed hold these private keys.
 
 The member \field{username} should consider the authentication valid if and only if
 \begin{itemize}
-\item that member previously sent a \message{CONVERSATION\_AUTHENTICATION\_REQUEST} to the member \emph{username}, and
-\item the \field{authentication-confirmation} field equals the expected authentication confirmation computed from the \field{authentication-challenge} sent in the accompanying \message{CONVERSATION\_AUTHENTICATION\_REQUEST} message, for \field{username}'s and \field{sender}'s long term public keys and conversation public keys described in the conversation state machine, as specified in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}.
+\item that member previously sent a \npmessage{CONVERSATION\_AUTHENTICATION\_REQUEST} to the member \emph{username}, and
+\item the \field{authentication-confirmation} field equals the expected authentication confirmation computed from the \field{authentication-challenge} sent in the accompanying \npmessage{CONVERSATION\_AUTHENTICATION\_REQUEST} message, for \field{username}'s and \field{sender}'s long term public keys and conversation public keys described in the conversation state machine, as specified in Section~\ref{sec:cryptography/triple-diffie-hellman/authentication}.
 \end{itemize}
 If both requirements hold, this proves that the \field{sender} holds the private keys corresponding to their public keys described by the conversation state machine.
 
-Other than adjusting a conversation's \smfield{status-checksum}, a \message{CONVERSATION\_AUTHENTICATION} message does not affect the addressed conversation's state machine.
+Other than adjusting a conversation's \smfield{status-checksum}, a \npmessage{CONVERSATION\_AUTHENTICATION} message does not affect the addressed conversation's state machine.
 
 
 \subsubsection{AUTHENTICATE\_INVITE}
 \label{sec:messages/authenticate-invite}
 
-The \message{AUTHENTICATE\_INVITE} (= 0x17) message is sent by a conversation participant to promote an identified, unauthenticated invitee to an authenticated invitee.
+The \npmessage{AUTHENTICATE\_INVITE} (= 0x17) message is sent by a conversation participant to promote an identified, unauthenticated invitee to an authenticated invitee.
 Afterwards, the authenticated invitee is able to join the conversation as a participant.
 
 \begin{conversationmessage}{AUTHENTICATE\_INVITE}{0x17}
@@ -1463,109 +1463,109 @@ Afterwards, the authenticated invitee is able to join the conversation as a part
 \messagefield{conversation-public-key}{publickey}
 \end{conversationmessage}
 
-An \message{AUTHENTICATE\_INVITE} message indicates that the \field{sender} has confirmed that the member \field{username} holds the identity consisting of the (\field{username}, \field{long-term-public-key}, \field{conversation-public-key}) triple, and that \field{sender} is willing to allow this user entrance into the conversation.
-Once this allowance has been granted, the invited member is able to join the conversation with a \message{JOIN} message.
+An \npmessage{AUTHENTICATE\_INVITE} message indicates that the \field{sender} has confirmed that the member \field{username} holds the identity consisting of the (\field{username}, \field{long-term-public-key}, \field{conversation-public-key}) triple, and that \field{sender} is willing to allow this user entrance into the conversation.
+Once this allowance has been granted, the invited member is able to join the conversation with a \npmessage{JOIN} message.
 
-If a conversation contains an unauthenticated identified invitee invited by a certain participant, that participant SHOULD send an \message{AUTHENTICATE\_INVITE} message after receiving a \message{CONVERSATION\_AUTHENTICATION} message that successfully confirms the identity of the invitee.
-Any other participants may also send such an \message{AUTHENTICATE\_INVITE} message, and thereby become the inviter of the authenticated member.
+If a conversation contains an unauthenticated identified invitee invited by a certain participant, that participant SHOULD send an \npmessage{AUTHENTICATE\_INVITE} message after receiving a \npmessage{CONVERSATION\_AUTHENTICATION} message that successfully confirms the identity of the invitee.
+Any other participants may also send such an \npmessage{AUTHENTICATE\_INVITE} message, and thereby become the inviter of the authenticated member.
 
-If the conversation state machine addressed by an \message{AUTHENTICATE\_INVITE} message contains an unauthenticated identified member with identity triple (\field{username}, \field{long-term-public-key}, \field{conversation-public-key}), and the \field{sender} is a participant of the conversation, then the unauthenticated member gets promoted to an authenticated member.
+If the conversation state machine addressed by an \npmessage{AUTHENTICATE\_INVITE} message contains an unauthenticated identified member with identity triple (\field{username}, \field{long-term-public-key}, \field{conversation-public-key}), and the \field{sender} is a participant of the conversation, then the unauthenticated member gets promoted to an authenticated member.
 The newly-authenticated member's inviter becomes the message's \field{sender}.
-If not, the \message{AUTHENTICATE\_INVITE} message has no effect on the conversation state machine besides the \smfield{status-checksum}.
+If not, the \npmessage{AUTHENTICATE\_INVITE} message has no effect on the conversation state machine besides the \smfield{status-checksum}.
 
 
 \subsubsection{CANCEL\_INVITE}
 \label{sec:messages/cancel-invite}
 
-The \message{CANCEL\_INVITE} (= 0x18) message is sent by a conversation participant to retract any invitations for a given (username, long term public key) pair.
+The \npmessage{CANCEL\_INVITE} (= 0x18) message is sent by a conversation participant to retract any invitations for a given (username, long term public key) pair.
 
 \begin{conversationmessage}{CANCEL\_INVITE}{0x18}
 \messagefield{username}{string}
 \messagefield{long-term-public-key}{publickey}
 \end{conversationmessage}
 
-A \message{CANCEL\_INVITE} message indicates that the \field{sender} wants to retract an active invitation for a given user.
-If no active invitations for the described member exist, or the member described by the \message{CANCEL\_INVITE} message has since become a participant of the conversation, the message has no effect.
+A \npmessage{CANCEL\_INVITE} message indicates that the \field{sender} wants to retract an active invitation for a given user.
+If no active invitations for the described member exist, or the member described by the \npmessage{CANCEL\_INVITE} message has since become a participant of the conversation, the message has no effect.
 
-A \message{CANCEL\_INVITE} message removes from the conversation state machine any invited members ---be they unidentified invitees, unauthenticated identified invitees, or authenticated invitees--- with username \field{username}, long term public key \field{long-term-public-key}, and inviter \field{sender}.
+A \npmessage{CANCEL\_INVITE} message removes from the conversation state machine any invited members ---be they unidentified invitees, unauthenticated identified invitees, or authenticated invitees--- with username \field{username}, long term public key \field{long-term-public-key}, and inviter \field{sender}.
 Participants of the conversation, and invitations by inviters other than \field{sender}, are not affected.
 
 
 \subsubsection{JOIN}
 \label{sec:messages/join}
 
-The \message{JOIN} (= 0x19) message is sent by an authenticated invitee to upgrade their own status to a participant of the conversation.
+The \npmessage{JOIN} (= 0x19) message is sent by an authenticated invitee to upgrade their own status to a participant of the conversation.
 This triggers the creation of a new key exchange process.
 
 \emptyconversationmessage{JOIN}{0x19}
 
-A \message{JOIN} message indicates that the \field{sender} wants to finish joining the conversation, getting promoted from an authenticated invitee to a full participant of the conversation.
+A \npmessage{JOIN} message indicates that the \field{sender} wants to finish joining the conversation, getting promoted from an authenticated invitee to a full participant of the conversation.
 If the sender is not an authenticated invitee of the conversation, the message has no effect.
 
-If the conversation state machine addressed by a \message{JOIN} message does not contain an authenticated invitee with username \field{sender}, the message does not affect the addressed conversation's state machine other than adjusting a conversation's \smfield{status-checksum}.
+If the conversation state machine addressed by a \npmessage{JOIN} message does not contain an authenticated invitee with username \field{sender}, the message does not affect the addressed conversation's state machine other than adjusting a conversation's \smfield{status-checksum}.
 Otherwise, the \type{authenticated-invitee} representing the user is removed from the conversation, and a \type{participant} is added instead, with \smfield{username}, \smfield{long-term-public-key}, and \smfield{conversation-public-key} identical to the values present for the \type{authenticated-invitee}, and $\smfield{in-chat} = \textsf{false}$.
 
 When the \field{sender} is promoted to a participant like this, a new \type{key-exchange} is added to the conversation state machine.
-This key exchange has \smfield{key-exchange-id} equal to the conversation state machine's \smfield{status-checksum} field after digesting the \message{JOIN} message; a \smfield{stage} of \textsc{Public-Key}; and a set of \smfield{participants} that contains one \type{key-exchange-participant} for each participant in the conversation, including the newly-promoted \field{sender}, each with all contributions unset.
+This key exchange has \smfield{key-exchange-id} equal to the conversation state machine's \smfield{status-checksum} field after digesting the \npmessage{JOIN} message; a \smfield{stage} of \textsc{Public-Key}; and a set of \smfield{participants} that contains one \type{key-exchange-participant} for each participant in the conversation, including the newly-promoted \field{sender}, each with all contributions unset.
 
 When this key exchange is created, a \type{key-exchange-contribution} event is added to the conversation state machine's event queue, with \smfield{key-exchange-id} equal to the \smfield{key-exchange-id} of the newly created key exchange, and \smfield{stage} equal to \textsc{Public-Key}.
-All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_PUBLIC\_KEY} message for this key exchange, containing their public-key contribution for the key exchange process.
+All participants of the conversation MUST send a \npmessage{KEY\_EXCHANGE\_PUBLIC\_KEY} message for this key exchange, containing their public-key contribution for the key exchange process.
 
 
 \subsubsection{LEAVE}
 \label{sec:messages/leave}
 
-The \message{LEAVE} (= 0x21) message is sent by an identified member of a conversation to leave the conversation.
+The \npmessage{LEAVE} (= 0x21) message is sent by an identified member of a conversation to leave the conversation.
 This removes the sender from the conversation.
 
 \emptyconversationmessage{LEAVE}{0x21}
 
-A \message{LEAVE} message indicates that the \field{sender} wants to leave the conversation to which the \message{LEAVE} message is addressed.
+A \npmessage{LEAVE} message indicates that the \field{sender} wants to leave the conversation to which the \npmessage{LEAVE} message is addressed.
 
-The conversation state machine addressed by a \message{LEAVE} message removes the member \field{sender} from its set of members.
+The conversation state machine addressed by a \npmessage{LEAVE} message removes the member \field{sender} from its set of members.
 
 
 \subsubsection{CONSISTENCY\_STATUS}
 \label{sec:messages/consistency-status}
 
-The \message{CONSISTENCY\_STATUS} message is sent by the identified members of a conversation as a keepalive message, demonstrating to the other members of the conversation that they are still present.
-The \message{CONSISTENCY\_STATUS} message triggers a followup \message{CONSISTENCY\_CHECK} message, which proves that the sender has a correct representation of the conversation state machine.
+The \npmessage{CONSISTENCY\_STATUS} message is sent by the identified members of a conversation as a keepalive message, demonstrating to the other members of the conversation that they are still present.
+The \npmessage{CONSISTENCY\_STATUS} message triggers a followup \npmessage{CONSISTENCY\_CHECK} message, which proves that the sender has a correct representation of the conversation state machine.
 
 \emptyconversationmessage{CONSISTENCY\_STATUS}{0x22}
 
-A \message{CONSISTENCY\_STATUS} message is sent periodically by all identified members of a conversation to demonstrate that they are still actively present in the conversation.
+A \npmessage{CONSISTENCY\_STATUS} message is sent periodically by all identified members of a conversation to demonstrate that they are still actively present in the conversation.
 All identified members SHOULD send such a message every 60 seconds, or risk being declared timed out by other members of the conversation.
 
-A conversation state machine addressed by a \message{CONSISTENCY\_STATUS} message adds a \type{consistency-check-contribution} event to the conversation's event queue, with \smfield{status-checksum} equal to the \smfield{status-checksum} of the conversation state machine after digesting the \message{CONSISTENCY\_STATUS} message, and \smfield{members} consisting only of the \field{sender} of the message.
-The \field{sender} of the message MUST send a \message{CONSISTENCY\_CHECK} message with a \field{conversation-status-checksum} equal to this \smfield{status-checksum}.
+A conversation state machine addressed by a \npmessage{CONSISTENCY\_STATUS} message adds a \type{consistency-check-contribution} event to the conversation's event queue, with \smfield{status-checksum} equal to the \smfield{status-checksum} of the conversation state machine after digesting the \npmessage{CONSISTENCY\_STATUS} message, and \smfield{members} consisting only of the \field{sender} of the message.
+The \field{sender} of the message MUST send a \npmessage{CONSISTENCY\_CHECK} message with a \field{conversation-status-checksum} equal to this \smfield{status-checksum}.
 
 
 \subsubsection{CONSISTENCY\_CHECK}
 \label{sec:messages/consistency-check}
 
-The \message{CONSISTENCY\_CHECK} message is sent by identified members of a conversation as a followup to the \message{CONSISTENCY\_STATUS} message.
-It contains the conversation's \smfield{status-checksum} as it was after processing the \message{CONSISTENCY\_STATUS} message, demonstrating to the members of the conversation that conversation state consensus is maintained.
+The \npmessage{CONSISTENCY\_CHECK} message is sent by identified members of a conversation as a followup to the \npmessage{CONSISTENCY\_STATUS} message.
+It contains the conversation's \smfield{status-checksum} as it was after processing the \npmessage{CONSISTENCY\_STATUS} message, demonstrating to the members of the conversation that conversation state consensus is maintained.
 
 \begin{conversationmessage}{CONSISTENCY\_CHECK}{0x23}
 \messagefield{conversation-status-checksum}{hash}
 \end{conversationmessage}
 
-A \message{CONSISTENCY\_CHECK} message is sent by identified members of a conversation after receiving their own \message{CONSISTENCY\_STATUS} message.
-The \message{CONSISTENCY\_CHECK} message contains the conversation state machine's \smfield{status-checksum} as it was after processing the \message{CONSISTENCY\_STATUS} message.
-By checking that \field{conversation-status-checksum} against the copy stored in the conversation state machine's event queue, members of the conversation can verify that the \field{sender} was still maintaining an accurate copy of the conversation state machine when receiving the \message{CONSISTENCY\_STATUS} message.
+A \npmessage{CONSISTENCY\_CHECK} message is sent by identified members of a conversation after receiving their own \npmessage{CONSISTENCY\_STATUS} message.
+The \npmessage{CONSISTENCY\_CHECK} message contains the conversation state machine's \smfield{status-checksum} as it was after processing the \npmessage{CONSISTENCY\_STATUS} message.
+By checking that \field{conversation-status-checksum} against the copy stored in the conversation state machine's event queue, members of the conversation can verify that the \field{sender} was still maintaining an accurate copy of the conversation state machine when receiving the \npmessage{CONSISTENCY\_STATUS} message.
 
-A \message{CONSISTENCY\_CHECK} message is an event message.
-As such, the effect of a \message{CONSISTENCY\_CHECK} message on the conversation state machine addressed by it depends on the first pending event in the conversation state machine for which the \smfield{members} set includes \field{sender}.
+A \npmessage{CONSISTENCY\_CHECK} message is an event message.
+As such, the effect of a \npmessage{CONSISTENCY\_CHECK} message on the conversation state machine addressed by it depends on the first pending event in the conversation state machine for which the \smfield{members} set includes \field{sender}.
 If that event is a \type{conversation-check-contribution} event, with \smfield{status-checksum} equal to \field{conversation-status-checksum}, the \field{sender} is removed from that pending event.
 If the first event has any other form, or if the state machine does not describe any pending events that include \field{sender}, the \field{sender} is removed from the conversation.
 
-Other than adjusting a conversation's \smfield{event-queue} and \smfield{status-checksum}, a \message{CONSISTENCY\_CHECK} message does not affect the addressed conversation's state machine.
+Other than adjusting a conversation's \smfield{event-queue} and \smfield{status-checksum}, a \npmessage{CONSISTENCY\_CHECK} message does not affect the addressed conversation's state machine.
 
 
 \subsubsection{TIMEOUT}
 \label{sec:messages/timeout}
 
-The \message{TIMEOUT} message is sent by participants of a conversation to either declare that they have judged a different member to be timed out, or to declare that they have judged that member to no longer be timed out.
+The \npmessage{TIMEOUT} message is sent by participants of a conversation to either declare that they have judged a different member to be timed out, or to declare that they have judged that member to no longer be timed out.
 This judgement may cause the timed out member to be removed from the conversation.
 
 \begin{conversationmessage}{TIMEOUT}{0x24}
@@ -1573,10 +1573,10 @@ This judgement may cause the timed out member to be removed from the conversatio
 \messagefield{set-timeout}{boolean}
 \end{conversationmessage}
 
-A \message{TIMEOUT} message is a declaration by the \field{sender} that the member with username \field{username} is either judged timed out (if $\field{set-timeout} = \textsf{true}$), or judged no longer timed out (if $\field{set-timeout} = \textsf{false}$).
+A \npmessage{TIMEOUT} message is a declaration by the \field{sender} that the member with username \field{username} is either judged timed out (if $\field{set-timeout} = \textsf{true}$), or judged no longer timed out (if $\field{set-timeout} = \textsf{false}$).
 This triggers a possible removal of the timed-out member from the conversation, as described in Section~\ref{sec:conversation-state-machine/contents/timeouts}.
 
-If the conversation state machine addressed by a \message{TIMEOUT} message does not contain an identified member with username \field{username}, or it does not contain a participant with username \field{sender}, the \message{TIMEOUT} message has no effect on the conversation state machine besides the \smfield{status-checksum}.
+If the conversation state machine addressed by a \npmessage{TIMEOUT} message does not contain an identified member with username \field{username}, or it does not contain a participant with username \field{sender}, the \npmessage{TIMEOUT} message has no effect on the conversation state machine besides the \smfield{status-checksum}.
 Otherwise, the conversation state machine sets the \smfield{timeout-matrix} field $t_{\field{sender},\field{username}}$ to \textsf{true} if $\field{set-timeout} = \textsf{true}$, and to \textsf{false} otherwise.
 Afterwards, a symmetric or asymmetric split of the conversation may occur depending on the contents of the \smfield{timeout-matrix}, as described in Section~\ref{sec:conversation-state-machine/contents/timeouts}.
 
@@ -1584,7 +1584,7 @@ Afterwards, a symmetric or asymmetric split of the conversation may occur depend
 \subsubsection{KEY\_EXCHANGE\_PUBLIC\_KEY}
 \label{sec:messages/key-exchange-public-key}
 
-The \message{KEY\_EXCHANGE\_PUBLIC\_KEY} message is sent by participants of a conversation to submit their \textsc{Public-Key} contributions to a key exchange process.
+The \npmessage{KEY\_EXCHANGE\_PUBLIC\_KEY} message is sent by participants of a conversation to submit their \textsc{Public-Key} contributions to a key exchange process.
 This contribution contains their public key used for the duration of the key exchange.
 
 \begin{conversationmessage}{KEY\_EXCHANGE\_PUBLIC\_KEY}{0x31}
@@ -1592,28 +1592,28 @@ This contribution contains their public key used for the duration of the key exc
 \messagefield{session-public-key}{publickey}
 \end{conversationmessage}
 
-A \message{KEY\_EXCHANGE\_PUBLIC\_KEY} message contains the sender's \textsc{Public-Key} contribution to a key exchange process, as described in Section~\ref{sec:conversation-state-machine/contents/key-exchanges}.
+A \npmessage{KEY\_EXCHANGE\_PUBLIC\_KEY} message contains the sender's \textsc{Public-Key} contribution to a key exchange process, as described in Section~\ref{sec:conversation-state-machine/contents/key-exchanges}.
 Participants of a key exchange procedure MUST send this message when the key exchange is created.
 
-A \message{KEY\_EXCHANGE\_PUBLIC\_KEY} message is an event message.
-As such, the effect of a \message{KEY\_EXCHANGE\_PUBLIC\_KEY} message on the conversation state machine addressed by it depends on the first pending event in the conversation state machine for which the \smfield{members} set includes \field{sender}.
+A \npmessage{KEY\_EXCHANGE\_PUBLIC\_KEY} message is an event message.
+As such, the effect of a \npmessage{KEY\_EXCHANGE\_PUBLIC\_KEY} message on the conversation state machine addressed by it depends on the first pending event in the conversation state machine for which the \smfield{members} set includes \field{sender}.
 If that event is a \type{key-exchange-contribution} event, with \smfield{key-exchange-id} equal to \field{key-exchange-id} and \smfield{stage} equal to \textsc{Public-Key}, the \field{sender} is removed from that pending event.
 If the first event has any other form, or if the state machine does not describe any pending events that include \field{sender}, the \field{sender} is removed from the conversation.
 
-If a \message{KEY\_EXCHANGE\_PUBLIC\_KEY} message does match a pending event as above, the effect of the \message{KEY\_EXCHANGE\_PUBLIC\_KEY} depends on whether or not the conversation state machine contains a key exchange with \smfield{key-exchange-id} equal to \field{key-exchange-id}.
-If it does not, the \message{KEY\_EXCHANGE\_PUBLIC\_KEY} message does not affect the addressed conversation's state machine other than adjusting the conversation's \smfield{event-queue} and \smfield{status-checksum}.
+If a \npmessage{KEY\_EXCHANGE\_PUBLIC\_KEY} message does match a pending event as above, the effect of the \npmessage{KEY\_EXCHANGE\_PUBLIC\_KEY} depends on whether or not the conversation state machine contains a key exchange with \smfield{key-exchange-id} equal to \field{key-exchange-id}.
+If it does not, the \npmessage{KEY\_EXCHANGE\_PUBLIC\_KEY} message does not affect the addressed conversation's state machine other than adjusting the conversation's \smfield{event-queue} and \smfield{status-checksum}.
 If it does, the message's \field{session-public-key} is stored as the \field{sender}'s \smfield{session-public-key} in the \type{key-exchange} referred to.
 
 If, after setting the \field{sender}'s \smfield{session-public-key} field in this way, all participants of the conversation have a \smfield{session-public-key} set, the key exchange reaches the \textsc{Secret-Share} stage.
 When this happens, the \type{key-exchange}'s \smfield{stage} field is set to \textsc{Secret-Share}.
 Afterwards, a \type{key-exchange-contribution} event is added to the conversation state machine's event queue, with \smfield{key-exchange-id} equal to the \smfield{key-exchange-id} of the key exchange, and \smfield{stage} equal to \textsc{Secret-Share}.
-All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_SECRET\_SHARE} message for this key exchange, containing their secret-share contribution for the key exchange process.
+All participants of the conversation MUST send a \npmessage{KEY\_EXCHANGE\_SECRET\_SHARE} message for this key exchange, containing their secret-share contribution for the key exchange process.
 
 
 \subsubsection{KEY\_EXCHANGE\_SECRET\_SHARE}
 \label{sec:messages/key-exchange-secret-share}
 
-The \message{KEY\_EXCHANGE\_SECRET\_SHARE} message is sent by participants of a conversation to submit their \textsc{Secret-Share} contributions to a key exchange process.
+The \npmessage{KEY\_EXCHANGE\_SECRET\_SHARE} message is sent by participants of a conversation to submit their \textsc{Secret-Share} contributions to a key exchange process.
 This contribution contains their linear combination of secrets shared with their neighbours in the key exchange logical circle.
 
 \begin{conversationmessage}{KEY\_EXCHANGE\_SECRET\_SHARE}{0x32}
@@ -1622,16 +1622,16 @@ This contribution contains their linear combination of secrets shared with their
 \messagefield{secret-share}{hash}
 \end{conversationmessage}
 
-A \message{KEY\_EXCHANGE\_SECRET\_SHARE} message contains the sender's \textsc{Secret-Share} contribution to a key exchange process, as described in Section~\ref{sec:conversation-state-machine/contents/key-exchanges}.
+A \npmessage{KEY\_EXCHANGE\_SECRET\_SHARE} message contains the sender's \textsc{Secret-Share} contribution to a key exchange process, as described in Section~\ref{sec:conversation-state-machine/contents/key-exchanges}.
 Participants of a key exchange procedure MUST send this message when the key exchange reaches the \textsc{Secret-Share} stage.
 
-A \message{KEY\_EXCHANGE\_SECRET\_SHARE} message is an event message.
-As such, the effect of a \message{KEY\_EXCHANGE\_SECRET\_SHARE} message on the conversation state machine addressed by it depends on the first pending event in the conversation state machine for which the \smfield{members} set includes \field{sender}.
+A \npmessage{KEY\_EXCHANGE\_SECRET\_SHARE} message is an event message.
+As such, the effect of a \npmessage{KEY\_EXCHANGE\_SECRET\_SHARE} message on the conversation state machine addressed by it depends on the first pending event in the conversation state machine for which the \smfield{members} set includes \field{sender}.
 If that event is a \type{key-exchange-contribution} event, with \smfield{key-exchange-id} equal to \field{key-exchange-id} and \smfield{stage} equal to \textsc{Secret-Share}, the \field{sender} is removed from that pending event.
 If the first event has any other form, or if the state machine does not describe any pending events that include \field{sender}, the \field{sender} is removed from the conversation.
 
-If a \message{KEY\_EXCHANGE\_SECRET\_SHARE} message does match a pending event as above, the effect of the \message{KEY\_EXCHANGE\_SECRET\_SHARE} depends on whether or not the conversation state machine contains a key exchange with \smfield{key-exchange-id} equal to \field{key-exchange-id}.
-If it does not, the \message{KEY\_EXCHANGE\_SECRET\_SHARE} message does not affect the addressed conversation's state machine other than adjusting the conversation's \smfield{event-queue} and \smfield{status-checksum}.
+If a \npmessage{KEY\_EXCHANGE\_SECRET\_SHARE} message does match a pending event as above, the effect of the \npmessage{KEY\_EXCHANGE\_SECRET\_SHARE} depends on whether or not the conversation state machine contains a key exchange with \smfield{key-exchange-id} equal to \field{key-exchange-id}.
+If it does not, the \npmessage{KEY\_EXCHANGE\_SECRET\_SHARE} message does not affect the addressed conversation's state machine other than adjusting the conversation's \smfield{event-queue} and \smfield{status-checksum}.
 
 If it does, the message's \field{group-hash} field is checked against the expected value derived from the contents of the conversation state machine.
 If the \field{group-hash} is not equal to \texttt{groupid}, as specified in Section~\ref{sec:cryptography/group-key-exchange/protocol}, the \field{sender} is removed from the conversation.
@@ -1640,13 +1640,13 @@ It it is equal, the message's \field{secret-share} is stored as the \field{sende
 If, after setting the \field{sender}'s \smfield{secret-share} field in this way, all participants of the conversation have a \smfield{secret-share} set, the key exchange reaches the \textsc{Acceptance} stage.
 When this happens, the \type{key-exchange}'s \smfield{stage} field is set to \textsc{Acceptance}.
 Afterwards, a \type{key-exchange-contribution} event is added to the conversation state machine's event queue, with \smfield{key-exchange-id} equal to the \smfield{key-exchange-id} of the key exchange, and \smfield{stage} equal to \textsc{Acceptance}.
-All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_ACCEPTANCE} message for this key exchange, containing their key-digest contribution for the key exchange process.
+All participants of the conversation MUST send a \npmessage{KEY\_EXCHANGE\_ACCEPTANCE} message for this key exchange, containing their key-digest contribution for the key exchange process.
 
 
 \subsubsection{KEY\_EXCHANGE\_ACCEPTANCE}
 \label{sec:messages/key-exchange-acceptance}
 
-The \message{KEY\_EXCHANGE\_ACCEPTANCE} message is sent by participants of a conversation to submit their \textsc{Acceptance} contributions to a key exchange process.
+The \npmessage{KEY\_EXCHANGE\_ACCEPTANCE} message is sent by participants of a conversation to submit their \textsc{Acceptance} contributions to a key exchange process.
 This contribution contains their computed value of a digest of the computed key, indicating whether or not the different participants of the key exchange have computed the same key.
 
 \begin{conversationmessage}{KEY\_EXCHANGE\_ACCEPTANCE}{0x33}
@@ -1654,16 +1654,16 @@ This contribution contains their computed value of a digest of the computed key,
 \messagefield{key-digest}{hash}
 \end{conversationmessage}
 
-A \message{KEY\_EXCHANGE\_ACCEPTANCE} message contains the sender's \textsc{Acceptance} contribution to a key exchange process, as described in Section~\ref{sec:conversation-state-machine/contents/key-exchanges}.
+A \npmessage{KEY\_EXCHANGE\_ACCEPTANCE} message contains the sender's \textsc{Acceptance} contribution to a key exchange process, as described in Section~\ref{sec:conversation-state-machine/contents/key-exchanges}.
 Participants of a key exchange procedure MUST send this message when the key exchange reaches the \textsc{Acceptance} stage.
 
-A \message{KEY\_EXCHANGE\_ACCEPTANCE} message is an event message.
-As such, the effect of a \message{KEY\_EXCHANGE\_ACCEPTANCE} message on the conversation state machine addressed by it depends on the first pending event in the conversation state machine for which the \smfield{members} set includes \field{sender}.
+A \npmessage{KEY\_EXCHANGE\_ACCEPTANCE} message is an event message.
+As such, the effect of a \npmessage{KEY\_EXCHANGE\_ACCEPTANCE} message on the conversation state machine addressed by it depends on the first pending event in the conversation state machine for which the \smfield{members} set includes \field{sender}.
 If that event is a \type{key-exchange-contribution} event, with \smfield{key-exchange-id} equal to \field{key-exchange-id} and \smfield{stage} equal to \textsc{Acceptance}, the \field{sender} is removed from that pending event.
 If the first event has any other form, or if the state machine does not describe any pending events that include \field{sender}, the \field{sender} is removed from the conversation.
 
-If a \message{KEY\_EXCHANGE\_ACCEPTANCE} message does match a pending event as above, the effect of the \message{KEY\_EXCHANGE\_ACCEPTANCE} depends on whether or not the conversation state machine contains a key exchange with \smfield{key-exchange-id} equal to \field{key-exchange-id}.
-If it does not, the \message{KEY\_EXCHANGE\_ACCEPTANCE} message does not affect the addressed conversation's state machine other than adjusting the conversation's \smfield{event-queue} and \smfield{status-checksum}.
+If a \npmessage{KEY\_EXCHANGE\_ACCEPTANCE} message does match a pending event as above, the effect of the \npmessage{KEY\_EXCHANGE\_ACCEPTANCE} depends on whether or not the conversation state machine contains a key exchange with \smfield{key-exchange-id} equal to \field{key-exchange-id}.
+If it does not, the \npmessage{KEY\_EXCHANGE\_ACCEPTANCE} message does not affect the addressed conversation's state machine other than adjusting the conversation's \smfield{event-queue} and \smfield{status-checksum}.
 If it does, the message's \field{key-digest} is stored as the \field{sender}'s \smfield{key-digest} in the \type{key-exchange} referred to.
 
 If, after setting the \field{sender}'s \smfield{key-digest} field in this way, all participants of the conversation have a \smfield{session-public-key} set, the key exchange finishes the \textsc{Acceptance} stage.
@@ -1672,18 +1672,18 @@ When this happens, the consequences depend on whether or not there is consensus 
 If, when finishing the \textsc{Acceptance} stage, all participants of the key exchange have submitted the same value of the \smfield{key-digest} field, the key exchange process has finished successfully.
 If this happens, the \type{key-exchange} is removed from the conversation state machine, and the state machine's \smfield{latest-key-exchange-id} field is set to the \smfield{key-exchange-id} of the removed key exchange.
 Afterwards, a \type{key-activation-contribution} event is added to the conversation state machine's event queue, with \smfield{key-exchange-id} equal to the \smfield{key-exchange-id} of the removed key exchange, and \smfield{participants} equal to the participants of the removed key exchange.
-All participants of the conversation MUST send a \message{KEY\_ACTIVATION} message with \field{key-id} set to the \smfield{key-exchange-id}, indicating that they will henceforth encrypt chat messages with the newly accepted key.
+All participants of the conversation MUST send a \npmessage{KEY\_ACTIVATION} message with \field{key-id} set to the \smfield{key-exchange-id}, indicating that they will henceforth encrypt chat messages with the newly accepted key.
 
 If instead, when finishing the \textsc{Acceptance} stage, not all participants of the key exchange have submitted the same value of the \smfield{key-digest} field, the key exchange reaches the \textsc{Reveal} stage.
 If this happens, the \type{key-exchange}'s \smfield{stage} field is set to \textsc{Reveal}.
 Afterwards, a \type{key-exchange-contribution} event is added to the conversation state machine's event queue, with \smfield{key-exchange-id} equal to the \smfield{key-exchange-id} of the key exchange, and \smfield{stage} equal to \textsc{Reveal}.
-All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_REVEAL} message for this key exchange, containing their reveal contribution for the key exchange process.
+All participants of the conversation MUST send a \npmessage{KEY\_EXCHANGE\_REVEAL} message for this key exchange, containing their reveal contribution for the key exchange process.
 
 
 \subsubsection{KEY\_EXCHANGE\_REVEAL}
 \label{sec:messages/key-exchange-reveal}
 
-The \message{KEY\_EXCHANGE\_REVEAL} message is sent by participants of a conversation to submit their \textsc{Reveal} contributions to a key exchange process.
+The \npmessage{KEY\_EXCHANGE\_REVEAL} message is sent by participants of a conversation to submit their \textsc{Reveal} contributions to a key exchange process.
 This contribution contains their private key used for the duration of the key exchange, which is used to determine which of the participants of the key exchange caused the key exchange to fail to finish successfully.
 
 \begin{conversationmessage}{KEY\_EXCHANGE\_REVEAL}{0x34}
@@ -1691,16 +1691,16 @@ This contribution contains their private key used for the duration of the key ex
 \messagefield{session-private-key}{privatekey}
 \end{conversationmessage}
 
-A \message{KEY\_EXCHANGE\_REVEAL} message contains the sender's \textsc{Reveal} contribution to a key exchange process, as described in Section~\ref{sec:conversation-state-machine/contents/key-exchanges}.
+A \npmessage{KEY\_EXCHANGE\_REVEAL} message contains the sender's \textsc{Reveal} contribution to a key exchange process, as described in Section~\ref{sec:conversation-state-machine/contents/key-exchanges}.
 Participants of a key exchange procedure MUST send this message when the key exchange reaches the \textsc{Reveal} stage.
 
-A \message{KEY\_EXCHANGE\_REVEAL} message is an event message.
-As such, the effect of a \message{KEY\_EXCHANGE\_REVEAL} message on the conversation state machine addressed by it depends on the first pending event in the conversation state machine for which the \smfield{members} set includes \field{sender}.
+A \npmessage{KEY\_EXCHANGE\_REVEAL} message is an event message.
+As such, the effect of a \npmessage{KEY\_EXCHANGE\_REVEAL} message on the conversation state machine addressed by it depends on the first pending event in the conversation state machine for which the \smfield{members} set includes \field{sender}.
 If that event is a \type{key-exchange-contribution} event, with \smfield{key-exchange-id} equal to \field{key-exchange-id} and \smfield{stage} equal to \textsc{Reveal}, the \field{sender} is removed from that pending event.
 If the first event has any other form, or if the state machine does not describe any pending events that include \field{sender}, the \field{sender} is removed from the conversation.
 
-If a \message{KEY\_EXCHANGE\_REVEAL} message does match a pending event as above, the effect of the \message{KEY\_EXCHANGE\_REVEAL} depends on whether or not the conversation state machine contains a key exchange with \smfield{key-exchange-id} equal to \field{key-exchange-id}.
-If it does not, the \message{KEY\_EXCHANGE\_REVEAL} message does not affect the addressed conversation's state machine other than adjusting the conversation's \smfield{event-queue} and \smfield{status-checksum}.
+If a \npmessage{KEY\_EXCHANGE\_REVEAL} message does match a pending event as above, the effect of the \npmessage{KEY\_EXCHANGE\_REVEAL} depends on whether or not the conversation state machine contains a key exchange with \smfield{key-exchange-id} equal to \field{key-exchange-id}.
+If it does not, the \npmessage{KEY\_EXCHANGE\_REVEAL} message does not affect the addressed conversation's state machine other than adjusting the conversation's \smfield{event-queue} and \smfield{status-checksum}.
 If it does, the message's \field{session-private-key} is stored as the \field{sender}'s \smfield{session-private-key} in the \type{key-exchange} referred to.
 
 If, after setting the \field{sender}'s \smfield{session-private-key} field in this way, all participants of the conversation have a \smfield{session-private-key} set, the key exchange has finished unsuccessfully.
@@ -1718,18 +1718,18 @@ This triggers the creation of a new key exchange, as described in Section~\ref{s
 \subsubsection{KEY\_ACTIVATION}
 \label{sec:messages/key-activation}
 
-The \message{KEY\_ACTIVATION} message is sent by participants of a conversation after successfully finishing a key exchange.
+The \npmessage{KEY\_ACTIVATION} message is sent by participants of a conversation after successfully finishing a key exchange.
 It announces that the sender will henceforth use the negotiated key to encrypt all future chat messages.
 
 \begin{conversationmessage}{KEY\_ACTIVATION}{0x41}
 \messagefield{key-id}{hash}
 \end{conversationmessage}
 
-A \message{KEY\_ACTIVATION} message indicates that the \field{sender} has negotiated a new key with a recently-completed key exchange, and will use this key in the future when sending encrypted messages.
-All \message{CHAT} messages received in the future sent by \field{sender} will be assumed encrypted using this key.
+A \npmessage{KEY\_ACTIVATION} message indicates that the \field{sender} has negotiated a new key with a recently-completed key exchange, and will use this key in the future when sending encrypted messages.
+All \npmessage{CHAT} messages received in the future sent by \field{sender} will be assumed encrypted using this key.
 
-A \message{KEY\_ACTIVATION} message is an event message.
-As such, the effect of a \message{KEY\_ACTIVATION} message on the conversation state machine addressed by it depends on the first pending event in the conversation state machine for which the \smfield{members} set includes \field{sender}.
+A \npmessage{KEY\_ACTIVATION} message is an event message.
+As such, the effect of a \npmessage{KEY\_ACTIVATION} message on the conversation state machine addressed by it depends on the first pending event in the conversation state machine for which the \smfield{members} set includes \field{sender}.
 If that event is a \type{key-activation-contribution} event, with \smfield{key-exchange-id} equal to \field{key-id}, the \field{sender} is removed from that pending event.
 If the first event has any other form, or if the state machine does not describe any pending events that include \field{sender}, the \field{sender} is removed from the conversation.
 
@@ -1741,52 +1741,52 @@ To mark this fact, the conversation state machine sets the \smfield{in-chat} fie
 \subsubsection{KEY\_RATCHET}
 \label{sec:messages/key-ratchet}
 
-The \message{KEY\_RATCHET} message is sent by a participant of a conversation to announce their opinion that the most recently negotiated chat key has been in use for too long, and should be replaced.
+The \npmessage{KEY\_RATCHET} message is sent by a participant of a conversation to announce their opinion that the most recently negotiated chat key has been in use for too long, and should be replaced.
 This triggers a new key exchange process, which will negotiate a replacement key.
 
 \begin{conversationmessage}{KEY\_RATCHET}{0x42}
 \messagefield{key-id}{hash}
 \end{conversationmessage}
 
-A \message{KEY\_RATCHET} message indicates that the \field{sender} is of the opinion that the chat key negotiated by the most recent successfully finished key exchange process needs to be replaced with a new key, to avoid using a chat key for a long enough time that attacking the secrets on which it is based is a realistic attack possibility.
-The message field \field{key-id} is the id of the key for which the \field{sender} holds this opinion; if this key is still the most recently exchanged key when the \message{KEY\_RATCHET} message is received, and no existing key exchange is in progress to replace it, a new key exchange progress is initiated.
+A \npmessage{KEY\_RATCHET} message indicates that the \field{sender} is of the opinion that the chat key negotiated by the most recent successfully finished key exchange process needs to be replaced with a new key, to avoid using a chat key for a long enough time that attacking the secrets on which it is based is a realistic attack possibility.
+The message field \field{key-id} is the id of the key for which the \field{sender} holds this opinion; if this key is still the most recently exchanged key when the \npmessage{KEY\_RATCHET} message is received, and no existing key exchange is in progress to replace it, a new key exchange progress is initiated.
 
-If the \field{sender} of the \message{KEY\_RATCHET} message is not a participant of the conversation state machine addressed by the \message{KEY\_RATCHET} message, the conversation state machine is not affected by the \message{KEY\_RATCHET} message other than adjusting the conversation's \smfield{status-checksum}.
-Likewise, if the conversation state machine's \smfield{latest-key-exchange-id} field is not equal to \field{key-id}, or the state machine's \smfield{key-exchanges} list contains at least one active key exchange, the \message{KEY\_RATCHET} message has no effect.
+If the \field{sender} of the \npmessage{KEY\_RATCHET} message is not a participant of the conversation state machine addressed by the \npmessage{KEY\_RATCHET} message, the conversation state machine is not affected by the \npmessage{KEY\_RATCHET} message other than adjusting the conversation's \smfield{status-checksum}.
+Likewise, if the conversation state machine's \smfield{latest-key-exchange-id} field is not equal to \field{key-id}, or the state machine's \smfield{key-exchanges} list contains at least one active key exchange, the \npmessage{KEY\_RATCHET} message has no effect.
 
 If the \field{sender} is a participant of the conversation state machine, \smfield{latest-key-exchange-id} is equal to \field{key-id}, and no key exchanges are in progress in the conversation state machine, a new \type{key-exchange} is added to the conversation state machine.
-This key exchange has \smfield{key-exchange-id} equal to the conversation state machine's \smfield{status-checksum} field after digesting the \message{KEY\_RATCHET} message; a \smfield{stage} of \textsc{Public-Key}; and a set of \smfield{participants} that contains one \type{key-exchange-participant} for each participant in the conversation, each with all contributions unset.
+This key exchange has \smfield{key-exchange-id} equal to the conversation state machine's \smfield{status-checksum} field after digesting the \npmessage{KEY\_RATCHET} message; a \smfield{stage} of \textsc{Public-Key}; and a set of \smfield{participants} that contains one \type{key-exchange-participant} for each participant in the conversation, each with all contributions unset.
 
 When this key exchange is created, a \type{key-exchange-contribution} event is added to the conversation state machine's event queue, with \smfield{key-exchange-id} equal to the \smfield{key-exchange-id} of the newly created key exchange, and \smfield{stage} equal to \textsc{Public-Key}.
-All participants of the conversation MUST send a \message{KEY\_EXCHANGE\_PUBLIC\_KEY} message for this key exchange, containing their public-key contribution for the key exchange process.
+All participants of the conversation MUST send a \npmessage{KEY\_EXCHANGE\_PUBLIC\_KEY} message for this key exchange, containing their public-key contribution for the key exchange process.
 
 
 \subsubsection{CHAT}
 \label{sec:messages/chat}
 
-The \message{CHAT} message is sent by a participant of a conversation to send an encrypted chat message to the participants of the conversation.
-This message is encrypted with the key most recently activated by the message's sender using a \message{KEY\_ACTIVATION} message, and can be decrypted by those participants that were party to the key exchange process that negotiated that key.
+The \npmessage{CHAT} message is sent by a participant of a conversation to send an encrypted chat message to the participants of the conversation.
+This message is encrypted with the key most recently activated by the message's sender using a \npmessage{KEY\_ACTIVATION} message, and can be decrypted by those participants that were party to the key exchange process that negotiated that key.
 
 \begin{conversationmessage}{CHAT}{0x43}
 \messagefield{encrypted-message}{octet-stream}
 \end{conversationmessage}
 
-A \message{CHAT} message contains an encrypted chat message, encrypted using the key announced in the most recent \message{KEY\_ACTIVATION} message sent by the \field{sender}.
-A \message{CHAT} message can be decrypted by any users that were part of the key exchange that negotiated that key, but it is addressed only to such participants for which \smfield{in-chat} is set in the conversation state machine.
+A \npmessage{CHAT} message contains an encrypted chat message, encrypted using the key announced in the most recent \npmessage{KEY\_ACTIVATION} message sent by the \field{sender}.
+A \npmessage{CHAT} message can be decrypted by any users that were part of the key exchange that negotiated that key, but it is addressed only to such participants for which \smfield{in-chat} is set in the conversation state machine.
 
-Other than adjusting a conversation's \smfield{status-checksum}, a \message{CHAT} message does not affect the addressed conversation's state machine.
-This ensures that any member unable to decrypt a \message{CHAT} message can nonetheless participate in the conversation of which it is part.
+Other than adjusting a conversation's \smfield{status-checksum}, a \npmessage{CHAT} message does not affect the addressed conversation's state machine.
+This ensures that any member unable to decrypt a \npmessage{CHAT} message can nonetheless participate in the conversation of which it is part.
 
-A \message{CHAT} message contains an encrypted payload, \field{encrypted-message}, that is encrypted using the key announced in the most recent \message{KEY\_ACTIVATION} message sent by \field{sender}.
-Members of a conversation that do not possess the key announced in that \message{KEY\_ACTIVATION} message SHOULD ignore the \message{CHAT} message.
+A \npmessage{CHAT} message contains an encrypted payload, \field{encrypted-message}, that is encrypted using the key announced in the most recent \npmessage{KEY\_ACTIVATION} message sent by \field{sender}.
+Members of a conversation that do not possess the key announced in that \npmessage{KEY\_ACTIVATION} message SHOULD ignore the \npmessage{CHAT} message.
 
-Of the participants of a conversation that can decrypt a \message{CHAT} message, some may have a status of $\smfield{in-chat} = \textsf{false}$ set in the conversation state machine.
+Of the participants of a conversation that can decrypt a \npmessage{CHAT} message, some may have a status of $\smfield{in-chat} = \textsf{false}$ set in the conversation state machine.
 This status indicates that not all encrypted chat sent in the conversation is yet encrypted using a key to which these participants have access; specifically, it indicates that there are participants of the conversation that may yet send messages encrypted to an older key to which the participant does not have access.
 As a consequence, such participants with $\smfield{in-chat} = \textsf{false}$ may be able to decrypt some subset of the encrypted chat messages sent in the conversation, but not others.
 In the interest of representing a consistent chat history between different participants of a conversation, implementations SHOULD not attempt to decrypt messages sent in a conversation until having reached the status in which $\smfield{in-chat} = \textsf{true}$.
 However, other participants of the conversation cannot rely on such a participant not yet decrypting any messages; therefore, implementations SHOULD make a distinction in the user interface between a participant who cannot yet decrypt any messages, and a participant who can ---for the moment--- decrypt some but not all conversation messages, similar to the conundrum described in Section~\ref{sec:conversation-state-machine/contents/key-exchanges}.
 
-A participant with access to the key with which a \message{CHAT} message is encrypted can decrypt the \field{encrypted-message} field.
+A participant with access to the key with which a \npmessage{CHAT} message is encrypted can decrypt the \field{encrypted-message} field.
 This decrypted field has the following structure:
 
 \vspace{-\medskipamount}
@@ -1806,7 +1806,7 @@ This decrypted field has the following structure:
 \end{tabular}
 \vspace{-\medskipamount}
 
-The decrypted contents of an encrypted message are signed using the session-private-key used by \field{sender} in the key exchange procedure that negotiated the key with which the \message{CHAT} message was encrypted.
+The decrypted contents of an encrypted message are signed using the session-private-key used by \field{sender} in the key exchange procedure that negotiated the key with which the \npmessage{CHAT} message was encrypted.
 This \field{signature} is computed over the \type{octet-stream} making up the \field{message-body}.
 A participant that decrypted a chat message MUST verify this signature before attempting to display the chat message inside, and SHOULD ignore the message if this signature is not valid.
 
