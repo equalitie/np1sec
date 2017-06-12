@@ -24,6 +24,7 @@
 #include "message.h"
 #include "timer.h"
 
+#include <functional>
 #include <deque>
 #include <map>
 #include <set>
