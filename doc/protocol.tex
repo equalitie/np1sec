@@ -118,7 +118,7 @@ The (n+1)sec system accomplishes this by exchanging cryptographic messages throu
 Secure communications in (n+1)sec take place in chat sessions called \emph{conversations}.
 An (n+1)sec conversation is a construction similar to a traditional chat room, such as an IRC channel or a Jabber multi-user-chat room.
 A conversation consists of a set of \emph{participants}, which can send text messages to the group as a whole.
-Participants can furthermore leave a conversation, and new participants can join it; together with the history of messages exchangesd, this makes up the main modes of interaction of a conversation.
+Participants can furthermore leave a conversation, and new participants can join it; together with the history of messages exchanged, this makes up the main modes of interaction of a conversation.
 
 A conversation is a construction that implements the behavior of a chat room while also guaranteeing a collection of security properties, such as the property that the content of exchanged messages is confidential to everyone other than the conversation's participants.
 The combination of the modes of interaction supported by a conversation, and the security properties it achieves, makes up the conceptual interface of the notion of a conversation; that is, it functions as a specification of the role a conversation can play in constructing a secure chat system.
@@ -134,7 +134,7 @@ Communications using (n+1)sec take place inside so-called \emph{carrier chat roo
 Carrier chat rooms are an abstract formalization of a general-purpose chat room system, used by (n+1)sec to transport cryptographic messages to a group of users.
 The exact behavior and properties (n+1)sec requires carrier chat rooms to have are detailed in Section~\ref{sec:carrier-chat-rooms}.
 
-Each (n+1)sec conversation takes place inside a particilar carrier chat room, which carries the cryptographic messages that make up the conversation.
+Each (n+1)sec conversation takes place inside a particular carrier chat room, which carries the cryptographic messages that make up the conversation.
 The participants of a conversation are restricted to some subset of the members of the carrier chat room, which may be invited to conversations taking place inside that carrier chat room.
 A carrier chat room can host multiple independent (n+1)sec conversations at the same time, and members of the carrier chat room can be part of any number of these conversations.
 
@@ -176,7 +176,7 @@ It is the responsibility of the user agent to maintain connections between crypt
 Chat messages in an (n+1)sec conversation are encrypted using a symmetric key known to all of the conversation's participants.
 This forms the basis of the mechanisms ensuring confidentiality of chat content.
 
-When a participant leaves a conversation, the remaining participants negiotiate a new symmetric key to which the former participant does not have access.
+When a participant leaves a conversation, the remaining participants negotiate a new symmetric key to which the former participant does not have access.
 Once this procedure finishes, the participants switch over to the new symmetric key.
 However, until this key negotiation is finished, messages are exchanged that are encrypted using the old key, to which the former member has access; as a consequence, the former member can still decrypt these messages if they have access to the encrypted messages, despite having nominally left the conversation.
 While this process of negotiating a new key after a participant leaves the conversation takes a fairly short time under normal circumstances, it may take a substantial time to finish when conditions are less fortunate.
@@ -291,7 +291,7 @@ Besides supporting these modes of interaction, a carrier chat room used by the (
 If these properties are not satisfied, this will not compromise the security properties delineated in Section~\ref{sec:chat-model/cryptographic-assurances}; however, it will make it impossible to create, or maintain, (n+1)sec conversations in the room.
 The carrier chat room needs to satisfy the following properties in order to support (n+1)sec conversations:
 \begin{itemize}
-\item Chat events occurring in the chat room ---which include at least chat messages, joining members, and leaving members--- have a strict and consistent order enforced by the carrier chat system. Different members of the chat room receive the same chat events in the same order. This include schat events originated by the receiving member; for example, if a member sends a chat message, it should be aware of the timing at which it is received by the chat room, relative to other chat events in the same room.
+\item Chat events occurring in the chat room ---which include at least chat messages, joining members, and leaving members--- have a strict and consistent order enforced by the carrier chat system. Different members of the chat room receive the same chat events in the same order. This includes chat events originated by the receiving member; for example, if a member sends a chat message, it should be aware of the timing at which it is received by the chat room, relative to other chat events in the same room.
 \todo[inline]{Could we lift this restriction, without turning (n+1)sec into Byzantine Paxos and then some?}
 \item The recognizable unique identifier that identifies a particular member of a chat room corresponds to a particular instantiation of an (n+1)sec client. In particular, multiple (n+1)sec-capable user agents must not share a unique user identifier.
 \todo[inline]{Could we lift this? It seems more of an annoyance than a fundamental restriction.}
@@ -405,7 +405,7 @@ But Alice cannot prove this fact to a third party, for as far as the third party
 
 The (n+1)sec protocol implements this scheme using the following authentication challenge protocol:
 \begin{description}[noitemsep]
-\item[Participants.] User $A$ with username $U_A$ has announced long term public key $g^A$ and emphemeral public key $g^a$. User $B$ with username $U_B$ has announced $g^B$ and $g^b$.
+\item[Participants.] User $A$ with username $U_A$ has announced long term public key $g^A$ and ephemeral public key $g^a$. User $B$ with username $U_B$ has announced $g^B$ and $g^b$.
 \item[Round 1.] User $A$ sends user $B$ an \emph{authentication challenge} nonce $N$.
 \item[Round 2.] User $B$ sends user $A$ the \emph{authentication confirmation} $T = H(U_B \concat N \concat TDH(g^A, g^a, g^B, g^b))$.
 \item[Computation.] User $A$ verifies the correctness of the authentication confirmation. If it is correct, $A$ knows that $B$ possesses the private key $b$.
@@ -439,7 +439,7 @@ While most group key exchange protocols will verify at the end that a key was ex
 Should the participants of the conversation then simply try again to exchange a key, the malicious participant could keep disrupting the negotiation of a key indefinitely, freezing conversation progress without anyone being able to determine the party responsible for this breakdown.
 
 The (n+1)sec protocol makes use of a version of the Abdalla-Chevalier-Manulis-Pointcheval GKE+P authenticated group key exchange \cite{acmp}.
-The version of this protocol used by (n+1)sec is modified in such a way that both the participants of a key exchange, and nonparticipating observants of a key exchange, can always determine the party responsible for any failures of the key exchange; these participants can then choose not to include the responsible party in further key exchange attempts, and solve the problem thereby.
+The version of this protocol used by (n+1)sec is modified in such a way that both the participants of a key exchange and nonparticipating observers of a key exchange can always determine the party responsible for any failures of the key exchange; these participants can then choose not to include the responsible party in further key exchange attempts, and solve the problem thereby.
 
 
 \subsubsection{Cryptography}
@@ -521,7 +521,7 @@ The details of this response are described in Sections~\ref{sec:conversation-sta
 \label{sec:cryptography/cryptographic-primitives}
 
 The (n+1)sec system makes use of certain cryptographic primitives to achieve its security properties.
-In particilar, the (n+1)sec protocol uses a cryptographic hash function; a digital signature scheme; and a symmetric cipher.
+In particular, the (n+1)sec protocol uses a cryptographic hash function, a digital signature scheme, and a symmetric cipher.
 Additionally, the (n+1)sec protocol makes use of a secure finite cyclic group in which the Diffie-Hellman protocol can be performed.
 
 The (n+1)sec protocol uses the following algorithms as implementations of these abstract primitives:
@@ -547,7 +547,7 @@ When a group of users participating in a conversation, this fact is not recorded
 For such a distributed coordinated abstraction to behave like a conventional chat room, it is critical that its participants are at all times in agreement about such things as the member list, the chat transcript, and the state and history of the conversation in general.
 
 Achieving and maintaining this agreement is a challenging affair.
-Because communication over the channel provioded by the carrier chat room is not instantaneous ---messages take a nonzero time to arrive at the carrier chat room after being sent by a user, and then take another nonzero time before being received by all other users--- multiple processes involved in maintaining a conversation might happen simultaneously in an interleaved fashion.
+Because communication over the channel provided by the carrier chat room is not instantaneous ---messages take nonzero time to arrive at the carrier chat room after being sent by a user, and then take nonzero time before being received by all other users--- multiple processes involved in maintaining a conversation might happen simultaneously in an interleaved fashion.
 For example, a new user might attempt to join a conversation at the unfortunate time when a group key exchange procedure (as described in Section~\ref{sec:cryptography/group-key-exchange}) is in progress.
 For another example, a conversation participant might stop responding due to connectivity problems while the process to accept a new user into the conversation is in progress, which should not cause the user-acceptance procedure to freeze indefinitely while the troubled participant fails to participate.
 Resolving these potential conflicts in a way that reliably results in agreement between conversation participants about what happened and in what order is a famously difficult problem.
@@ -592,7 +592,7 @@ To avoid this contingency, members of a conversation regularly publish a checksu
 When receiving such a message, all other members compare this checksum against the checksum of their own copy; when these values are not equal, this indicates that the views of the conversation between the different members have diverged.
 
 When such a divergence is detected, those members that notice that other members have divergent conversation state machine contents remove the diverging users from the contents of their copies of the conversation state machine, and announce that fact.
-After receiving that announcement, the victims of this divergement in turn remove the announcers from their own copies of the conversation state machine, and announce this as well.
+After receiving that announcement, the victims of this divergence in turn remove the announcers from their own copies of the conversation state machine, and announce this as well.
 After several such messages, the incoherent conversation has split itself into two or more parts, with each resulting conversation consisting of all members of the original conversation that still have consistent state machines among themselves.
 In effect, the incoherent conversation has then split itself into two or more internally coherent successor conversations.
 
@@ -753,7 +753,7 @@ As a consequence, multiple key exchanges can be going on in the context of a giv
 
 When a key exchange procedure finishes successfully, the conversation participants involved in the key exchange will switch to using the chat key produced by the key exchange for all further chat.
 To coordinate this, each participant will send a \npmessage{KEY\_ACTIVATION} message announcing the chat key they will use from that point onward, and will encrypt all chat messages sent after sending that \npmessage{KEY\_ACTIVATION} message using the newly activated key.
-The successful completion of a key exchange will also cancel all remaining active key exchanges that started before the just-finished key exchange; this ensures that the progression of chat keys used over time follows a monotone sequence, and no keys ever get activated that have since been superceded by more recent keys.
+The successful completion of a key exchange will also cancel all remaining active key exchanges that started before the just-finished key exchange; this ensures that the progression of chat keys used over time follows a monotone sequence, and no keys ever get activated that have since been superseded by more recent keys.
 
 Key exchange procedures do not always finish successfully.
 Active key exchange processes may sometimes get \emph{cancelled}; this happens when one of the participants of a key exchange leaves the conversation while the key exchange is ongoing, as well as when a key exchange is superseded by the successful completion of a later key exchange.
@@ -825,7 +825,7 @@ The procedure of keeping the \smfield{latest-key-exchange-id} field up-to-date i
 There are situations in the proceedings of an (n+1)sec conversation in which the processes of the conversation require specific contributions from the conversation's members.
 For example, active key exchanges require their participants to contribute their parts in each of the key exchange states before the key exchange can proceed to the next stage.
 For another example, when a participant of a conversation invites a new user, existing identified members of the conversation are required to send a message confirming that they are part of the conversation, which allows the new invitee to confirm the set of members of the conversation.
-In either case, the normal function of the conversation ---or parts of it--- cannot proceed until all relevent members of the conversation have contributed their part.
+In either case, the normal function of the conversation ---or parts of it--- cannot proceed until all relevant members of the conversation have contributed their part.
 
 In these situations, a member that does not cooperate by sending their contribution the conversation processes ---perhaps because they maliciously want to sabotage the conversation, or maybe simply because they are suffering network connectivity problems--- can hold up useful activity in the conversation indefinitely.
 To avoid (n+1)sec conversations from being entirely at the mercy of malicious saboteurs and unfortunate network contingencies alike, conversations need to enforce participation in situations where a member contribution is mandatory --- by removing nonparticipating members from the conversation, if need be.
@@ -905,7 +905,7 @@ A \type{key-exchange-contribution} event need not refer to a key exchange presen
 Thus, a \type{key-exchange-contribution} event may refer to a historic key exchange process that has since been cancelled.
 
 A \type{key-activation-contribution} event is created when a key exchange process finishes successfully.
-It records the expectation that the participants of that key exchange send a \npmessage{KEY\_ACTIVATION} message, indicating that they will start using the newly negoatiated key for all further chat messages.
+It records the expectation that the participants of that key exchange send a \npmessage{KEY\_ACTIVATION} message, indicating that they will start using the newly negotiated key for all further chat messages.
 \begin{struct}{key-activation-contribution}
 \structfield{key-exchange-id}{hash}
 \structfield{participants}{set of participant reference}
@@ -935,7 +935,7 @@ Instead, the members of a conversation need to determine in a purely distributed
 Reaching distributed consensus on this matter is challenging; a situation might easily arise in which a message sent by member $A$ arrives just in time for member $B$ to consider $A$ fast enough to avoid a timeout, but just too late for member $C$ to consider the same.
 
 The (n+1)sec protocol approaches this problem by having each member of a conversation do their own independent tracking of which other members are and are not meeting the conditions to warrant a timeout removal.
-Members send a message to the conversation when they consider some other member to have crossed the timeout treshold, and these judgements are recorded in the conversation state machine.
+Members send a message to the conversation when they consider some other member to have crossed the timeout threshold, and these judgements are recorded in the conversation state machine.
 The decision of whether or not a member is actually removed from a conversation for timeout reasons is then specified as a judgement to be computed from the opinions stored in the conversation state machine.
 
 
@@ -1733,7 +1733,7 @@ As such, the effect of a \npmessage{KEY\_ACTIVATION} message on the conversation
 If that event is a \type{key-activation-contribution} event, with \smfield{key-exchange-id} equal to \field{key-id}, the \field{sender} is removed from that pending event.
 If the first event has any other form, or if the state machine does not describe any pending events that include \field{sender}, the \field{sender} is removed from the conversation.
 
-If, after removing the \field{sender} from the \type{key-activation-contribution} event in this way, the \type{key-activation-contribution} event does not have any remaining members left ---if that event's \smfield{members} field is empty, after removign \field{sender} from it--- then the key identified by \field{key-id} has been accepted by all participants described in the \type{key-activation-contribution}'s \smfield{participants} field.
+If, after removing the \field{sender} from the \type{key-activation-contribution} event in this way, the \type{key-activation-contribution} event does not have any remaining members left ---if that event's \smfield{members} field is empty, after removing \field{sender} from it--- then the key identified by \field{key-id} has been accepted by all participants described in the \type{key-activation-contribution}'s \smfield{participants} field.
 Because all these participants are also participant to any key exchange processes that may have taken place after the exchange negotiating the \field{key-id} key, this implies that all these \smfield{participants} will have access to all future encrypted chat in the conversation.
 To mark this fact, the conversation state machine sets the \smfield{in-chat} field to \textsf{true} for all participants in the \smfield{participants} set.
 

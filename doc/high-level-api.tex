@@ -50,7 +50,7 @@ In order to broaden the applicability of the (n+1)sec system, extensions to the 
 
 The (n+1)sec protocol does not rely on any of the requirements above to ensure any security guarantees; in particular, the security properties described in Section~\ref{sec:np1sec-chat-model} still hold when the carrier chat system does not satisfy these requirements.
 Instead, in such a situation, the (n+1)sec library will not be able to establish secure chat sessions at all; any attempts to use the (n+1)sec system on such a carrier chat system will result in reported error situations such as network timeouts, protocol errors, et cetera.
-As a special case of this general point, per requirement \ref{enum:carrier-chat-model/chat-event-order}, the (n+1)sec system assumes that users have a connection to the carrier chat system that is free from interference, in which attackers cannot interfere with the communication between user and carrier chat system; this can be easily accomplished by the application of proper transport security, as implented by systems such as TLS, to the connection between the user and the carrier chat system.
+As a special case of this general point, per requirement \ref{enum:carrier-chat-model/chat-event-order}, the (n+1)sec system assumes that users have a connection to the carrier chat system that is free from interference, in which attackers cannot interfere with the communication between user and carrier chat system; this can be easily accomplished by the application of proper transport security, as implemented by systems such as TLS, to the connection between the user and the carrier chat system.
 If this assumption is violated ---which can happen, for example, when a user uses a plaintext connection to connect to a carrier chat system, and an attacker modifies the message stream sent to or by the user--- then the security properties described in Section~\ref{sec:np1sec-chat-model} still hold, but the user will not be able to successfully join any (n+1)sec sessions.
 
 To perform secure communications, (n+1)sec needs to perform actions in the role of a member of a carrier chat room.
@@ -104,7 +104,7 @@ Participants do not necessarily pass through the \emph{leaving} state before lea
 
 Internally, (n+1)sec channels are constructed out of a multitude of cryptographic constructions which we call (n+1)sec \emph{sessions}.
 A session is an agreement between the active participants of a channel to use a particular shared key for encrypting chat messages.
-Unlike channels, sessions cannot be joined or left; when participants join or leave a channel, the channel spawns a new session to accomodate the changed set of participants, and the old session is eventually replaced.
+Unlike channels, sessions cannot be joined or left; when participants join or leave a channel, the channel spawns a new session to accommodate the changed set of participants, and the old session is eventually replaced.
 New sessions are also created periodically in order to refresh short-term keys, as part of the effort to limit the damage done by the compromise of a short-term private key.
 
 As the interface to (n+1)sec channels, the (n+1)sec library provides an object representing a channel of which the user is a participant.
@@ -146,11 +146,11 @@ If communication conditions are such that no secure chat satisfying these condit
 An (n+1)sec channel is a distributed cooperation between a set of participants, who are in agreement about such things as the list of authenticated participants, and the active cryptographic session.
 There is no such thing as a central authoritative version of the state of the channel; instead, the system relies entirely on the proposition that the participants are in agreement with each other, and stay that way.
 If, for whatever reason, the participants of a channel find themselves in unexpected disagreement about the state of a channel ---for example, if one subset of a channel is of the opinion that user Alice has been authenticated by the entire channel and is therefore promoted to a \emph{joining} participant, whereas the remainder of the channel is of the opinion that Bob has yet to authenticate Alice--- then the coherence of the channel has broken down, and the channel cannot continue in its present form.
-This situation can arise if the carrier chat system manipulates the contents of the carrier chat, such as by not informing part of the channel that Bob has authenticated Alice; a malicient user might also try to arrange this situation as a denial of service attack.
+This situation can arise if the carrier chat system manipulates the contents of the carrier chat, such as by not informing part of the channel that Bob has authenticated Alice; a malicious user might also try to arrange this situation as a denial of service attack.
 
 When this happens, the (n+1)sec system responds by performing a procedure that ultimately leads to the disagreeing segments of the channel each continuing as separate, independent channels.
 Each (n+1)sec client, when noticing that part of the channel is in disagreement with the client about the channel status, decides to unilaterally drop all participants from the channel with whom they are in disagreement.
-Because client agreement is an equivalence relation, the consequence of this procedure is that each ``side'' of the disagreement has constructed an internally consistent descendent channel; effectively, the original disagreeing channel has split itself into independent component channels that are once again in agreement.
+Because client agreement is an equivalence relation, the consequence of this procedure is that each ``side'' of the disagreement has constructed an internally consistent descendant channel; effectively, the original disagreeing channel has split itself into independent component channels that are once again in agreement.
 From the point of view of any particular participant of the disintegrating channel, this splitting procedure is asymmetric: all participants on the other side of the split have simply been kicked from the channel because of a protocol violation.
 Only from the point of view of an outsider watching the channel does the breakdown of a channel look like a symmetric split.
 
@@ -219,7 +219,7 @@ The process of joining (n+1)sec channels in a carrier chat room progresses throu
 
 The process of searching for (n+1)sec channels to join in a given carrier chat room consists of a model in which the (n+1)sec library maintains a list of available channels for the user to join, which is continuously updated until the user chooses a channel to join.
 This list is represented as an initially empty set of \emph{channel} objects as described in Section~\ref{sec:np1sec-chat-model}, which can be displayed in a user interface.
-During the channel-search procedure, the following events can happen that change the concents of the available channel list:
+During the channel-search procedure, the following events can happen that change the contents of the available channel list:
 \begin{itemize}
 \item The search process can report the existence of a newly identified channel;
 \item A channel on the list can change its set of users, which happens when a user joins or leaves the channel, or a user in the channel becomes authenticated;
